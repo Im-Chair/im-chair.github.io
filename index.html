@@ -7,7 +7,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="數獨">
   <meta name="theme-color" content="#0f0f0f">
-  <link rel="manifest" href="manifest.json">
+  <link rel="manifest" href="/sudoku/manifest.json">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
   <title>數獨</title>
   <style>
@@ -700,7 +700,7 @@ newGame('medium');
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js').catch(() => {});
+    navigator.serviceWorker.register('/sudoku/sw.js', {scope: '/sudoku/'}).catch(() => {});
   });
 }
 </script>
