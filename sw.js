@@ -1,11 +1,5 @@
-const CACHE = 'sudoku-v2';
-const ASSETS = [
-  '/sudoku/',
-  '/sudoku/index.html',
-  '/sudoku/manifest.json',
-  '/sudoku/icons/icon-192.png',
-  '/sudoku/icons/icon-512.png'
-];
+const CACHE = 'arcade-v1';
+const ASSETS = ['/', '/index.html', '/manifest.json'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));

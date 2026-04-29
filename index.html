@@ -5,699 +5,445 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="數獨">
-  <meta name="theme-color" content="#0f0f0f">
-      <link rel="apple-touch-icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMAAAADACAIAAADdvvtQAAAFDklEQVR4nO3dP0hqfRzHcX2oiJbEHB5bLAraKm1oaGkpIaiG/q01tARNTUFwfYaGoKE/WJFCgm0tbaE13Kmaiv5AQ7gVXTGiKKQk6BnupaGMW33Uc+S8X1sdj3zBN79zPAg/e2VlpQ34rn+MHgDFjYAgISBICAgSAoKEgCAhIEgICBICgoSAICEgSAgIEgKChIAgISBICAgSAoKEgCAhIEgICBICgoSAICEgSAgIEgKChIAgKcnHm7b/+JWPt4Xo53//5vw9c78CUY9p5eOj4RIGSV4uYb/lY8H8kvYfvwyfwSRj5O+ywAoECQFBQkCQEBAkBAQJAUFCQJAQECQEBAkBQUJAkBAQJAQECQFBQkCQEBAkBAQJAUFCQJAQECQEBAkBQUJAkBAQJAQECQFBQkCQEBAkBAQJAUFCQJAQECQEBAkBQUJAkBAQJAQECQFBQkCQEBAkBAQJAUFir6yszO07stmKmeV80wX2yrDEGOyVAZMiIEgICBICgoSAIMnjt7CiMDU1NTo6+r1zvV7vzc1NbucpOqxAkBAQJAQECQFBQkCQWP1b2Hv7+/tDQ0NGT1E0WIEgISBICAgS7oHe8ng8KysrDQ0NLperoqLi4eHh7u7u4uLi4OBgd3d3b2/v5eXF6BlNhIDecrvdbrf79U+Hw+FwODweT1tb2/j4eCKRWF5e3tjYMHBCU+ES9jV1dXWzs7PhcDjnPwUuUgT0HR0dHZFIpLy83OhBjEdA3+Tz+aanp42ewnjcA/2RSCS2t7cPDw/Pzs6ur6+fnp6qqqqampr6+/v9fn/WU/r6+tbW1k5PTws8qqlYPaC7u7tIJLK+vn5+fv7mUDKZjMfj8Xjc7/cHg8HS0tI3L7Db7SMjIxMTE4Ua1oysHtDi4uJfXxOLxaanpwOBwPtD7e3tdrvdyl/suQf6lGg0ent7+/7/Lperurq64OOYCAF9yvPz88HBQdZDLperwMOYCgF9VtYVyGazWfyBEAF9lsPhyPr/j8KyCAL6lJKSkpaWlqyHUqlUgYcxFUsHNDMz89EznjeGh4ezXqouLy+vrq5yPVcxsXRA9fX1q6urm5ubvb297x/zvOrq6pqcnMx6KB6P52264mD150A2m83r9Xq93kAgsLOzs7u7e3x8nEql0um00+lsbm4eGBjo7OzMeuLj42M4HC7wtGZDQH84nc7BwcHBwcHPn7KwsHBxcZG/kYqCpS9himg0GgwGjZ7CeKxAX5bJZObm5paWlowexBQsHdDY2FhPT093d3djY6Pdbv/r6zOZzNbW1vz8fCKRKMB4RcHSASWTyVAoFAqFHA5Ha2urz+erra2tqan5/WvosrKydDp9f3+fTCZPTk6Ojo52dnYs/tjwPUsH9Or29jYWi8ViMaMHKT7cRENCQJAQECQEBAkBQUJAkLDZirWw2coXmGGXE5OMwWYrMCkCgoSAICEgSAgIEgKChIAgISBICAgSAoKEgCAhIEgICBICgoSAICEgSAgIEgKChIAgISBICAgSAoKEgCAhIEgICBICgoSAICEgSAgIEgKChIAgISBICAgSAoKEgCAhIEgICBICgoSAICEgSAgIEgKChL0yrCXnmy6wAkGS+4AM31gEH8nHR5P7SxgshUsYJAQECQFBQkCQEBAkBAQJAUFCQJAQECQEBAkBQUJAkBAQJAQECQFBQkCQEBAkBAQJAUFCQJAQECQEBAkBQUJAkBAQJAQEyf+eFxYuam9hewAAAABJRU5ErkJggg==">
-  <link rel="manifest" href="data:application/manifest+json;base64,eyJuYW1lIjogIlx1NjU3OFx1NzM2OCIsICJzaG9ydF9uYW1lIjogIlx1NjU3OFx1NzM2OCIsICJzdGFydF91cmwiOiAiLiIsICJzY29wZSI6ICIuIiwgImRpc3BsYXkiOiAic3RhbmRhbG9uZSIsICJiYWNrZ3JvdW5kX2NvbG9yIjogIiMwZjBmMGYiLCAidGhlbWVfY29sb3IiOiAiIzBmMGYwZiIsICJvcmllbnRhdGlvbiI6ICJwb3J0cmFpdCIsICJpY29ucyI6IFt7InNyYyI6ICJkYXRhOmltYWdlL3BuZztiYXNlNjQsaVZCT1J3MEtHZ29BQUFBTlNVaEVVZ0FBQU1BQUFBREFDQUlBQUFEZHZ2dFFBQUFGRGtsRVFWUjRuTzNkUDBocWZSekhjWDJvaUpiRUhCNWJMQXJhS20xb2FHa3BJYWlHL3EwMXRBUk5UVUZ3ZllhR29LRS9XSkZDZ20wdGJhRTEzS21haXY1QVE3Z1ZYVEdpS0tRazZCbnVwYUdNVzMzVWMrUzhYMXNkajN6Qk43OXpQQWcvZTJWbHBRMzRybitNSGdERmpZQWdJU0JJQ0FnU0FvS0VnQ0FoSUVnSUNCSUNnb1NBSUNFZ1NBZ0lFZ0tDaElBZ0lTQklDQWdTQW9LRWdDQWhJRWdJQ0JJQ2dvU0FJQ0VnU0FnSUVnS0NoSUFnS2NuSG03Yi8rSldQdDRYbzUzLy81dnc5Yzc4Q1VZOXA1ZU9qNFJJR1NWNHVZYi9sWThIOGt2WWZ2d3lmd1NSajVPK3l3QW9FQ1FGQlFrQ1FFQkFrQkFRSkFVRkNRSkFRRUNRRUJBa0JRVUpBa0JBUUpBUUVDUUZCUWtDUUVCQWtCQVFKQVVGQ1FKQVFFQ1FFQkFrQlFVSkFrQkFRSkFRRUNRRkJRa0NRRUJBa0JBUUpBVUZDUUpBUUVDUUVCQWtCUVVKQWtCQVFKQVFFQ1FGQlFrQ1FFQkFrQkFRSkFVRmlyNnlzek8wN3N0bUttZVY4MHdYMnlyREVHT3lWQVpNaUlFZ0lDQklDZ29TQUlNbmp0N0NpTURVMU5UbzYrcjF6dlY3dnpjMU5idWNwT3F4QWtCQVFKQVFFQ1FGQlFrQ1FXUDFiMkh2NysvdERRME5HVDFFMFdJRWdJU0JJQ0FnUzdvSGU4bmc4S3lzckRRME5McGVyb3FMaTRlSGg3dTd1NHVMaTRPQmdkM2QzYjIvdjVlWEY2QmxOaElEZWNydmRicmY3OVUrSHcrRndPRHdlVDF0YjIvajRlQ0tSV0Y1ZTN0allNSEJDVStFUzlqVjFkWFd6czdQaGNEam5Qd1V1VWdUMEhSMGRIWkZJcEx5ODNPaEJqRWRBMytUeithYW5wNDJld25qY0EvMlJTQ1MydDdjUER3L1B6czZ1cjYrZm5wNnFxcXFhbXByNisvdjlmbi9XVS9yNit0YlcxazVQVHdzOHFxbFlQYUM3dTd0SUpMSyt2bjUrZnY3bVVES1pqTWZqOFhqYzcvY0hnOEhTMHRJM0w3RGI3U01qSXhNVEU0VWExb3lzSHREaTR1SmZYeE9MeGFhbnB3T0J3UHREN2UzdGRydmR5bC9zdVFmNmxHZzBlbnQ3Ky83L0xwZXJ1cnE2NE9PWUNBRjl5dlB6ODhIQlFkWkRMcGVyd01PWUNnRjlWdFlWeUdheldmeUJFQUY5bHNQaHlQci9qOEt5Q0FMNmxKS1NrcGFXbHF5SFVxbFVnWWN4RlVzSE5ETXo4OUV6bmplR2g0ZXpYcW91THkrdnJxNXlQVmN4c1hSQTlmWDFxNnVybTV1YnZiMjk3eC96dk9ycTZwcWNuTXg2S0I2UDUyMjY0bUQxNTBBMm04M3I5WHE5M2tBZ3NMT3pzN3U3ZTN4OG5FcWwwdW0wMCtsc2JtNGVHQmpvN096TWV1TGo0Mk00SEM3d3RHWkRRSDg0bmM3QndjSEJ3Y0hQbjdLd3NIQnhjWkcva1lxQ3BTOWhpbWcwR2d3R2paN0NlS3hBWDViSlpPYm01cGFXbG93ZXhCUXNIZERZMkZoUFQwOTNkM2RqWTZQZGJ2L3I2ek9aek5iVzF2ejhmQ0tSS01CNFJjSFNBU1dUeVZBb0ZBcUZIQTVIYTJ1cnorZXJyYTJ0cWFuNS9Xdm9zckt5ZERwOWYzK2ZUQ1pQVGs2T2pvNTJkbllzL3Rqd1BVc0g5T3IyOWpZV2k4VmlNYU1IS1Q3Y1JFTkNRSkFRRUNRRUJBa0JRVUpBa0xEWmlyV3cyY29YbUdHWEU1T013V1lyTUNrQ2dvU0FJQ0VnU0FnSUVnS0NoSUFnSVNCSUNBZ1NBb0tFZ0NBaElFZ0lDQklDZ29TQUlDRWdTQWdJRWdLQ2hJQWdJU0JJQ0FnU0FvS0VnQ0FoSUVnSUNCSUNnb1NBSUNFZ1NBZ0lFZ0tDaElBZ0lTQklDQWdTQW9LRWdDQWhJRWdJQ0JJQ2dvU0FJQ0VnU0FnSUVnS0NoTDB5ckNYbm15NndBa0dTKzRBTTMxZ0VIOG5IUjVQN1N4Z3NoVXNZSkFRRUNRRkJRa0NRRUJBa0JBUUpBVUZDUUpBUUVDUUVCQWtCUVVKQWtCQVFKQVFFQ1FGQlFrQ1FFQkFrQkFRSkFVRkNRSkFRRUNRRUJBa0JRVUpBa0JBUUpBUUV5ZitlRnhZdWFtOWhld0FBQUFCSlJVNUVya0pnZ2c9PSIsICJzaXplcyI6ICIxOTJ4MTkyIiwgInR5cGUiOiAiaW1hZ2UvcG5nIn0sIHsic3JjIjogImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBZ0FBQUFJQUNBSUFBQUI3R2tPdEFBQVBKRWxFUVZSNG5PM2RYWWhWZGQvSFljZkdtWFQwM2thaGpXbm1RSVVXaWhwa0JmbDZFSmtvWlJZRVlRWkZZUkZsSngxVUVuWlNRVUtaVkdaMEZHVWdxWldKYVdvcVpGa3FtbWJrQythbzJKUTRNaSttOTBGdzAzTS85anpwM3R2dHpQZTZ6c1JaLy8xak0vcmh2OWRhZTFVVkNvVXVBT1RwV3VrQkFLZ01BUUFJSlFBQW9RUUFJSlFBQUlRU0FJQlFBZ0FRU2dBQVFna0FRQ2dCQUFnbEFBQ2hCQUFnbEFBQWhCSUFnRkFDQUJCS0FBQkNDUUJBS0FFQUNDVUFBS0VFQUNDVUFBQ0VFZ0NBVUFJQUVFb0FBRUlKQUVBb0FRQUlKUUFBb1FRQUlKUUFBSVFTQUlCUUFnQVFTZ0FBUWdrQVFDZ0JBQWdsQUFDaEJBQWdsQUFBaEJJQWdGQUNBQkJLQUFCQ0NRQkFLQUVBQ0NVQUFLRUVBQ0NVQUFDRUVnQ0FVQUlBRUVvQUFFSUpBRUFvQVFBSUpRQUFvUVFBSUpRQUFJUVNBSUJRQWdBUVNnQUFRZ2tBUUNnQkFBZ2xBQUNoQkFBZ2xBQUFoQklBZ0ZBQ0FCQktBQUJDQ1FCQUtBRUFDQ1VBQUtFRUFDQ1VBQUNFRWdDQVVBSUFFRW9BQUVKVlYzcUE4MkhNYzQyVkhnSG9ZRmJQdnJ6U0k1U2RIUUJBS0FFQUNGVlZLQlFxUFVPNStPUUhLSW5PK25HUUhRQkFLQUVBQ0NVQUFLRUVBQ0JVeEgwQS82V3pucytwckwrZWN2Y09sNGszdWR6U3JoeXhBd0FJSlFBQW9RUUFJSlFBQUlRU0FJQlFBZ0FRU2dBQVFna0FRQ2dCQUFnbEFBQ2hCQUFnbEFBQWhCSUFnRkFDQUJCS0FBQkNDUUJBS0FFQUNDVUFBS0VFQUNDVUFBQ0VFZ0NBVUFJQUVFb0FBRUlKQUVBb0FRQUlKUUFBb1FRQUlKUUFBSVFTQUlCUUFnQVFTZ0FBUWdrQVFDZ0JBQWdsQUFDaEJBQWdsQUFBaEJJQWdGQUNBQkJLQUFCQ0NRQkFLQUVBQ0NVQUFLRUVBQ0NVQUFDRUVnQ0FVQUlBRUVvQUFFSUpBRUFvQVFBSUpRQUFvUVFBSUpRQUFJUVNBSUJRQWdBUVNnQUFRZ2tBUUNnQkFBZ2xBQUNoQkFBZ2xBQUFoQklBZ0ZBQ0FCQktBQUJDQ1FCQUtBRUFDQ1VBQUtFRUFDQ1VBQUNFRWdDQVVBSUFFRW9BQUVJSkFFQW9BUUFJSlFBQW9RUUFJSlFBQUlRU0FJQlFBZ0FRU2dBQVFna0FRQ2dCQUFnbEFBQ2hCQUFnbEFBQWhCSUFnRkFDQUJCS0FBQkNDUUJBS0FFQUNDVUFBS0VFQUNDVUFBQ0VFZ0NBVUFJQUVFb0FBRUlKQUVBb0FRQUlKUUFBb1FRQUlKUUFBSVFTQUlCUUFnQVFTZ0FBUWdrQVFDZ0JBQWdsQUFDaEJBQWdsQUFBaEJJQWdGQUNBQkJLQUFCQ0NRQkFLQUVBQ0ZWVktCUXFQVU81akhtdXNkSWpBSjNCNnRtWFYzcUVzckFEQUFnbEFBQ2hCQUFnVkhXbEI2aUF6dnB4WG1YOTlZeUxkN2hNdk1ubGxuYmkwQTRBSUpRQUFJUVNBSUJRQWdBUVNnQUFRZ2tBUUNnQkFBZ2xBQUNoQkFBZ2xBQUFoQklBZ0ZBQ0FCQktBQUJDSlg0YktCMVUvLzc5di9ycXEwcFA4YmNtVFpxMFpjdVdTazhCWjhFT0FDQ1VBQUNFRWdDQVVBSUFFRW9BQUVJSkFFQW9BUUFJSlFBQW9RUUFJSlFBQUlRU0FJQlFBZ0FRU2dBQVFna0FRQ2dCQUFqbGVRQjBaa3VXTEprNWMyYWxwNEFMbEIwQVFDZ0JBQWdsQUFDaEJBQWdsQUFBaEJJQWdGQUNBQkJLQUFCQ0NRQkFLQUVBQ09XcklPajgrdmJ0TzJ6WXNHdXZ2ZmJxcTYrdXI2L3YyN2R2Nzk2OWEydHJhMnBxMnR2YlcxdGJXMXBhamg4L2Z1alFvVU9IRGgwOGVIRG56cDA3ZHV6WXZYdjN5Wk1uS3owN2xKRUEwSm5kZU9PTjY5YXRHekJnd04vOVFHMXRiVzF0N2IvKzlhOCtmZm8wTkRUODlhL2EyOXUvK2VhYnRXdlhybG16WnN1V0xlVWZGczQzQWFBejY5T256emtmMjYxYnQxR2pSbzBhTmVycHA1L2VzMmZQb2tXTEZpMWFkUERnd1JLT0I1WGxIQUQ4LzY2NjZxcFpzMmF0VzdmdTVaZGZIamh3WUtYSGdkSVFBUGlucXF1cjc3Nzc3aSsrK09LRkYxNm9xNnVyOURoUUxBR0FzMU5kWFgzLy9mZXZYTGx5M0xoeGxaNEZpaUlBY0M3cTYrdmZlZWVkV2JObVZWVlZWWG9XT0VjQ0FPZW9xcXJxc2NjZWUvdnR0MnRyYXlzOUM1d0xBWUNpVEpndzRhMjMzcXFwcWFuMElIRFdCQUNLTlhyMDZQbno1M2Z0Nmw4VEhZeGZXU2lCOGVQSFAvbmtrNVdlQXM2T0FFQnB6Snc1MDNWQmRDd0NBS1ZSVlZYMTRvc3Z1aitBRGtRQW9HVHE2K3VmZU9LSlNrOEIvNVR2QXFLemFXeHMvUDc3NzMvNjZhZmR1M2NmT0hEZ3lKRWp2Lzc2YTB0TFMxdGJXMTFkWGFGUUtCUUsvZnIxR3pseTVNaVJJNGNPSFZyYWl6Z2ZlT0NCQlFzV05EWTJsbkJOS0JNQm9EUFl0Mi9mdW5YcjFxNWQrL1hYWHg4NWN1VHZmdXpZc1dQSGpoM2J2My8vdG0zYlB2Lzg4eTVkdXRUVjFVMmJObTM2OU9sWFhYVlZTU2JwMXEzYmd3OCtPR2ZPbkpLc0JtVWxBSFJnMjdkdi8rU1RUNVl2WDc1cjE2NXpXNkc1dVhuaHdvWHZ2dnZ1MUtsVG4zLysrWjQ5ZXhZLzFYMzMzZmZxcTY4Mk56Y1h2eFNVbFFEUThSdytmSGp4NHNXTEZpM2F1WE5uU1JZOGZmcjBoeDkrdUhIanhybHo1NDRjT2JMSTFlcnE2c2FQSC8veHh4K1haRFlvSHllQjZUQk9uejY5WWNPR1J4OTk5S2FiYnBvelowNnAvdmYvai8zNzk5OXp6ejByVjY0c2Zxazc3cmlqK0VXZzNBU0FEdVBBZ1FQMzNudnZzbVhMeXZla3h2YjI5a2NlZVdUcjFxMUZyak42OU9qcWF0dHJMblFDQVA5RGEydnJ6Smt6VzF0Ymkxbms0b3N2dnY3NjYwczFFcFNKQU1CLzI3Tm56NXR2dmxua0lzV2ZTNEJ5RXdBNGd3VUxGclMxdFJXendwQWhRMG8xREpTSkFNQVpORFUxclZxMXFwZ1ZCZ3dZVUtwaG9Fd0VBTTVzelpvMXhSd3VBRno0QkFETzdMdnZ2aXZtOEQ1OStwUm9FQ2dYQVlBejI3Tm5UekdIVjFkWGQrdldyVVN6UUZrSUFKelo4ZVBIaTd6aG9FZVBIcVVhQnNwQkFPQnZGWGszZ0lmRmM0RVRBUGhiUmY0UDN0TFNVcXBKb0J3RUFNNnNWNjllUlg2ZHc0a1RKMG8xREpTREFNQ1pGZm1FZ1BiMjl2SjlaeEdVaEFEQW1RMGZQcnlZd3c4ZVBGaXFTYUJNQkFETzdOWmJieTNtOENLdklvWHpRQURnREM2OTlOSXhZOFlVczhMZXZYdExOQXVVaXdCd29idnR0dHVlZXVxcDgzeE4vVU1QUFZUa2JWeGJ0bXdwMVRCUUpnTEFoYTU3OSs2UFAvNzQ2dFdycDA2ZDJyWHIrZmlOYldob21ERmpScEdMYk55NHNTVERRUGtJQUIxRDM3NTlYM25sbGVYTGw5OSsrKzFWVlZYbGU2SHUzYnZQbXpldnBxYW1tRVYrK2VXWGZmdjJsV29rS0JNQm9DTzU1cHByM25qampVOC8vWFRTcEVubGVPWmlUVTNOL1BuekJ3OGVYT1E2eTVZdEs4azhVRllDUU1jemVQRGcxMTU3YmUzYXRROC8vSENoVUNqVnNsZGVlZVVISDN4UTVMbmZQMzMwMFVmRkx3TGxKZ0IwVlAzNjlYdm1tV2MyYmRvMGI5NjhjZVBHRmJNaDZOcTE2N1JwMHo3NzdMTWlyLzMvMDlhdFczZnMyRkg4T2xCdXBkOUV3L2xVVTFNemNlTEVpUk1uTmpVMWZmbmxseXRYcmx5N2RtMVRVOU0vUEx4bno1N1RwazJiUG4zNndJRURTelhTM0xselM3VVVsSlVBMEVsY2Nza2xVNlpNbVRKbFNwY3VYWDcrK2VmTm16ZHYzNzU5Mzc1OWUvZnVQWHIwNklrVEoxcGFXbnIwNkZFb0ZBcUZ3aFZYWERGaXhJZ2JicmhoNk5DaHBmM096cTFidDY1WXNhS0VDMEw1Q0FDZDBLQkJnd1lOR25Ubm5YZWU1OWM5ZGVyVXM4OCtlNTVmRk02WmN3QlFNZ3NXTFBqMjIyOHJQUVg4VXdJQXBiRnQyN2FYWG5xcDBsUEFXUkFBS0lIR3hzWVpNMllVK1FReE9NOEVBSXJWMU5RMGZmcjBRNGNPVlhvUU9Ec0NBRVU1ZE9qUXRHblRYUGhQUnlRQWNPNSsrT0dIdSs2NmE5ZXVYWlVlQk02RkFNQTVldi85OXlkUG5yeC8vLzVLRHdMbnlIMEFjTllPSERnd2UvYnM1Y3VYVjNvUUtJb0FjS0Zic21USjhlUEhKMCtlUEdIQ2hPN2R1MWQybU9ibTVnVUxGcnorK3VzdExTMlZuUVNLSndCYzZFNmVQTGxpeFlvVksxYlUxZFdOSFR0MndvUUpZOGVPN2QyNzkza2U0K2pSb3dzWExuenZ2ZmQrLy8zMzgvelNVQ1lDUUlmUjNOeThkT25TcFV1WFhuVFJSY09IRDcvbGxsdHV2dm5tRVNOR0ZQbndsdjliYTJ2cnFsV3JGaTlldkhMbHlyYTJ0dks5RUp4L0FrREg4OGNmZjJ6YXRHblRwazF6NTg2dHFhbTU3cnJyaGcwYk5uVG8wQ0ZEaGpRME5CVC81VzZuVHAzYXVYUG4rdlhyMTY5ZnYySERodWJtNXBLTURSY2FBYUJqYTJ0cjI3eDU4K2JObS8vOFk5ZXVYUWNNR05EUTBOQy9mLy82K3ZyNit2ckxMcnVzZCsvZWhVS2hWNjlldGJXMTNicDFxNjZ1UG4zNmRHdHJhMXRiVzB0THkyKy8vWGI0OE9FalI0NDBOamJ1M3IxNzE2NWRQLzc0bzN0NlNTQUFkQ3FuVHAzYXUzZnYzcjE3S3owSWRBRHVBd0FJSlFBQW9RUUFJSlFBQUlRU0FJQlFBZ0FRU2dBQVFna0FRQ2dCQUFnbEFBQ2hCQUFnbEFBQWhCSUFnRkFDQUJCS0FBQkNDUUJBcUtwQ29WRHBHY3BsekhPTmxSNEI2QXhXejc2ODBpT1VoUjBBUUNnQkFBZ2xBQUNoRWg4SzMxay96cXVzdjU1eDhRNlhpVGU1M05KT0hOb0JBSVFTQUlCUUFnQVFTZ0FBUWdrQVFDZ0JBQWdsQUFDaEJBQWdsQUFBaEJJQWdGQUNBQkJLQUFCQ0NRQkFLQUVBQ0NVQUFLRUVBQ0NVQUFDRUVnQ0FVQUlBRUVvQUFFSUpBRUFvQVFBSUpRQUFvUVFBSUpRQUFJUVNBSUJRQWdBUVNnQUFRZ2tBUUNnQkFBZ2xBQUNoQkFBZ2xBQUFoQklBZ0ZBQ0FCQktBQUJDQ1FCQUtBRUFDQ1VBQUtFRUFDQ1VBQUNFRWdDQVVBSUFFRW9BQUVJSkFFQW9BUUFJSlFBQW9RUUFJSlFBQUlRU0FJQlFBZ0FRU2dBQVFna0FRQ2dCQUFnbEFBQ2hCQUFnbEFBQWhCSUFnRkFDQUJCS0FBQkNDUUJBS0FFQUNDVUFBS0VFQUNDVUFBQ0VFZ0NBVUFJQUVFb0FBRUlKQUVBb0FRQUlKUUFBb1FRQUlKUUFBSVFTQUlCUUFnQVFTZ0FBUWdrQVFDZ0JBQWdsQUFDaEJBQWdsQUFBaEJJQWdGQUNBQkJLQUFCQ0NRQkFLQUVBQ0NVQUFLRUVBQ0NVQUFDRUVnQ0FVQUlBRUVvQUFFSUpBRUFvQVFBSUpRQUFvUVFBSUpRQUFJUVNBSUJRQWdBUVNnQUFRZ2tBUUNnQkFBZ2xBQUNoQkFBZ2xBQUFoQklBZ0ZBQ0FCQktBQUJDQ1FCQUtBRUFDQ1VBQUtFRUFDQ1VBQUNFcWlvVUNwV2VvVnpHUE5kWTZSR0F6bUQxN01zclBVSloyQUVBaEJJQWdGQUNBQkNxTTU4RCtBOG5BNEN6MVZrLzkvOHJPd0NBVUFJQUVFb0FBRUpGbkFNQTRIK3pBd0FJSlFBQW9RUUFJSlFBQUlRU0FJQlFBZ0FRU2dBQVFna0FRQ2dCQUFnbEFBQ2hCQUFnbEFBQWhCSUFnRkFDQUJCS0FBQkNDUUJBS0FFQUNDVUFBS0VFQUNDVUFBQ0VFZ0NBVUFJQUVFb0FBRUlKQUVBb0FRQUlKUUFBb1FRQUlKUUFBSVFTQUlCUUFnQVFTZ0FBUWdrQVFDZ0JBQWdsQUFDaEJBQWdsQUFBaEJJQWdGQUNBQkJLQUFCQ0NRQkFLQUVBQ0NVQUFLRUVBQ0NVQUFDRUVnQ0FVQUlBRUVvQUFFSUpBRUFvQVFBSUpRQUFvUVFBSUpRQUFJUVNBSUJRQWdBUVNnQUFRZ2tBUUNnQkFBZ2xBQUNoQkFBZ2xBQUFoQklBZ0ZBQ0FCQktBQUJDQ1FCQUtBRUFDQ1VBQUtFRUFDQ1VBQUNFRWdDQVVBSUFFRW9BQUVMOUc2ME1tT3Q1dHdMY0FBQUFBRWxGVGtTdVFtQ0MiLCAic2l6ZXMiOiAiNTEyeDUxMiIsICJ0eXBlIjogImltYWdlL3BuZyJ9XX0=">
-  <title>數獨</title>
+  <meta name="apple-mobile-web-app-title" content="ARCADE">
+  <meta name="theme-color" content="#080808">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+  <title>ARCADE</title>
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-
-    :root {
-      --bg: #0f0f0f;
-      --surface: #1a1a1a;
-      --surface2: #242424;
-      --border: #2e2e2e;
-      --text: #f0f0f0;
-      --muted: #666;
-      --accent: #4f8ef7;
-      --accent-dim: rgba(79,142,247,0.15);
-      --error: #e05c5c;
-      --error-dim: rgba(224,92,92,0.15);
-      --given: #a0a8c0;
-      --highlight: rgba(79,142,247,0.10);
-      --same-num: rgba(79,142,247,0.18);
+    *, *::before, *::after {
+      box-sizing: border-box; margin: 0; padding: 0;
+      -webkit-tap-highlight-color: transparent;
     }
 
-    body {
-      font-family: -apple-system, 'SF Pro Display', 'Helvetica Neue', sans-serif;
-      background: var(--bg);
-      color: var(--text);
+    :root {
+      --bg: #080808;
+      --ink: #f2f0ea;
+      --ink2: rgba(242,240,234,0.45);
+      --ink3: rgba(242,240,234,0.18);
+      --accent: #c8f135;
+      --accent2: #f1c135;
+      --card: #111110;
+      --card-border: rgba(242,240,234,0.08);
+      --font-display: 'Syne', sans-serif;
+      --font-mono: 'DM Mono', monospace;
+    }
+
+    html, body {
       min-height: 100vh;
-      min-height: -webkit-fill-available;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--font-mono);
       overflow-x: hidden;
     }
 
+    /* grain overlay */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+      background-size: 180px;
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.6;
+    }
+
     #app {
-      width: 100%;
-      max-width: 420px;
-      padding: env(safe-area-inset-top, 16px) 16px env(safe-area-inset-bottom, 24px);
+      position: relative;
+      z-index: 1;
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 0 20px;
+      padding-top: max(48px, env(safe-area-inset-top));
+      padding-bottom: max(48px, env(safe-area-inset-bottom));
+      min-height: 100vh;
       display: flex;
       flex-direction: column;
-      gap: 16px;
-      min-height: 100vh;
+      gap: 0;
     }
 
     /* ── Header ── */
     .header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding-top: 8px;
+      margin-bottom: 48px;
+      animation: fadeUp 0.6s ease both;
     }
-    .logo {
-      font-size: 24px;
-      font-weight: 700;
-      letter-spacing: -1px;
-      color: var(--text);
+    .header-eyebrow {
+      font-size: 11px;
+      letter-spacing: 0.2em;
+      color: var(--ink3);
+      text-transform: uppercase;
+      margin-bottom: 8px;
     }
-    .logo em { color: var(--accent); font-style: normal; }
-    .timer {
-      font-size: 18px;
-      font-weight: 500;
-      font-variant-numeric: tabular-nums;
-      color: var(--muted);
-      letter-spacing: 1px;
+    .header-title {
+      font-family: var(--font-display);
+      font-size: clamp(52px, 18vw, 80px);
+      font-weight: 800;
+      letter-spacing: -2px;
+      line-height: 0.9;
+      color: var(--ink);
+    }
+    .header-title span {
+      color: var(--accent);
+      display: inline-block;
+      animation: flicker 6s infinite 2s;
+    }
+    @keyframes flicker {
+      0%,95%,97%,100% { opacity: 1; }
+      96% { opacity: 0.2; }
+    }
+    .header-sub {
+      margin-top: 16px;
+      font-size: 12px;
+      color: var(--ink2);
+      letter-spacing: 0.05em;
     }
 
-    /* ── Difficulty pills ── */
-    .difficulty {
+    /* ── Divider ── */
+    .divider {
       display: flex;
-      gap: 8px;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+      animation: fadeUp 0.6s ease 0.1s both;
     }
-    .diff-btn {
+    .divider-label {
+      font-size: 10px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--ink3);
+      white-space: nowrap;
+    }
+    .divider-line {
       flex: 1;
-      padding: 9px 0;
-      border-radius: 10px;
-      border: 0.5px solid var(--border);
-      background: var(--surface);
-      color: var(--muted);
-      font-size: 13px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.15s;
+      height: 0.5px;
+      background: var(--card-border);
     }
-    .diff-btn.active {
-      background: var(--accent-dim);
-      border-color: var(--accent);
+
+    /* ── Game grid ── */
+    .games {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 40px;
+    }
+
+    /* ── Game card ── */
+    .game-card {
+      display: block;
+      text-decoration: none;
+      background: var(--card);
+      border: 0.5px solid var(--card-border);
+      border-radius: 16px;
+      padding: 20px 22px;
+      position: relative;
+      overflow: hidden;
+      transition: border-color 0.2s, transform 0.15s;
+      animation: fadeUp 0.5s ease both;
+    }
+    .game-card:nth-child(1) { animation-delay: 0.15s; }
+    .game-card:nth-child(2) { animation-delay: 0.25s; }
+    .game-card:nth-child(3) { animation-delay: 0.35s; }
+
+    .game-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at 20% 50%, var(--card-accent, transparent) 0%, transparent 70%);
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+    }
+    .game-card:active {
+      transform: scale(0.975);
+    }
+    .game-card:hover {
+      border-color: rgba(242,240,234,0.2);
+    }
+    .game-card:hover::before {
+      opacity: 1;
+    }
+
+    .game-card.available {
+      --card-accent: rgba(200, 241, 53, 0.06);
+      cursor: pointer;
+    }
+    .game-card.coming-soon {
+      opacity: 0.5;
+      cursor: default;
+      pointer-events: none;
+    }
+
+    .card-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .card-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      background: rgba(242,240,234,0.05);
+      border: 0.5px solid var(--card-border);
+      flex-shrink: 0;
+    }
+    .card-status {
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      padding: 4px 10px;
+      border-radius: 20px;
+      border: 0.5px solid;
+    }
+    .card-status.ready {
+      color: var(--accent);
+      border-color: rgba(200,241,53,0.3);
+      background: rgba(200,241,53,0.07);
+    }
+    .card-status.soon {
+      color: var(--ink3);
+      border-color: var(--card-border);
+    }
+
+    .card-name {
+      font-family: var(--font-display);
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      color: var(--ink);
+      margin-bottom: 4px;
+    }
+    .card-desc {
+      font-size: 12px;
+      color: var(--ink2);
+      line-height: 1.6;
+    }
+
+    .card-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 16px;
+      padding-top: 14px;
+      border-top: 0.5px solid var(--card-border);
+    }
+    .card-tags {
+      display: flex;
+      gap: 6px;
+    }
+    .tag {
+      font-size: 10px;
+      color: var(--ink3);
+      padding: 3px 8px;
+      border-radius: 4px;
+      background: rgba(242,240,234,0.04);
+      border: 0.5px solid var(--card-border);
+      letter-spacing: 0.05em;
+    }
+    .card-arrow {
+      font-size: 16px;
+      color: var(--ink3);
+      transition: transform 0.2s, color 0.2s;
+    }
+    .game-card:hover .card-arrow {
+      transform: translateX(4px);
       color: var(--accent);
     }
 
-    /* ── Board ── */
-    .board-wrap {
-      background: var(--surface);
-      border: 0.5px solid var(--border);
-      border-radius: 16px;
-      padding: 12px;
-    }
-    .board {
-      display: grid;
-      grid-template-columns: repeat(9, 1fr);
-      gap: 2px;
-      aspect-ratio: 1;
-    }
-    .cell {
+    /* ── Stats bar ── */
+    .stats {
       display: flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: 6px;
-      font-size: clamp(14px, 4vw, 20px);
-      font-weight: 500;
-      cursor: pointer;
-      transition: background 0.1s;
-      position: relative;
-      color: var(--text);
-      background: var(--surface2);
-      border: 0.5px solid transparent;
-    }
-    /* Box borders (3x3 groups) */
-    .cell[data-col="2"], .cell[data-col="5"] { margin-right: 4px; }
-    .cell[data-row="2"], .cell[data-row="5"] { margin-bottom: 4px; }
-
-    .cell.given { color: var(--given); font-weight: 600; }
-    .cell.selected { background: var(--accent-dim); border-color: var(--accent); }
-    .cell.highlight { background: var(--highlight); }
-    .cell.same-num { background: var(--same-num); }
-    .cell.error { background: var(--error-dim); color: var(--error); }
-    .cell.complete { color: var(--accent); }
-
-    .cell .notes {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
       gap: 0;
-      width: 100%;
-      height: 100%;
-      padding: 1px;
+      border: 0.5px solid var(--card-border);
+      border-radius: 14px;
+      overflow: hidden;
+      margin-bottom: 32px;
+      animation: fadeUp 0.5s ease 0.4s both;
     }
-    .cell .notes span {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: clamp(6px, 1.8vw, 9px);
-      color: var(--muted);
-      font-weight: 400;
+    .stat {
+      flex: 1;
+      padding: 14px 0;
+      text-align: center;
+      border-right: 0.5px solid var(--card-border);
+    }
+    .stat:last-child { border-right: none; }
+    .stat-value {
+      font-family: var(--font-display);
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--accent);
+      display: block;
+    }
+    .stat-label {
+      font-size: 10px;
+      color: var(--ink3);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      display: block;
+      margin-top: 2px;
     }
 
-    /* ── Info row ── */
-    .info-row {
+    /* ── Footer ── */
+    .footer {
+      margin-top: auto;
+      padding-top: 24px;
+      border-top: 0.5px solid var(--card-border);
       display: flex;
       justify-content: space-between;
       align-items: center;
+      animation: fadeUp 0.5s ease 0.5s both;
     }
-    .mistakes {
-      font-size: 13px;
-      color: var(--muted);
+    .footer-left {
+      font-size: 11px;
+      color: var(--ink3);
+      letter-spacing: 0.05em;
     }
-    .mistakes b { color: var(--error); }
-    .hints-left {
-      font-size: 13px;
-      color: var(--muted);
-    }
-
-    /* ── Toolbar ── */
-    .toolbar {
-      display: flex;
-      gap: 8px;
-    }
-    .tool-btn {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 4px;
-      padding: 10px 0;
-      border-radius: 12px;
-      border: 0.5px solid var(--border);
-      background: var(--surface);
-      color: var(--muted);
-      font-size: 10px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.15s;
-    }
-    .tool-btn .icon { font-size: 18px; line-height: 1; }
-    .tool-btn.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
-    .tool-btn:active { opacity: 0.6; }
-
-    /* ── Number pad ── */
-    .numpad {
-      display: grid;
-      grid-template-columns: repeat(9, 1fr);
-      gap: 6px;
-    }
-    .num-btn {
-      aspect-ratio: 1;
-      border-radius: 10px;
-      border: 0.5px solid var(--border);
-      background: var(--surface);
-      color: var(--text);
-      font-size: clamp(16px, 4.5vw, 22px);
-      font-weight: 600;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: all 0.1s;
-      position: relative;
-    }
-    .num-btn:active { transform: scale(0.90); background: var(--accent-dim); }
-    .num-btn.used { color: var(--muted); }
-    .num-btn .count {
-      position: absolute;
-      top: 2px;
-      right: 3px;
-      font-size: 8px;
-      color: var(--muted);
-      font-weight: 400;
-    }
-
-    /* ── New game button ── */
-    .new-game-btn {
-      width: 100%;
-      padding: 14px;
-      border-radius: 14px;
-      border: none;
+    .footer-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
       background: var(--accent);
-      color: #fff;
-      font-size: 16px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: opacity 0.15s;
-      letter-spacing: -0.2px;
+      display: inline-block;
+      margin-right: 6px;
+      animation: pulse 2s infinite;
     }
-    .new-game-btn:active { opacity: 0.75; }
-
-    /* ── Win screen ── */
-    #win-screen {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.85);
-      align-items: center;
-      justify-content: center;
-      z-index: 100;
-      backdrop-filter: blur(8px);
+    @keyframes pulse {
+      0%,100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.7); }
     }
-    #win-screen.show { display: flex; }
-    .win-card {
-      background: var(--surface);
-      border: 0.5px solid var(--border);
-      border-radius: 24px;
-      padding: 36px 32px;
-      text-align: center;
-      max-width: 300px;
-      width: 90%;
-      animation: slideUp 0.3s cubic-bezier(.34,1.56,.64,1);
-    }
-    @keyframes slideUp {
-      from { transform: translateY(40px); opacity: 0; }
-      to { transform: translateY(0); opacity: 1; }
-    }
-    .win-emoji { font-size: 56px; margin-bottom: 16px; }
-    .win-title { font-size: 24px; font-weight: 700; margin-bottom: 8px; }
-    .win-stats { color: var(--muted); font-size: 15px; margin-bottom: 28px; line-height: 1.7; }
-    .win-stats b { color: var(--text); }
-    .win-btn {
-      width: 100%;
-      padding: 13px;
-      border-radius: 12px;
-      border: none;
-      background: var(--accent);
-      color: #fff;
-      font-size: 16px;
-      font-weight: 600;
-      cursor: pointer;
+    .footer-right {
+      font-size: 11px;
+      color: var(--ink3);
     }
 
-    /* ── Install banner ── */
-    #install-banner {
-      display: none;
-      background: var(--surface2);
-      border: 0.5px solid var(--border);
-      border-radius: 14px;
-      padding: 14px 16px;
-      font-size: 13px;
-      line-height: 1.6;
-      color: var(--muted);
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to { opacity: 1; transform: translateY(0); }
     }
-    #install-banner b { color: var(--text); display: block; margin-bottom: 2px; }
   </style>
 </head>
 <body>
 <div id="app">
-  <div class="header">
-    <div class="logo">數<em>獨</em></div>
-    <div class="timer" id="timer">00:00</div>
+
+  <header class="header">
+    <div class="header-eyebrow">im-chair · 遊戲集</div>
+    <div class="header-title">ARC<span>A</span>DE</div>
+    <div class="header-sub">// 手工打造的小遊戲，離線可玩</div>
+  </header>
+
+  <div class="divider">
+    <span class="divider-label">遊戲列表</span>
+    <div class="divider-line"></div>
   </div>
 
-  <div class="difficulty">
-    <button class="diff-btn" data-level="easy">簡單</button>
-    <button class="diff-btn active" data-level="medium">中等</button>
-    <button class="diff-btn" data-level="hard">困難</button>
-    <button class="diff-btn" data-level="expert">專家</button>
+  <div class="games">
+
+    <!-- 數獨 -->
+    <a class="game-card available" href="./sudoku/">
+      <div class="card-top">
+        <div class="card-icon">⊞</div>
+        <span class="card-status ready">可遊玩</span>
+      </div>
+      <div class="card-name">數獨</div>
+      <div class="card-desc">四種難度，筆記模式，計時挑戰。</div>
+      <div class="card-footer">
+        <div class="card-tags">
+          <span class="tag">益智</span>
+          <span class="tag">離線</span>
+          <span class="tag">單人</span>
+        </div>
+        <span class="card-arrow">→</span>
+      </div>
+    </a>
+
+    <!-- 預留 slot 2 -->
+    <div class="game-card coming-soon">
+      <div class="card-top">
+        <div class="card-icon">？</div>
+        <span class="card-status soon">開發中</span>
+      </div>
+      <div class="card-name">???</div>
+      <div class="card-desc">下一個遊戲即將登場。</div>
+      <div class="card-footer">
+        <div class="card-tags">
+          <span class="tag">敬請期待</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 預留 slot 3 -->
+    <div class="game-card coming-soon">
+      <div class="card-top">
+        <div class="card-icon">⚔</div>
+        <span class="card-status soon">規劃中</span>
+      </div>
+      <div class="card-name">RPG</div>
+      <div class="card-desc">有故事、刷裝備、選職業的暗黑風 RPG。</div>
+      <div class="card-footer">
+        <div class="card-tags">
+          <span class="tag">RPG</span>
+          <span class="tag">動作</span>
+          <span class="tag">大作</span>
+        </div>
+      </div>
+    </div>
+
   </div>
 
-  <div class="board-wrap">
-    <div class="board" id="board"></div>
+  <div class="stats">
+    <div class="stat">
+      <span class="stat-value" id="game-count">1</span>
+      <span class="stat-label">遊戲</span>
+    </div>
+    <div class="stat">
+      <span class="stat-value" id="play-count">0</span>
+      <span class="stat-label">遊玩次數</span>
+    </div>
+    <div class="stat">
+      <span class="stat-value">∞</span>
+      <span class="stat-label">離線可用</span>
+    </div>
   </div>
 
-  <div class="info-row">
-    <div class="mistakes">錯誤：<b id="mistake-count">0</b> / 3</div>
-    <div class="hints-left">提示剩餘：<span id="hint-count">3</span></div>
-  </div>
+  <footer class="footer">
+    <div class="footer-left">
+      <span class="footer-dot"></span>手工製作中
+    </div>
+    <div class="footer-right" id="footer-date"></div>
+  </footer>
 
-  <div class="toolbar">
-    <button class="tool-btn" id="undo-btn">
-      <span class="icon">↩</span>
-      <span>撤銷</span>
-    </button>
-    <button class="tool-btn" id="erase-btn">
-      <span class="icon">⌫</span>
-      <span>清除</span>
-    </button>
-    <button class="tool-btn" id="note-btn">
-      <span class="icon">✏️</span>
-      <span>筆記</span>
-    </button>
-    <button class="tool-btn" id="hint-btn">
-      <span class="icon">💡</span>
-      <span>提示</span>
-    </button>
-  </div>
-
-  <div class="numpad" id="numpad"></div>
-
-  <button class="new-game-btn" id="new-game-btn">新遊戲</button>
-
-  <div id="install-banner">
-    <b>📲 安裝到 iPhone</b>
-    點下方 Safari 分享按鈕 →「加入主畫面」，即可離線遊玩！
-  </div>
-</div>
-
-<div id="win-screen">
-  <div class="win-card">
-    <div class="win-emoji">🎉</div>
-    <div class="win-title">完成！</div>
-    <div class="win-stats" id="win-stats"></div>
-    <button class="win-btn" id="win-new-btn">再來一局</button>
-  </div>
 </div>
 
 <script>
-// ── Sudoku Generator & Solver ──
-function generateSudoku(level) {
-  const clues = { easy: 46, medium: 36, hard: 28, expert: 22 };
-  const base = 3, side = 9;
+  // 顯示今天日期
+  const d = new Date();
+  document.getElementById('footer-date').textContent =
+    d.getFullYear() + '.' + String(d.getMonth()+1).padStart(2,'0');
 
-  function shuffle(arr) {
-    for (let i = arr.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [arr[i], arr[j]] = [arr[j], arr[i]];
-    }
-    return arr;
-  }
+  // 遊玩次數（localStorage）
+  const plays = parseInt(localStorage.getItem('arcade-plays') || '0');
+  document.getElementById('play-count').textContent = plays;
 
-  function pattern(r, c) { return (base * (r % base) + Math.floor(r / base) + c) % side; }
-
-  const rBase = Array.from({length: base}, (_, i) => i);
-  const rows = shuffle(rBase).flatMap(g => shuffle([...rBase]).map(r => g * base + r));
-  const cols = shuffle(rBase).flatMap(g => shuffle([...rBase]).map(c => g * base + c));
-  const nums = shuffle(Array.from({length: 9}, (_, i) => i + 1));
-
-  const grid = rows.map(r => cols.map(c => nums[pattern(r, c)]));
-
-  const flat = grid.flat();
-  const total = clues[level] || 36;
-  const indices = shuffle(Array.from({length: 81}, (_, i) => i));
-
-  let removed = 0;
-  const puzzle = [...flat];
-  for (const idx of indices) {
-    if (removed >= 81 - total) break;
-    puzzle[idx] = 0;
-    removed++;
-  }
-
-  return { puzzle, solution: flat };
-}
-
-// ── State ──
-let state = {
-  puzzle: [],
-  solution: [],
-  board: [],        // current values
-  notes: [],        // Array of Sets
-  given: [],        // bool array
-  selected: -1,
-  noteMode: false,
-  mistakes: 0,
-  maxMistakes: 3,
-  hints: 3,
-  history: [],
-  level: 'medium',
-  startTime: 0,
-  elapsed: 0,
-  timerActive: false,
-  timerInterval: null,
-  complete: false,
-};
-
-function newGame(level) {
-  const { puzzle, solution } = generateSudoku(level);
-  state.puzzle = puzzle;
-  state.solution = solution;
-  state.board = [...puzzle];
-  state.notes = Array.from({length: 81}, () => new Set());
-  state.given = puzzle.map(v => v !== 0);
-  state.selected = -1;
-  state.noteMode = false;
-  state.mistakes = 0;
-  state.hints = 3;
-  state.history = [];
-  state.level = level;
-  state.complete = false;
-  stopTimer();
-  state.elapsed = 0;
-  state.startTime = Date.now();
-  startTimer();
-  updateUI();
-}
-
-// ── Timer ──
-function startTimer() {
-  state.timerActive = true;
-  state.timerInterval = setInterval(() => {
-    state.elapsed = Math.floor((Date.now() - state.startTime) / 1000);
-    document.getElementById('timer').textContent = formatTime(state.elapsed);
-  }, 1000);
-}
-function stopTimer() {
-  state.timerActive = false;
-  clearInterval(state.timerInterval);
-}
-function formatTime(s) {
-  const m = Math.floor(s / 60);
-  const sec = s % 60;
-  return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
-}
-
-// ── Input ──
-function selectCell(idx) {
-  if (state.complete) return;
-  state.selected = idx;
-  renderBoard();
-  renderNumpad();
-}
-
-function inputNumber(num) {
-  const idx = state.selected;
-  if (idx < 0 || state.given[idx] || state.complete) return;
-
-  if (state.noteMode) {
-    const snap = snapshot();
-    if (state.board[idx] === 0) {
-      if (state.notes[idx].has(num)) state.notes[idx].delete(num);
-      else state.notes[idx].add(num);
-      state.history.push(snap);
-      renderBoard();
-    }
-    return;
-  }
-
-  const snap = snapshot();
-  state.notes[idx].clear();
-  state.board[idx] = num;
-
-  if (num !== 0 && num !== state.solution[idx]) {
-    state.mistakes++;
-    document.getElementById('mistake-count').textContent = state.mistakes;
-    if (state.mistakes >= state.maxMistakes) {
-      stopTimer();
-      setTimeout(() => alert('遊戲結束！錯誤達到上限。'), 100);
-      state.complete = true;
-    }
-  }
-  state.history.push(snap);
-  renderBoard();
-  renderNumpad();
-  checkComplete();
-}
-
-function eraseCell() {
-  const idx = state.selected;
-  if (idx < 0 || state.given[idx]) return;
-  const snap = snapshot();
-  state.board[idx] = 0;
-  state.notes[idx].clear();
-  state.history.push(snap);
-  renderBoard();
-  renderNumpad();
-}
-
-function useHint() {
-  if (state.hints <= 0 || state.selected < 0) return;
-  const idx = state.selected;
-  if (state.given[idx] || state.board[idx] === state.solution[idx]) return;
-  const snap = snapshot();
-  state.board[idx] = state.solution[idx];
-  state.notes[idx].clear();
-  state.hints--;
-  state.history.push(snap);
-  document.getElementById('hint-count').textContent = state.hints;
-  renderBoard();
-  renderNumpad();
-  checkComplete();
-}
-
-function undo() {
-  if (!state.history.length) return;
-  const prev = state.history.pop();
-  state.board = prev.board;
-  state.notes = prev.notes;
-  state.mistakes = prev.mistakes;
-  state.hints = prev.hints;
-  document.getElementById('mistake-count').textContent = state.mistakes;
-  document.getElementById('hint-count').textContent = state.hints;
-  renderBoard();
-  renderNumpad();
-}
-
-function snapshot() {
-  return {
-    board: [...state.board],
-    notes: state.notes.map(s => new Set(s)),
-    mistakes: state.mistakes,
-    hints: state.hints,
-  };
-}
-
-function checkComplete() {
-  if (state.board.every((v, i) => v === state.solution[i])) {
-    stopTimer();
-    state.complete = true;
-    const lvlMap = { easy:'簡單', medium:'中等', hard:'困難', expert:'專家' };
-    document.getElementById('win-stats').innerHTML =
-      `難度：<b>${lvlMap[state.level]}</b><br>時間：<b>${formatTime(state.elapsed)}</b><br>錯誤：<b>${state.mistakes}</b> 次`;
-    document.getElementById('win-screen').classList.add('show');
-  }
-}
-
-// ── Render ──
-function renderBoard() {
-  const boardEl = document.getElementById('board');
-  const sel = state.selected;
-  const selVal = sel >= 0 ? state.board[sel] : 0;
-  const selRow = sel >= 0 ? Math.floor(sel / 9) : -1;
-  const selCol = sel >= 0 ? sel % 9 : -1;
-  const selBox = sel >= 0 ? (Math.floor(selRow / 3) * 3 + Math.floor(selCol / 3)) : -1;
-
-  Array.from(boardEl.children).forEach((cell, idx) => {
-    const row = Math.floor(idx / 9);
-    const col = idx % 9;
-    const box = Math.floor(row / 3) * 3 + Math.floor(col / 3);
-    const val = state.board[idx];
-
-    cell.className = 'cell';
-    if (state.given[idx]) cell.classList.add('given');
-
-    if (idx === sel) {
-      cell.classList.add('selected');
-    } else if (selVal !== 0 && val === selVal) {
-      cell.classList.add('same-num');
-    } else if (row === selRow || col === selCol || box === selBox) {
-      cell.classList.add('highlight');
-    }
-
-    if (val !== 0 && !state.given[idx] && val !== state.solution[idx]) {
-      cell.classList.add('error');
-    }
-
-    if (val !== 0) {
-      cell.textContent = val;
-    } else if (state.notes[idx].size > 0) {
-      cell.textContent = '';
-      const notesEl = document.createElement('div');
-      notesEl.className = 'notes';
-      for (let n = 1; n <= 9; n++) {
-        const s = document.createElement('span');
-        s.textContent = state.notes[idx].has(n) ? n : '';
-        notesEl.appendChild(s);
-      }
-      cell.appendChild(notesEl);
-    } else {
-      cell.textContent = '';
-    }
+  // 點進遊戲時記錄
+  document.querySelectorAll('.game-card.available').forEach(card => {
+    card.addEventListener('click', () => {
+      const n = parseInt(localStorage.getItem('arcade-plays') || '0') + 1;
+      localStorage.setItem('arcade-plays', n);
+    });
   });
-}
-
-function buildBoard() {
-  const boardEl = document.getElementById('board');
-  boardEl.innerHTML = '';
-  for (let i = 0; i < 81; i++) {
-    const cell = document.createElement('div');
-    cell.className = 'cell';
-    cell.dataset.row = Math.floor(i / 9);
-    cell.dataset.col = i % 9;
-    cell.addEventListener('click', () => selectCell(i));
-    boardEl.appendChild(cell);
-  }
-}
-
-function renderNumpad() {
-  const numpad = document.getElementById('numpad');
-  Array.from(numpad.children).forEach((btn, i) => {
-    const num = i + 1;
-    const usedCount = state.board.filter(v => v === num).length;
-    btn.classList.toggle('used', usedCount >= 9);
-    const countEl = btn.querySelector('.count');
-    if (countEl) countEl.textContent = usedCount < 9 ? `${9 - usedCount}` : '';
-  });
-}
-
-function buildNumpad() {
-  const numpad = document.getElementById('numpad');
-  numpad.innerHTML = '';
-  for (let n = 1; n <= 9; n++) {
-    const btn = document.createElement('button');
-    btn.className = 'num-btn';
-    btn.innerHTML = `${n}<span class="count"></span>`;
-    btn.addEventListener('click', () => inputNumber(n));
-    numpad.appendChild(btn);
-  }
-}
-
-function updateUI() {
-  document.getElementById('mistake-count').textContent = state.mistakes;
-  document.getElementById('hint-count').textContent = state.hints;
-  renderBoard();
-  renderNumpad();
-  document.getElementById('win-screen').classList.remove('show');
-}
-
-// ── Keyboard ──
-document.addEventListener('keydown', e => {
-  if (e.key >= '1' && e.key <= '9') inputNumber(parseInt(e.key));
-  if (e.key === 'Backspace' || e.key === 'Delete') eraseCell();
-  if (e.key === 'ArrowRight' && state.selected >= 0) selectCell(Math.min(80, state.selected + 1));
-  if (e.key === 'ArrowLeft' && state.selected >= 0) selectCell(Math.max(0, state.selected - 1));
-  if (e.key === 'ArrowDown' && state.selected >= 0) selectCell(Math.min(80, state.selected + 9));
-  if (e.key === 'ArrowUp' && state.selected >= 0) selectCell(Math.max(0, state.selected - 9));
-});
-
-// ── Toolbar ──
-document.getElementById('erase-btn').addEventListener('click', eraseCell);
-document.getElementById('hint-btn').addEventListener('click', useHint);
-document.getElementById('undo-btn').addEventListener('click', undo);
-document.getElementById('note-btn').addEventListener('click', () => {
-  state.noteMode = !state.noteMode;
-  document.getElementById('note-btn').classList.toggle('active', state.noteMode);
-});
-
-// ── Difficulty ──
-document.querySelectorAll('.diff-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    newGame(btn.dataset.level);
-  });
-});
-
-// ── New game ──
-document.getElementById('new-game-btn').addEventListener('click', () => newGame(state.level));
-document.getElementById('win-new-btn').addEventListener('click', () => {
-  document.getElementById('win-screen').classList.remove('show');
-  newGame(state.level);
-});
-
-// ── Install banner ──
-const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
-const isStandalone = window.navigator.standalone;
-if (isIOS && !isStandalone) {
-  document.getElementById('install-banner').style.display = 'block';
-}
-
-// ── Init ──
-buildBoard();
-buildNumpad();
-newGame('medium');
 </script>
 
-<!-- Service Worker registration -->
 <script>
-
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  }
+</script>
 </body>
 </html>
