@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="數獨">
+  <meta name="theme-color" content="#0f0f0f">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <title>數獨</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+    :root {
+      --bg: #0f0f0f;
+      --surface: #1a1a1a;
+      --surface2: #242424;
+      --border: #2e2e2e;
+      --text: #f0f0f0;
+      --muted: #666;
+      --accent: #4f8ef7;
+      --accent-dim: rgba(79,142,247,0.15);
+      --error: #e05c5c;
+      --error-dim: rgba(224,92,92,0.15);
+      --given: #a0a8c0;
+      --highlight: rgba(79,142,247,0.10);
+      --same-num: rgba(79,142,247,0.18);
+    }
+
+    body {
+      font-family: -apple-system, 'SF Pro Display', 'Helvetica Neue', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      min-height: -webkit-fill-available;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      overflow-x: hidden;
+    }
+
+    #app {
+      width: 100%;
+      max-width: 420px;
+      padding: env(safe-area-inset-top, 16px) 16px env(safe-area-inset-bottom, 24px);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 8px;
+    }
+    .logo {
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -1px;
+      color: var(--text);
+    }
+    .logo em { color: var(--accent); font-style: normal; }
+    .timer {
+      font-size: 18px;
+      font-weight: 500;
+      font-variant-numeric: tabular-nums;
+      color: var(--muted);
+      letter-spacing: 1px;
+    }
+
+    /* ── Difficulty pills ── */
+    .difficulty {
+      display: flex;
+      gap: 8px;
+    }
+    .diff-btn {
+      flex: 1;
+      padding: 9px 0;
+      border-radius: 10px;
+      border: 0.5px solid var(--border);
+      background: var(--surface);
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .diff-btn.active {
+      background: var(--accent-dim);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    /* ── Board ── */
+    .board-wrap {
+      background: var(--surface);
+      border: 0.5px solid var(--border);
+      border-radius: 16px;
+      padding: 12px;
+    }
+    .board {
+      display: grid;
+      grid-template-columns: repeat(9, 1fr);
+      gap: 2px;
+      aspect-ratio: 1;
+    }
+    .cell {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 6px;
+      font-size: clamp(14px, 4vw, 20px);
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.1s;
+      position: relative;
+      color: var(--text);
+      background: var(--surface2);
+      border: 0.5px solid transparent;
+    }
+    /* Box borders (3x3 groups) */
+    .cell[data-col="2"], .cell[data-col="5"] { margin-right: 4px; }
+    .cell[data-row="2"], .cell[data-row="5"] { margin-bottom: 4px; }
+
+    .cell.given { color: var(--given); font-weight: 600; }
+    .cell.selected { background: var(--accent-dim); border-color: var(--accent); }
+    .cell.highlight { background: var(--highlight); }
+    .cell.same-num { background: var(--same-num); }
+    .cell.error { background: var(--error-dim); color: var(--error); }
+    .cell.complete { color: var(--accent); }
+
+    .cell .notes {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0;
+      width: 100%;
+      height: 100%;
+      padding: 1px;
+    }
+    .cell .notes span {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: clamp(6px, 1.8vw, 9px);
+      color: var(--muted);
+      font-weight: 400;
+    }
+
+    /* ── Info row ── */
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .mistakes {
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .mistakes b { color: var(--error); }
+    .hints-left {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    /* ── Toolbar ── */
+    .toolbar {
+      display: flex;
+      gap: 8px;
+    }
+    .tool-btn {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      padding: 10px 0;
+      border-radius: 12px;
+      border: 0.5px solid var(--border);
+      background: var(--surface);
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .tool-btn .icon { font-size: 18px; line-height: 1; }
+    .tool-btn.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+    .tool-btn:active { opacity: 0.6; }
+
+    /* ── Number pad ── */
+    .numpad {
+      display: grid;
+      grid-template-columns: repeat(9, 1fr);
+      gap: 6px;
+    }
+    .num-btn {
+      aspect-ratio: 1;
+      border-radius: 10px;
+      border: 0.5px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      font-size: clamp(16px, 4.5vw, 22px);
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.1s;
+      position: relative;
+    }
+    .num-btn:active { transform: scale(0.90); background: var(--accent-dim); }
+    .num-btn.used { color: var(--muted); }
+    .num-btn .count {
+      position: absolute;
+      top: 2px;
+      right: 3px;
+      font-size: 8px;
+      color: var(--muted);
+      font-weight: 400;
+    }
+
+    /* ── New game button ── */
+    .new-game-btn {
+      width: 100%;
+      padding: 14px;
+      border-radius: 14px;
+      border: none;
+      background: var(--accent);
+      color: #fff;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s;
+      letter-spacing: -0.2px;
+    }
+    .new-game-btn:active { opacity: 0.75; }
+
+    /* ── Win screen ── */
+    #win-screen {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      backdrop-filter: blur(8px);
+    }
+    #win-screen.show { display: flex; }
+    .win-card {
+      background: var(--surface);
+      border: 0.5px solid var(--border);
+      border-radius: 24px;
+      padding: 36px 32px;
+      text-align: center;
+      max-width: 300px;
+      width: 90%;
+      animation: slideUp 0.3s cubic-bezier(.34,1.56,.64,1);
+    }
+    @keyframes slideUp {
+      from { transform: translateY(40px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    .win-emoji { font-size: 56px; margin-bottom: 16px; }
+    .win-title { font-size: 24px; font-weight: 700; margin-bottom: 8px; }
+    .win-stats { color: var(--muted); font-size: 15px; margin-bottom: 28px; line-height: 1.7; }
+    .win-stats b { color: var(--text); }
+    .win-btn {
+      width: 100%;
+      padding: 13px;
+      border-radius: 12px;
+      border: none;
+      background: var(--accent);
+      color: #fff;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    /* ── Install banner ── */
+    #install-banner {
+      display: none;
+      background: var(--surface2);
+      border: 0.5px solid var(--border);
+      border-radius: 14px;
+      padding: 14px 16px;
+      font-size: 13px;
+      line-height: 1.6;
+      color: var(--muted);
+    }
+    #install-banner b { color: var(--text); display: block; margin-bottom: 2px; }
+  </style>
+</head>
+<body>
+<div id="app">
+  <div class="header">
+    <div class="logo">數<em>獨</em></div>
+    <div class="timer" id="timer">00:00</div>
+  </div>
+
+  <div class="difficulty">
+    <button class="diff-btn" data-level="easy">簡單</button>
+    <button class="diff-btn active" data-level="medium">中等</button>
+    <button class="diff-btn" data-level="hard">困難</button>
+    <button class="diff-btn" data-level="expert">專家</button>
+  </div>
+
+  <div class="board-wrap">
+    <div class="board" id="board"></div>
+  </div>
+
+  <div class="info-row">
+    <div class="mistakes">錯誤：<b id="mistake-count">0</b> / 3</div>
+    <div class="hints-left">提示剩餘：<span id="hint-count">3</span></div>
+  </div>
+
+  <div class="toolbar">
+    <button class="tool-btn" id="undo-btn">
+      <span class="icon">↩</span>
+      <span>撤銷</span>
+    </button>
+    <button class="tool-btn" id="erase-btn">
+      <span class="icon">⌫</span>
+      <span>清除</span>
+    </button>
+    <button class="tool-btn" id="note-btn">
+      <span class="icon">✏️</span>
+      <span>筆記</span>
+    </button>
+    <button class="tool-btn" id="hint-btn">
+      <span class="icon">💡</span>
+      <span>提示</span>
+    </button>
+  </div>
+
+  <div class="numpad" id="numpad"></div>
+
+  <button class="new-game-btn" id="new-game-btn">新遊戲</button>
+
+  <div id="install-banner">
+    <b>📲 安裝到 iPhone</b>
+    點下方 Safari 分享按鈕 →「加入主畫面」，即可離線遊玩！
+  </div>
+</div>
+
+<div id="win-screen">
+  <div class="win-card">
+    <div class="win-emoji">🎉</div>
+    <div class="win-title">完成！</div>
+    <div class="win-stats" id="win-stats"></div>
+    <button class="win-btn" id="win-new-btn">再來一局</button>
+  </div>
+</div>
+
+<script>
+// ── Sudoku Generator & Solver ──
+function generateSudoku(level) {
+  const clues = { easy: 46, medium: 36, hard: 28, expert: 22 };
+  const base = 3, side = 9;
+
+  function shuffle(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+
+  function pattern(r, c) { return (base * (r % base) + Math.floor(r / base) + c) % side; }
+
+  const rBase = Array.from({length: base}, (_, i) => i);
+  const rows = shuffle(rBase).flatMap(g => shuffle([...rBase]).map(r => g * base + r));
+  const cols = shuffle(rBase).flatMap(g => shuffle([...rBase]).map(c => g * base + c));
+  const nums = shuffle(Array.from({length: 9}, (_, i) => i + 1));
+
+  const grid = rows.map(r => cols.map(c => nums[pattern(r, c)]));
+
+  const flat = grid.flat();
+  const total = clues[level] || 36;
+  const indices = shuffle(Array.from({length: 81}, (_, i) => i));
+
+  let removed = 0;
+  const puzzle = [...flat];
+  for (const idx of indices) {
+    if (removed >= 81 - total) break;
+    puzzle[idx] = 0;
+    removed++;
+  }
+
+  return { puzzle, solution: flat };
+}
+
+// ── State ──
+let state = {
+  puzzle: [],
+  solution: [],
+  board: [],        // current values
+  notes: [],        // Array of Sets
+  given: [],        // bool array
+  selected: -1,
+  noteMode: false,
+  mistakes: 0,
+  maxMistakes: 3,
+  hints: 3,
+  history: [],
+  level: 'medium',
+  startTime: 0,
+  elapsed: 0,
+  timerActive: false,
+  timerInterval: null,
+  complete: false,
+};
+
+function newGame(level) {
+  const { puzzle, solution } = generateSudoku(level);
+  state.puzzle = puzzle;
+  state.solution = solution;
+  state.board = [...puzzle];
+  state.notes = Array.from({length: 81}, () => new Set());
+  state.given = puzzle.map(v => v !== 0);
+  state.selected = -1;
+  state.noteMode = false;
+  state.mistakes = 0;
+  state.hints = 3;
+  state.history = [];
+  state.level = level;
+  state.complete = false;
+  stopTimer();
+  state.elapsed = 0;
+  state.startTime = Date.now();
+  startTimer();
+  updateUI();
+}
+
+// ── Timer ──
+function startTimer() {
+  state.timerActive = true;
+  state.timerInterval = setInterval(() => {
+    state.elapsed = Math.floor((Date.now() - state.startTime) / 1000);
+    document.getElementById('timer').textContent = formatTime(state.elapsed);
+  }, 1000);
+}
+function stopTimer() {
+  state.timerActive = false;
+  clearInterval(state.timerInterval);
+}
+function formatTime(s) {
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+}
+
+// ── Input ──
+function selectCell(idx) {
+  if (state.complete) return;
+  state.selected = idx;
+  renderBoard();
+  renderNumpad();
+}
+
+function inputNumber(num) {
+  const idx = state.selected;
+  if (idx < 0 || state.given[idx] || state.complete) return;
+
+  if (state.noteMode) {
+    const snap = snapshot();
+    if (state.board[idx] === 0) {
+      if (state.notes[idx].has(num)) state.notes[idx].delete(num);
+      else state.notes[idx].add(num);
+      state.history.push(snap);
+      renderBoard();
+    }
+    return;
+  }
+
+  const snap = snapshot();
+  state.notes[idx].clear();
+  state.board[idx] = num;
+
+  if (num !== 0 && num !== state.solution[idx]) {
+    state.mistakes++;
+    document.getElementById('mistake-count').textContent = state.mistakes;
+    if (state.mistakes >= state.maxMistakes) {
+      stopTimer();
+      setTimeout(() => alert('遊戲結束！錯誤達到上限。'), 100);
+      state.complete = true;
+    }
+  }
+  state.history.push(snap);
+  renderBoard();
+  renderNumpad();
+  checkComplete();
+}
+
+function eraseCell() {
+  const idx = state.selected;
+  if (idx < 0 || state.given[idx]) return;
+  const snap = snapshot();
+  state.board[idx] = 0;
+  state.notes[idx].clear();
+  state.history.push(snap);
+  renderBoard();
+  renderNumpad();
+}
+
+function useHint() {
+  if (state.hints <= 0 || state.selected < 0) return;
+  const idx = state.selected;
+  if (state.given[idx] || state.board[idx] === state.solution[idx]) return;
+  const snap = snapshot();
+  state.board[idx] = state.solution[idx];
+  state.notes[idx].clear();
+  state.hints--;
+  state.history.push(snap);
+  document.getElementById('hint-count').textContent = state.hints;
+  renderBoard();
+  renderNumpad();
+  checkComplete();
+}
+
+function undo() {
+  if (!state.history.length) return;
+  const prev = state.history.pop();
+  state.board = prev.board;
+  state.notes = prev.notes;
+  state.mistakes = prev.mistakes;
+  state.hints = prev.hints;
+  document.getElementById('mistake-count').textContent = state.mistakes;
+  document.getElementById('hint-count').textContent = state.hints;
+  renderBoard();
+  renderNumpad();
+}
+
+function snapshot() {
+  return {
+    board: [...state.board],
+    notes: state.notes.map(s => new Set(s)),
+    mistakes: state.mistakes,
+    hints: state.hints,
+  };
+}
+
+function checkComplete() {
+  if (state.board.every((v, i) => v === state.solution[i])) {
+    stopTimer();
+    state.complete = true;
+    const lvlMap = { easy:'簡單', medium:'中等', hard:'困難', expert:'專家' };
+    document.getElementById('win-stats').innerHTML =
+      `難度：<b>${lvlMap[state.level]}</b><br>時間：<b>${formatTime(state.elapsed)}</b><br>錯誤：<b>${state.mistakes}</b> 次`;
+    document.getElementById('win-screen').classList.add('show');
+  }
+}
+
+// ── Render ──
+function renderBoard() {
+  const boardEl = document.getElementById('board');
+  const sel = state.selected;
+  const selVal = sel >= 0 ? state.board[sel] : 0;
+  const selRow = sel >= 0 ? Math.floor(sel / 9) : -1;
+  const selCol = sel >= 0 ? sel % 9 : -1;
+  const selBox = sel >= 0 ? (Math.floor(selRow / 3) * 3 + Math.floor(selCol / 3)) : -1;
+
+  Array.from(boardEl.children).forEach((cell, idx) => {
+    const row = Math.floor(idx / 9);
+    const col = idx % 9;
+    const box = Math.floor(row / 3) * 3 + Math.floor(col / 3);
+    const val = state.board[idx];
+
+    cell.className = 'cell';
+    if (state.given[idx]) cell.classList.add('given');
+
+    if (idx === sel) {
+      cell.classList.add('selected');
+    } else if (selVal !== 0 && val === selVal) {
+      cell.classList.add('same-num');
+    } else if (row === selRow || col === selCol || box === selBox) {
+      cell.classList.add('highlight');
+    }
+
+    if (val !== 0 && !state.given[idx] && val !== state.solution[idx]) {
+      cell.classList.add('error');
+    }
+
+    if (val !== 0) {
+      cell.textContent = val;
+    } else if (state.notes[idx].size > 0) {
+      cell.textContent = '';
+      const notesEl = document.createElement('div');
+      notesEl.className = 'notes';
+      for (let n = 1; n <= 9; n++) {
+        const s = document.createElement('span');
+        s.textContent = state.notes[idx].has(n) ? n : '';
+        notesEl.appendChild(s);
+      }
+      cell.appendChild(notesEl);
+    } else {
+      cell.textContent = '';
+    }
+  });
+}
+
+function buildBoard() {
+  const boardEl = document.getElementById('board');
+  boardEl.innerHTML = '';
+  for (let i = 0; i < 81; i++) {
+    const cell = document.createElement('div');
+    cell.className = 'cell';
+    cell.dataset.row = Math.floor(i / 9);
+    cell.dataset.col = i % 9;
+    cell.addEventListener('click', () => selectCell(i));
+    boardEl.appendChild(cell);
+  }
+}
+
+function renderNumpad() {
+  const numpad = document.getElementById('numpad');
+  Array.from(numpad.children).forEach((btn, i) => {
+    const num = i + 1;
+    const usedCount = state.board.filter(v => v === num).length;
+    btn.classList.toggle('used', usedCount >= 9);
+    const countEl = btn.querySelector('.count');
+    if (countEl) countEl.textContent = usedCount < 9 ? `${9 - usedCount}` : '';
+  });
+}
+
+function buildNumpad() {
+  const numpad = document.getElementById('numpad');
+  numpad.innerHTML = '';
+  for (let n = 1; n <= 9; n++) {
+    const btn = document.createElement('button');
+    btn.className = 'num-btn';
+    btn.innerHTML = `${n}<span class="count"></span>`;
+    btn.addEventListener('click', () => inputNumber(n));
+    numpad.appendChild(btn);
+  }
+}
+
+function updateUI() {
+  document.getElementById('mistake-count').textContent = state.mistakes;
+  document.getElementById('hint-count').textContent = state.hints;
+  renderBoard();
+  renderNumpad();
+  document.getElementById('win-screen').classList.remove('show');
+}
+
+// ── Keyboard ──
+document.addEventListener('keydown', e => {
+  if (e.key >= '1' && e.key <= '9') inputNumber(parseInt(e.key));
+  if (e.key === 'Backspace' || e.key === 'Delete') eraseCell();
+  if (e.key === 'ArrowRight' && state.selected >= 0) selectCell(Math.min(80, state.selected + 1));
+  if (e.key === 'ArrowLeft' && state.selected >= 0) selectCell(Math.max(0, state.selected - 1));
+  if (e.key === 'ArrowDown' && state.selected >= 0) selectCell(Math.min(80, state.selected + 9));
+  if (e.key === 'ArrowUp' && state.selected >= 0) selectCell(Math.max(0, state.selected - 9));
+});
+
+// ── Toolbar ──
+document.getElementById('erase-btn').addEventListener('click', eraseCell);
+document.getElementById('hint-btn').addEventListener('click', useHint);
+document.getElementById('undo-btn').addEventListener('click', undo);
+document.getElementById('note-btn').addEventListener('click', () => {
+  state.noteMode = !state.noteMode;
+  document.getElementById('note-btn').classList.toggle('active', state.noteMode);
+});
+
+// ── Difficulty ──
+document.querySelectorAll('.diff-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    newGame(btn.dataset.level);
+  });
+});
+
+// ── New game ──
+document.getElementById('new-game-btn').addEventListener('click', () => newGame(state.level));
+document.getElementById('win-new-btn').addEventListener('click', () => {
+  document.getElementById('win-screen').classList.remove('show');
+  newGame(state.level);
+});
+
+// ── Install banner ──
+const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+const isStandalone = window.navigator.standalone;
+if (isIOS && !isStandalone) {
+  document.getElementById('install-banner').style.display = 'block';
+}
+
+// ── Init ──
+buildBoard();
+buildNumpad();
+newGame('medium');
+</script>
+
+<!-- Service Worker registration -->
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}
+</script>
+</body>
+</html>
