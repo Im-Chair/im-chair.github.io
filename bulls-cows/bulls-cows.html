@@ -1,1 +1,407 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="幾A幾B">
+  <meta name="theme-color" content="#0c0c0f">
+  <title>幾A幾B</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    :root {
+      --bg: #0c0c0f;
+      --surface: #16161a;
+      --surface2: #1e1e24;
+      --border: #2c2c36;
+      --text: #eeeef2;
+      --muted: #55556a;
+      --accent: #7c6af7;
+      --accent-dim: rgba(124,106,247,0.14);
+      --a-color: #7cf7a0;
+      --a-dim: rgba(124,247,160,0.12);
+      --b-color: #f7c97c;
+      --b-dim: rgba(247,201,124,0.12);
+      --correct: #7cf7a0;
+    }
+    body {
+      font-family: -apple-system, 'SF Pro Display', sans-serif;
+      background: var(--bg); color: var(--text);
+      min-height: 100vh; min-height: -webkit-fill-available;
+      display: flex; flex-direction: column; align-items: center;
+    }
+    #app {
+      width: 100%; max-width: 420px;
+      padding: max(20px, env(safe-area-inset-top)) 16px max(32px, env(safe-area-inset-bottom));
+      display: flex; flex-direction: column; gap: 16px;
+    }
 
+    /* Header */
+    .header { display: flex; justify-content: space-between; align-items: flex-start; }
+    .logo { font-size: 26px; font-weight: 800; letter-spacing: -1px; }
+    .logo em { color: var(--accent); font-style: normal; }
+    .header-right { text-align: right; }
+    .attempt-count { font-size: 13px; color: var(--muted); }
+    .attempt-count b { color: var(--text); font-size: 18px; }
+
+    /* Hint bar */
+    .hint-bar {
+      background: var(--surface);
+      border: 0.5px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 16px;
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+    .hint-bar b { color: var(--text); }
+    .hint-bar .tag-a { color: var(--a-color); font-weight: 600; }
+    .hint-bar .tag-b { color: var(--b-color); font-weight: 600; }
+
+    /* Input display */
+    .input-display {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+    }
+    .digit-box {
+      width: 64px; height: 72px;
+      background: var(--surface2);
+      border: 1.5px solid var(--border);
+      border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 32px; font-weight: 700;
+      color: var(--text);
+      transition: border-color 0.15s, background 0.15s;
+      position: relative;
+    }
+    .digit-box.active {
+      border-color: var(--accent);
+      background: var(--accent-dim);
+    }
+    .digit-box.filled {
+      border-color: var(--border);
+    }
+    .digit-box::after {
+      content: '';
+      position: absolute;
+      bottom: 10px; left: 50%; transform: translateX(-50%);
+      width: 20px; height: 2px;
+      background: var(--accent);
+      border-radius: 2px;
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+    .digit-box.active::after { opacity: 1; }
+
+    /* Numpad */
+    .numpad {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+    }
+    .num-btn {
+      aspect-ratio: 1;
+      border-radius: 12px;
+      border: 0.5px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      font-size: 20px; font-weight: 600;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.1s;
+      position: relative;
+    }
+    .num-btn:active { transform: scale(0.88); background: var(--accent-dim); }
+    .num-btn.used {
+      color: var(--muted);
+      background: var(--bg);
+      border-color: #1e1e24;
+    }
+    .del-btn {
+      grid-column: span 2;
+      aspect-ratio: unset;
+      padding: 0 12px;
+      height: 100%;
+      font-size: 16px;
+    }
+    .submit-btn {
+      width: 100%; padding: 15px;
+      border-radius: 14px; border: none;
+      background: var(--accent); color: #fff;
+      font-size: 17px; font-weight: 700;
+      cursor: pointer; transition: opacity 0.15s;
+      letter-spacing: -0.3px;
+    }
+    .submit-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+    .submit-btn:not(:disabled):active { opacity: 0.75; }
+
+    /* History */
+    .history-label {
+      font-size: 11px; color: var(--muted);
+      letter-spacing: 0.15em; text-transform: uppercase;
+    }
+    .history {
+      display: flex; flex-direction: column; gap: 6px;
+    }
+    .history-row {
+      display: flex; align-items: center; gap: 10px;
+      background: var(--surface);
+      border: 0.5px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 14px;
+      animation: slideIn 0.2s ease;
+    }
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(-8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .row-num { font-size: 11px; color: var(--muted); min-width: 20px; }
+    .row-digits {
+      display: flex; gap: 5px; flex: 1;
+    }
+    .row-digit {
+      width: 34px; height: 38px;
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; font-weight: 700;
+      background: var(--surface2);
+      border: 0.5px solid var(--border);
+      color: var(--text);
+    }
+    .row-digit.a { background: var(--a-dim); border-color: rgba(124,247,160,0.3); color: var(--a-color); }
+    .row-digit.b { background: var(--b-dim); border-color: rgba(247,201,124,0.3); color: var(--b-color); }
+    .row-result {
+      font-size: 13px; font-weight: 600;
+      min-width: 70px; text-align: right;
+    }
+    .row-result .a-count { color: var(--a-color); }
+    .row-result .b-count { color: var(--b-color); }
+
+    /* Win overlay */
+    #overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.88); align-items: center; justify-content: center;
+      z-index: 100; backdrop-filter: blur(12px);
+    }
+    #overlay.show { display: flex; }
+    .result-card {
+      background: var(--surface); border: 0.5px solid var(--border);
+      border-radius: 24px; padding: 36px 28px; text-align: center;
+      max-width: 300px; width: 90%;
+      animation: popUp 0.3s cubic-bezier(.34,1.56,.64,1);
+    }
+    @keyframes popUp { from { transform: scale(0.7); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    .result-emoji { font-size: 52px; margin-bottom: 12px; }
+    .result-title { font-size: 24px; font-weight: 700; margin-bottom: 6px; }
+    .result-answer {
+      font-size: 36px; font-weight: 800; letter-spacing: 6px;
+      color: var(--correct); margin: 12px 0;
+    }
+    .result-stats { font-size: 14px; color: var(--muted); line-height: 1.8; margin-bottom: 24px; }
+    .result-stats b { color: var(--text); }
+    .result-btn {
+      width: 100%; padding: 13px; border-radius: 12px; border: none;
+      background: var(--accent); color: #fff; font-size: 16px; font-weight: 700; cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+  <div class="header">
+    <div class="logo">幾<em>A</em>幾<em>B</em></div>
+    <div class="header-right">
+      <div class="attempt-count">第 <b id="attempt-num">1</b> 次猜測</div>
+    </div>
+  </div>
+
+  <div class="hint-bar">
+    猜一個 <b>4位不重複</b> 的數字。<br>
+    <span class="tag-a">A</span> = 數字對、位置對 &nbsp;
+    <span class="tag-b">B</span> = 數字對、位置錯
+  </div>
+
+  <div class="input-display" id="input-display">
+    <div class="digit-box active" data-pos="0"></div>
+    <div class="digit-box" data-pos="1"></div>
+    <div class="digit-box" data-pos="2"></div>
+    <div class="digit-box" data-pos="3"></div>
+  </div>
+
+  <div class="numpad" id="numpad">
+    <button class="num-btn" data-n="1">1</button>
+    <button class="num-btn" data-n="2">2</button>
+    <button class="num-btn" data-n="3">3</button>
+    <button class="num-btn" data-n="4">4</button>
+    <button class="num-btn" data-n="5">5</button>
+    <button class="num-btn" data-n="6">6</button>
+    <button class="num-btn" data-n="7">7</button>
+    <button class="num-btn" data-n="8">8</button>
+    <button class="num-btn" data-n="9">9</button>
+    <button class="num-btn" data-n="0">0</button>
+    <button class="num-btn del-btn" id="del-btn">⌫ 刪除</button>
+  </div>
+
+  <button class="submit-btn" id="submit-btn" disabled>確認猜測</button>
+
+  <div class="history-label" id="history-label" style="display:none">猜測紀錄</div>
+  <div class="history" id="history"></div>
+</div>
+
+<div id="overlay">
+  <div class="result-card">
+    <div class="result-emoji" id="result-emoji">🎉</div>
+    <div class="result-title" id="result-title">答對了！</div>
+    <div class="result-answer" id="result-answer"></div>
+    <div class="result-stats" id="result-stats"></div>
+    <button class="result-btn" id="result-btn">再來一局</button>
+  </div>
+</div>
+
+<script>
+let answer = [];
+let input = [];
+let attempts = 0;
+let gameOver = false;
+let startTime = Date.now();
+
+function generateAnswer() {
+  const digits = [0,1,2,3,4,5,6,7,8,9];
+  for (let i = digits.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [digits[i], digits[j]] = [digits[j], digits[i]];
+  }
+  return digits.slice(0, 4);
+}
+
+function newGame() {
+  answer = generateAnswer();
+  input = [];
+  attempts = 0;
+  gameOver = false;
+  startTime = Date.now();
+  document.getElementById('attempt-num').textContent = '1';
+  document.getElementById('history').innerHTML = '';
+  document.getElementById('history-label').style.display = 'none';
+  document.getElementById('overlay').classList.remove('show');
+  renderInput();
+  renderNumpad();
+  document.getElementById('submit-btn').disabled = true;
+  // console.log('answer:', answer); // 開發用，上線前可移除
+}
+
+function renderInput() {
+  const boxes = document.querySelectorAll('.digit-box');
+  boxes.forEach((box, i) => {
+    box.textContent = input[i] !== undefined ? input[i] : '';
+    box.className = 'digit-box';
+    if (i === input.length && !gameOver) box.classList.add('active');
+    if (input[i] !== undefined) box.classList.add('filled');
+  });
+}
+
+function renderNumpad() {
+  document.querySelectorAll('.num-btn[data-n]').forEach(btn => {
+    const n = parseInt(btn.dataset.n);
+    btn.classList.toggle('used', input.includes(n));
+  });
+}
+
+function addDigit(n) {
+  if (gameOver || input.length >= 4 || input.includes(n)) return;
+  input.push(n);
+  renderInput();
+  renderNumpad();
+  document.getElementById('submit-btn').disabled = input.length < 4;
+}
+
+function deleteDigit() {
+  if (gameOver || input.length === 0) return;
+  input.pop();
+  renderInput();
+  renderNumpad();
+  document.getElementById('submit-btn').disabled = input.length < 4;
+}
+
+function evaluate(guess, ans) {
+  let a = 0, b = 0;
+  guess.forEach((d, i) => {
+    if (d === ans[i]) a++;
+    else if (ans.includes(d)) b++;
+  });
+  return { a, b };
+}
+
+function submit() {
+  if (input.length !== 4 || gameOver) return;
+  attempts++;
+  const { a, b } = evaluate(input, answer);
+
+  // Add to history
+  const histEl = document.getElementById('history');
+  const row = document.createElement('div');
+  row.className = 'history-row';
+
+  const rowNum = document.createElement('div');
+  rowNum.className = 'row-num';
+  rowNum.textContent = attempts;
+
+  const rowDigits = document.createElement('div');
+  rowDigits.className = 'row-digits';
+  input.forEach((d, i) => {
+    const dEl = document.createElement('div');
+    dEl.className = 'row-digit';
+    if (d === answer[i]) dEl.classList.add('a');
+    else if (answer.includes(d)) dEl.classList.add('b');
+    dEl.textContent = d;
+    rowDigits.appendChild(dEl);
+  });
+
+  const rowResult = document.createElement('div');
+  rowResult.className = 'row-result';
+  rowResult.innerHTML = `<span class="a-count">${a}A</span> <span class="b-count">${b}B</span>`;
+
+  row.appendChild(rowNum);
+  row.appendChild(rowDigits);
+  row.appendChild(rowResult);
+  histEl.insertBefore(row, histEl.firstChild);
+  document.getElementById('history-label').style.display = 'block';
+
+  if (a === 4) {
+    gameOver = true;
+    const elapsed = Math.floor((Date.now() - startTime) / 1000);
+    const m = Math.floor(elapsed / 60), s = elapsed % 60;
+    const timeStr = m > 0 ? `${m}分${s}秒` : `${s}秒`;
+    document.getElementById('result-answer').textContent = answer.join(' ');
+    document.getElementById('result-stats').innerHTML =
+      `共猜了 <b>${attempts}</b> 次<br>花費時間：<b>${timeStr}</b>`;
+    setTimeout(() => document.getElementById('overlay').classList.add('show'), 400);
+  } else {
+    input = [];
+    document.getElementById('attempt-num').textContent = attempts + 1;
+    renderInput();
+    renderNumpad();
+    document.getElementById('submit-btn').disabled = true;
+  }
+}
+
+// Events
+document.querySelectorAll('.num-btn[data-n]').forEach(btn => {
+  btn.addEventListener('click', () => addDigit(parseInt(btn.dataset.n)));
+});
+document.getElementById('del-btn').addEventListener('click', deleteDigit);
+document.getElementById('submit-btn').addEventListener('click', submit);
+document.getElementById('result-btn').addEventListener('click', newGame);
+
+// Keyboard support
+document.addEventListener('keydown', e => {
+  if (e.key >= '0' && e.key <= '9') addDigit(parseInt(e.key));
+  if (e.key === 'Backspace') deleteDigit();
+  if (e.key === 'Enter') submit();
+});
+
+newGame();
+</script>
+</body>
+</html>
