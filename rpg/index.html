@@ -290,7 +290,48 @@
     }
     .shop-buy-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 
-    /* ── Explore ── */
+    /* ── Explore difficulty ── */
+    .diff-select {
+      display: flex; gap: 6px; padding: 0 16px 12px;
+    }
+    .diff-select-btn {
+      flex: 1; padding: 8px 0; border-radius: 10px;
+      border: 0.5px solid var(--border); background: var(--surface);
+      color: var(--muted); font-size: 12px; font-weight: 500; cursor: pointer;
+      font-family: 'Noto Serif TC', serif; transition: all 0.15s;
+    }
+    .diff-select-btn.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+
+    /* ── Adventure progress bar ── */
+    .progress-bar-wrap {
+      padding: 10px 16px 6px;
+      background: var(--surface); border-bottom: 0.5px solid var(--border);
+      flex-shrink: 0;
+    }
+    .progress-label {
+      font-size: 11px; color: var(--muted); margin-bottom: 6px;
+      display: flex; justify-content: space-between;
+    }
+    .progress-label span { color: var(--gold); font-weight: 600; }
+    .progress-track {
+      position: relative; height: 20px;
+      background: var(--surface2); border-radius: 10px;
+      border: 0.5px solid var(--border); overflow: visible;
+    }
+    .progress-fill {
+      height: 100%; border-radius: 10px;
+      background: linear-gradient(90deg, var(--accent), var(--gold));
+      transition: width 0.4s ease; min-width: 0;
+    }
+    .progress-runner {
+      position: absolute; top: 50%; transform: translateY(-50%);
+      font-size: 16px; transition: left 0.4s ease;
+      filter: drop-shadow(0 0 4px rgba(212,168,67,0.6));
+    }
+    .progress-boss {
+      position: absolute; right: -4px; top: 50%; transform: translateY(-50%);
+      font-size: 18px; filter: drop-shadow(0 0 6px rgba(192,90,90,0.6));
+    }
     .explore-grid { display: flex; flex-direction: column; gap: 10px; padding: 12px 16px; }
     .explore-zone {
       padding: 16px; border-radius: 14px;
@@ -499,12 +540,29 @@
       <button class="back-btn" onclick="goTown()">← 返回</button>
       <div class="shop-title">探索地圖</div>
     </div>
+    <div style="padding:12px 16px 4px;font-size:12px;color:var(--muted);">選擇難易度</div>
+    <div class="diff-select">
+      <button class="diff-select-btn active" data-diff="easy" onclick="selectDiff(this)">⭐ 簡單</button>
+      <button class="diff-select-btn" data-diff="normal" onclick="selectDiff(this)">⭐⭐ 普通</button>
+      <button class="diff-select-btn" data-diff="hard" onclick="selectDiff(this)">⭐⭐⭐ 困難</button>
+    </div>
     <div class="explore-grid" id="explore-zones"></div>
   </div>
 
   <!-- ── Story / Narrative ── -->
   <div class="screen" id="screen-story" style="padding:0;gap:0;overflow:hidden;">
     <div class="status-bar" id="status-bar-story"></div>
+    <div class="progress-bar-wrap" id="progress-bar-wrap">
+      <div class="progress-label">
+        <span id="progress-label-text">探索中</span>
+        <span id="progress-label-count"></span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" id="progress-fill" style="width:0%"></div>
+        <div class="progress-runner" id="progress-runner" style="left:0%">🧍</div>
+        <div class="progress-boss">👑</div>
+      </div>
+    </div>
     <div style="flex:1;overflow-y:auto;padding-bottom:8px;">
       <div class="narrative" id="story-narrative">
         <div class="narrative-location" id="story-location"></div>
@@ -777,10 +835,7 @@ const EVENTS = {
     text:'你循聲找到一位被藤蔓困住的小精靈，她感謝你的幫助，贈你一顆閃亮的寶石。',
     reward:{gold:35, message:'獲得 35 金幣！'}
   },
-  help_fox:{
-    text:'你拔除了小狐貍腿上的荊棘，牠叼來一瓶神秘藥水作為回報。',
-    reward:{item:'potion', message:'獲得 回復藥！'}
-  },
+  help_fox:{ _random: true },
   gather_herb:{
     text:'你在路邊採集到幾株珍貴草藥，放入背包備用。',
     reward:{item:'herb', message:'獲得 草藥！'}
@@ -913,6 +968,8 @@ let G = {
   player: null,
   battle: null,
   currentZone: null,
+  currentDiff: 'easy',
+  adventure: null, // { total, current, events[], isBoss }
   prevScreen: 'town',
 };
 
@@ -1128,13 +1185,40 @@ function openTemple() {
   showScreen('story');
 }
 
+const DIFF_CONFIG = {
+  easy:   { label:'簡單', eventMin:5,  eventMax:6,  hpMult:0.7, atkMult:0.8, rewardMult:0.8 },
+  normal: { label:'普通', eventMin:8,  eventMax:10, hpMult:1.0, atkMult:1.0, rewardMult:1.0 },
+  hard:   { label:'困難', eventMin:12, eventMax:15, hpMult:1.4, atkMult:1.3, rewardMult:1.5 },
+};
+
+const BOSSES = {
+  forest: {
+    name:'森林女王', icon:'🧝', hp:200, atk:22, def:10, exp:200, gold:[80,120],
+    intro:'你踏入了森林的核心，古老的大樹圍成一個圓形空地。月光下，一位身著翠綠長袍的精靈女王緩緩現身，她的眼中燃燒著憤怒的翠光。\n\n「人類⋯你膽敢踏入我的聖域！」',
+  },
+  ruins: {
+    name:'古代魔像王', icon:'🗿', hp:280, atk:30, def:20, exp:300, gold:[120,180],
+    intro:'廢墟最深處，石板地面在你腳下顫動。一座巨大的石像從地面緩緩升起，古老的符文在它身上閃爍著紅光。\n\n地底傳來震動大地的怒吼聲——它甦醒了。',
+  },
+  mountain: {
+    name:'霜龍王', icon:'🐉', hp:380, atk:40, def:25, exp:450, gold:[200,300],
+    intro:'你登上了山脈最高峰，凜冽的寒風幾乎將你吹飛。一道巨大的身影從雲霧中緩緩降落，龐大的翅膀掀起暴風雪。\n\n霜龍王的眼睛如兩顆藍色的星辰，直視著你：「渺小的人類⋯是來送死的嗎？」',
+  },
+};
+
+function selectDiff(btn) {
+  document.querySelectorAll('.diff-select-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  G.currentDiff = btn.dataset.diff;
+}
+
 function goExplore() { renderExplore(); showScreen('explore'); }
 
 function renderExplore() {
   const el = document.getElementById('explore-zones');
   el.innerHTML = ZONES.map(z => {
     const locked = G.player.level < z.minLv;
-    return `<div class="explore-zone ${locked?'locked':''}" onclick="${locked?'toast(\'等級不足！\')':'startZone(\''+z.id+'\')'}">
+    return `<div class="explore-zone ${locked?'locked':''}" onclick="${locked?`toast('等級不足！')`:`startAdventure('${z.id}')`}">
       <div class="explore-zone-icon">${z.icon}</div>
       <div class="explore-zone-info">
         <div class="explore-zone-name">${z.name}</div>
@@ -1146,12 +1230,81 @@ function renderExplore() {
   }).join('');
 }
 
-function startZone(zoneId) {
+function startAdventure(zoneId) {
+  const diff = DIFF_CONFIG[G.currentDiff];
+  const total = diff.eventMin + Math.floor(Math.random()*(diff.eventMax - diff.eventMin + 1));
+  // Build shuffled event pool for this zone
+  const pool = [...STORY_EVENTS[zoneId]];
+  // Shuffle and cycle if needed
+  const events = [];
+  while (events.length < total) {
+    const shuffled = [...pool].sort(() => Math.random()-0.5);
+    events.push(...shuffled);
+  }
+  G.adventure = { zoneId, diff: G.currentDiff, total, current: 0, events: events.slice(0,total), isBoss: false };
   G.currentZone = zoneId;
-  const events = STORY_EVENTS[zoneId];
-  const ev = events[Math.floor(Math.random()*events.length)];
+  nextAdventureStep();
+}
+
+function nextAdventureStep() {
+  const adv = G.adventure;
   updateStatusBar('story');
+  updateProgressBar();
+
+  if (adv.current >= adv.total) {
+    // Boss time!
+    startBoss();
+    return;
+  }
+
+  const ev = adv.events[adv.current];
+  adv.current++;
+  updateProgressBar();
   setStory(ev.location, ev.text, ev.choices);
+  showScreen('story');
+}
+
+function updateProgressBar() {
+  const adv = G.adventure;
+  if (!adv) return;
+  const total = adv.total + 1; // +1 for boss
+  const current = Math.min(adv.current, adv.total);
+  const pct = Math.round((current / total) * 100);
+  // Leave ~10% at end for boss icon
+  const fillPct = Math.round((current / total) * 90);
+  const runnerPct = Math.max(2, fillPct - 2);
+
+  document.getElementById('progress-fill').style.width = fillPct + '%';
+  document.getElementById('progress-runner').style.left = runnerPct + '%';
+  document.getElementById('progress-label-count').textContent = current >= adv.total ? 'Boss！' : `${current} / ${adv.total}`;
+
+  const zName = ZONES.find(z=>z.id===adv.zoneId)?.name || '';
+  const diffLabel = DIFF_CONFIG[adv.diff]?.label || '';
+  document.getElementById('progress-label-text').textContent = `${zName} · ${diffLabel}`;
+}
+
+function startBoss() {
+  const adv = G.adventure;
+  const boss = {...BOSSES[adv.zoneId]};
+  const diff = DIFF_CONFIG[adv.diff];
+  boss.hp = Math.round(boss.hp * diff.hpMult);
+  boss.maxHp = boss.hp;
+  boss.atk = Math.round(boss.atk * diff.atkMult);
+  boss.def = Math.round(boss.def * (diff.hpMult * 0.8));
+  boss.exp = Math.round(boss.exp * diff.rewardMult);
+  boss.gold = [Math.round(boss.gold[0]*diff.rewardMult), Math.round(boss.gold[1]*diff.rewardMult)];
+  boss.isBoss = true;
+
+  // Update progress to show boss
+  document.getElementById('progress-fill').style.width = '90%';
+  document.getElementById('progress-runner').style.left = '88%';
+  document.getElementById('progress-label-count').textContent = '👑 Boss！';
+
+  setStory(`👑 地區首領`, boss.intro, [
+    {text:'⚔️ 迎戰！決一死戰！', action:'boss_battle'},
+    {text:'💨 撤退！回到城鎮', action:'town'},
+  ]);
+  G.adventure.boss = boss;
   showScreen('story');
 }
 
@@ -1174,18 +1327,58 @@ function handleChoice(i) {
   if (!choice) return;
   const {action, zone, result} = choice;
 
-  if (action === 'battle') startBattle(zone||G.currentZone);
+  if (action === 'battle') { startBattle(zone||G.currentZone); }
+  else if (action === 'boss_battle') { startBattle(null, G.adventure?.boss); }
   else if (action === 'event') handleEvent(result);
-  else if (action === 'town') goTown();
+  else if (action === 'town') { G.adventure = null; goTown(); }
   else if (action === 'heal') { G.player.hp = G.player.maxHp; save(); toast('HP 完全回復！'); goTown(); }
   else if (action === 'save') { save(); toast('💾 存檔成功！'); }
   else if (action === 'tavern') openTavern();
   else if (action === 'drink') drinkInTavern();
   else if (action === 'broke') { toast('金幣不足，喝不起！'); }
-  else if (action === 'explore') startZone(G.currentZone||'forest');
+  else if (action === 'explore') nextAdventureStep();
 }
 
 function handleEvent(resultId) {
+  // 特殊隨機事件
+  if (resultId === 'help_fox') {
+    const roll = Math.random();
+    let text, msgs = [];
+    if (roll < 0.45) {
+      text = '你輕輕拔除了小狐貍腿上的荊棘，包紮好傷口後，牠搖著尾巴跑進了草叢。片刻後，牠叼來一瓶神秘藥水作為回報。';
+      addToInventory('potion');
+      msgs.push('✨ 獲得 回復藥！（狐貍的謝禮）');
+    } else if (roll < 0.70) {
+      text = '你蹲下幫狐貍處理傷口，牠突然用爪子抓破你的錢袋，叼著金幣竄入草叢！等你反應過來，牠早就不見蹤影。';
+      const stolen = Math.min(G.player.gold, 15 + Math.floor(Math.random()*15));
+      G.player.gold -= stolen;
+      msgs.push(`💰 被偷走 ${stolen} 金幣！（妖狐！）`);
+    } else if (roll < 0.88) {
+      text = '你正專心幫狐貍包紮，牠突然用嘴叼走你背包裡的東西，一溜煙跑進了森林深處！原來是隻狡猾的妖狐！';
+      const consumables = G.player.inventory.filter(i => ITEMS[i.id]?.type === 'consumable' && (i.qty||1) > 0);
+      if (consumables.length > 0) {
+        const stolen = consumables[Math.floor(Math.random()*consumables.length)];
+        stolen.qty = (stolen.qty||1) - 1;
+        if (stolen.qty <= 0) G.player.inventory.splice(G.player.inventory.indexOf(stolen), 1);
+        msgs.push(`🎒 ${ITEMS[stolen.id]?.name || '道具'} 被偷走了！`);
+      } else {
+        msgs.push('🎒 牠想偷你的背包，但你沒有道具可偷，悻悻然跑走了。');
+      }
+    } else {
+      text = '你伸手靠近，狐貍突然暴起，用尖牙狠狠咬住你的手臂！根本沒受傷，是故意裝可憐的妖狐！';
+      const dmg = 20;
+      G.player.hp = Math.max(1, G.player.hp - dmg);
+      msgs.push(`💔 受到 ${dmg} 點傷害！（妖狐的陷阱）`);
+    }
+    updateStatusBar('story');
+    setStory('🌟 事件', text + '\n\n' + msgs.join('\n'), [
+      {text:'➡️ 繼續前進', action:'explore'},
+      {text:'🏠 返回城鎮', action:'town'},
+    ]);
+    save();
+    return;
+  }
+
   const ev = EVENTS[resultId];
   if (!ev) return;
   let msgs = [];
@@ -1225,26 +1418,38 @@ function handleEvent(resultId) {
   if (ev.battle) {
     setStory('🌟 事件', resultText, [
       {text:'⚔️ 迎戰！', action:'battle', zone: ev.battle},
-      {text:'💨 逃跑！', action:'town'},
+      {text:'💨 逃跑回城！', action:'town'},
     ]);
   } else {
     setStory('🌟 事件', resultText, [
-      {text:'🗺️ 繼續探索', action:'explore'},
-      {text:'🏠 返回城鎮', action:'town'},
+      {text:'➡️ 繼續前進', action:'explore'},
+      {text:'🏠 撤退回城', action:'town'},
     ]);
   }
   save();
 }
 
 // ── Battle ──
-function startBattle(zone) {
-  const enemies = ENEMIES[zone];
-  const enemy = {...enemies[Math.floor(Math.random()*enemies.length)]};
+function startBattle(zone, bossEnemy) {
+  let enemy;
+  if (bossEnemy) {
+    enemy = {...bossEnemy};
+  } else {
+    const diff = DIFF_CONFIG[G.currentDiff || 'easy'];
+    const enemies = ENEMIES[zone];
+    const base = {...enemies[Math.floor(Math.random()*enemies.length)]};
+    base.hp = Math.round(base.hp * diff.hpMult);
+    base.atk = Math.round(base.atk * diff.atkMult);
+    base.exp = Math.round(base.exp * diff.rewardMult);
+    base.gold = [Math.round(base.gold[0]*diff.rewardMult), Math.round(base.gold[1]*diff.rewardMult)];
+    enemy = base;
+  }
   enemy.maxHp = enemy.hp;
-  G.battle = { enemy, playerTurn:true, zone };
+  G.battle = { enemy, playerTurn:true, zone, isBoss: !!bossEnemy };
+  document.getElementById('battle-log').innerHTML = '';
   renderBattle();
   addLog('⚔️ 戰鬥開始！', 'system');
-  addLog(`${enemy.icon} ${enemy.name} 出現了！`, 'system');
+  addLog(`${enemy.icon} ${enemy.name}${enemy.isBoss?' 👑':''} 出現了！`, 'system');
   showScreen('battle');
 }
 
@@ -1359,10 +1564,11 @@ function setBattleBtns(enabled) {
 
 function winBattle() {
   const e = G.battle.enemy;
+  const isBoss = G.battle.isBoss;
   const gold = e.gold[0] + Math.floor(Math.random()*(e.gold[1]-e.gold[0]));
   G.player.gold += gold;
   let lootMsg = '';
-  e.loot.forEach(l => {
+  (e.loot||[]).forEach(l => {
     if (Math.random()<l.chance) { addToInventory(l.id); lootMsg += `\n🎁 獲得 ${ITEMS[l.id]?.icon||''} ${ITEMS[l.id]?.name||l.id}！`; }
   });
   addLog(`🏆 ${e.name} 被擊敗了！`, 'system');
@@ -1370,13 +1576,24 @@ function winBattle() {
   gainExp(e.exp);
   save();
   setBattleBtns(false);
+
   setTimeout(() => {
-    setStory('⚔️ 勝利', `你成功擊敗了 ${e.icon} ${e.name}！\n\n戰場歸於平靜，你撿起了散落的戰利品，深吸一口氣，繼續你的旅程。\n\n💰 +${gold} 金幣${lootMsg}`, [
-      {text:'🗺️ 繼續探索', action:'explore'},
-      {text:'🏠 返回城鎮', action:'town'},
-    ]);
     G.battle = null;
+    if (isBoss) {
+      // Boss cleared!
+      const zone = ZONES.find(z => z.id === G.adventure?.zoneId);
+      G.adventure = null;
+      setStory('🏆 冒險完成！', `你擊敗了 ${e.icon} ${e.name}！\n\n${zone?.name || ''}的威脅解除了。勝利的榮耀屬於你！\n\n💰 +${gold} 金幣${lootMsg}`, [
+        {text:'🏠 凱旋回城', action:'town'},
+      ]);
+    } else {
+      setStory('⚔️ 勝利', `你擊敗了 ${e.icon} ${e.name}！\n\n💰 +${gold} 金幣${lootMsg}`, [
+        {text:'➡️ 繼續前進', action:'explore'},
+        {text:'🏠 撤退回城', action:'town'},
+      ]);
+    }
     showScreen('story');
+    updateProgressBar();
   }, 1200);
 }
 
@@ -1384,6 +1601,7 @@ function loseBattle() {
   G.player.hp = Math.floor(G.player.maxHp * 0.3);
   addLog('💀 你倒下了...', 'system');
   addLog('你在神殿醒來，帶著傷痕與教訓。', 'system');
+  G.adventure = null;
   save();
   setBattleBtns(false);
   setTimeout(() => {
