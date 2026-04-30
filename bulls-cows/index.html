@@ -179,6 +179,18 @@
     .row-result .a-count { color: var(--a-color); }
     .row-result .b-count { color: var(--b-color); }
 
+    /* Tool buttons */
+    .tool-btn {
+      flex: 1; padding: 10px 0; border-radius: 12px;
+      border: 0.5px solid var(--border); background: var(--surface);
+      color: var(--muted); font-size: 13px; font-weight: 500; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+      transition: all 0.15s;
+    }
+    .tool-btn .icon { font-size: 15px; }
+    .tool-btn.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+    .tool-btn:active { opacity: 0.6; }
+
     /* Win overlay */
     #overlay {
       display: none; position: fixed; inset: 0;
@@ -220,6 +232,15 @@
     猜一個 <b>4位不重複</b> 的數字。<br>
     <span class="tag-a">A</span> = 數字對、位置對 &nbsp;
     <span class="tag-b">B</span> = 數字對、位置錯
+  </div>
+
+  <div style="display:flex; gap:8px;">
+    <button class="tool-btn active" id="color-btn">
+      <span class="icon">🎨</span> 顏色提示：開
+    </button>
+    <button class="tool-btn" id="new-game-btn">
+      <span class="icon">↺</span> 新遊戲
+    </button>
   </div>
 
   <div class="input-display" id="input-display">
@@ -352,8 +373,14 @@ function submit() {
   input.forEach((d, i) => {
     const dEl = document.createElement('div');
     dEl.className = 'row-digit';
-    if (d === answer[i]) dEl.classList.add('a');
-    else if (answer.includes(d)) dEl.classList.add('b');
+    const isA = d === answer[i];
+    const isB = !isA && answer.includes(d);
+    dEl.dataset.isA = isA ? '1' : '0';
+    dEl.dataset.isB = isB ? '1' : '0';
+    if (colorHint) {
+      if (isA) dEl.classList.add('a');
+      else if (isB) dEl.classList.add('b');
+    }
     dEl.textContent = d;
     rowDigits.appendChild(dEl);
   });
@@ -386,6 +413,8 @@ function submit() {
   }
 }
 
+let colorHint = true;
+
 // Events
 document.querySelectorAll('.num-btn[data-n]').forEach(btn => {
   btn.addEventListener('click', () => addDigit(parseInt(btn.dataset.n)));
@@ -393,6 +422,30 @@ document.querySelectorAll('.num-btn[data-n]').forEach(btn => {
 document.getElementById('del-btn').addEventListener('click', deleteDigit);
 document.getElementById('submit-btn').addEventListener('click', submit);
 document.getElementById('result-btn').addEventListener('click', newGame);
+document.getElementById('new-game-btn').addEventListener('click', newGame);
+
+document.getElementById('color-btn').addEventListener('click', () => {
+  colorHint = !colorHint;
+  const btn = document.getElementById('color-btn');
+  btn.classList.toggle('active', colorHint);
+  btn.innerHTML = `<span class="icon">🎨</span> 顏色提示：${colorHint ? '開' : '關'}`;
+  // Re-render history without colors
+  rerenderHistory();
+});
+
+function rerenderHistory() {
+  document.querySelectorAll('.row-digit').forEach(d => {
+    if (!colorHint) {
+      d.classList.remove('a', 'b');
+    } else {
+      // restore from data attributes
+      const isA = d.dataset.isA === '1';
+      const isB = d.dataset.isB === '1';
+      if (isA) d.classList.add('a');
+      else if (isB) d.classList.add('b');
+    }
+  });
+}
 
 // Keyboard support
 document.addEventListener('keydown', e => {
