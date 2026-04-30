@@ -194,8 +194,8 @@
     .hp-bar-lg-fill.enemy { background: var(--red); }
     .hp-nums { font-size: 11px; color: var(--muted); }
     .battle-log {
-      flex: 1; padding: 12px 16px; overflow-y: auto;
-      display: flex; flex-direction: column; gap: 6px; min-height: 0;
+      height: 180px; max-height: 180px; padding: 10px 16px; overflow-y: auto;
+      display: flex; flex-direction: column; gap: 5px; flex-shrink: 0;
     }
     .log-entry {
       font-size: 13px; line-height: 1.6; padding: 8px 12px;
@@ -262,7 +262,7 @@
     /* ── Shop UI ── */
     .shop-header {
       background: var(--surface); border-bottom: 0.5px solid var(--border);
-      padding: 10px 16px; padding-top: max(10px, env(safe-area-inset-top));
+      padding: 10px 16px; padding-top: max(52px, calc(env(safe-area-inset-top) + 42px));
       display: flex; align-items: center; gap: 12px;
     }
     .back-btn {
@@ -649,67 +649,251 @@ const STORY_EVENTS = {
   forest: [
     {
       location:'🌲 幽暗森林',
-      text:'你踏入森林深處，古老的樹木遮蔽了天空，只有零星的光芒穿透葉縫灑落。遠處傳來輕柔的歌聲，那是迷失的精靈在呼喚旅人。',
+      text:'你踏入森林深處，古老的樹木遮蔽了天空。遠處傳來輕柔的歌聲，那是迷失的精靈在呼喚旅人。',
       choices:[
         {text:'🗡️ 前進探索，尋找財寶', action:'battle', zone:'forest'},
         {text:'🎵 跟隨歌聲，靠近查看', action:'event', result:'find_fairy'},
-        {text:'🏃 謹慎行事，先確認周圍', action:'battle', zone:'forest'},
+        {text:'💨 轉身逃跑，這裡不對勁', action:'event', result:'coward_escape'},
       ]
     },
     {
       location:'🌲 幽暗森林',
-      text:'一條幽靜的小徑蜿蜒向前，路邊的蘑菇散發著神秘的螢光。一隻受傷的小狐貍用哀怨的眼神望著你，腿上纏著一根荊棘。',
+      text:'一隻受傷的小狐貍用哀怨的眼神望著你，腿上纏著一根荊棘。但你注意到牠周圍的草叢有些異樣的晃動...',
       choices:[
         {text:'❤️ 停下來，幫助小狐貍', action:'event', result:'help_fox'},
         {text:'⚠️ 繼續前進，不要分心', action:'battle', zone:'forest'},
-        {text:'🌿 採集附近的草藥', action:'event', result:'gather_herb'},
+        {text:'🌿 採集附近的草藥再離開', action:'event', result:'gather_herb'},
       ]
-    }
+    },
+    {
+      location:'🌲 幽暗森林',
+      text:'路旁有個倒臥的旅人，衣著破爛，呻吟著似乎重傷。走近一看，發現他旁邊有個鼓鼓的錢袋...',
+      choices:[
+        {text:'❤️ 幫助他，給他一瓶藥水', action:'event', result:'help_traveler'},
+        {text:'💰 趁機拿走錢袋', action:'event', result:'steal_bag'},
+        {text:'🏃 快速離開，感覺是陷阱', action:'event', result:'avoid_trap'},
+      ]
+    },
+    {
+      location:'🌲 幽暗森林',
+      text:'你發現一個古老的祭壇，石台上擺著閃閃發光的寶石，四周刻滿了奇異的符文。靠近時感覺到一股魔力湧動...',
+      choices:[
+        {text:'💎 拿走寶石', action:'event', result:'take_gem'},
+        {text:'📖 研究符文', action:'event', result:'study_rune'},
+        {text:'🚶 繞道而行，不要招惹', action:'event', result:'safe_pass'},
+      ]
+    },
+    {
+      location:'🌲 幽暗森林',
+      text:'一陣突如其來的濃霧籠罩四周，你完全失去了方向感。霧中隱約出現了兩條小徑，一條有微光，一條傳來奇怪聲響...',
+      choices:[
+        {text:'✨ 跟隨微光前進', action:'event', result:'follow_light'},
+        {text:'👂 走向聲響方向', action:'battle', zone:'forest'},
+        {text:'🛑 原地等待霧散', action:'event', result:'wait_fog'},
+      ]
+    },
+    {
+      location:'🌲 幽暗森林',
+      text:'你遇到了一位神秘的老婆婆，她正在路邊煮著什麼。香氣四溢，她抬頭看你，露出慈祥的笑容：「要不要來一碗？」',
+      choices:[
+        {text:'😋 接受她的好意，喝一碗', action:'event', result:'old_woman_soup'},
+        {text:'🤔 婉拒，繼續趕路', action:'event', result:'refuse_soup'},
+        {text:'🗡️ 攻擊她！老巫婆就是這樣', action:'battle', zone:'forest'},
+      ]
+    },
   ],
   ruins: [
     {
       location:'🏛️ 遺跡廢墟',
-      text:'斷裂的石柱在夕陽下投下長長的陰影，古代文字刻滿了每一面牆壁。空氣中瀰漫著神秘的魔法氣息，某個古老的存在在此沉眠。',
+      text:'斷裂的石柱在夕陽下投下長長的陰影，古代文字刻滿了每一面牆壁。空氣中瀰漫著神秘的魔法氣息。',
       choices:[
         {text:'📖 研究牆上的古文字', action:'event', result:'ancient_text'},
         {text:'🗡️ 深入探索，尋找寶物', action:'battle', zone:'ruins'},
-        {text:'🔦 小心探路，避開危險', action:'battle', zone:'ruins'},
+        {text:'⚠️ 觸碰發光的封印石', action:'event', result:'touch_seal'},
       ]
-    }
+    },
+    {
+      location:'🏛️ 遺跡廢墟',
+      text:'你發現一扇緊閉的石門，上面刻著三個數字謎題。正確答案應該能打開寶庫，但答錯可能觸發機關...',
+      choices:[
+        {text:'🧩 嘗試解開謎題', action:'event', result:'solve_puzzle'},
+        {text:'💪 強行撞開石門', action:'event', result:'force_door'},
+        {text:'🔙 離開，不要冒險', action:'battle', zone:'ruins'},
+      ]
+    },
+    {
+      location:'🏛️ 遺跡廢墟',
+      text:'一間古老的圖書室，書架上塵封著各種典籍。其中一本書發出幽幽的藍光，彷彿在呼喚你翻閱它...',
+      choices:[
+        {text:'📚 翻開那本發光的書', action:'event', result:'magic_book'},
+        {text:'🔍 仔細搜索其他書籍', action:'event', result:'search_books'},
+        {text:'🏃 這種地方太危險了，撤退', action:'event', result:'safe_retreat'},
+      ]
+    },
+    {
+      location:'🏛️ 遺跡廢墟',
+      text:'廢墟深處，你找到了一個沉睡的寶箱。但旁邊有個骷髏，手上握著一個警告牌：「此箱已詛咒」。',
+      choices:[
+        {text:'💎 詛咒算什麼！開箱！', action:'event', result:'cursed_chest'},
+        {text:'🙏 念解咒咒語再開箱', action:'event', result:'uncurse_chest'},
+        {text:'🚶 識時務者為俊傑，繞過它', action:'event', result:'leave_chest'},
+      ]
+    },
   ],
   mountain: [
     {
       location:'🏔️ 霜雪山脈',
-      text:'刺骨的寒風從山巔呼嘯而來，腳下的雪地留下你深深的足印。遠處的洞穴傳來低沉的龍鳴，讓空氣都跟著震動。',
+      text:'刺骨的寒風從山巔呼嘯而來，遠處的洞穴傳來低沉的龍鳴，讓空氣都跟著震動。',
       choices:[
         {text:'🐉 勇闖龍穴，挑戰強敵', action:'battle', zone:'mountain'},
         {text:'🏔️ 攀登山頂，尋找秘境', action:'event', result:'mountain_top'},
-        {text:'❄️ 在雪地中搜尋遺跡', action:'battle', zone:'mountain'},
+        {text:'❄️ 在雪地中搜尋遺跡', action:'event', result:'snow_relic'},
       ]
-    }
+    },
+    {
+      location:'🏔️ 霜雪山脈',
+      text:'你發現一個山洞，洞內有個受傷的年輕龍族少女。她用警惕的眼神看著你，手持武器卻動彈不得。',
+      choices:[
+        {text:'❤️ 放下武器，幫助她', action:'event', result:'help_dragon_girl'},
+        {text:'⚔️ 這是敵人！趁機攻擊！', action:'battle', zone:'mountain'},
+        {text:'🚶 假裝沒看見，繼續走', action:'event', result:'ignore_dragon'},
+      ]
+    },
+    {
+      location:'🏔️ 霜雪山脈',
+      text:'山路上有一個岔口，左邊有明顯的腳印，右邊傳來隱約的光芒。老冒險家說過：「山上的光，不是好光。」',
+      choices:[
+        {text:'👣 跟著腳印走左邊', action:'battle', zone:'mountain'},
+        {text:'✨ 往右邊的光芒走去', action:'event', result:'mountain_light'},
+        {text:'⛺ 在岔口紮營休息', action:'event', result:'camp_rest'},
+      ]
+    },
   ]
 };
 
 const EVENTS = {
+  // 正面
   find_fairy:{
-    text:'你循聲而去，找到一位被藤蔓困住的小精靈。她感謝你的幫助，從腰間取出一顆閃亮的寶石送給你。',
-    reward:{gold:30, message:'獲得 30 金幣！'}
+    text:'你循聲找到一位被藤蔓困住的小精靈，她感謝你的幫助，贈你一顆閃亮的寶石。',
+    reward:{gold:35, message:'獲得 35 金幣！'}
   },
   help_fox:{
-    text:'你輕輕拔除了小狐貍腿上的荊棘，包紮好傷口後，牠搖著尾巴跑進了草叢。片刻後，牠叼來一瓶神秘藥水作為回報。',
+    text:'你拔除了小狐貍腿上的荊棘，牠叼來一瓶神秘藥水作為回報。',
     reward:{item:'potion', message:'獲得 回復藥！'}
   },
   gather_herb:{
-    text:'你在路邊發現幾株珍貴的草藥，仔細採集後放入背包，說不定什麼時候能派上用場。',
+    text:'你在路邊採集到幾株珍貴草藥，放入背包備用。',
     reward:{item:'herb', message:'獲得 草藥！'}
   },
   ancient_text:{
-    text:'牆上的文字記載了古代帝國的秘密——一處隱藏的寶藏。你仔細記錄了位置，隨後在廢墟角落找到了一個塵封的寶箱！',
-    reward:{gold:60, message:'獲得 60 金幣！'}
+    text:'牆上文字記載了古代秘寶的位置，你在廢墟角落找到了一個塵封寶箱！',
+    reward:{gold:70, message:'獲得 70 金幣！'}
   },
   mountain_top:{
-    text:'山頂的視野令人窒息，整個大陸盡收眼底。在這裡，你感受到一股神秘的力量在心中湧動，彷彿天地都在為你加持。',
-    reward:{exp:50, message:'獲得 50 EXP！'}
+    text:'山頂視野令人窒息，一股神秘力量湧入心中，讓你感覺更加強大。',
+    reward:{exp:60, message:'獲得 60 EXP！'}
+  },
+  safe_pass:{
+    text:'你謹慎地繞過祭壇，感覺鬆了口氣，平安通過了這段危機。',
+    reward:{exp:10, message:'獲得 10 EXP（謹慎有道！）'}
+  },
+  safe_retreat:{
+    text:'你果斷撤退，成功避開了潛在的危險，安全返回。',
+    reward:{exp:10, message:'獲得 10 EXP'}
+  },
+  leave_chest:{
+    text:'你選擇不貪心，繞過了詛咒寶箱。有時候，活著就是最大的收穫。',
+    reward:{exp:15, message:'獲得 15 EXP'}
+  },
+
+  // 危險 / 負面
+  coward_escape:{
+    text:'你轉身逃跑，卻踩到一個隱藏的陷阱！腳踝受了傷，痛苦地跌倒在地。',
+    damage:15, message:'受到 15 點傷害！'
+  },
+  steal_bag:{
+    text:'你拿走了錢袋，但那個「旅人」突然暴起！原來是強盜頭子的詭計，你被打了個措手不及！',
+    damage:25, battle:'forest', message:'被伏擊！受到 25 點傷害！'
+  },
+  avoid_trap:{
+    text:'你敏銳地察覺到異常，快速離開。果然，那個旅人瞬間站起來，是個強盜！但你已遠離危險。',
+    reward:{exp:20, message:'成功識破陷阱！獲得 20 EXP'}
+  },
+  take_gem:{
+    text:'你拿起寶石，祭壇突然發出刺眼的光！一股強大的魔力衝擊你的身體，讓你痛苦不堪。但寶石留下來了。',
+    damage:30, reward:{gold:50, message:'獲得寶石（價值50金幣），受到 30 點詛咒傷害！'}
+  },
+  study_rune:{
+    text:'你研究符文後，理解了祭壇的奧秘，輕鬆解除了封印，獲得了隱藏其中的寶物。',
+    reward:{gold:45, exp:30, message:'獲得 45 金幣 + 30 EXP！'}
+  },
+  touch_seal:{
+    text:'你觸碰了封印石，強大的電流瞬間貫穿你的身體！封印中封鎖的能量爆發而出，將你擊飛！',
+    damage:40, message:'受到 40 點雷擊傷害！！'
+  },
+  solve_puzzle:{
+    text:'你思考片刻，輸入了正確數字。石門緩緩打開，寶庫內金光閃閃！',
+    reward:{gold:100, message:'獲得 100 金幣！（解謎成功）'}
+  },
+  force_door:{
+    text:'你撞向石門，石門沒動，但機關觸發了！一根長矛從牆壁射出刺穿你的手臂！',
+    damage:35, message:'受到 35 點傷害！機關觸發！'
+  },
+  magic_book:{
+    text:'你翻開發光的書，文字瞬間湧入你的腦海！知識的洪流讓你暫時失去意識，醒來後感覺法力大增。',
+    reward:{exp:80, message:'獲得 80 EXP！（魔法書的饋贈）'}
+  },
+  search_books:{
+    text:'你仔細搜索後，找到一本記載著古代草藥秘方的手冊，還夾著幾張舊金幣。',
+    reward:{gold:25, item:'herb', message:'獲得 25 金幣 + 草藥！'}
+  },
+  cursed_chest:{
+    text:'你打開箱子，一道黑色光芒射出！詛咒擊中你，全身劇痛。但箱內確實有金幣...',
+    damage:45, reward:{gold:80, message:'獲得 80 金幣，但受到 45 點詛咒傷害！'}
+  },
+  uncurse_chest:{
+    text:'你念出解咒咒語，箱子上的黑氣消散。打開後，裡面的寶物完好如初！',
+    reward:{gold:80, item:'potion', message:'獲得 80 金幣 + 回復藥！'}
+  },
+  help_traveler:{
+    text:'你給了受傷的旅人一瓶藥水，他感激涕零，告訴你附近有個隱藏的寶藏位置。',
+    loseItem:'potion', reward:{gold:60, message:'失去一瓶回復藥，但獲得 60 金幣！'}
+  },
+  help_dragon_girl:{
+    text:'你幫助了受傷的龍族少女，她感謝你的恩情，從頸上取下一枚龍族徽章送給你，說以後可以用來換取龍族的幫助。',
+    reward:{gold:50, exp:40, message:'龍族少女的謝禮：50 金幣 + 40 EXP！'}
+  },
+  ignore_dragon:{
+    text:'你假裝沒看見，繼續前行。但龍族少女的眼神讓你心裡隱隱不安，感覺錯過了什麼重要的事...',
+    reward:{exp:5, message:'獲得 5 EXP（但總感覺少了什麼）'}
+  },
+  mountain_light:{
+    text:'你走向光芒，發現是一座神秘的冰晶祭壇。正要靠近時，一股強大的冷氣席捲而來，將你凍傷！',
+    damage:30, reward:{exp:25, message:'受到 30 點冰凍傷害！但獲得 25 EXP'}
+  },
+  camp_rest:{
+    text:'你在岔口安全地紮營休息，補充了體力。天亮後，你發現路邊有個遺落的旅人包裹。',
+    heal:30, reward:{item:'herb', message:'休息回復 30 HP，並找到草藥！'}
+  },
+  follow_light:{
+    text:'你跟著微光走出了迷霧，安全到達了一片空地，發現了一個遺落的商人行囊。',
+    reward:{gold:40, item:'potion', message:'獲得 40 金幣 + 回復藥！'}
+  },
+  wait_fog:{
+    text:'你耐心等待，霧氣漸漸散去。等待的過程中你補充了體力，但也因此錯過了探索時機。',
+    heal:20, message:'休息回復 20 HP'
+  },
+  refuse_soup:{
+    text:'你婉拒了老婆婆的好意，繼續趕路。老婆婆在你身後說：「年輕人，不懂得接受善意，以後會後悔的。」',
+    reward:{exp:10, message:'獲得 10 EXP（但有點後悔）'}
+  },
+  old_woman_soup:{
+    text:'你喝下了熱騰騰的湯，全身暖和起來，傷痛都消散了。老婆婆摸著你的頭說：「去吧，勇者。」',
+    heal:50, reward:{exp:20, message:'回復 50 HP + 獲得 20 EXP！（老婆婆的魔法湯）'}
+  },
+  snow_relic:{
+    text:'你在雪地中挖掘，找到一個古老的遺跡入口。內部有些殘破的裝備和金幣，是前人留下的寶物。',
+    reward:{gold:55, exp:25, message:'獲得 55 金幣 + 25 EXP！'}
   },
 };
 
@@ -877,13 +1061,62 @@ function addToInventory(id) {
   else { G.player.inventory.push({...ITEMS[id], qty:1}); }
 }
 
+const TAVERN_DRINK_PRICE = 8;
+
 function openTavern() {
   const msg = TAVERN_MESSAGES[Math.floor(Math.random()*TAVERN_MESSAGES.length)];
-  setStory('🍺 酒館', `你推開沉重的木門，酒館內熱鬧非凡。酒保向你點了點頭，示意你找個位子坐下。\n\n一位旅人湊近低聲說：\n\n${msg}`, [
-    {text:'🍺 再點一杯，繼續聊', action:'tavern'},
+  const canAfford = G.player.gold >= TAVERN_DRINK_PRICE;
+  setStory('🍺 酒館', `你推開沉重的木門，酒館內熱鬧非凡。酒保向你點了點頭，示意你找個位子坐下。\n\n一位旅人湊近低聲說：\n\n${msg}\n\n酒保擦著杯子走來：「來一杯嗎？${TAVERN_DRINK_PRICE}金幣。」（剩餘：${G.player.gold}金幣）`, [
+    {text:`🍺 點一杯（${TAVERN_DRINK_PRICE}金幣）`, action: canAfford ? 'drink' : 'broke'},
     {text:'🚪 道謝離開', action:'town'},
   ]);
   showScreen('story');
+}
+
+function drinkInTavern() {
+  if (G.player.gold < TAVERN_DRINK_PRICE) { toast('金幣不足！'); goTown(); return; }
+  G.player.gold -= TAVERN_DRINK_PRICE;
+  // 隨機飲酒效果
+  const roll = Math.random();
+  let effect = '', effectDesc = '';
+  if (roll < 0.35) {
+    // 回復HP
+    const heal = 20;
+    G.player.hp = Math.min(G.player.maxHp, G.player.hp + heal);
+    effectDesc = `酒精讓你全身暖和起來，傷口的疼痛減輕了不少。回復 ${heal} HP！`;
+    effect = `💚 回復 ${heal} HP`;
+  } else if (roll < 0.55) {
+    // 聽到好情報，獲得EXP
+    const exp = 15;
+    gainExp(exp);
+    effectDesc = '酒過三巡，旅人們打開了話匣子，你學到了不少冒險的竅門。';
+    effect = `✨ 獲得 ${exp} EXP`;
+  } else if (roll < 0.70) {
+    // 喝醉，扣HP
+    const dmg = 10;
+    G.player.hp = Math.max(1, G.player.hp - dmg);
+    effectDesc = '你喝得太快，頭暈目眩，差點從椅子上摔下來，撞到桌角。';
+    effect = `💔 喝醉受傷，-${dmg} HP`;
+  } else if (roll < 0.82) {
+    // 被人偷了金幣
+    const stolen = Math.min(G.player.gold, 15 + Math.floor(Math.random()*20));
+    G.player.gold -= stolen;
+    effectDesc = `你喝得迷迷糊糊，清醒後發現錢袋輕了許多。有個賊趁你不注意順手牽羊！`;
+    effect = `💰 被偷走 ${stolen} 金幣`;
+  } else {
+    // 撿到好東西
+    addToInventory('herb');
+    effectDesc = '喝到一半，你發現椅子下有個遺落的小袋子，裡面有幾株草藥。';
+    effect = `🌱 找到 草藥`;
+  }
+  save();
+
+  const msg2 = TAVERN_MESSAGES[Math.floor(Math.random()*TAVERN_MESSAGES.length)];
+  const canAfford2 = G.player.gold >= TAVERN_DRINK_PRICE;
+  setStory('🍺 酒館', `${effectDesc}\n\n${effect}\n\n旁邊又有人說：「${msg2}」\n\n酒保：「再來一杯嗎？」（剩餘：${G.player.gold}金幣）`, [
+    {text:`🍺 再來一杯（${TAVERN_DRINK_PRICE}金幣）`, action: canAfford2 ? 'drink' : 'broke'},
+    {text:'🚪 酒夠了，離開', action:'town'},
+  ]);
 }
 
 function openTemple() {
@@ -947,24 +1180,59 @@ function handleChoice(i) {
   else if (action === 'heal') { G.player.hp = G.player.maxHp; save(); toast('HP 完全回復！'); goTown(); }
   else if (action === 'save') { save(); toast('💾 存檔成功！'); }
   else if (action === 'tavern') openTavern();
+  else if (action === 'drink') drinkInTavern();
+  else if (action === 'broke') { toast('金幣不足，喝不起！'); }
   else if (action === 'explore') startZone(G.currentZone||'forest');
 }
 
 function handleEvent(resultId) {
   const ev = EVENTS[resultId];
   if (!ev) return;
-  let reward = '';
+  let msgs = [];
+
+  // 扣血
+  if (ev.damage) {
+    const dmg = Math.min(ev.damage, G.player.hp - 1); // 不會死於事件，最多剩1HP
+    G.player.hp = Math.max(1, G.player.hp - dmg);
+    msgs.push(`💔 受到 ${dmg} 點傷害！（剩餘 HP：${G.player.hp}/${G.player.maxHp}）`);
+  }
+  // 治療
+  if (ev.heal) {
+    G.player.hp = Math.min(G.player.maxHp, G.player.hp + ev.heal);
+    msgs.push(`💚 回復 ${ev.heal} HP！`);
+  }
+  // 失去道具
+  if (ev.loseItem) {
+    const idx = G.player.inventory.findIndex(i => i.id === ev.loseItem);
+    if (idx >= 0) {
+      G.player.inventory[idx].qty = (G.player.inventory[idx].qty||1) - 1;
+      if (G.player.inventory[idx].qty <= 0) G.player.inventory.splice(idx, 1);
+    }
+  }
+  // 獎勵
   if (ev.reward) {
     const r = ev.reward;
     if (r.gold) { G.player.gold += r.gold; }
     if (r.item) { addToInventory(r.item); }
     if (r.exp) { gainExp(r.exp); }
-    reward = '\n\n✨ ' + r.message;
+    msgs.push('✨ ' + r.message);
   }
-  setStory('🌟 事件', ev.text + reward, [
-    {text:'🗺️ 繼續探索', action:'explore'},
-    {text:'🏠 返回城鎮', action:'town'},
-  ]);
+
+  const resultText = ev.text + '\n\n' + msgs.join('\n');
+  updateStatusBar('story');
+
+  // 如果事件後緊接戰鬥
+  if (ev.battle) {
+    setStory('🌟 事件', resultText, [
+      {text:'⚔️ 迎戰！', action:'battle', zone: ev.battle},
+      {text:'💨 逃跑！', action:'town'},
+    ]);
+  } else {
+    setStory('🌟 事件', resultText, [
+      {text:'🗺️ 繼續探索', action:'explore'},
+      {text:'🏠 返回城鎮', action:'town'},
+    ]);
+  }
   save();
 }
 
@@ -1068,6 +1336,7 @@ function battleAction(act) {
 
   // Enemy turn
   setTimeout(() => {
+    if (!G.battle) return;
     const eDmg = Math.max(1, e.atk - getDef() + Math.floor(Math.random()*4-1));
     p.hp -= eDmg;
     addLog(`${e.icon} ${e.name} 攻擊你，造成 ${eDmg} 傷害！`, 'enemy-atk');
