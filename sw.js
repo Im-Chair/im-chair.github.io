@@ -1,4 +1,4 @@
-const CACHE = 'arcade-v3';
+const CACHE = 'arcade-v4';
 const ASSETS = ['/', '/index.html', '/manifest.json'];
 
 self.addEventListener('install', e => {
@@ -16,7 +16,6 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
-  // 永遠先嘗試網路，失敗才用快取
   e.respondWith(
     fetch(e.request)
       .then(res => {
