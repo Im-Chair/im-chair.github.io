@@ -9,7 +9,2674 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#0b0d12">
+<title>貪婪深淵</title><!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0b0d12">
 <title>貪婪深淵</title>
+<style>
+:root{
+  --bg:#0b0d12; --panel:#141824; --panel2:#1b2132; --line:#2a3145;
+  --text:#e6e1d3; --dim:#8b8fa3; --gold:#d8a84c; --red:#d05252;
+  --green:#6fbf8f; --blue:#5a9bd4; --orange:#e0813f; --white-r:#b8bcc8;
+  --safe-b:env(safe-area-inset-bottom,0px);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;overflow:hidden;}
+body{
+  background:var(--bg); color:var(--text);
+  font-family:"PingFang TC","Noto Sans TC",-apple-system,sans-serif;
+  font-size:15px; line-height:1.5;
+  background-image:radial-gradient(ellipse 120% 60% at 50% -10%, #171c2b 0%, var(--bg) 60%);
+  user-select:none;-webkit-user-select:none;
+}
+#app{max-width:520px;margin:0 auto;height:100%;height:100dvh;display:flex;flex-direction:column;position:relative;}
+.screen{display:none;flex:1;flex-direction:column;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px 16px calc(20px + var(--safe-b));}
+.screen.show{display:flex;}
+h1.title{
+  font-family:"Songti TC","Noto Serif TC",serif; font-weight:700;
+  font-size:44px; letter-spacing:12px; text-indent:12px; text-align:center;
+  background:linear-gradient(180deg,#f0d896 20%,#b8842e 90%);
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+  text-shadow:0 0 40px rgba(216,168,76,.15);
+}
+.subtitle{text-align:center;color:var(--dim);letter-spacing:6px;text-indent:6px;font-size:13px;margin-top:6px;}
+.btn{
+  display:block;width:100%;padding:14px;border:1px solid var(--line);border-radius:10px;
+  background:var(--panel);color:var(--text);font-size:16px;font-family:inherit;
+  text-align:center;cursor:pointer;transition:transform .08s, background .15s;
+}
+.btn:active{transform:scale(.97);background:var(--panel2);}
+.btn.primary{border-color:#8a6a2a;background:linear-gradient(180deg,#2a2416,#1e1a10);color:var(--gold);letter-spacing:2px;}
+.btn.danger{border-color:#5a2a2a;color:var(--red);}
+.btn.small{padding:8px 12px;font-size:14px;width:auto;display:inline-block;}
+.btn:disabled{opacity:.35;pointer-events:none;}
+.row{display:flex;gap:10px;}
+.row .btn{flex:1;}
+.spacer{flex:1;}
+/* ---------- top bar ---------- */
+.topbar{display:flex;align-items:center;gap:10px;padding:4px 2px 12px;font-size:14px;color:var(--dim);}
+.topbar .depth{
+  font-family:"Songti TC",serif;font-size:15px;color:var(--gold);letter-spacing:2px;
+  border:1px solid #3a3220;border-radius:8px;padding:2px 10px;background:#17140c;
+}
+.topbar .gold-chip{margin-left:auto;color:var(--gold);}
+/* ---------- class select ---------- */
+.class-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px;}
+.class-card{
+  border:1px solid var(--line);border-radius:12px;background:var(--panel);
+  padding:14px 12px;text-align:center;cursor:pointer;transition:border-color .15s;
+}
+.class-card.selected{border-color:var(--gold);background:#1a1710;box-shadow:0 0 0 1px var(--gold) inset;}
+.class-card .ci{font-size:34px;}
+.class-card .cn{font-size:17px;margin-top:6px;letter-spacing:2px;}
+.class-card .cd{font-size:12px;color:var(--dim);margin-top:4px;min-height:3em;}
+/* ---------- camp ---------- */
+.camp-hero{
+  text-align:center;padding:22px 0 14px;
+}
+.camp-hero .flame{font-size:42px;animation:flick 2.2s ease-in-out infinite;}
+@keyframes flick{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.82;transform:scale(1.05)}}
+.menu-list{display:flex;flex-direction:column;gap:10px;margin-top:14px;}
+.menu-item{
+  display:flex;align-items:center;gap:12px;padding:14px;border:1px solid var(--line);
+  border-radius:12px;background:var(--panel);cursor:pointer;
+}
+.menu-item:active{background:var(--panel2);}
+.menu-item .mi{font-size:22px;width:30px;text-align:center;}
+.menu-item .mt{font-size:16px;letter-spacing:1px;}
+.menu-item .ms{font-size:12px;color:var(--dim);}
+.menu-item .arrow{margin-left:auto;color:var(--dim);}
+/* ---------- gear ---------- */
+.slot-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0;}
+.slot{
+  border:1px dashed var(--line);border-radius:10px;padding:10px 8px;text-align:center;
+  background:var(--panel);min-height:74px;cursor:pointer;
+}
+.slot .sl{font-size:11px;color:var(--dim);}
+.slot .sn{font-size:13px;margin-top:4px;line-height:1.3;}
+.item-list{display:flex;flex-direction:column;gap:8px;margin-top:8px;}
+.item-row{
+  display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--line);
+  border-radius:10px;background:var(--panel);cursor:pointer;
+}
+.item-row .in{font-size:14px;}
+.item-row .is{font-size:12px;color:var(--dim);margin-left:auto;white-space:nowrap;}
+.r-white{color:var(--white-r);} .r-blue{color:var(--blue);} .r-gold{color:var(--gold);} .r-orange{color:var(--orange);}
+.b-white{border-color:#3a3f4d;} .b-blue{border-color:#2c4d6e;} .b-gold{border-color:#6e5a26;} .b-orange{border-color:#7a4622;}
+.tag-new{font-size:10px;color:var(--bg);background:var(--gold);border-radius:4px;padding:1px 5px;margin-left:6px;}
+/* ---------- sheet ---------- */
+.sheet-mask{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;z-index:50;}
+.sheet-mask.show{display:flex;align-items:flex-end;justify-content:center;}
+.sheet{
+  width:100%;max-width:520px;background:var(--panel2);border-radius:18px 18px 0 0;
+  border:1px solid var(--line);border-bottom:none;padding:18px 18px calc(24px + var(--safe-b));
+  animation:up .18s ease-out;max-height:78vh;overflow-y:auto;
+}
+@keyframes up{from{transform:translateY(30px);opacity:0}to{transform:none;opacity:1}}
+.sheet h3{font-size:18px;letter-spacing:1px;}
+.affix{font-size:13px;color:var(--green);margin-top:2px;}
+.affix.leg{color:var(--orange);text-shadow:0 0 8px rgba(224,129,63,.3);}
+.affix.curse{color:var(--red);}
+.sheet .base{font-size:14px;color:var(--dim);margin:6px 0;}
+.cmp{font-size:12px;color:var(--dim);border-top:1px solid var(--line);margin-top:10px;padding-top:8px;}
+.cmp .up{color:var(--green);} .cmp .dn{color:var(--red);}
+/* ---------- doors / decision ---------- */
+.depth-gauge{
+  text-align:center;margin:8px 0 4px;font-family:"Songti TC",serif;
+}
+.depth-gauge .num{font-size:52px;color:var(--gold);letter-spacing:4px;}
+.depth-gauge .lbl{font-size:13px;color:var(--dim);letter-spacing:4px;}
+.depth-gauge .bonus{font-size:12px;color:var(--orange);margin-top:2px;}
+.door-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:18px 0;}
+.door{
+  border:1px solid #3a3145;border-radius:12px 12px 4px 4px;
+  background:linear-gradient(180deg,#1d1826 0%,#141019 100%);
+  padding:26px 10px 18px;text-align:center;cursor:pointer;position:relative;
+  box-shadow:inset 0 -10px 24px rgba(0,0,0,.5);
+  transition:transform .1s;
+}
+.door:active{transform:scale(.96);}
+.door::before{content:'';position:absolute;top:8px;left:50%;transform:translateX(-50%);
+  width:70%;height:3px;border-radius:3px;background:#2c2438;}
+.door .di{font-size:38px;filter:drop-shadow(0 0 10px rgba(216,168,76,.2));}
+.door .dn{margin-top:10px;font-size:15px;letter-spacing:2px;}
+.door .dd{font-size:11px;color:var(--dim);margin-top:3px;}
+.retreat-btn{
+  margin-top:6px;border:1px solid #2f4436;background:#101a14;color:var(--green);
+  letter-spacing:2px;
+}
+/* ---------- battle ---------- */
+#battle{padding-bottom:calc(12px + var(--safe-b));}
+.enemy-zone{padding:6px 0 4px;}
+.e-wrap{display:grid;gap:8px;grid-template-columns:1fr;}
+.e-wrap.duo{grid-template-columns:1fr 1fr;}
+.e-block{position:relative;text-align:center;border:1px solid transparent;border-radius:12px;padding:4px 2px;}
+.e-wrap.duo .e-block{cursor:pointer;}
+.e-wrap.duo .e-block.sel{border-color:var(--gold);background:rgba(216,168,76,.05);}
+.e-wrap.duo .enemy-icon{font-size:46px;}
+.e-wrap.duo .enemy-name{font-size:13px;}
+.e-wrap.duo .intent{font-size:12px;padding:2px 8px;}
+.e-block.dead{opacity:.3;filter:grayscale(1);}
+.enemy-icon{font-size:64px;display:inline-block;transition:transform .1s;filter:drop-shadow(0 6px 16px rgba(0,0,0,.6));}
+.enemy-icon.hit{animation:shake .3s;}
+@keyframes shake{0%{transform:translateX(0)}25%{transform:translateX(-7px)}50%{transform:translateX(6px)}75%{transform:translateX(-3px)}100%{transform:none}}
+.enemy-name{font-size:16px;letter-spacing:2px;margin-top:2px;}
+.enemy-name .elite{color:var(--orange);} .enemy-name .boss{color:var(--red);}
+.intent{
+  display:inline-flex;align-items:center;gap:6px;margin-top:6px;
+  border:1px solid #4a3a2a;background:#1c150e;border-radius:20px;padding:4px 14px;
+  font-size:14px;color:#e8c78a;
+}
+.intent .ii{font-size:16px;}
+.hpbar{height:14px;border-radius:7px;background:#22161a;border:1px solid #3a2530;overflow:hidden;margin-top:8px;position:relative;}
+.hpbar .fill{height:100%;background:linear-gradient(90deg,#a83a3a,#d05252);transition:width .3s;border-radius:7px;}
+.hpbar.player .fill{background:linear-gradient(90deg,#3f7a58,#6fbf8f);}
+.hpbar .txt{position:absolute;inset:0;text-align:center;font-size:10px;line-height:14px;color:#fff;text-shadow:0 1px 2px #000;}
+.status-row{display:flex;gap:6px;justify-content:center;margin-top:6px;min-height:22px;flex-wrap:wrap;}
+.st{font-size:11px;border-radius:6px;padding:1px 7px;border:1px solid var(--line);background:var(--panel);}
+.st.bad{color:#e09090;border-color:#4a2a2a;} .st.good{color:#9fd8b4;border-color:#2a4a36;}
+.blk{color:var(--blue);border-color:#2c4d6e;}
+#log{
+  flex:0 0 auto;height:64px;overflow-y:auto;font-size:12px;color:var(--dim);
+  border:1px solid var(--line);border-radius:10px;background:rgba(0,0,0,.25);
+  padding:6px 10px;margin:10px 0;
+}
+#log .l-dmg{color:#e8a0a0;} #log .l-heal{color:#9fd8b4;} #log .l-sys{color:#c8b070;}
+.player-zone{margin-top:auto;}
+.pz-top{display:flex;align-items:center;gap:10px;font-size:13px;}
+.pz-top .pname{letter-spacing:1px;}
+.energy{margin-left:auto;display:flex;gap:4px;}
+.pip{width:14px;height:14px;border-radius:50%;border:1px solid #6e5a26;background:#17140c;}
+.pip.on{background:radial-gradient(circle at 35% 35%, #f0d896, #b8842e);box-shadow:0 0 6px rgba(216,168,76,.5);}
+.skill-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;}
+.skill-btn{
+  border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--text);
+  padding:10px 10px;text-align:left;font-family:inherit;cursor:pointer;position:relative;
+}
+.skill-btn:active{background:var(--panel2);}
+.skill-btn:disabled{opacity:.35;}
+.skill-btn .sn{font-size:14px;letter-spacing:1px;}
+.skill-btn .sd{font-size:11px;color:var(--dim);margin-top:2px;line-height:1.35;}
+.skill-btn .sc{position:absolute;top:8px;right:10px;font-size:12px;color:var(--gold);}
+.battle-bottom{display:flex;gap:8px;margin-top:10px;}
+.battle-bottom .btn{padding:11px;}
+.float-dmg{
+  position:absolute;left:50%;top:30%;transform:translateX(-50%);
+  font-size:26px;font-weight:700;color:#ff9090;pointer-events:none;
+  animation:floatup .8s ease-out forwards;text-shadow:0 2px 6px #000;z-index:5;
+}
+.float-dmg.heal{color:#9fd8b4;} .float-dmg.blocked{color:#8ab4d8;font-size:20px;}
+.float-dmg.crit{color:#ffcf5a;font-size:32px;}
+@keyframes floatup{from{opacity:1;margin-top:0}to{opacity:0;margin-top:-46px}}
+/* ---------- loot / event / result ---------- */
+.center-box{margin:auto 0;text-align:center;padding:20px 0;}
+.center-box .big{font-size:56px;}
+.center-box h2{font-family:"Songti TC",serif;font-size:26px;letter-spacing:6px;margin:12px 0 6px;}
+.center-box p{color:var(--dim);font-size:14px;}
+.loot-card{
+  border-radius:12px;padding:14px;margin:14px 0;background:var(--panel);
+  border:1px solid var(--line);text-align:left;
+}
+.ev-text{font-size:15px;line-height:1.8;color:#d8d2c2;margin:14px 0;white-space:pre-line;}
+.choices{display:flex;flex-direction:column;gap:10px;margin-top:14px;}
+.stat-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:14px 0;}
+.stat-box{border:1px solid var(--line);border-radius:10px;padding:10px;text-align:center;background:var(--panel);}
+.stat-box .v{font-size:20px;color:var(--gold);font-family:"Songti TC",serif;}
+.stat-box .k{font-size:11px;color:var(--dim);margin-top:2px;}
+.potion-row{display:flex;gap:8px;margin-top:8px;}
+.potion{
+  flex:1;border:1px solid var(--line);border-radius:10px;background:var(--panel);
+  padding:8px 4px;text-align:center;font-size:12px;color:var(--dim);cursor:pointer;
+}
+.potion .pi{font-size:20px;display:block;}
+.potion:active{background:var(--panel2);}
+.toast{
+  position:fixed;top:14%;left:50%;transform:translateX(-50%);
+  background:#1c150e;border:1px solid #4a3a2a;color:#e8c78a;border-radius:20px;
+  padding:8px 18px;font-size:14px;z-index:99;opacity:0;transition:opacity .2s;pointer-events:none;
+  max-width:80%;text-align:center;
+}
+.toast.show{opacity:1;}
+.section-title{font-size:13px;color:var(--dim);letter-spacing:2px;margin:14px 0 6px;border-left:3px solid var(--gold);padding-left:8px;}
+.back-link{color:var(--dim);font-size:14px;padding:8px 0;cursor:pointer;display:inline-block;}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- ===== 標題 ===== -->
+<div class="screen" id="s-title">
+  <div class="spacer"></div>
+  <h1 class="title">貪婪深淵</h1>
+  <div class="subtitle">深入一層，或帶著一切離開</div>
+  <div class="spacer"></div>
+  <button class="btn primary" onclick="titleStart()">進入深淵</button>
+  <div style="height:10px"></div>
+  <button class="btn danger" id="btn-wipe" onclick="wipeConfirm()" style="display:none">放棄一切重新開始</button>
+  <div class="spacer"></div>
+</div>
+
+<!-- ===== 職業 ===== -->
+<div class="screen" id="s-class">
+  <div class="section-title">選擇你的職業</div>
+  <div class="class-grid" id="class-grid"></div>
+  <div class="spacer"></div>
+  <button class="btn primary" onclick="confirmClass()">就是他了</button>
+</div>
+
+<!-- ===== 營地 ===== -->
+<div class="screen" id="s-camp">
+  <div class="topbar">
+    <span id="camp-cls"></span>
+    <span class="gold-chip">🪙 <span id="camp-gold">0</span></span>
+  </div>
+  <div class="camp-hero">
+    <div class="flame">🔥</div>
+    <div style="color:var(--dim);font-size:13px;margin-top:6px">深淵入口的營地。火堆之外，只有往下的路。</div>
+  </div>
+  <div class="stat-grid">
+    <div class="stat-box"><div class="v" id="rec-deep">0</div><div class="k">最深紀錄</div></div>
+    <div class="stat-box"><div class="v" id="rec-runs">0</div><div class="k">探索次數</div></div>
+    <div class="stat-box"><div class="v" id="rec-boss">0</div><div class="k">首領擊殺</div></div>
+  </div>
+  <div class="menu-list">
+    <div class="menu-item" onclick="openDivePicker()">
+      <span class="mi">🕳</span><span><div class="mt">下潛</div><div class="ms" id="dive-hint">開始新的探索</div></span><span class="arrow">›</span>
+    </div>
+    <div class="menu-item" onclick="openRunStats()">
+      <span class="mi">🧍</span><span><div class="mt">角色檢視</div><div class="ms">彙總屬性與全身詞綴</div></span><span class="arrow">›</span>
+    </div>
+    <div class="menu-item" onclick="openGear()">
+      <span class="mi">🎒</span><span><div class="mt">裝備與倉庫</div><div class="ms" id="stash-count"></div></span><span class="arrow">›</span>
+    </div>
+    <div class="menu-item" onclick="openSmith()">
+      <span class="mi">⚒️</span><span><div class="mt">鐵匠</div><div class="ms" id="smith-hint">強化身上的武器與護甲</div></span><span class="arrow">›</span>
+    </div>
+    <div class="menu-item" onclick="openSaveMgr()">
+      <span class="mi">💾</span><span><div class="mt">存檔管理</div><div class="ms">匯出備份／匯入還原</div></span><span class="arrow">›</span>
+    </div>
+    <div class="menu-item" onclick="openCodex()">
+      <span class="mi">📖</span><span><div class="mt">深淵圖鑑</div><div class="ms" id="codex-hint"></div></span><span class="arrow">›</span>
+    </div>
+    <div class="menu-item" id="market-item" onclick="openMarket()">
+      <span class="mi">🕯️</span><span><div class="mt">深淵黑市</div><div class="ms" id="market-hint"></div></span><span class="arrow">›</span>
+    </div>
+  </div>
+  <div style="font-size:12px;color:var(--dim);margin-top:14px;text-align:center" id="milestone-line"></div>
+</div>
+
+<!-- ===== 裝備 ===== -->
+<div class="screen" id="s-gear">
+  <span class="back-link" onclick="showScreen('s-camp')">‹ 回營地</span>
+  <div class="section-title">身上裝備</div>
+  <div class="slot-row" id="equip-row"></div>
+  <div class="section-title">倉庫 <span id="gear-gold" style="float:right;color:var(--gold)"></span></div>
+  <div class="item-list" id="stash-list"></div>
+</div>
+
+<!-- ===== 鐵匠 ===== -->
+<div class="screen" id="s-smith">
+  <span class="back-link" onclick="showScreen('s-camp')">‹ 回營地</span>
+  <div class="center-box" style="padding:10px 0">
+    <div class="big">⚒️</div>
+    <p>把碎銀交給老鐵匠，他會替你把裝備敲得更兇。</p>
+  </div>
+  <div class="item-list" id="smith-list"></div>
+  <p style="color:var(--dim);font-size:12px;margin-top:12px">強化直接附在該件裝備上；分解裝備時強化不會退款。</p>
+</div>
+
+<!-- ===== 抉擇（門）===== -->
+<div class="screen" id="s-doors">
+  <div class="topbar">
+    <span class="depth">第 <span id="d-floor">1</span> 層</span>
+    <span id="d-hp"></span>
+    <span class="gold-chip">🪙 <span id="d-gold">0</span></span>
+  </div>
+  <div class="depth-gauge">
+    <div class="lbl">目前深度</div>
+    <div class="num" id="d-floor-big">1</div>
+    <div class="bonus" id="d-bonus"></div>
+  </div>
+  <div class="door-grid" id="door-grid"></div>
+  <button class="btn retreat-btn" onclick="retreat()">🪢 拉繩上升——帶著這趟的一切撤退</button>
+  <div style="height:8px"></div>
+  <button class="btn" style="font-size:14px" onclick="openRunStats()">🧍 角色檢視 <span id="bag-hint" style="color:var(--dim);font-size:12px"></span></button>
+  <div class="potion-row" id="door-potions"></div>
+</div>
+
+<!-- ===== 戰鬥 ===== -->
+<div class="screen" id="s-battle">
+  <div class="topbar">
+    <span class="depth">第 <span id="b-floor">1</span> 層</span>
+    <span class="gold-chip">🪙 <span id="b-gold">0</span></span>
+  </div>
+  <div class="enemy-zone" id="enemy-zone"></div>
+  <div id="log"></div>
+  <div class="player-zone" id="player-zone" style="position:relative">
+    <div class="pz-top" onclick="openRunStats()">
+      <span class="pname" id="p-name"></span>
+      <span class="st blk" id="p-block" style="display:none"></span>
+      <span class="energy" id="p-energy"></span>
+    </div>
+    <div class="hpbar player"><div class="fill" id="p-hpfill"></div><div class="txt" id="p-hptxt"></div></div>
+    <div class="status-row" id="p-status"></div>
+    <div class="skill-grid" id="skill-grid"></div>
+    <div class="battle-bottom">
+      <button class="btn" style="flex:0 0 30%" onclick="openBattlePotions()">🧪 道具</button>
+      <button class="btn primary" id="btn-end" onclick="endTurn()">結束回合</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 事件 ===== -->
+<div class="screen" id="s-event">
+  <div class="topbar">
+    <span class="depth">第 <span id="ev-floor">1</span> 層</span>
+    <span class="gold-chip">🪙 <span id="ev-gold">0</span></span>
+  </div>
+  <div class="center-box" style="margin:0;padding:8px 0"><div class="big" id="ev-icon">❓</div>
+  <h2 id="ev-title"></h2></div>
+  <div class="ev-text" id="ev-text"></div>
+  <div class="choices" id="ev-choices"></div>
+</div>
+
+<!-- ===== 戰利品 ===== -->
+<div class="screen" id="s-loot">
+  <div class="center-box" style="margin:0;padding:8px 0">
+    <div class="big" id="loot-icon">🎁</div>
+    <h2 id="loot-title">戰利品</h2>
+    <p id="loot-sub"></p>
+  </div>
+  <div id="loot-body"></div>
+  <div class="spacer"></div>
+  <button class="btn primary" onclick="afterLoot()">繼續</button>
+</div>
+
+<!-- ===== 結算 ===== -->
+<div class="screen" id="s-result">
+  <div class="center-box">
+    <div class="big" id="res-icon">💀</div>
+    <h2 id="res-title"></h2>
+    <p id="res-sub"></p>
+  </div>
+  <div id="res-body"></div>
+  <div class="spacer"></div>
+  <button class="btn primary" onclick="backToCamp()">回到營地</button>
+</div>
+
+</div>
+<div class="sheet-mask" id="sheet-mask" onclick="if(event.target===this)closeSheet()"><div class="sheet" id="sheet"></div></div>
+<div class="toast" id="toast"></div>
+<script>
+'use strict';
+/* ================= 資料 ================= */
+const CLASSES = {
+  sword:{name:'劍士', icon:'🛡️', hp:78, crit:5,
+    desc:'穩紮穩打。格擋與破甲，把仗打成自己的節奏。',
+    skills:['slash','guard','sunder','execute']},
+  assassin:{name:'兇解者', icon:'🗡️', hp:62, crit:15,
+    desc:'高爆擊。淬毒與暗影，讓敵人死在倒數計時裡。',
+    skills:['stab','venom','shadow','garrote']},
+  white:{name:'法師', icon:'✨', hp:68, crit:5,
+    desc:'白魔法。能打能補能撐盾，活得最久的人贏。',
+    skills:['smite','mend','aegis','judge']},
+  dark:{name:'制魔師', icon:'🌑', hp:66, crit:8,
+    desc:'黑魔法。詛咒與吸命，用敵人的血付自己的帳。',
+    skills:['bolt','drain','hex','hellfire']},
+};
+const SKILLS = {
+  slash:{n:'斬擊',c:1,d:'造成 7 點傷害',f:{dmg:7}},
+  guard:{n:'堅守',c:1,d:'獲得 8 點格擋',f:{block:8}},
+  sunder:{n:'破甲斬',c:2,d:'造成 9 點傷害，敵人易傷 2 回合',f:{dmg:9,apply:{vuln:2}}},
+  execute:{n:'處決',c:2,d:'造成 13 點傷害；擊殺時回復 2 能量（下場戰鬥）與 6 血',f:{dmg:13,execKill:true}},
+  stab:{n:'疾刺',c:1,d:'造成 6 點傷害',f:{dmg:6}},
+  venom:{n:'淬毒',c:1,d:'施加 4 層中毒（每回合受層數傷害，遞減）',f:{apply:{poison:4}}},
+  shadow:{n:'暗影步',c:1,d:'獲得 6 點格擋，下一次攻擊必定爆擊',f:{block:6,nextCrit:true}},
+  garrote:{n:'絞殺',c:2,d:'造成中毒層數 ×4 的傷害（無中毒則 5）',f:{poisonDmg:4}},
+  smite:{n:'聖光',c:1,d:'造成 7 點傷害',f:{dmg:7}},
+  mend:{n:'治癒',c:1,d:'回復 9 點生命',f:{heal:9}},
+  aegis:{n:'庇護',c:2,d:'獲得 14 點格擋',f:{block:14}},
+  judge:{n:'制裁',c:3,d:'造成 24 點傷害',f:{dmg:24}},
+  bolt:{n:'暗蝕',c:1,d:'造成 6 點傷害，敵人虛弱 1 回合',f:{dmg:6,apply:{weak:1}}},
+  drain:{n:'吸命',c:2,d:'造成 11 點傷害，回復造成傷害的一半',f:{dmg:11,drain:.5}},
+  hex:{n:'詛咒',c:1,d:'敵人易傷、虛弱各 2 回合',f:{apply:{vuln:2,weak:2}}},
+  hellfire:{n:'冥火',c:3,d:'造成 17 點傷害，施加 6 層燃燒（回合結束受傷後減半）',f:{dmg:17,apply:{burn:6}}},
+};
+/* 技能精進：每招兩個分支，營火擇一，本次探索有效 */
+const SKILL_UPS = {
+  slash:  {a:{n:'利刃斬', d:'造成 11 點傷害', mod:f=>{f.dmg=11;}},
+           b:{n:'破勢斬', d:'造成 7 點傷害，敵人易傷 1 回合', mod:f=>{f.apply={vuln:1};}}},
+  guard:  {a:{n:'壁守', d:'獲得 12 點格擋', mod:f=>{f.block=12;}},
+           b:{n:'反守', d:'獲得 8 點格擋，反刺 6 傷害', mod:f=>{f.thornHit=6;}}},
+  sunder: {a:{n:'碎甲斬', d:'造成 14 點傷害，敵人易傷 2 回合', mod:f=>{f.dmg=14;}},
+           b:{n:'裂魂斬', d:'造成 9 點傷害，敵人易傷 3 回合', mod:f=>{f.apply={vuln:3};}}},
+  execute:{a:{n:'斷頭台', d:'造成 19 點傷害；擊殺獎勵不變', mod:f=>{f.dmg=19;}},
+           b:{n:'收割者', d:'造成 13 點傷害；擊殺回 3 能量與 12 血', mod:f=>{f.execEnergy=3;f.execHeal=12;}}},
+  stab:   {a:{n:'穿刺', d:'造成 9 點傷害', mod:f=>{f.dmg=9;}},
+           b:{n:'毒刺', d:'造成 6 點傷害，附 2 層中毒', mod:f=>{f.apply={poison:2};}}},
+  venom:  {a:{n:'劇毒', d:'施加 6 層中毒', mod:f=>{f.apply={poison:6};}},
+           b:{n:'毒霧', d:'施加 4 層中毒，獲得 4 格擋', mod:f=>{f.block=4;}}},
+  shadow: {a:{n:'影遁', d:'獲得 10 點格擋，下次攻擊必爆', mod:f=>{f.block=10;}},
+           b:{n:'雙影', d:'獲得 6 點格擋，下兩次攻擊必爆', mod:f=>{f.nextCrit=2;}}},
+  garrote:{a:{n:'絞刑', d:'傷害提升為中毒層數 ×5', mod:f=>{f.poisonDmg=5;}},
+           b:{n:'速殺', d:'消耗降為 1 能量', mod:(f,sk)=>{sk.c=1;}}},
+  smite:  {a:{n:'聖焰', d:'造成 10 點傷害', mod:f=>{f.dmg=10;}},
+           b:{n:'懲戒', d:'造成 7 點傷害，敵人虛弱 1 回合', mod:f=>{f.apply={weak:1};}}},
+  mend:   {a:{n:'大治癒', d:'回復 14 點生命', mod:f=>{f.heal=14;}},
+           b:{n:'聖護', d:'回復 9 血，獲得 5 格擋', mod:f=>{f.block=5;}}},
+  aegis:  {a:{n:'聖壁', d:'獲得 20 點格擋', mod:f=>{f.block=20;}},
+           b:{n:'荊冠', d:'獲得 14 點格擋，反刺 8 傷害', mod:f=>{f.thornHit=8;}}},
+  judge:  {a:{n:'天罰', d:'造成 32 點傷害', mod:f=>{f.dmg=32;}},
+           b:{n:'審判', d:'造成 24 點傷害，暈眩 1 回合', mod:f=>{f.apply={stun:1};}}},
+  bolt:   {a:{n:'蝕光', d:'造成 9 點傷害，虛弱 1 回合', mod:f=>{f.dmg=9;}},
+           b:{n:'衰蝕', d:'造成 6 點傷害，虛弱 2 回合', mod:f=>{f.apply={weak:2};}}},
+  drain:  {a:{n:'噬命', d:'造成 15 點傷害，回復一半', mod:f=>{f.dmg=15;}},
+           b:{n:'鯨吞', d:'造成 11 點傷害，回復全額', mod:f=>{f.drain=1;}}},
+  hex:    {a:{n:'厄咒', d:'易傷、虛弱各 3 回合', mod:f=>{f.apply={vuln:3,weak:3};}},
+           b:{n:'腐咒', d:'易傷、虛弱各 2 回合，附 2 層中毒', mod:f=>{f.apply={vuln:2,weak:2,poison:2};}}},
+  hellfire:{a:{n:'獄炎', d:'造成 24 點傷害，6 層燃燒', mod:f=>{f.dmg=24;}},
+           b:{n:'業火', d:'造成 17 點傷害，10 層燃燒', mod:f=>{f.apply={burn:10};}}},
+};
+/* 敵人動作: a=攻擊 h=重擊 m=連擊 d=防禦 c=詛咒 v=吸血 s=偷竊 g=蓄力 */
+const ENEMIES = {
+  /* 淺穴 1-10 */
+  rat:   {n:'洞穴巨鼠', i:'🐀', hp:16, realm:0, pat:[{t:'a',v:4},{t:'a',v:5},{t:'a',v:3,ap:{weak:1},nm:'撕咬'}]},
+  slime: {n:'腐蝕黏液', i:'🟢', hp:22, realm:0, pat:[{t:'a',v:5,ap:{weak:1},nm:'酸液'},{t:'d',v:5},{t:'a',v:6}]},
+  skel:  {n:'骷髏兵',   i:'💀', hp:24, realm:0, pat:[{t:'a',v:6},{t:'d',v:6},{t:'a',v:8}]},
+  bat:   {n:'蝙蝠群',   i:'🦇', hp:19, realm:0, pat:[{t:'m',v:3,x:2},{t:'a',v:4},{t:'m',v:2,x:3}]},
+  spider:{n:'穴居蛛',   i:'🕷️', hp:21, realm:0, pat:[{t:'a',v:4,ap:{poison:2},nm:'毒牙'},{t:'d',v:5},{t:'a',v:6}]},
+  thief: {n:'盜墓賊',   i:'🥷', hp:26, realm:0, pat:[{t:'s',v:6,nm:'搶奪'},{t:'a',v:7},{t:'d',v:6}]},
+  garg:  {n:'石像鬼',   i:'🗿', hp:30, realm:0, pat:[{t:'d',v:8},{t:'g',nm:'蓄力'},{t:'h',v:15}]},
+  /* 沉沒王國 11-20 */
+  drown: {n:'溺水者',   i:'🧟', hp:34, realm:1, pat:[{t:'a',v:9},{t:'v',v:8,nm:'拖拽'},{t:'a',v:10}]},
+  eel:   {n:'窟窿鰻',   i:'🐍', hp:30, realm:1, pat:[{t:'m',v:5,x:2},{t:'a',v:11},{t:'d',v:8}]},
+  sguard:{n:'沉沒衛兵', i:'♜', hp:40, realm:1, pat:[{t:'d',v:10},{t:'a',v:11},{t:'h',v:15}]},
+  jelly: {n:'水母群',   i:'🪼', hp:28, realm:1, pat:[{t:'a',v:8,ap:{weak:1},nm:'螫刺'},{t:'c',ap:{vuln:2},nm:'纏繞'},{t:'a',v:10}]},
+  crab:  {n:'珍珠蟹',   i:'🦀', hp:38, realm:1, pat:[{t:'d',v:12},{t:'h',v:15},{t:'a',v:9}]},
+  siren: {n:'海妖歌者', i:'🧜', hp:32, realm:1, pat:[{t:'c',ap:{weak:2},nm:'魅歌'},{t:'a',v:10},{t:'v',v:10,nm:'汲取'}]},
+  corpse2:{n:'浮屍',    i:'⚰️', hp:36, realm:1, pat:[{t:'a',v:10},{t:'a',v:11},{t:'g',nm:'鼓脹'},{t:'h',v:17,nm:'脹裂'}]},
+  /* 血肉迴廊 21-30 */
+  leech: {n:'血蛭',     i:'🪱', hp:42, realm:2, pat:[{t:'v',v:11,nm:'吸附'},{t:'v',v:13,nm:'吸附'},{t:'a',v:12}]},
+  clot:  {n:'蠕行血塊', i:'🩸', hp:46, realm:2, pat:[{t:'a',v:12},{t:'m',v:7,x:2},{t:'a',v:14}]},
+  eye:   {n:'眼球簇',   i:'👁️', hp:40, realm:2, pat:[{t:'c',ap:{weak:2,vuln:2},nm:'凝視'},{t:'g',nm:'蓄力'},{t:'h',v:21,nm:'湮滅光線'}]},
+  teeth: {n:'齒牆',     i:'🦷', hp:52, realm:2, pat:[{t:'d',v:13},{t:'a',v:14},{t:'h',v:19,nm:'咬合'}]},
+  hound: {n:'雙頭地獄犬',i:'🐕', hp:46, realm:2, pat:[{t:'m',v:7,x:2},{t:'a',v:13},{t:'a',v:10,ap:{weak:2},nm:'咆哮撕咬'}]},
+  necro: {n:'亡靈法師', i:'🧙', hp:42, realm:2, pat:[{t:'c',ap:{vuln:2},nm:'咒言'},{t:'a',v:12},{t:'a',v:13}]},
+  flower:{n:'食人魔花', i:'🌺', hp:44, realm:2, pat:[{t:'v',v:11,nm:'吸食'},{t:'a',v:13},{t:'v',v:12,nm:'吸食'}]},
+  /* 無光教區 31-40 */
+  monk:  {n:'苦修士',   i:'🧎', hp:52, realm:3, pat:[{t:'a',v:15},{t:'d',v:13},{t:'a',v:16,ap:{wound:1},nm:'鞭笞'}]},
+  choir: {n:'唱詩者',   i:'🎭', hp:48, realm:3, pat:[{t:'c',ap:{weak:2},nm:'低吟'},{t:'a',v:15},{t:'c',ap:{vuln:2},nm:'高音'}]},
+  lantern:{n:'提燈人',  i:'🏮', hp:50, realm:3, pat:[{t:'a',v:14,ap:{burn:2},nm:'燈油'},{t:'d',v:13},{t:'h',v:20,ap:{burn:2},nm:'潑焚'}]},
+  knight:{n:'深淵騎士', i:'♞', hp:58, realm:3, pat:[{t:'d',v:14},{t:'a',v:16},{t:'h',v:21}]},
+  zealot:{n:'盲信者',   i:'🙇', hp:54, realm:3, pat:[{t:'a',v:15},{t:'a',v:15},{t:'g',nm:'禱告'},{t:'h',v:25,nm:'殉道'}]},
+  reliq: {n:'聖物匣',   i:'🏺', hp:60, realm:3, pat:[{t:'d',v:16},{t:'c',ap:{wound:2},nm:'聖灰'},{t:'h',v:22}]},
+  sister:{n:'影修女',   i:'👥', hp:50, realm:3, pat:[{t:'m',v:8,x:2},{t:'a',v:16,ap:{weak:1},nm:'割禮'},{t:'d',v:12}]},
+  /* 心室 41-50 */
+  throm: {n:'血栓',     i:'🫘', hp:66, realm:4, pat:[{t:'d',v:17},{t:'a',v:18},{t:'h',v:24,nm:'栓塞'}]},
+  valve: {n:'瓣膜守衛', i:'🦾', hp:70, realm:4, pat:[{t:'d',v:19},{t:'h',v:26,nm:'閉鎖'},{t:'a',v:17}]},
+  worm:  {n:'心蟲',     i:'🐛', hp:58, realm:4, pat:[{t:'a',v:16,ap:{poison:2},nm:'鑽咬'},{t:'m',v:9,x:2},{t:'a',v:18}]},
+  pulse: {n:'脈搏亡魂', i:'👻', hp:60, realm:4, pat:[{t:'a',v:18},{t:'c',ap:{weak:2,vuln:1},nm:'共振'},{t:'h',v:25}]},
+  mist:  {n:'血霧',     i:'🌫️', hp:56, realm:4, pat:[{t:'m',v:7,x:3},{t:'v',v:14,nm:'滲透'}]},
+  puppet:{n:'腔室傀儡', i:'🪆', hp:72, realm:4, pat:[{t:'d',v:19},{t:'a',v:19},{t:'g',nm:'上弦'},{t:'h',v:31,nm:'斷弦'}]},
+  magma: {n:'沸血魔',   i:'🌋', hp:62, realm:4, pat:[{t:'a',v:17,ap:{burn:3},nm:'噴濺'},{t:'d',v:15},{t:'h',v:23,ap:{burn:2,wound:2},nm:'沸流'}]},
+};
+/* 域限精英：精英門機率出現，帶域主題機制 */
+const REALM_ELITES = [
+  {key:'ratking', n:'鼠王',       i:'🐭', hp:55,  pat:[{t:'m',v:4,x:2},{t:'a',v:9},{t:'g',nm:'尖嘯召群'},{t:'m',v:4,x:4,nm:'鼠潮'}]},
+  {key:'priest',  n:'深潛者祭司', i:'🐙', hp:80,  pat:[{t:'c',ap:{weak:2,vuln:2},nm:'深淵禱詞'},{t:'v',v:13,nm:'觸手汲取'},{t:'h',v:19}]},
+  {key:'stitch',  n:'縫合巨人',   i:'🧌', hp:110, pat:[{t:'h',v:18},{t:'d',v:15},{t:'m',v:9,x:2},{t:'g',nm:'掄臂'},{t:'h',v:27,nm:'砸落'}]},
+  {key:'inquis',  n:'異端審判官', i:'⚖️', hp:120, pat:[{t:'c',ap:{wound:2,vuln:2},nm:'判罪'},{t:'h',v:24,nm:'火刑'},{t:'d',v:16},{t:'h',v:28,nm:'處決'}]},
+  {key:'acolyte', n:'心之侍者',   i:'⚕️', hp:135, pat:[{t:'v',v:17,nm:'輸血'},{t:'c',ap:{wound:3},nm:'放血'},{t:'h',v:29},{t:'g',nm:'縫合'},{t:'h',v:37,nm:'心搏停止'}]},
+];
+const FINAL_BOSS = {n:'深淵之心', i:'🫀',
+  intro:'第二十五層沒有地板，沒有牆。只有一顆懸在黑暗中央、有三層樓高的心臟，隨著你的心跳一起搏動。\n\n你終於明白了——深淵不是一個地方。深淵是活的，而你一直走在它的血管裡。',
+  intro2:'心臟裂開了。裡面沒有血，只有你一路走來丟下的東西：撤退的猶豫、搬開的石堆、闔上的眼睛。\n\n它用你的聲音說：「再貪一層。」',
+  pat:[{t:'a',v:11,nm:'脈搏'},{t:'c',ap:{wound:2,weak:2},nm:'凋朽'},{t:'d',v:14},{t:'h',v:21,nm:'心跳'}],
+  pat2:[{t:'m',v:7,x:3,nm:'血潮'},{t:'c',ap:{vuln:2},nm:'剖白'},{t:'g',nm:'凝聚萬象'},{t:'h',v:27,nm:'終焉'}]};
+const MINI_BOSSES = [
+  {key:'mb0', n:'石棺守衛', i:'🪦', hp:70,  intro:'一具披著鏽甲的骸骨從石棺裡坐起。棺蓋上刻著：「看守者永不下班」。',
+   pat:[{t:'a',v:9},{t:'d',v:10},{t:'g',nm:'高舉棺蓋'},{t:'h',v:18,nm:'棺蓋砸落'}]},
+  {key:'mb1', n:'珊瑚騎士', i:'🪸', hp:95,  intro:'鎧甲早就鏽穿了，珊瑚沿著騎士的骨架長成了新的甲冑。它舉起長成劍形的珊瑚枝。',
+   pat:[{t:'a',v:12},{t:'d',v:13},{t:'h',v:18},{t:'m',v:7,x:2,nm:'連刺'}]},
+  {key:'mb2', n:'無面王', i:'🫥', hp:115, intro:'王座上的東西沒有臉。它戴上一張哭臉——然後開始笑。',
+   pat:[{t:'m',v:6,x:3,nm:'千手'},{t:'d',v:14},{t:'c',ap:{vuln:2},nm:'摘面'},{t:'g',nm:'凝聚'},{t:'h',v:24,nm:'王之一擊'}]},
+  {key:'mb3', n:'苦修大司祭', i:'📿', hp:130, intro:'他的眼睛縫得最緊，念珠上每一顆都是一枚人牙。「你來懺悔的路走得太慢了。」',
+   pat:[{t:'c',ap:{wound:2,weak:2},nm:'降罪'},{t:'a',v:16},{t:'d',v:15},{t:'h',v:26,nm:'苦行杖'}]},
+  {key:'mb4', n:'心瓣守衛', i:'🔱', hp:150, intro:'兩扇肉質的巨門之間站著它——深淵用最好的血肉鑄的鎖。',
+   pat:[{t:'d',v:19},{t:'h',v:28,nm:'閉鎖'},{t:'a',v:17},{t:'g',nm:'蓄壓'},{t:'h',v:34,nm:'噴射'}]},
+];
+const LORD_BOSSES = [
+  {key:'bb0', n:'守墓人', i:'⚰️', hp:120, intro:'一具拖著巨鏟的乾屍擋在路中央。它替整座淺穴收屍——現在輪到量你的尺寸了。',
+   pat:[{t:'a',v:11},{t:'d',v:12},{t:'c',ap:{weak:2},nm:'撒墓土'},{t:'g',nm:'高舉巨鏟'},{t:'h',v:23,nm:'落葬'}]},
+  {key:'bb1', n:'溺亡之王', i:'👑', hp:155, intro:'王座淹在水裡，泡脹的君主仍端坐著。王冠下的臉轉向你：「朕的國，不缺子民。」',
+   pat:[{t:'v',v:13,nm:'萬民供奉'},{t:'c',ap:{weak:2,vuln:1},nm:'溺令'},{t:'d',v:15},{t:'g',nm:'漲潮'},{t:'h',v:26,nm:'滅頂'}]},
+  {key:'bb2', n:'深淵之母', i:'🕷️', hp:185, intro:'無數細足在血肉的甬道裡沙沙作響。牠孵化了你一路殺過來的所有東西，而牠記仇。',
+   pat:[{t:'a',v:10,ap:{poison:3,wound:2},nm:'毒牙'},{t:'v',v:15,nm:'吸食'},{t:'c',ap:{weak:2,vuln:2},nm:'織網'},{t:'h',v:22,nm:'撲殺'}]},
+  {key:'bb3', n:'盲眼主教', i:'🛐', hp:215, intro:'主教的眼睛在很多年前獻給了深淵。他朝你的方向精準地轉過頭：「看，多虔誠的祭品，自己走上了祭壇。」',
+   pat:[{t:'c',ap:{wound:2,vuln:2},nm:'禱告'},{t:'a',v:17,ap:{wound:1},nm:'聖鞭'},{t:'d',v:18},{t:'g',nm:'冷燭齊燃'},{t:'h',v:31,nm:'神罰'}]},
+];
+/* 詞綴 */
+const AFFIXES = {
+  str:  {n:'力量',   fmt:v=>`所有傷害 +${v}`,        min:1, max:4,  slots:'wt'},
+  vamp: {n:'吸血',   fmt:v=>`攻擊吸血 ${v}%`,        min:10,max:25, slots:'wt'},
+  crit: {n:'銳利',   fmt:v=>`爆擊率 +${v}%`,         min:5, max:18, slots:'wt'},
+  ptouch:{n:'淬毒之刃',fmt:v=>`攻擊附加 ${v} 層中毒`, min:1, max:2,  slots:'w'},
+  btouch:{n:'燃焰',  fmt:v=>`攻擊附加 ${v} 層燃燒`,   min:1, max:2,  slots:'w'},
+  plate:{n:'守勢',   fmt:v=>`每回合開始 +${v} 格擋`,  min:2, max:5,  slots:'at'},
+  hp:   {n:'堅韌',   fmt:v=>`生命上限 +${v}`,        min:8, max:24, slots:'at'},
+  agile:{n:'輕盈',   fmt:v=>`閃避率 +${v}%`,         min:5, max:14, slots:'at'},
+  thorn:{n:'荊棘',   fmt:v=>`反彈近身傷害 ${v}`,      min:2, max:6,  slots:'at'},
+  mend: {n:'急救',   fmt:v=>`戰鬥勝利後回復 ${v} 血`, min:4, max:10, slots:'at'},
+  greed:{n:'貪婪',   fmt:v=>`碎銀獲取 +${v}%`,       min:20,max:60, slots:'t'},
+  ener: {n:'蓄能',   fmt:v=>`每場戰鬥第一回合 +1 能量`,min:1, max:1,  slots:'wt'},
+  /* 傳說專屬：改變玩法的機制詞綴 */
+  vform:{n:'蝕魂',   fmt:v=>`攻擊不再造成傷害，改為施加其 60% 的中毒層數（以毒為源的傷害除外）`, min:1, max:1, slots:'w', leg:true},
+  wall: {n:'壁壘',   fmt:v=>`格擋不再於回合開始時消失`, min:1, max:1, slots:'a', leg:true},
+  fury: {n:'狂血',   fmt:v=>`所有傷害 +40%，但生命上限 -30%`, min:1, max:1, slots:'w', leg:true},
+  spark:{n:'燧心',   fmt:v=>`爆擊回復 1 能量（每回合至多 2 次）`, min:1, max:1, slots:'t', leg:true},
+  guts: {n:'不屈',   fmt:v=>`每場戰鬥第一次受到致死傷害時，改為保留 1 點生命`, min:1, max:1, slots:'a', leg:true},
+  luck7:{n:'賭運',   fmt:v=>`爆擊傷害倍率 1.6 → 2.1`, min:1, max:1, slots:'t', leg:true},
+  /* 詛咒（只出現在詛咒裝上） */
+  symbio:{n:'腐生',  fmt:v=>`敵人因中毒受傷時，你回復其 50% 的生命`, min:1, max:1, slots:'w', leg:true},
+  exem:  {n:'斬首',  fmt:v=>`對生命低於 30% 的敵人，傷害 +50%`, min:1, max:1, slots:'w', leg:true},
+  regen: {n:'血甲',  fmt:v=>`每回合開始回復 3 點生命`, min:1, max:1, slots:'a', leg:true},
+  feast: {n:'貪食',  fmt:v=>`擊殺敵人時回復 15% 生命上限`, min:1, max:1, slots:'t', leg:true},
+  bloodtax:{n:'血稅', fmt:v=>`每深入一層，失去 ${v} 點生命`, min:3, max:3, slots:'wat', curse:true},
+  heavy2:  {n:'沉重', fmt:v=>`閃避率歸零`, min:1, max:1, slots:'wat', curse:true},
+  frail:   {n:'脆弱', fmt:v=>`受到的傷害 +15%`, min:1, max:1, slots:'wat', curse:true},
+};
+const CURSE_KEYS = ['bloodtax','heavy2','frail'];
+const LEG_KEYS = ['vform','wall','fury','spark','guts','luck7','symbio','exem','regen','feast'];
+function hasCurse(key){ for(const sl of ['w','a','t']){ const it=G.equip[sl]; if(it && it.affixes.some(a=>a.k===key)) return true; } return false; }
+const RARITIES = [
+  {id:'white', n:'普通', cls:'r-white', b:'b-white', afx:[0,1], mult:0, val:0.7, upCap:3},
+  {id:'blue',  n:'精良', cls:'r-blue',  b:'b-blue',  afx:[1,2], mult:1, val:1.0, upCap:6},
+  {id:'gold',  n:'稀有', cls:'r-gold',  b:'b-gold',  afx:[2,3], mult:2, val:1.35, upCap:9},
+  {id:'orange',n:'傳說', cls:'r-orange',b:'b-orange',afx:[3,4], mult:4, val:1.8, upCap:12},
+];
+function rollAffixVal(k, ri, floor){
+  const a = AFFIXES[k];
+  if(a.min === a.max) return a.min;
+  if(PCT_KEYS.includes(k)){
+    // 百分比詞綴：稀有度提高取樣次數（偏向區間頂端），絕不突破原始上限
+    let best = a.min;
+    for(let i=0; i<=ri; i++) best = Math.max(best, rnd(a.min, a.max));
+    return best;
+  }
+  const cv = 1 + cycVal((R&&R.cycle)||0);
+  const v = rnd(a.min, a.max) * RARITIES[ri].val * (1 + floor*0.012) * cv;
+  return Math.max(1, Math.round(Math.min(a.max * RARITIES[ri].val * 1.25 * cv, v)));
+}
+const WEAPON_NAMES = ['短劍','彎刀','手斧','刺劍','法杖','骨刃','戰錘','雙刃'];
+const ARMOR_NAMES  = ['皮甲','鎖甲','法袍','胸甲','斗篷','鱗甲'];
+const TRINKET_NAMES= ['戒指','護符','懷錶','骨墜','油燈','指環'];
+const PREFIX = {white:['破舊的','素面的','無名的'], blue:['精良的','工匠的','磨亮的'],
+  gold:['符文','低語的','深淵紋'], orange:['王殞','噬光','無面','母巢']};
+const POTIONS = {
+  heal:{n:'治療藥水', i:'🧪', d:'回復 22 點生命', battle:true, any:true},
+  energy:{n:'烈酒',   i:'🍶', d:'本回合 +2 能量', battle:true, any:false},
+  bomb:{n:'火油瓶',   i:'🔥', d:'對敵人造成 16 點傷害', battle:true, any:false},
+  purge:{n:'淨化藥水', i:'💧', d:'清除自身所有負面狀態', battle:true, any:true},
+  wrath:{n:'狂暴藥劑', i:'🧨', d:'本場戰鬥傷害 +50%', battle:true, any:false, m:20},
+  stone:{n:'石膚藥劑', i:'🪨', d:'獲得 20 點格擋', battle:true, any:false, m:20},
+  holy:{n:'聖水',     i:'💦', d:'對所有敵人 14 傷害，清除自身異常', battle:true, any:false, m:20},
+};
+function potionPool(){ return Object.keys(POTIONS).filter(k=>!POTIONS[k].m || G.rec.deep >= POTIONS[k].m); }
+function potPower(k){
+  const f = R? R.floor : 1;
+  if(k==='heal') return Math.round(playerMaxHp()*0.3);
+  if(k==='bomb') return 12 + Math.round(f*1.5);
+  if(k==='stone') return 14 + Math.round(f*0.6);
+  if(k==='holy') return 10 + Math.round(f*0.5);
+  return 0;
+}
+function pdesc(k){
+  const p = POTIONS[k];
+  if(k==='heal') return `回復 ${potPower(k)} 點生命（30% 上限）`;
+  if(k==='bomb') return `對敵人造成 ${potPower(k)} 點傷害，易傷 2 回合`;
+  if(k==='stone') return `獲得 ${potPower(k)} 點格擋`;
+  if(k==='holy') return `對所有敵人 ${potPower(k)} 傷害，清除自身異常`;
+  return p.d;
+}
+function potAdd(k){
+  if(!R.pots) R.pots = {};
+  if(R.pots[k]){ if(R.pots[k] >= 3) return false; R.pots[k]++; return true; }
+  if(Object.keys(R.pots).length >= 4) return false;
+  R.pots[k] = 1; return true;
+}
+function potTotal(){ return R && R.pots ? Object.values(R.pots).reduce((a,b)=>a+b,0) : 0; }
+/* ================= 狀態 ================= */
+const SAVE_KEY = 'abyss-save-v1';
+let G = null;       // 永久資料
+let R = null;       // 本次探索
+let B = null;       // 戰鬥
+let uid = 1;
+
+const rnd = (a,b)=>a+Math.floor(Math.random()*(b-a+1));
+const pick = arr=>arr[Math.floor(Math.random()*arr.length)];
+const $ = id=>document.getElementById(id);
+
+function newSave(){ return {cls:null, gold:0, stash:[], equip:{w:null,a:null,t:null},
+  rec:{deep:0,runs:0,boss:0}, mats:{iron:0,steel:0}, codex:{}, cyc:{unlocked:0},
+  orig:{deep:0,cp:0,done:false}, cycData:{}, run:null, uid:1}; }
+const MATS = {iron:{n:'沉鐵', i:'⛓️', d:'沉到這個深度的鐵，比地面的密'}, steel:{n:'心鋼', i:'🔩', d:'離心臟越近的金屬，越記得跳動'}};
+const REALMS = [
+  {n:'淺穴',     i:'🕳️', from:1,  to:10,  intro:'潮濕的岩壁上還留著前人的火把痕跡。這裡死的人最多——因為來的人最多。'},
+  {n:'沉沒王國', i:'🏛️', from:11, to:20,  intro:'一座整個沉進深淵的古國。街道還在，只是走在上面的東西換了。水從天花板往上流。'},
+  {n:'血肉迴廊', i:'🫁', from:21, to:30,  rule:'heal75', intro:'牆壁是溫的，而且有脈搏。你走的不是通道，是血管。\n\n此域一切回復效果 -25%。'},
+  {n:'無光教區', i:'🕯️', from:31, to:40,  intro:'地底的教團在這裡崇拜深淵。他們縫上了自己的眼睛——「看不見的信仰才純粹」。\n\n燭火全是冷的。'},
+  {n:'心室',     i:'🫀', from:41, to:50,  intro:'越走越熱，牆壁的搏動和你的心跳漸漸同步。你已經在它的心臟裡了。'},
+  {n:'淵底',     i:'🌑', from:51, to:99999, intro:'心臟之下還有東西。沒有人到過這裡——現在有了。'},
+];
+function realmFor(floor){ return REALMS.find(z=>floor>=z.from && floor<=z.to); }
+function healMult(){ const z = R? realmFor(R.floor):null; return (z && z.rule==='heal75')? 0.75 : 1; }
+function save(){ G.run = R; G.uid = uid; localStorage.setItem(SAVE_KEY, JSON.stringify(G));
+  const cg = document.getElementById('camp-gold'); if(cg) cg.textContent = G.gold;
+  const sc = document.getElementById('stash-count'); if(sc) sc.textContent = `倉庫 ${G.stash.length} 件`;
+  const gg = document.getElementById('gear-gold'); if(gg) gg.textContent = '🪙 ' + G.gold;
+}
+function load(){ try{ const d = localStorage.getItem(SAVE_KEY); if(d){ G = JSON.parse(d); uid = G.uid||1; R = G.run||null;
+  if(!G.mats) G.mats = {iron:0, steel:0};
+  if(!G.codex) G.codex = {};
+  if(!G.cyc) G.cyc = {unlocked: G.rec.clear? 1:0};
+  if(!G.orig){
+    const dp = Math.min(G.rec.deep||0, 50);
+    G.orig = {deep:dp, cp:Math.min(45, Math.max(0, Math.floor((dp-1)/5)*5)), done:false};
+    G.cycData = {};
+    const map = {boss0:'bb0', boss1:'bb2', boss2:'mb2'};
+    for(const [ok,nk] of Object.entries(map)){
+      if(G.codex[ok]){ G.codex[nk] = (G.codex[nk]||0) + G.codex[ok]; delete G.codex[ok]; }
+    }
+    R = null; G.run = null; // v2 結構變動過大，舊探索不續
+  }
+  if(!G.cycData) G.cycData = {};
+  if(R && Array.isArray(R.potions)){ R.pots = {}; for(const k of R.potions) R.pots[k] = Math.min(3,(R.pots[k]||0)+1); delete R.potions; }
+  if(R && !R.pots) R.pots = {};
+  return true; } }catch(e){} G = newSave(); return false; }
+
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('show'));
+  $(id).classList.add('show');
+  $(id).scrollTop = 0;
+}
+let toastT = null;
+function toast(msg){ const t=$('toast'); t.textContent=msg; t.classList.add('show');
+  clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),1600); }
+
+/* ================= 裝備生成 ================= */
+function rollRarity(floor, bonus){ // bonus: 0一般 1精英 2首領
+  const cyc = (R&&R.cycle)||0;
+  let w = Math.max(46 - floor*3 - bonus*18 - cyc*12, 2);
+  let b = Math.max(32 + bonus*4 - cyc*6, 6);
+  let g = 13 + floor*1.1 + bonus*10 + cyc*8;
+  let o = 2.5 + floor*0.8 + bonus*7 + cyc*6;
+  const total = w+b+g+o; let r = Math.random()*total;
+  if((r-=w)<0) return 0; if((r-=b)<0) return 1; if((r-=g)<0) return 2; return 3;
+}
+function makeItem(floor, bonus){
+  const ri = rollRarity(floor, bonus||0), rar = RARITIES[ri];
+  const slot = pick(['w','w','a','a','t']);
+  const it = {id:uid++, slot, rar:ri, up:0, banked:false, affixes:[]};
+  if(slot==='w'){ it.base = Math.round(2 + floor*0.7 + rar.mult); it.name = pick(WEAPON_NAMES); }
+  else if(slot==='a'){ it.base = Math.round(7 + floor*1.3 + rar.mult*4); it.name = pick(ARMOR_NAMES); }
+  else { it.base = 0; it.name = pick(TRINKET_NAMES); }
+  it.name = pick(PREFIX[rar.id]) + it.name;
+  const n = rnd(rar.afx[0], rar.afx[1]);
+  const pool = Object.keys(AFFIXES).filter(k=>AFFIXES[k].slots.includes(slot) && !AFFIXES[k].leg && !AFFIXES[k].curse);
+  const chosen = [];
+  for(let i=0;i<n && pool.length;i++){
+    const k = pool.splice(Math.floor(Math.random()*pool.length),1)[0];
+    chosen.push({k, v:rollAffixVal(k, ri, floor)});
+  }
+  it.affixes = chosen;
+  if(ri===3){
+    const legPool = LEG_KEYS.filter(k=>AFFIXES[k].slots.includes(slot));
+    if(legPool.length) it.affixes.unshift({k:pick(legPool), v:1});
+    if(Math.random() < 0.2){
+      it.cursed = true;
+      it.name = '詛咒的' + it.name;
+      for(const a of it.affixes) if(!AFFIXES[a.k].leg && a.v > 1) a.v = Math.round(a.v * 1.4);
+      const ck = pick(CURSE_KEYS);
+      it.affixes.push({k:ck, v:AFFIXES[ck].min});
+    }
+  }
+  return it;
+}
+function itemStatLine(it){
+  if(it.slot==='w') return `攻擊 +${it.base + it.up}`;
+  if(it.slot==='a') return `生命上限 +${it.base + it.up*4}`;
+  return '飾品';
+}
+function slotName(s){ return s==='w'?'武器':s==='a'?'護甲':'飾品'; }
+
+/* 彙總玩家所有詞綴 */
+function sumAffix(key){
+  let v = 0;
+  for(const s of ['w','a','t']){
+    const it = G.equip[s]; if(!it) continue;
+    for(const a of it.affixes) if(a.k===key && !AFFIXES[a.k].curse) v += a.v;
+  }
+  if(R && R.bless) for(const b of R.bless) if(b.k===key) v += b.v;
+  if(R && R.quench && R.quench.battles>0 && R.quench.k===key) v += R.quench.v;
+  return v;
+}
+function playerMaxHp(){
+  let hp = CLASSES[G.cls].hp + sumAffix('hp');
+  const a = G.equip.a; if(a) hp += a.base + a.up*4;
+  if(sumAffix('fury')) hp = Math.round(hp*0.7);
+  return Math.max(1, hp);
+}
+function playerAtk(){ const w = G.equip.w; return (w? w.base + w.up : 0) + sumAffix('str'); }
+function playerCrit(){ return cappedStat('crit', CLASSES[G.cls].crit + sumAffix('crit')); }
+
+/* ================= 標題 / 職業 ================= */
+function titleStart(){
+  if(!G.cls){ renderClassSelect(); showScreen('s-class'); return; }
+  if(R){ resumeRun(); return; }
+  renderCamp(); showScreen('s-camp');
+}
+function wipeConfirm(){
+  openSheet(`<h3>放棄一切？</h3><p class="base">職業、倉庫、紀錄全部歸零。這不是深淵的懲罰，是你自己選的。</p>
+  <div class="row" style="margin-top:14px"><button class="btn danger" onclick="wipeAll()">歸零</button>
+  <button class="btn" onclick="closeSheet()">算了</button></div>`);
+}
+function wipeAll(){ localStorage.removeItem(SAVE_KEY); G = newSave(); R=null; closeSheet(); titleStart(); }
+
+let pendingClass = null;
+function renderClassSelect(){
+  const g = $('class-grid'); g.innerHTML = '';
+  for(const [k,c] of Object.entries(CLASSES)){
+    const d = document.createElement('div');
+    d.className = 'class-card'; d.dataset.k = k;
+    d.innerHTML = `<div class="ci">${c.icon}</div><div class="cn">${c.name}</div>
+      <div class="cd">${c.desc}</div><div style="font-size:11px;color:var(--dim)">生命 ${c.hp}｜爆擊 ${c.crit}%</div>`;
+    d.onclick = ()=>{ document.querySelectorAll('.class-card').forEach(x=>x.classList.remove('selected'));
+      d.classList.add('selected'); pendingClass = k; };
+    g.appendChild(d);
+  }
+}
+function confirmClass(){
+  if(!pendingClass){ toast('先選一個職業'); return; }
+  G.cls = pendingClass; save(); renderCamp(); showScreen('s-camp');
+}
+
+/* ================= 營地 ================= */
+function renderCamp(){
+  const c = CLASSES[G.cls];
+  $('camp-cls').textContent = `${c.icon} ${c.name}`;
+  $('camp-gold').textContent = G.gold;
+  $('rec-deep').textContent = G.rec.deep;
+  $('rec-runs').textContent = G.rec.runs;
+  $('rec-boss').textContent = G.rec.boss;
+  $('stash-count').textContent = `倉庫 ${G.stash.length} 件`;
+  $('smith-hint').textContent = G.rec.deep>=10 ? '強化與重鑄' : '強化身上的武器與護甲';
+  const cu = cyclesUnlocked();
+  $('dive-hint').textContent = cu > 0
+    ? `本源 ${G.orig.deep}${G.orig.done?'✓':''}｜輪迴 ${'I'.repeat(Math.min(cu,3))}${cu>3?'+'+(cu-3):''} 開放`
+    : (G.orig.cp >= 5 ? `本源最深 ${G.orig.deep}｜傳送點至 ${G.orig.cp+1} 層` : '五十層的旅程，從這裡開始');
+  const seen = Object.keys(G.codex).length;
+  const total = Object.keys(ENEMIES).length + REALM_ELITES.length + MINI_BOSSES.length + LORD_BOSSES.length + 1;
+  $('codex-hint').textContent = `收錄 ${seen}/${total}`;
+  const mi = $('market-item');
+  if(G.rec.deep >= 30){ mi.style.display='flex'; $('market-hint').textContent='封條盲盒——開了才算數'; }
+  else mi.style.display='none';
+  const ms = [];
+  ms.push((G.rec.deep>=10?'✓':'🔒')+' 10層 鐵匠重鑄');
+  ms.push((G.rec.deep>=20?'✓':'🔒')+' 20層 深層藥劑');
+  ms.push((G.rec.deep>=30?'✓':'🔒')+' 30層 深淵黑市');
+  if(G.rec.clear) ms.push('🫀 通關 ×'+G.rec.clear);
+  const cun = cyclesUnlocked();
+  if(cun) ms.push('🔄 輪迴 ×'+cun);
+  if(G.orig.done) ms.push('🌅 本源完結');
+  $('milestone-line').textContent = ms.join('　');
+  save();
+}
+function marketStock(){
+  if(!G.market || G.market.run !== G.rec.runs){
+    const boxes = [];
+    const n = rnd(2,4);
+    const mk = (bonusRar)=>{
+      let it = makeItem(Math.max(12, Math.floor(G.rec.deep*0.8)), 2), tries = 0;
+      while(it.rar !== bonusRar && tries++ < 40) it = makeItem(Math.max(12, Math.floor(G.rec.deep*0.8)), 2);
+      if(it.rar !== bonusRar){ it.rar = bonusRar;
+        if(bonusRar===3 && !it.affixes.some(a=>AFFIXES[a.k].leg)){
+          const lp = LEG_KEYS.filter(k=>AFFIXES[k].slots.includes(it.slot));
+          if(lp.length) it.affixes.unshift({k:pick(lp), v:1});
+        } }
+      return it;
+    };
+    for(let i=0;i<n;i++){
+      const roll = Math.random();
+      if(roll < 0.12 && cyclesUnlocked() > 0){
+        const mk2 = Math.random()<0.5?'iron':'steel';
+        boxes.push({type:'mat', mat:mk2, qty:rnd(2,3), sold:false});
+      } else if(roll < 0.27){
+        const it = mk(Math.random()<0.35?3:2);
+        boxes.push({type:'open', item:it, sold:false});
+      } else {
+        const it = mk(Math.random()<0.32?3:2);
+        boxes.push({type:'box', item:it, sold:false});
+      }
+    }
+    G.market = {run:G.rec.runs, boxes};
+    save();
+  }
+  return G.market;
+}
+function boxPrice(b){
+  if(b.type==='mat') return 100 + G.rec.deep*2;
+  const base = b.item.rar===3 ? 480 + G.rec.deep*6 : 140 + G.rec.deep*2;
+  return b.type==='open' ? Math.round(base*1.3) : base;
+}
+function openMarket(){
+  const m = marketStock();
+  let html = `<h3>深淵黑市</h3><p class="base">燭火後面的攤主沒有露臉。今晚的貨——有封著的，有拆過的，看你信不信自己的手氣。</p><div class="item-list" style="margin-top:8px">`;
+  m.boxes.forEach((b, i)=>{
+    if(b.sold){ html += `<div class="item-row" style="opacity:.4"><span class="in">已售出</span></div>`; return; }
+    const price = boxPrice(b);
+    if(b.type==='mat'){
+      html += `<div class="item-row" onclick="buyBox(${i})">
+        <span class="in">${MATS[b.mat].i} ${MATS[b.mat].n} ×${b.qty}</span>
+        <span class="is">精煉材料｜${price}🪙</span></div>`;
+    } else if(b.type==='open'){
+      const it = b.item, r = RARITIES[it.rar];
+      html += `<div class="item-row ${r.b}" onclick="peekOpen(${i})">
+        <span class="in ${r.cls}">📭 ${it.name}</span>
+        <span class="is">拆封品・詞綴可見｜${price}🪙</span></div>`;
+    } else {
+      const it = b.item, r = RARITIES[it.rar];
+      html += `<div class="item-row ${r.b}" onclick="buyBox(${i})">
+        <span class="in ${r.cls}">🎁 ${r.n}之盒</span>
+        <span class="is">${slotName(it.slot)}｜詞綴未知｜${price}🪙</span></div>`;
+    }
+  });
+  html += `</div>
+    <button class="btn small" style="margin-top:10px" onclick="rerollMarket()">🎲 換一批貨（80🪙）</button>
+    <p style="color:var(--dim);font-size:12px;margin-top:10px">🪙 ${G.gold}｜傳說之盒保底一條傳說詞綴，但也可能是詛咒品——攤主概不負責。</p>
+    <button class="btn" style="margin-top:6px" onclick="closeSheet()">離開</button>`;
+  openSheet(html);
+}
+function peekOpen(i){
+  const b = G.market.boxes[i];
+  if(!b || b.sold) return;
+  const it = b.item, r = RARITIES[it.rar], price = boxPrice(b);
+  openSheet(`<h3>拆封品</h3>
+    <div class="loot-card ${r.b}"><div class="${r.cls}" style="font-size:16px">${it.name} <span style="font-size:11px">${r.n}</span></div>
+    <div style="font-size:13px;color:var(--dim);margin:4px 0">${slotName(it.slot)}｜${itemStatLine(it)}</div>
+    ${affixHtml(it)}${compareHtml(it)}</div>
+    <p class="base">拆過的貨，看得清楚，也貴三成。</p>
+    <div class="row" style="margin-top:10px">
+      <button class="btn primary" onclick="buyBox(${i})">買下 ${price}🪙</button>
+      <button class="btn" onclick="openMarket()">再看看</button></div>`);
+}
+function rerollMarket(){
+  if(G.gold < 80){ toast('碎銀不夠'); return; }
+  G.gold -= 80;
+  G.market = null;
+  marketStock();
+  openMarket();
+}
+function buyBox(i){
+  const m = G.market;
+  const b = m.boxes[i];
+  if(!b || b.sold) return;
+  const price = boxPrice(b);
+  if(G.gold < price){ toast('碎銀不夠'); return; }
+  G.gold -= price;
+  b.sold = true;
+  if(b.type==='mat'){
+    G.mats[b.mat] = (G.mats[b.mat]||0) + b.qty;
+    save(); openMarket(); toast(`入手 ${MATS[b.mat].n} ×${b.qty}`);
+    return;
+  }
+  b.item.banked = true;
+  G.stash.push(b.item);
+  save();
+  const it = b.item, r = RARITIES[it.rar];
+  openSheet(`<h3>${b.type==='open'?'成交':'開盒'}</h3>
+    <div class="loot-card ${r.b}"><div class="${r.cls}" style="font-size:16px">${it.name} <span style="font-size:11px">${r.n}</span></div>
+    <div style="font-size:13px;color:var(--dim);margin:4px 0">${slotName(it.slot)}｜${itemStatLine(it)}</div>
+    ${affixHtml(it)}</div>
+    <p class="base">${it.cursed?'攤主的方向傳來一聲很輕的笑。':'已存入倉庫。'}</p>
+    <div class="row" style="margin-top:10px">
+      <button class="btn" onclick="openMarket()">繼續看貨</button>
+      <button class="btn" onclick="closeSheet()">離開</button></div>`);
+}
+function openSaveMgr(){
+  openSheet(`<h3>存檔管理</h3>
+    <p class="base">瀏覽器可能在長期未使用後清除存檔。建議定期匯出備份，貼到備忘錄保存。</p>
+    <button class="btn primary" onclick="exportSave()">匯出存檔</button>
+    <div style="height:8px"></div>
+    <button class="btn" onclick="importSaveUI()">匯入存檔</button>
+    <div style="height:8px"></div>
+    <button class="btn" onclick="closeSheet()">關閉</button>`);
+}
+function exportSave(){
+  save();
+  const code = btoa(unescape(encodeURIComponent(localStorage.getItem(SAVE_KEY))));
+  openSheet(`<h3>匯出存檔</h3>
+    <p class="base">全選複製下面這串，貼到備忘錄保存：</p>
+    <textarea id="sv-out" readonly style="width:100%;height:120px;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px;font-size:11px">${code}</textarea>
+    <button class="btn primary" style="margin-top:8px" onclick="const t=document.getElementById('sv-out');t.select();t.setSelectionRange(0,999999);document.execCommand('copy');toast('已複製')">全選並複製</button>
+    <button class="btn" style="margin-top:8px" onclick="closeSheet()">關閉</button>`);
+}
+function importSaveUI(){
+  openSheet(`<h3>匯入存檔</h3>
+    <p class="base">貼上之前匯出的存檔碼。<span style="color:var(--red)">會覆蓋現有進度。</span></p>
+    <textarea id="sv-in" style="width:100%;height:120px;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px;font-size:11px" placeholder="貼在這裡"></textarea>
+    <button class="btn primary" style="margin-top:8px" onclick="importSave()">匯入並覆蓋</button>
+    <button class="btn" style="margin-top:8px" onclick="closeSheet()">取消</button>`);
+}
+function importSave(){
+  try{
+    const raw = document.getElementById('sv-in').value.trim();
+    const json = decodeURIComponent(escape(atob(raw)));
+    const data = JSON.parse(json);
+    if(!data.cls || !data.rec) throw new Error('格式不對');
+    localStorage.setItem(SAVE_KEY, json);
+    G = null; R = null; B = null; load();
+    closeSheet(); renderCamp(); showScreen('s-camp');
+    toast('匯入成功');
+  }catch(e){ toast('匯入失敗：存檔碼無效'); }
+}
+function openCodex(){
+  let html = '<h3>深淵圖鑑</h3><p class="base">殺過的東西會留在紙上。首次收錄 +30🪙。</p>';
+  const row = e => {
+    const kills = G.codex[e.key];
+    return kills
+      ? `<div class="item-row"><span class="in">${e.i} ${e.boss?'<span class="r-orange">'+e.n+'</span>':e.n}</span><span class="is">擊殺 ×${kills}</span></div>`
+      : `<div class="item-row" style="opacity:.4"><span class="in">❓ ？？？</span><span class="is">未收錄</span></div>`;
+  };
+  REALMS.slice(0,5).forEach((z, ri)=>{
+    html += `<div class="section-title">${z.i} ${z.n}</div><div class="item-list">`;
+    for(const [k,e] of Object.entries(ENEMIES)) if(e.realm===ri) html += row({key:k, n:e.n, i:e.i});
+    const re = REALM_ELITES[ri];
+    html += row({key:re.key, n:re.n, i:re.i, boss:true});
+    html += row({key:MINI_BOSSES[ri].key, n:MINI_BOSSES[ri].n, i:MINI_BOSSES[ri].i, boss:true});
+    if(LORD_BOSSES[ri]) html += row({key:LORD_BOSSES[ri].key, n:LORD_BOSSES[ri].n, i:LORD_BOSSES[ri].i, boss:true});
+    else html += row({key:'final', n:FINAL_BOSS.n, i:FINAL_BOSS.i, boss:true});
+    html += '</div>';
+  });
+  html += '<button class="btn" style="margin-top:12px" onclick="closeSheet()">關閉</button>';
+  openSheet(html);
+}
+var stashFilter = 'all';
+function openGear(){ renderGear(); showScreen('s-gear'); }
+function renderGear(){
+  $('gear-gold').textContent = '🪙 ' + G.gold;
+  const er = $('equip-row'); er.innerHTML = '';
+  for(const s of ['w','a','t']){
+    const it = G.equip[s];
+    const d = document.createElement('div'); d.className = 'slot';
+    d.innerHTML = it
+      ? `<div class="sl">${slotName(s)}</div><div class="sn ${RARITIES[it.rar].cls}">${it.name}${it.up?'+'+it.up:''}</div><div style="font-size:11px;color:var(--dim)">${itemStatLine(it)}</div>`
+      : `<div class="sl">${slotName(s)}</div><div class="sn" style="color:var(--dim)">— 空 —</div>`;
+    if(it) d.onclick = ()=>openItemSheet(it, 'equipped');
+    er.appendChild(d);
+  }
+  const sl = $('stash-list'); sl.innerHTML = '';
+  if(!G.stash.length){ sl.innerHTML = '<p style="color:var(--dim);font-size:13px">倉庫空空。深淵裡什麼都有，去搬。</p>'; }
+  else {
+    const fr = document.createElement('div');
+    fr.className = 'row'; fr.style.cssText = 'gap:6px;margin-bottom:8px';
+    for(const [f, label] of [['all','全部'],['w','武器'],['a','護甲'],['t','飾品']]){
+      const b = document.createElement('button');
+      b.className = 'btn small' + (stashFilter===f?' primary':'');
+      b.style.flex = '1';
+      b.textContent = label + (f==='all' ? ` ${G.stash.length}` : ` ${G.stash.filter(i=>i.slot===f).length}`);
+      b.onclick = ()=>{ stashFilter = f; renderGear(); };
+      fr.appendChild(b);
+    }
+    sl.appendChild(fr);
+    const junk = G.stash.filter(i=>i.rar<=1);
+    if(junk.length>=2){
+      const v = junk.reduce((s,i)=>s+6+i.rar*10+Math.floor(i.base/2),0);
+      const bd = document.createElement('button');
+      bd.className='btn small'; bd.style.marginBottom='6px';
+      bd.textContent = `一鍵分解 普通+精良 ×${junk.length}（+${v}🪙）`;
+      bd.onclick = ()=>{ G.stash = G.stash.filter(i=>i.rar>1); G.gold += v; save(); renderGear(); toast(`分解 ${junk.length} 件，得 ${v} 碎銀`); };
+      sl.appendChild(bd);
+    }
+  }
+  const slotOrder = {w:0, a:1, t:2};
+  const sorted = G.stash
+    .filter(i=>stashFilter==='all' || i.slot===stashFilter)
+    .sort((a,b)=>(slotOrder[a.slot]-slotOrder[b.slot]) || (b.rar-a.rar) || ((b.base+b.up)-(a.base+a.up)));
+  for(const it of sorted){
+    const d = document.createElement('div'); d.className = `item-row ${RARITIES[it.rar].b}`;
+    d.innerHTML = `<span class="in ${RARITIES[it.rar].cls}">${it.name}${it.up?'+'+it.up:''}</span>
+      <span class="is">${slotName(it.slot)}｜${itemStatLine(it)}</span>`;
+    d.onclick = ()=>openItemSheet(it, 'stash');
+    sl.appendChild(d);
+  }
+}
+function affixHtml(it){
+  return it.affixes.map(a=>{
+    const A = AFFIXES[a.k];
+    const cls = A.curse?' curse':A.leg?' leg':'';
+    const mark = A.curse?'☠':A.leg?'✸':'◆';
+    return `<div class="affix${cls}">${mark} ${A.n}：${A.fmt(a.v)}</div>`;
+  }).join('') || '<div class="affix" style="color:var(--dim)">（無詞綴）</div>';
+}
+function compareHtml(it){
+  const cur = G.equip[it.slot];
+  if(!cur || cur.id===it.id) return '';
+  let lines = [`<div class="cmp">目前身上：<span class="${RARITIES[cur.rar].cls}">${cur.name}${cur.up?'+'+cur.up:''}</span>　<span style="color:var(--dim)">${itemStatLine(cur)}</span>`];
+  if(it.slot==='w'){ const d = (it.base+it.up)-(cur.base+cur.up);
+    lines.push(`<div>攻擊差 ${d>=0?'<span class="up">+'+d+'</span>':'<span class="dn">'+d+'</span>'}</div>`); }
+  if(it.slot==='a'){ const d = (it.base+it.up*4)-(cur.base+cur.up*4);
+    lines.push(`<div>生命差 ${d>=0?'<span class="up">+'+d+'</span>':'<span class="dn">'+d+'</span>'}</div>`); }
+  lines.push(`<div style="margin-top:4px">${affixHtml(cur)}</div>`);
+  lines.push('</div>');
+  return lines.join('');
+}
+function openItemSheet(it, from){
+  const r = RARITIES[it.rar];
+  const salvage = 6 + it.rar*10 + Math.floor(it.base/2);
+  const backCall = from==='bag' ? 'openRunStats()' : 'closeSheet()';
+  let btns = '';
+  if(from==='stash') btns = `<button class="btn primary" onclick="equipFromStash(${it.id})">裝備</button>
+    <button class="btn danger" onclick="salvageItem(${it.id})">分解 +${salvage}🪙</button>`;
+  else if(from==='equipped') btns = `<button class="btn" onclick="unequipItem('${it.slot}')">卸下</button>`;
+  else if(from==='bag') btns = `<button class="btn primary" onclick="equipFromBag(${it.id},'stats')">立刻換上</button>`;
+  openSheet(`<h3 class="${r.cls}">${it.name}${it.up?' +'+it.up:''}</h3>
+    <div class="base">${r.n}${slotName(it.slot)}｜${itemStatLine(it)}${it.banked===false&&from!=='equipped'&&R?'｜<span style="color:var(--orange)">未保管</span>':''}</div>
+    ${affixHtml(it)}${compareHtml(it)}
+    <div class="row" style="margin-top:16px">${btns}<button class="btn" onclick="${backCall}">${from==='bag'?'返回':'關閉'}</button></div>`);
+}
+function equipFromStash(id){
+  const i = G.stash.findIndex(x=>x.id===id); if(i<0) return;
+  const it = G.stash.splice(i,1)[0];
+  if(G.equip[it.slot]) G.stash.push(G.equip[it.slot]);
+  G.equip[it.slot] = it; closeSheet(); renderGear(); save(); toast('已裝備 '+it.name);
+}
+function unequipItem(s){
+  if(!G.equip[s]) return; G.stash.push(G.equip[s]); G.equip[s]=null;
+  closeSheet(); renderGear(); save();
+}
+function salvageItem(id){
+  const i = G.stash.findIndex(x=>x.id===id); if(i<0) return;
+  const it = G.stash[i];
+  const v = 6 + it.rar*10 + Math.floor(it.base/2);
+  G.stash.splice(i,1); G.gold += v; closeSheet(); renderGear(); save(); toast(`分解得 ${v} 碎銀`);
+}
+function openRunStats(){
+  const rows = [];
+  rows.push(['⚔️ 攻擊加成', '+'+playerAtk()]);
+  rows.push(['❤️ 生命上限', playerMaxHp()]);
+  const rawCrit = CLASSES[G.cls].crit + sumAffix('crit');
+  rows.push(['🎯 爆擊率', playerCrit()+'%'+(rawCrit>STAT_CAPS.crit?'（上限'+STAT_CAPS.crit+'）':'')]);
+  const extra = [
+    ['agile','💨 閃避', v=>cappedStat('agile',v)+'%'+(v>STAT_CAPS.agile?'（上限'+STAT_CAPS.agile+'）':'')],
+    ['vamp','🩸 吸血', v=>cappedStat('vamp',v)+'%'+(v>STAT_CAPS.vamp?'（上限'+STAT_CAPS.vamp+'）':'')],
+    ['plate','🛡 守勢', v=>'每回合 +'+v+' 格擋'], ['thorn','🌵 荊棘', v=>'反彈 '+v],
+    ['ptouch','☠️ 淬毒', v=>'攻擊附 '+v+' 中毒'], ['btouch','🔥 燃焰', v=>'攻擊附 '+v+' 燃燒'],
+    ['mend','💊 急救', v=>'戰後回 '+v+' 血'], ['greed','🪙 貪婪', v=>'+'+v+'%'],
+    ['ener','⚡ 蓄能', v=>'首回合 +1 能量'],
+    ['vform','✸ 蝕魂', v=>'攻擊轉中毒'], ['wall','✸ 壁壘', v=>'格擋不消失'],
+    ['fury','✸ 狂血', v=>'傷害+40% 血-30%'], ['spark','✸ 燧心', v=>'爆擊回能量'],
+    ['symbio','✸ 腐生', v=>'毒傷回血50%'], ['exem','✸ 斬首', v=>'低血敵傷害+50%'],
+    ['regen','✸ 血甲', v=>'每回合回3血'], ['feast','✸ 貪食', v=>'擊殺回15%血'],
+    ['guts','✸ 不屈', v=>'免死一次/場'], ['luck7','✸ 賭運', v=>'爆傷2.1倍'],
+  ];
+  for(const [k, label, fmt] of extra){ const v = sumAffix(k); if(v>0) rows.push([label, fmt(v)]); }
+  let html = '<h3>角色檢視</h3><div class="stat-grid" style="grid-template-columns:1fr 1fr">' +
+    rows.map(([k,v])=>`<div class="stat-box"><div class="v" style="font-size:15px">${v}</div><div class="k">${k}</div></div>`).join('') + '</div>';
+  html += '<div class="section-title">身上裝備</div>';
+  for(const sk of ['w','a','t']){
+    const it = G.equip[sk];
+    if(!it){ html += `<div class="base">${slotName(sk)}：—</div>`; continue; }
+    html += `<div class="loot-card ${RARITIES[it.rar].b}" style="margin:8px 0;padding:10px">
+      <div class="${RARITIES[it.rar].cls}" style="font-size:15px">${it.name}${it.up?' +'+it.up:''}
+        <span style="font-size:11px">${RARITIES[it.rar].n}${it.banked===false?'・<span style="color:var(--orange)">未保管</span>':''}</span></div>
+      <div style="font-size:12px;color:var(--dim)">${slotName(sk)}｜${itemStatLine(it)}</div>
+      ${affixHtml(it)}</div>`;
+  }
+  if(R && R.bless.length){
+    html += '<div class="section-title">本次祝福</div>';
+    const bn = {str:'力量',crit:'銳利',vamp:'血契',plate:'守勢',hp:'堅韌'};
+    html += R.bless.map(b=>`<div class="affix">✦ ${bn[b.k]||b.k} +${b.v}</div>`).join('');
+  }
+  if(R && R.bag.length){
+    html += `<div class="section-title">行囊（${R.bag.length} 件・未保管）</div><div class="item-list">`;
+    for(const it of R.bag){
+      html += `<div class="item-row ${RARITIES[it.rar].b}" onclick="openBagItem(${it.id})">
+        <span class="in ${RARITIES[it.rar].cls}">${it.name}</span>
+        <span class="is">${slotName(it.slot)}｜${itemStatLine(it)}</span></div>`;
+    }
+    html += '</div>';
+  }
+  html += '<button class="btn" style="margin-top:14px" onclick="closeSheet()">關閉</button>';
+  openSheet(html);
+}
+function openBagItem(id){
+  const it = R.bag.find(x=>x.id===id); if(!it) return;
+  openItemSheet(it, 'bag');
+}
+function openSheet(html){ $('sheet').innerHTML = html; $('sheet-mask').classList.add('show'); }
+function closeSheet(){ $('sheet-mask').classList.remove('show'); }
+
+/* ================= 鐵匠 ================= */
+function openSmith(){ renderSmith(); showScreen('s-smith'); }
+function smithCost(it){ return Math.round(30 * Math.pow(it.up+1, 1.5)); }
+function smithTier(up){ // 下一級(up+1)的需求與成功率
+  const next = up + 1;
+  if(next <= 6) return {mat:null, rate:100};
+  if(next <= 9) return {mat:'iron', rate:[90,80,70][next-7]};
+  return {mat:'steel', rate:[80,70,60][next-10]};
+}
+function tryUpgrade(sl){
+  const it = G.equip[sl]; if(!it) return;
+  const cap = RARITIES[it.rar].upCap;
+  if(it.up >= cap){ toast('已達此稀有度的精煉上限'); return; }
+  const cost = smithCost(it), tier = smithTier(it.up);
+  if(G.gold < cost){ toast('碎銀不夠'); return; }
+  if(tier.mat && (G.mats[tier.mat]||0) < 1){ toast('缺少材料：'+MATS[tier.mat].n); return; }
+  G.gold -= cost;
+  if(tier.mat) G.mats[tier.mat]--;
+  if(Math.random()*100 < tier.rate){
+    it.up++;
+    toast(`精煉成功：${it.name} +${it.up}`);
+  } else {
+    toast('精煉失敗——材料在鐵砧上碎成了灰。（等級未降）');
+  }
+  save(); renderSmith();
+}
+function reforgeCost(it){ return Math.round((60 + it.rar*40) * Math.pow(1.5, it.rf||0)); }
+var pendingReforge = null;
+function reforgeItem(slot){
+  const it = G.equip[slot]; if(!it) return;
+  const cost = reforgeCost(it);
+  if(G.gold < cost){ toast('碎銀不夠'); return; }
+  G.gold -= cost;
+  it.rf = (it.rf||0) + 1;
+  const legs = it.affixes.filter(a=>AFFIXES[a.k].leg);
+  const curses = it.affixes.filter(a=>AFFIXES[a.k].curse);
+  const n = it.affixes.length - legs.length - curses.length;
+  const pool = Object.keys(AFFIXES).filter(k=>AFFIXES[k].slots.includes(it.slot) && !AFFIXES[k].leg && !AFFIXES[k].curse);
+  const chosen = [];
+  for(let i=0;i<n && pool.length;i++){
+    const k = pool.splice(Math.floor(Math.random()*pool.length),1)[0];
+    let v = rollAffixVal(k, it.rar, G.rec.deep);
+    if(it.cursed) v = Math.round(v*1.4);
+    chosen.push({k, v});
+  }
+  pendingReforge = {slot, affixes: legs.concat(curses).concat(chosen)};
+  save();
+  const oldList = it.affixes.filter(a=>!AFFIXES[a.k].leg && !AFFIXES[a.k].curse)
+    .map(a=>`<div class="affix">◆ ${AFFIXES[a.k].n}：${AFFIXES[a.k].fmt(a.v)}</div>`).join('') || '<div class="affix" style="color:var(--dim)">（無）</div>';
+  const newList = chosen.map(a=>`<div class="affix">◆ ${AFFIXES[a.k].n}：${AFFIXES[a.k].fmt(a.v)}</div>`).join('') || '<div class="affix" style="color:var(--dim)">（無）</div>';
+  openSheet(`<h3>重鑄・${it.name}</h3>
+    <p class="base">鐵匠把新詞綴敲了出來，攤在鐵砧上讓你過目。傳說與詛咒詞綴不受影響。</p>
+    <div class="section-title">原本的</div>${oldList}
+    <div class="section-title">新鑄的</div>${newList}
+    <div class="row" style="margin-top:16px">
+      <button class="btn primary" onclick="applyReforge()">換上新的</button>
+      <button class="btn" onclick="cancelReforge()">保留原本</button></div>
+    <p style="color:var(--dim);font-size:12px;margin-top:8px">重鑄費已付，不論去留。</p>`);
+}
+function applyReforge(){
+  if(!pendingReforge) return;
+  const it = G.equip[pendingReforge.slot];
+  if(it) it.affixes = pendingReforge.affixes;
+  pendingReforge = null;
+  save(); closeSheet(); renderSmith(); toast('新詞綴已上身');
+}
+function cancelReforge(){
+  pendingReforge = null;
+  closeSheet(); renderSmith(); toast('保留了原本的詞綴');
+}
+function renderSmith(){
+  const list = $('smith-list'); list.innerHTML='';
+  let any = false;
+  for(const sl of ['w','a']){
+    const it = G.equip[sl]; if(!it) continue; any = true;
+    const cost = smithCost(it);
+    const gain = sl==='w' ? '攻擊 +1' : '生命 +4';
+    const cap = RARITIES[it.rar].upCap;
+    const tier = smithTier(it.up);
+    const d = document.createElement('div'); d.className = `item-row ${RARITIES[it.rar].b}`;
+    if(it.up >= cap){
+      d.innerHTML = `<span class="in ${RARITIES[it.rar].cls}">${it.name}+${it.up}</span>
+        <span class="is">已達${RARITIES[it.rar].n}上限 +${cap}</span>`;
+    } else {
+      const matTxt = tier.mat ? `+${MATS[tier.mat].i}${MATS[tier.mat].n}×1` : '';
+      d.innerHTML = `<span class="in ${RARITIES[it.rar].cls}">${it.name}${it.up?'+'+it.up:''}</span>
+        <span class="is">⚒️ ${gain}｜${cost}🪙${matTxt}｜${tier.rate}%</span>`;
+      d.onclick = ()=>tryUpgrade(sl);
+    }
+    list.appendChild(d);
+    if(G.rec.deep >= 10 && it.affixes.filter(a=>!AFFIXES[a.k].leg && !AFFIXES[a.k].curse).length){
+      const r = document.createElement('div'); r.className = `item-row ${RARITIES[it.rar].b}`;
+      r.innerHTML = `<span class="in" style="color:var(--dim)">↳ 重鑄詞綴${it.rf?`（第 ${it.rf+1} 次）`:''}</span>
+        <span class="is">🎲 傳說/詛咒保留｜${reforgeCost(it)}🪙${it.rf?'（每次 ×1.5）':''}</span>`;
+      r.onclick = ()=>reforgeItem(sl);
+      list.appendChild(r);
+    }
+  }
+  if(!any) list.innerHTML = '<p style="color:var(--dim);font-size:13px">身上沒有可強化的武器或護甲。</p>';
+  if(G.rec.deep < 10) list.insertAdjacentHTML('beforeend',
+    '<p style="color:var(--dim);font-size:12px;margin-top:8px">🔒 最深抵達 10 層後，鐵匠會學會「重鑄詞綴」。</p>');
+  list.insertAdjacentHTML('afterbegin', `<div style="text-align:right;color:var(--gold);font-size:14px">🪙 ${G.gold}　<span style="color:var(--dim)">${MATS.iron.i}${MATS.iron.n}×${G.mats.iron}　${MATS.steel.i}${MATS.steel.n}×${G.mats.steel}</span></div>
+    <p style="color:var(--dim);font-size:12px">精煉上限：普通+3／精良+6／稀有+9／傳說+12｜+7起需${MATS.iron.n}（沉沒王國）｜+10起需${MATS.steel.n}（血肉迴廊）｜失敗不降級</p>`);
+}
+/* ================= 探索 ================= */
+function cyclesUnlocked(){
+  const legacy = G.cyc && G.cyc.unlocked > 0;
+  if(G.orig.deep < 30 && !G.orig.done && !legacy) return 0;
+  let n = 1;
+  while(G.cycData[n] && G.cycData[n].deep >= CYC_NEXT) n++;
+  return n;
+}
+function cd(c){ if(!G.cycData[c]) G.cycData[c] = {deep:0, cp:0}; return G.cycData[c]; }
+function startOptions(mode){
+  // 回傳 [{floor, fee}]
+  const opts = [{floor:1, fee:0}];
+  if(mode === 'orig'){
+    for(let f = 5; f <= G.orig.cp && f < 50; f += 5) opts.push({floor:f+1, fee:(f+1)*10});
+  } else {
+    const c = cd(mode);
+    for(let f = 20; f <= c.cp; f += 10) opts.push({floor:f-9, fee:(f-9)*12});
+  }
+  return opts;
+}
+var pendingMode = 'orig';
+function openDivePicker(){
+  const cu = cyclesUnlocked();
+  if(cu === 0 && G.orig.cp < 5){ startRun(1, 0); return; }
+  if(pendingMode !== 'orig' && pendingMode > cu) pendingMode = 'orig';
+  let html = '<h3>下潛</h3>';
+  // 模式列
+  html += '<div class="row" style="flex-wrap:wrap;gap:6px">';
+  html += `<button class="btn small${pendingMode==='orig'?' primary':''}" onclick="setMode('orig')">本源${G.orig.done?'・完結':''}</button>`;
+  for(let c=1; c<=cu; c++){
+    html += `<button class="btn small${pendingMode===c?' primary':''}" onclick="setMode(${c})">輪迴 ${'I'.repeat(Math.min(c,3))}${c>3?'+'+(c-3):''}</button>`;
+  }
+  html += '</div>';
+  // 模式說明
+  if(pendingMode==='orig'){
+    html += `<p class="base" style="margin-top:8px">五十層的旅程，五域五王。最深 ${G.orig.deep} 層${G.orig.done?'——你已走到底過':''}。不產出精煉材料。</p>`;
+  } else {
+    const c = cd(pendingMode);
+    html += `<p class="base" style="margin-top:8px">深淵重演，敵人 ×${cycMult(pendingMode).toFixed(1)}，掉落更兇，材料只在這裡。本輪最深 ${c.deep} 層。</p>`;
+    if(pendingMode === cu && !(G.cycData[cu] && G.cycData[cu].deep >= CYC_NEXT))
+      html += `<p style="color:var(--dim);font-size:12px">本輪抵達 ${CYC_NEXT} 層解鎖下一重輪迴。</p>`;
+  }
+  // 起點列
+  html += '<div class="item-list" style="margin-top:8px">';
+  for(const o of startOptions(pendingMode)){
+    if(o.fee === 0){
+      html += `<div class="item-row" onclick="tryStart(1)"><span class="in">🕳 從第 1 層</span><span class="is">免費</span></div>`;
+    } else {
+      html += `<div class="item-row" onclick="tryStart(${o.floor})"><span class="in">🪢 傳送至第 ${o.floor} 層</span><span class="is">${o.fee}🪙｜補給:${o.floor*5}🪙+藥水</span></div>`;
+    }
+  }
+  html += '</div>';
+  const nextCp = pendingMode==='orig' ? '打贏第 '+(Math.min(G.orig.cp+5,50))+' 層首領解鎖下一個傳送點' : '打贏第 '+(cd(pendingMode).cp+10)+' 層域主解鎖下一個傳送點';
+  html += `<p style="color:var(--dim);font-size:12px;margin-top:8px">🔒 ${nextCp}。</p>`;
+  if(cu === 0) html += '<p style="color:var(--dim);font-size:12px">🔒 本源抵達 30 層解鎖輪迴。</p>';
+  html += '<button class="btn" style="margin-top:8px" onclick="closeSheet()">取消</button>';
+  openSheet(html);
+}
+function setMode(m){ pendingMode = m; openDivePicker(); }
+function tryStart(floor){
+  const cycle = pendingMode==='orig' ? 0 : pendingMode;
+  if(floor > 1){
+    const fee = pendingMode==='orig' ? floor*10 : floor*12;
+    if(G.gold < fee){ toast('傳送費不夠（需 '+fee+'🪙）'); return; }
+    G.gold -= fee;
+  }
+  startRun(floor, cycle);
+}
+function startRun(startFloor, cycle){
+  closeSheet();
+  startFloor = startFloor || 1;
+  R = {floor:startFloor, hp:playerMaxHp(), gold:0, bag:[], pots:{heal:1}, skillUps:{},
+       bless:[], equipBackup:JSON.parse(JSON.stringify(G.equip)),
+       doors:null, phase:'doors', kills:0};
+  R.cycle = cycle || 0;
+  if(startFloor > 1){
+    R.gold = startFloor*5;
+    potAdd('heal');
+    R.deepStart = true;
+  }
+  if(R.cycle > 0 && cd(R.cycle).deep === 0){
+    R.cycIntro = true;
+  }
+  G.rec.runs++; save();
+  enterFloor();
+}
+function resumeRun(){
+  showDoors();
+}
+function rarityBonusText(f){ return `稀有掉落權重 +${Math.round(f*2.2)}%`; }
+function enterFloor(){
+  if(R.cycIntro){
+    R.cycIntro = false;
+    G.mats.iron = (G.mats.iron||0) + 1;
+    showEventScreen('🔄','輪迴・'+'I'.repeat(Math.min(R.cycle,3))+(R.cycle>3?'+'+(R.cycle-3):''),
+      '深淵重演了自己——但這次它沒打算裝睡。\n\n敵人強度 ×'+cycMult(R.cycle).toFixed(1)+'，掉落遠勝本源。沉鐵與心鋼只在這裡出土——你的精煉上限，現在才真正打得開。\n\n（守繩人塞給你一塊沉鐵當見面禮）',
+      [{n:'下去吧', f:()=>{ R.doors=null; if(R.floor===1){ startBattle(makeEnemy(1,0)); } else enterFloor(); }, primary:true}]);
+    return;
+  }
+  // 第一層直接戰鬥，讓玩家先進入狀況
+  if(R.floor===1){ startBattle(makeEnemy(1,0)); return; }
+  if(R.deepStart){
+    R.deepStart = false;
+    const heal = Math.round(playerMaxHp()*0.3);
+    showEventScreen('🪢','繩降平台','守繩人把你放到了第 '+R.floor+' 層的一座木造平台。平台上有一堆沒熄的營火——上一個租繩子的人留下的。他沒有回來還繩。',
+      [{n:'🩹 在火邊休息（回復 '+heal+' 血）', f:()=>{
+        R.hp = Math.min(playerMaxHp(), R.hp + heal); nextFloorSame();
+      }, primary:true},
+      {n:'⚒️ 借火光精進一招', f:()=>{
+        const upgradable = CLASSES[G.cls].skills.filter(sid=>!(R.skillUps&&R.skillUps[sid]));
+        const c = [];
+        for(const sid of upgradable){
+          const base = SKILLS[sid], ups = SKILL_UPS[sid];
+          c.push({n:`【${base.n}→${ups.a.n}】${ups.a.d}`, f:()=>pickUpStay(sid,'a')});
+          c.push({n:`【${base.n}→${ups.b.n}】${ups.b.d}`, f:()=>pickUpStay(sid,'b')});
+        }
+        showEventScreen('🪢','繩降平台・精進','借著別人的火，練自己的刀。', c);
+      }},
+      {n:'直接出發', f:()=>nextFloorSame()}]);
+    return;
+  }
+  showDoors();
+}
+function nextFloorSame(){ R.doors = null; showDoors(); }
+function pickUpStay(sid, branch){
+  if(!R.skillUps) R.skillUps = {};
+  R.skillUps[sid] = branch;
+  const u = SKILL_UPS[sid][branch];
+  showEventScreen('🪢','精進完成','「'+SKILLS[sid].n+'」蛻變為「'+u.n+'」。\n\n'+u.d+'（本次探索有效）',
+    [{n:'出發', f:()=>nextFloorSame(), primary:true}]);
+}
+function doorPool(){
+  const f = R.floor;
+  const pool = [];
+  pool.push({t:'fight', i:'⚔️', n:'戰鬥', d:'普通的敵人', w:42});
+  if(f>=3) pool.push({t:'elite', i:'😈', n:'精英', d:R.floor>=8?'更強，可能不只一隻':'更強，掉落更好', w:16});
+  const pev = rollEvent();
+  const hint = Math.random()<0.5 ? '你察覺到：'+(EV_HINTS[pev]||'說不上來的氣息') : '誰知道呢';
+  pool.push({t:'event', i:'❓', n:'未知', d:hint, ev:pev, w:22});
+  pool.push({t:'rest', i:'🕯️', n:'營火', d:'回復 30% 生命', w:12});
+  pool.push({t:'chest', i:'📦', n:'寶箱', d:'看起來沒上鎖', w:8});
+  return pool;
+}
+function weightedPick(pool){
+  const total = pool.reduce((s,p)=>s+p.w,0); let r = Math.random()*total;
+  for(const p of pool){ if((r-=p.w)<0) return p; } return pool[0];
+}
+function showDoors(){
+  R.phase = 'doors';
+  const f = R.floor;
+  const zz = realmFor(f);
+  $('d-floor').textContent = f; $('d-floor-big').textContent = f;
+  document.querySelector('#s-doors .depth-gauge .lbl').textContent = zz.i+' '+zz.n;
+  $('d-gold').textContent = R.gold;
+  $('d-hp').textContent = `❤️ ${R.hp}/${playerMaxHp()}`;
+  $('d-bonus').textContent = rarityBonusText(f);
+  const grid = $('door-grid'); grid.innerHTML = '';
+  if(R.forceDoor){
+    const t = R.forceDoor; R.forceDoor = null;
+    const map = {fight:['⚔️','戰鬥','逃不掉的'], elite:['😈','精英','逃不掉的'], boss:['☠️','首領','逃不掉的']};
+    const m = map[t] || map.fight;
+    R.doors = [{t, i:m[0], n:m[1], d:m[2]}];
+    grid.style.gridTemplateColumns = '1fr';
+  } else if(f % 5 === 0){
+    // 首領層
+    const b = bossFor(f);
+    R.doors = [{t:'boss', i:b.i, n:'首領・'+b.n, d:'必掉稀有以上'}];
+    grid.style.gridTemplateColumns = '1fr';
+  } else {
+    if(!R.doors){
+      const pool = doorPool();
+      const d1 = weightedPick(pool);
+      let d2 = weightedPick(pool); let guard = 0;
+      while(d2.t===d1.t && guard++<12) d2 = weightedPick(pool);
+      R.doors = [d1,d2];
+    }
+    grid.style.gridTemplateColumns = '1fr 1fr';
+  }
+  for(const d of R.doors){
+    const el = document.createElement('div'); el.className = 'door';
+    el.innerHTML = `<div class="di">${d.i}</div><div class="dn">${d.n}</div><div class="dd">${d.d}</div>`;
+    el.onclick = ()=>enterDoor(d);
+    grid.appendChild(el);
+  }
+  $('bag-hint').textContent = R.bag.length ? `（行囊 ${R.bag.length} 件未保管）` : '';
+  renderDoorPotions();
+  save();
+  showScreen('s-doors');
+}
+function renderDoorPotions(){
+  const row = $('door-potions'); row.innerHTML = '';
+  for(const [k,n] of Object.entries(R.pots||{})){
+    const pt = POTIONS[k];
+    const d = document.createElement('div'); d.className='potion';
+    d.innerHTML = `<span class="pi">${pt.i}</span>${pt.n}${n>1?' ×'+n:''}`;
+    d.onclick = ()=>{
+      if(!pt.any){ toast('只能在戰鬥中使用'); return; }
+      usePotion(k, false);
+      showDoors();
+    };
+    row.appendChild(d);
+  }
+}
+function enterDoor(d){
+  R.doors = null;
+  R.lastDoor = d.t;
+  if(d.t==='fight') startBattle(makeEnemy(R.floor, 0));
+  else if(d.t==='elite'){
+    const roll = Math.random();
+    if(roll < 0.4){
+      startBattle(makeRealmElite(R.floor));
+    } else if(R.floor>=8 && roll < 0.7){
+      const e1 = makeEnemy(R.floor, 0), e2 = makeEnemy(R.floor, 0);
+      for(const e of [e1,e2]){ e.hp = Math.round(e.hp*0.85); e.maxhp = e.hp; }
+      startBattle([e1, e2]);
+    } else startBattle(makeEnemy(R.floor, 1));
+  }
+  else if(d.t==='boss') startBattle(makeBoss(R.floor));
+  else if(d.t==='rest') doRest();
+  else if(d.t==='chest') doChest();
+  else if(d.t==='event'){ R.pendingEv = d.ev || null; runEvent(); }
+}
+function nextFloor(){
+  if(hasCurse('bloodtax')){ R.hp = Math.max(1, R.hp - 3); toast('血稅：-3 生命'); }
+  const before = realmFor(R.floor);
+  R.floor++;
+  if(R.floor > G.rec.deep) G.rec.deep = R.floor;
+  if(R.cycle === 0){ if(R.floor > G.orig.deep) G.orig.deep = Math.min(50, R.floor); }
+  else { const c = cd(R.cycle); if(R.floor > c.deep) c.deep = R.floor; }
+  save();
+  const now = realmFor(R.floor);
+  if(now !== before){
+    showEventScreen(now.i, '進入・'+now.n, now.intro,
+      [{n:'繼續前進', f:()=>{ R.doors=null; showDoors(); }, primary:true}]);
+    return;
+  }
+  showDoors();
+}
+function doRest(){
+  const heal = Math.round(playerMaxHp()*0.3*healMult());
+  const upgradable = CLASSES[G.cls].skills.filter(sid=>!(R.skillUps&&R.skillUps[sid]));
+  const choices = [{n:`🩹 休息（回復 ${heal} 血）`, f:()=>{
+    R.hp = Math.min(playerMaxHp(), R.hp + heal);
+    showEventScreen('🕯️','營火','火光照不遠，但夠暖。\n\n回復了 '+heal+' 點生命。',
+      [{n:'繼續前進', f:()=>nextFloor(), primary:true}]);
+  }, primary:true}];
+  if(upgradable.length){
+    choices.push({n:'⚒️ 在火邊精進一招（本次探索有效）', f:()=>{
+      const c = [];
+      for(const sid of upgradable){
+        const base = SKILLS[sid], ups = SKILL_UPS[sid];
+        c.push({n:`【${base.n}→${ups.a.n}】${ups.a.d}`, f:()=>pickUp(sid,'a')});
+        c.push({n:`【${base.n}→${ups.b.n}】${ups.b.d}`, f:()=>pickUp(sid,'b')});
+      }
+      c.push({n:'還是休息好了（回復 '+heal+' 血）', f:()=>{
+        R.hp = Math.min(playerMaxHp(), R.hp + heal); nextFloor(); }});
+      showEventScreen('🕯️','營火・精進','火光裡，你反覆演練著自己的招式。選一條路——選了就回不去了。', c);
+    }});
+  }
+  choices.push(fireExtra());
+  showEventScreen('🕯️','營火','你在深淵裡生了一小堆火。火只有一堆，事只能做一件。', choices);
+}
+function fireExtra(){
+  const pool = [];
+  if(potTotal() > 0) pool.push('cook');
+  if(R.bag.length > 0) pool.push('scrap');
+  pool.push('quench', 'poke');
+  const k = pick(pool);
+  if(k==='cook'){
+    const pk = Object.keys(R.pots)[0];
+    return {n:`🍲 烹食（熬掉一瓶${POTIONS[pk].n}，生命上限 +8）`, f:()=>{
+      R.pots[pk]--; if(!R.pots[pk]) delete R.pots[pk];
+      R.bless.push({k:'hp', v:8});
+      R.hp = Math.min(playerMaxHp(), R.hp + 8);
+      showEventScreen('🕯️','烹食','你把藥水倒進鍋裡，加了些說不上來的東西。味道意外地好。\n\n生命上限 +8（本次探索有效）。',
+        [{n:'繼續前進', f:()=>nextFloor(), primary:true}]);
+    }};
+  }
+  if(k==='scrap'){
+    return {n:`🔧 拆裝（熔掉行囊裡的裝備換碎銀）`, f:()=>scrapFire()};
+  }
+  if(k==='quench'){
+    return {n:'🗡 淬火（武器附毒或附燃，持續 3 場戰鬥）', f:()=>{
+      showEventScreen('🕯️','淬火','把刀刃埋進火堆，接下來抹什麼？',
+        [{n:'☠️ 抹毒（攻擊附 2 中毒）', f:()=>{ R.quench={k:'ptouch',v:2,battles:3};
+          showEventScreen('🕯️','淬火','刀刃泛起烏青色。（持續 3 場戰鬥）',[{n:'出發',f:()=>nextFloor(),primary:true}]); }},
+        {n:'🔥 淬焰（攻擊附 2 燃燒）', f:()=>{ R.quench={k:'btouch',v:2,battles:3};
+          showEventScreen('🕯️','淬火','刀刃透著暗紅的熱。（持續 3 場戰鬥）',[{n:'出發',f:()=>nextFloor(),primary:true}]); }}]);
+    }};
+  }
+  return {n:'🔥 撥弄火堆（誰知道會怎樣）', f:()=>{
+    if(Math.random()<0.5){
+      const b = pick(BLESSINGS); R.bless.push({k:b.k, v:b.v});
+      showEventScreen('🕯️','撥火','火星飛起來的形狀像個古老的符文。\n\n'+b.n+'（本次探索有效）',
+        [{n:'繼續前進', f:()=>nextFloor(), primary:true}]);
+    } else {
+      const d = Math.max(3, Math.round(playerMaxHp()*0.06)); R.hp = Math.max(1, R.hp-d);
+      showEventScreen('🕯️','撥火','火星飛起來燙了你一臉。深淵的火也是火。\n\n失去 '+d+' 點生命。',
+        [{n:'……繼續前進', f:()=>nextFloor()}]);
+    }
+  }};
+}
+function scrapFire(){
+  if(!R.bag.length){ nextFloor(); return; }
+  const c = R.bag.slice(0,6).map(it=>{
+    const v = 6 + it.rar*10 + Math.floor(it.base/2);
+    return {n:`熔掉 ${it.name}（+${v}🪙）`, f:()=>{
+      const i = R.bag.findIndex(x=>x.id===it.id);
+      if(i>=0){ R.bag.splice(i,1); R.gold += v; }
+      scrapFire();
+    }};
+  });
+  c.push({n:'夠了，出發', f:()=>nextFloor(), primary:true});
+  showEventScreen('🕯️','拆裝','火堆燒得夠旺，可以熔東西。行囊裡的貨，熔掉的錢立刻落袋（不用等撤退）。', c);
+}
+function pickUp(sid, branch){
+  if(!R.skillUps) R.skillUps = {};
+  R.skillUps[sid] = branch;
+  const u = SKILL_UPS[sid][branch];
+  showEventScreen('🕯️','精進完成','「'+SKILLS[sid].n+'」蛻變為「'+u.n+'」。\n\n'+u.d+'（本次探索有效）',
+    [{n:'繼續前進', f:()=>nextFloor(), primary:true}]);
+}
+function doChest(){
+  if(Math.random() < 0.18){
+    // 寶箱怪
+    showEventScreen('📦','寶箱','你伸手掀開箱蓋——箱子也張開了嘴。',
+      [{n:'⚔️ 迎戰', f:()=>{ const e = makeEnemy(R.floor, 1); e.n='寶箱怪'; e.i='📦'; startBattle(e); }}]);
+  } else {
+    const it = makeItem(R.floor, 1);
+    R.bag.push(it);
+    showLoot([it], 0, '📦', '無主的寶箱', '深淵裡的無主之物，現在有主了。');
+  }
+}
+/* ================= 事件 ================= */
+function showEventScreen(icon,title,text,choices){
+  R.phase='event';
+  $('ev-floor').textContent = R.floor;
+  $('ev-gold').textContent = R.gold;
+  $('ev-icon').textContent = icon;
+  $('ev-title').textContent = title;
+  $('ev-text').textContent = text;
+  const c = $('ev-choices'); c.innerHTML='';
+  for(const ch of choices){
+    const b = document.createElement('button'); b.className='btn'+(ch.primary?' primary':'');
+    b.textContent = ch.n; b.onclick = ch.f; c.appendChild(b);
+  }
+  save(); showScreen('s-event');
+}
+/* 「離開」也要有事發生：小財 / 小傷 / 小憩 */
+function walkAway(icon, title){
+  const r = Math.random();
+  if(r < 0.45){
+    const g = 8 + Math.round(R.floor*1.2); R.gold += g;
+    showEventScreen(icon, title, '你繞開了它。腳邊的碎石堆裡閃著幾枚前人掉的碎銀。\n\n獲得 '+g+' 碎銀。',
+      [{n:'繼續前進', f:()=>nextFloor(), primary:true}]);
+  } else if(r < 0.72){
+    const h = Math.min(Math.round(playerMaxHp()*0.06), playerMaxHp()-R.hp);
+    if(h>0) R.hp += h;
+    showEventScreen(icon, title, '你繞開了它，順便在轉角喘了口氣。\n\n回復 '+h+' 點生命。',
+      [{n:'繼續前進', f:()=>nextFloor(), primary:true}]);
+  } else {
+    const e = makeEnemy(R.floor, 0);
+    showEventScreen(icon, title, '你繞開了它——正好繞進另一個東西的地盤。',
+      [{n:'⚔️ 迎戰', f:()=>startBattle(e, {ambush:true}), primary:true}]);
+  }
+}
+const BLESSINGS = [
+  {k:'str', v:2, n:'力量的祝福：所有傷害 +2'},
+  {k:'crit', v:10, n:'銳利的祝福：爆擊率 +10%'},
+  {k:'vamp', v:12, n:'血契的祝福：攻擊吸血 12%'},
+  {k:'plate', v:3, n:'守勢的祝福：每回合 +3 格擋'},
+  {k:'hp', v:15, n:'堅韌的祝福：生命上限 +15'},
+];
+const EV_REALM = {mine:0, oldfire:0, wreck:1, wishwell:1, cyst:2, vein:2, confess:3, candle:3, bloodspring:4, calcified:4};
+const EV_HINTS = {shrine:'香灰味', gambler:'骰子聲', merchant:'燈籠的紅光', spring:'水聲', can:'金屬滾動聲',
+  rock:'碎石味', corpse:'腐味', crack:'微光', box:'鐵鏽味', whisper:'低語聲',
+  mine:'鎬敲石的回音', oldfire:'煙味', wreck:'船木吱呀聲', wishwell:'銅錢落水聲',
+  cyst:'黏膩的搏動', vein:'血腥味', confess:'壓低的呼吸聲', candle:'蠟味', bloodspring:'溫熱的水氣', calcified:'一動不動的人影'};
+function rollEvent(){
+  const ri = realmIdx(R.floor);
+  const weights = {shrine:9, gambler:8, merchant:12, spring:9, can:4,
+                   rock:9, corpse:9, crack:7, box:9, whisper:7};
+  for(const [k,zr] of Object.entries(EV_REALM)) if(zr===ri) weights[k] = 16;
+  if(!R.seenEv) R.seenEv = {};
+  const evs = Object.keys(weights);
+  let total = 0;
+  for(const e of evs){ weights[e] = weights[e] / (1 + (R.seenEv[e]||0)); total += weights[e]; }
+  let r = Math.random()*total, ev = evs[0];
+  for(const e of evs){ if((r-=weights[e])<0){ ev = e; break; } }
+  return ev;
+}
+function runEvent(){
+  const ev = R.pendingEv || rollEvent();
+  R.pendingEv = null;
+  if(!R.seenEv) R.seenEv = {};
+  R.seenEv[ev] = (R.seenEv[ev]||0) + 1;
+  EVENTS[ev]();
+}
+/* 隨機寶藏：碎銀 / 裝備 / 藥水 / 祝福 */
+function treasureRoll(bonus, icon, title){
+  const r = Math.random();
+  if(r < 0.34){
+    const g = Math.round((28 + R.floor*6 + rnd(0,15)) * (1 + sumAffix('greed')/100));
+    R.gold += g;
+    showEventScreen(icon, title, '一小堆碎銀，數了數有 '+g+' 枚。深淵的錢不燙手，只是重。',
+      [{n:'收下，繼續前進', f:()=>nextFloor(), primary:true}]);
+  } else if(r < 0.72){
+    const it = makeItem(R.floor, bonus||0); R.bag.push(it);
+    showLoot([it], 0, icon, title, '');
+  } else if(r < 0.9){
+    const k = pick(potionPool());
+    if(potAdd(k)){
+      showEventScreen(icon, title, '找到了 '+POTIONS[k].i+' '+POTIONS[k].n+'。（'+pdesc(k)+'）',
+        [{n:'收下，繼續前進', f:()=>nextFloor(), primary:true}]);
+    } else {
+      const g = 20 + R.floor*3; R.gold += g;
+      showEventScreen(icon, title, '找到一瓶藥水，但你背不下了，只好折成 '+g+' 碎銀。',
+        [{n:'收下，繼續前進', f:()=>nextFloor(), primary:true}]);
+    }
+  } else {
+    const b = pick(BLESSINGS); R.bless.push({k:b.k, v:b.v});
+    if(b.k==='hp') R.hp = Math.min(playerMaxHp(), R.hp);
+    showEventScreen(icon, title, '你摸到的不是東西，是一段殘留的祝福。\n\n'+b.n+'（本次探索有效）',
+      [{n:'繼續前進', f:()=>nextFloor(), primary:true}]);
+  }
+}
+const EVENTS = {
+  shrine(){
+    const cost = Math.max(4, Math.round(R.hp*0.15));
+    showEventScreen('⛩️','無名神龕','石龕裡供著一尊看不清面目的神像。香爐是冷的，但你總覺得有東西在等你開口。',
+      [{n:`獻上鮮血（失去 ${cost} 血，獲得隨機祝福）`, f:()=>{
+        R.hp = Math.max(1, R.hp - cost);
+        const b = pick(BLESSINGS);
+        R.bless.push({k:b.k, v:b.v});
+        if(b.k==='hp') R.hp = Math.min(playerMaxHp(), R.hp + b.v);
+        showEventScreen('⛩️','無名神龕','神像的眼窩亮了一瞬。\n\n'+b.n+'（本次探索有效）',
+          [{n:'繼續前進', f:()=>nextFloor(), primary:true}]);
+      }},
+      {n:'不拜。繼續前進', f:()=>walkAway('⛩️', '無名神龕')}]);
+  },
+  gambler(){
+    const stake = Math.min(R.gold, Math.max(20, Math.round(R.gold*0.5)));
+    if(R.gold < 10){ EVENTS.spring(); return; }
+    showEventScreen('🎲','蹲在角落的賭徒','一個看不清臉的傢伙搖著骰盅：「猜大小。贏了翻倍，輸了歸我。」\n\n他看起來不像會出老千——因為他根本沒有手。',
+      [{n:`押 ${stake} 碎銀`, f:()=>{
+        if(Math.random()<0.5){ R.gold += stake;
+          showEventScreen('🎲','賭徒','骰盅掀開。「你贏了。」他的聲音聽起來鬆了一口氣，這反而更可疑。\n\n獲得 '+stake+' 碎銀。',[{n:'見好就收',f:()=>nextFloor(),primary:true}]);
+        } else { R.gold -= stake;
+          showEventScreen('🎲','賭徒','骰盅掀開。他沒有臉，但你確定他在笑。\n\n失去 '+stake+' 碎銀。',[{n:'走人',f:()=>nextFloor()}]);
+        }
+      }},
+      {n:'不賭', f:()=>walkAway('🎲', '賭徒')}]);
+  },
+  merchant(){
+    // 貨架抽 3 樣，存進 R.shop 供限購與重繪
+    const gearIt = makeItem(R.floor, Math.random()<0.35?1:0);
+    const shop = [];
+    shop.push({kind:'gear', it:gearIt, price:Math.round((60 + R.floor*6) * (1 + gearIt.rar*0.5)), sold:false});
+    const pool2 = ['oil','quench'];
+    if(R.cycle > 0) pool2.push('mat');
+    const k2 = pick(pool2);
+    if(k2==='oil') shop.push({kind:'oil', price:45 + R.floor*2, sold:false});
+    else if(k2==='quench') shop.push({kind:'quench', price:35 + R.floor*2, sold:false});
+    else shop.push({kind:'mat', mat:(R.floor<=30?'iron':'steel'), price:70 + R.floor*3, sold:false});
+    shop.push({kind:'potion', k:pick(potionPool()), price:25 + R.floor*3, sold:false});
+    R.shop = shop;
+    renderMerchant();
+  },
+  spring(){
+    const heal = Math.round(playerMaxHp()*0.35*healMult());
+    showEventScreen('⛲','幽光泉水','岩縫間湧出泛著微光的泉水，看起來乾淨得不像這裡的東西。',
+      [{n:'喝下（回復 '+heal+' 血）', f:()=>{ R.hp=Math.min(playerMaxHp(),R.hp+heal);
+        showEventScreen('⛲','幽光泉水','冰涼，微甜，喝完之後傷口不那麼疼了。\n\n回復 '+heal+' 點生命。',[{n:'繼續前進',f:()=>nextFloor(),primary:true}]); }},
+      {n:'太可疑了，不喝', f:()=>walkAway('⛲', '幽光泉水')}]);
+  },
+  can(){
+    showEventScreen('🥫','奇怪的罐頭','角落裡放著一個沒有標籤的罐頭。你把耳朵貼上去——裡面有東西在動。\n\n不知道為什麼，你想起了某個只在午夜開市的市場。',
+      [{n:'打開它', f:()=>{
+        const roll = Math.random();
+        if(roll<0.5){ const g = 60+R.floor*8; R.gold+=g;
+          showEventScreen('🥫','罐頭開了','一隻不屬於任何年代的蟬爬出來，鳴叫一聲，化成了一把碎銀。\n\n獲得 '+g+' 碎銀。',[{n:'收下',f:()=>nextFloor(),primary:true}]);
+        } else if(roll<0.85){ const b = pick(BLESSINGS); R.bless.push({k:b.k,v:b.v});
+          showEventScreen('🥫','罐頭開了','蟬鳴了三聲。你夢見了自己的童年，醒來時覺得渾身是勁。\n\n'+b.n,[{n:'繼續前進',f:()=>nextFloor(),primary:true}]);
+        } else { const dmg = Math.round(playerMaxHp()*0.2); R.hp=Math.max(1,R.hp-dmg);
+          showEventScreen('🥫','罐頭開了','蟬沒有鳴。沉默像瘟疫一樣撲了你一臉。\n\n失去 '+dmg+' 點生命。',[{n:'…走了',f:()=>nextFloor()}]);
+        }
+      }},
+      {n:'別碰它', f:()=>walkAway('🥫', '奇怪的罐頭')}]);
+  },
+  /* ==== 同名事件・未知結局 ==== */
+  rock(){
+    showEventScreen('🪨','塌落的石堆','一堆看起來剛塌下來不久的碎石，縫隙裡露出什麼東西的邊角。可能是前人沒帶走的，也可能是專門留給你的。',
+      [{n:'搬開石頭', f:()=>{
+        const r = Math.random();
+        if(r < 0.38){ treasureRoll(0, '🪨', '石堆下'); }
+        else if(r < 0.65){
+          showEventScreen('🪨','石堆下','石頭才挪開一半，底下的東西先動了。',
+            [{n:'⚔️ 迎戰', f:()=>startBattle(makeEnemy(R.floor, R.floor>=6?1:0), {ambush:true}), primary:true}]);
+        }
+        else if(r < 0.85){
+          const d = Math.max(4, Math.round(playerMaxHp()*0.08));
+          R.hp = Math.max(1, R.hp - d); R.pendingStatus = {poison:3};
+          showEventScreen('🪨','石堆下','指尖一刺——石縫裡藏著淬毒的針。失去 '+d+' 點生命，毒素會纏著你進入下一場戰鬥（中毒 3）。',
+            [{n:'……包紮一下，繼續前進', f:()=>nextFloor()}]);
+        }
+        else showEventScreen('🪨','石堆下','搬了半天，底下只有更多石頭。深淵有時候就是這麼無聊。',
+          [{n:'拍拍手上的灰，繼續前進', f:()=>nextFloor()}]);
+      }},
+      {n:'繞過去', f:()=>walkAway('🪨', '塌落的石堆')}]);
+  },
+  corpse(){
+    showEventScreen('🧟','前人','一具冒險者的屍體靠牆坐著，姿勢像只是睡著了。裝備看起來還算完整。',
+      [{n:'搜刮遺物', f:()=>{
+        const r = Math.random();
+        if(r < 0.55){ treasureRoll(0, '🧟', '遺物'); }
+        else if(r < 0.75){
+          const e = makeEnemy(R.floor, 0); e.n='不安息者'; e.i='🧟';
+          showEventScreen('🧟','遺物','你的手才碰到他的行囊，他的手就抓住了你的。',
+            [{n:'⚔️ 迎戰', f:()=>startBattle(e, {ambush:true}), primary:true}]);
+        }
+        else {
+          const d = Math.max(5, Math.round(playerMaxHp()*0.1));
+          R.hp = Math.max(1, R.hp - d);
+          showEventScreen('🧟','遺物','屍水濺了你一手，皮膚立刻開始發燙。失去 '+d+' 點生命。\n\n他的行囊裡什麼都沒有。他大概也是這樣被騙的。',
+            [{n:'離開', f:()=>nextFloor()}]);
+        }
+      }},
+      {n:'替他闔上眼，不動遺物', f:()=>{
+        if(Math.random() < 0.35){
+          const b = pick(BLESSINGS); R.bless.push({k:b.k, v:b.v});
+          showEventScreen('🧟','前人','你替他闔上眼。起身時，覺得肩膀被誰輕輕拍了一下。\n\n'+b.n+'（本次探索有效）',
+            [{n:'繼續前進', f:()=>nextFloor(), primary:true}]);
+        } else showEventScreen('🧟','前人','你替他闔上眼，繼續前進。深淵沒有給你任何回報——體面本來就不是拿來換東西的。',
+          [{n:'繼續前進', f:()=>nextFloor()}]);
+      }}]);
+  },
+  crack(){
+    showEventScreen('✨','發光的裂縫','岩壁上一道窄縫透出微光，寬度剛好夠伸進一隻手。你聽過兩種傳聞：有人從裡面摸出傳說中的東西，也有人從此只剩一隻手。',
+      [{n:'伸手進去', f:()=>{
+        const r = Math.random();
+        if(r < 0.08){
+          const it = makeItem(R.floor, 2); it.rar = 3;
+          it.name = pick(PREFIX.orange) + it.name.replace(/^(破舊的|素面的|無名的|精良的|工匠的|磨亮的|符文|低語的|深淵紋|王殞|噬光|無面|母巢)/,'');
+          it.affixes = it.affixes.length>=3? it.affixes : it.affixes.concat([{k:'str',v:3}]);
+          R.bag.push(it);
+          showLoot([it], 0, '✨', '裂縫深處', '你的指尖碰到了它——它也在等你。');
+        }
+        else if(r < 0.45){ treasureRoll(0, '✨', '裂縫深處'); }
+        else {
+          const d = Math.max(6, Math.round(playerMaxHp()*0.14));
+          R.hp = Math.max(1, R.hp - d);
+          showEventScreen('✨','裂縫深處','裡面的東西比你更快。你抽回手，少了一塊肉。失去 '+d+' 點生命。',
+            [{n:'握著手離開', f:()=>nextFloor()}]);
+        }
+      }},
+      {n:'看看就好', f:()=>walkAway('✨', '發光的裂縫')}]);
+  },
+  box(){
+    // 預先擲定結局，「搖一搖」給 75% 準確的提示
+    const roll = Math.random();
+    const outcome = roll < 0.45 ? 'item' : roll < 0.65 ? 'potion' : roll < 0.85 ? 'trap' : 'empty';
+    const hintFor = o => o==='item' ? '沉甸甸的金屬碰撞聲' : o==='potion' ? '液體晃動的聲音' : o==='trap' ? '細微的滋滋聲' : '沒有任何聲音';
+    const open = ()=>{
+      if(outcome==='item'){ const it = makeItem(R.floor, 1); R.bag.push(it); showLoot([it], 0, '🧰', '鐵盒打開了', ''); }
+      else if(outcome==='potion'){
+        let got = [];
+        for(let i=0;i<2;i++){ const k = pick(potionPool()); if(potAdd(k)) got.push(POTIONS[k].i+POTIONS[k].n); }
+        showEventScreen('🧰','鐵盒打開了', got.length? '裡面墊著稻草，放著 '+got.join('、')+'。':'裡面是藥水，但你的藥水袋已經滿了。',
+          [{n:'繼續前進', f:()=>nextFloor(), primary:true}]);
+      }
+      else if(outcome==='trap'){
+        const d = Math.max(6, Math.round(playerMaxHp()*0.16));
+        R.hp = Math.max(1, R.hp - d);
+        showEventScreen('🧰','鐵盒炸了','鎖簧連著火藥。失去 '+d+' 點生命。\n\n盒底燒剩的東西裡，好像什麼都沒有。',
+          [{n:'……走了', f:()=>nextFloor()}]);
+      }
+      else showEventScreen('🧰','鐵盒打開了','空的。有人比你先到，還好心地把鎖重新鎖上。',
+        [{n:'繼續前進', f:()=>nextFloor()}]);
+    };
+    const baseChoices = shaken => {
+      const c = [{n:'撬開它', f:open, primary:shaken}];
+      if(!shaken) c.push({n:'先搖一搖聽聲音', f:()=>{
+        const heard = Math.random() < 0.75 ? outcome : pick(['item','potion','trap','empty'].filter(o=>o!==outcome));
+        showEventScreen('🧰','上鎖的鐵盒','你把鐵盒拿起來晃了晃——裡面傳出' + hintFor(heard) + '。\n\n（你的耳朵不一定可靠）',
+          baseChoices(true));
+      }});
+      c.push({n:'不碰它', f:()=>walkAway('🧰', '上鎖的鐵盒')});
+      return c;
+    };
+    showEventScreen('🧰','上鎖的鐵盒','角落裡放著一個上了鎖的鐵盒，鎖是新的，盒子是舊的。這個組合通常意味著兩件事之一：有人想保護裡面的東西，或想保護外面的你。',
+      baseChoices(false));
+  },
+  whisper(){
+    showEventScreen('🚪','低語的門','一扇不在任何地圖上的門，門縫裡漏出很低很低的說話聲。聽不清內容，但語氣像在招手。',
+      [{n:'推開門', f:()=>{
+        const r = Math.random();
+        if(r < 0.30){
+          const its = [makeItem(R.floor,1), makeItem(R.floor,1), makeItem(R.floor,1)];
+          const c = its.map(it=>({n:`${RARITIES[it.rar].n}｜${it.name}（${itemStatLine(it)}）`, f:()=>{
+            R.bag.push(it); showLoot([it], 0, '🚪', '密室', '你拿走了一件，門在身後消失了。');
+          }}));
+          c.push({n:'都不拿', f:()=>nextFloor()});
+          showEventScreen('🚪','密室','門後是一個小小的密室，石台上供著三件東西。低語聲說：只能拿一件。',c);
+        }
+        else if(r < 0.60){
+          showEventScreen('🚪','門後','低語聲停了。門後的東西一直在等的就是這一刻。',
+            [{n:'⚔️ 迎戰', f:()=>startBattle(makeEnemy(R.floor, 1), {ambush:true}), primary:true}]);
+        }
+        else if(r < 0.85){
+          const g = 15 + R.floor*3; R.gold += g;
+          showEventScreen('🚪','門後','門後只有一面牆，牆上用指甲刻著一行字：「別信搖起來有金屬聲的盒子。」\n\n牆角散落著 '+g+' 枚碎銀。',
+            [{n:'收下，繼續前進', f:()=>nextFloor(), primary:true}]);
+        }
+        else {
+          const d = Math.max(4, Math.round(playerMaxHp()*0.07));
+          R.hp = Math.max(1, R.hp - d); R.floor++;
+          if(R.floor > G.rec.deep) G.rec.deep = R.floor;
+          showEventScreen('🚪','門後','你踏進去，腳下沒有地板。\n\n摔到了更深的地方——直接抵達下一層，失去 '+d+' 點生命。',
+            [{n:'爬起來', f:()=>nextFloor()}]);
+        }
+      }},
+      {n:'假裝沒聽見', f:()=>walkAway('🚪', '低語的門')}]);
+  },
+  /* ==== 分域事件 ==== */
+  mine(){ // 淺穴
+    showEventScreen('⛏️','崩塌的礦道','半塌的礦道口插著一把還算完好的鎬。裡面黑得很誠實。',
+      [{n:'進去挖挖看', f:()=>{
+        const r = Math.random();
+        if(r<0.4){ treasureRoll(0,'⛏️','礦道深處'); }
+        else if(r<0.7){ const d = Math.max(5, Math.round(playerMaxHp()*0.1)); R.hp = Math.max(1, R.hp-d);
+          showEventScreen('⛏️','礦道深處','你敲了兩下，頭頂敲了回來。失去 '+d+' 點生命。',
+            [{n:'灰頭土臉地離開', f:()=>nextFloor()}]); }
+        else { const g = 25 + R.floor*4; R.gold += g;
+          showEventScreen('⛏️','礦道深處','礦脈早被挖空了，但前人漏了一小袋——'+g+' 碎銀。',
+            [{n:'收下', f:()=>nextFloor(), primary:true}]); }
+      }},
+      {n:'不進去', f:()=>walkAway('⛏️','崩塌的礦道')}]);
+  },
+  oldfire(){ // 淺穴
+    showEventScreen('🔥','先人的火堆','一堆還溫著的營火，主人不見了。灰裡好像埋著什麼。',
+      [{n:'撥開灰燼', f:()=>{
+        const r = Math.random();
+        if(r<0.45){ const b = pick(BLESSINGS); R.bless.push({k:b.k,v:b.v});
+          showEventScreen('🔥','灰燼','灰裡埋著一枚刻符的石子，還帶著火的餘溫。\n\n'+b.n+'（本次探索有效）',
+            [{n:'繼續前進', f:()=>nextFloor(), primary:true}]); }
+        else if(r<0.75){ const e = makeEnemy(R.floor,0);
+          showEventScreen('🔥','灰燼','火堆的主人回來了。他不覺得你是客人。',
+            [{n:'⚔️ 迎戰', f:()=>startBattle(e), primary:true}]); }
+        else { const h = Math.min(Math.round(playerMaxHp()*0.15), playerMaxHp()-R.hp); R.hp += h;
+          showEventScreen('🔥','灰燼','什麼都沒埋。你借火烤了烤手，回復 '+h+' 點生命。',
+            [{n:'繼續前進', f:()=>nextFloor(), primary:true}]); }
+      }},
+      {n:'別動別人的火', f:()=>walkAway('🔥','先人的火堆')}]);
+  },
+  wreck(){ // 沉沒王國
+    showEventScreen('⛵','擱淺的貨船','一艘商船卡在王國的街道中央——沉到這裡的船，貨艙朝著天。',
+      [{n:'撬開貨艙', f:()=>{
+        const r = Math.random();
+        if(r<0.45){ treasureRoll(1,'⛵','貨艙'); }
+        else if(r<0.75){ const e = makeEnemy(R.floor, R.floor>=13?1:0); e.n='貨艙裡的'+e.n.replace('精英・',''); 
+          showEventScreen('⛵','貨艙','貨早就被搬空了，搬貨的東西還住在裡面。',
+            [{n:'⚔️ 迎戰', f:()=>startBattle(e,{ambush:true}), primary:true}]); }
+        else { const g = 30 + R.floor*5; R.gold += g;
+          showEventScreen('⛵','貨艙','船長室的暗格裡藏著 '+g+' 碎銀。船長本人在椅子上，早就不需要錢了。',
+            [{n:'收下', f:()=>nextFloor(), primary:true}]); }
+      }},
+      {n:'不上船', f:()=>walkAway('⛵','擱淺的貨船')}]);
+  },
+  wishwell(){ // 沉沒王國
+    const cost = 20 + R.floor*3;
+    showEventScreen('🪙','許願池','王國廣場的許願池還在運作——池底鋪滿了願望，大多沒實現。',
+      [{n:`投入 ${cost} 碎銀許願`, f:()=>{
+        if(R.gold < cost){ toast('碎銀不夠'); return; }
+        R.gold -= cost;
+        const r = Math.random();
+        if(r<0.5){ const b = pick(BLESSINGS); R.bless.push({k:b.k,v:b.v});
+          showEventScreen('🪙','許願池','水面泛起一圈不屬於物理的漣漪。\n\n'+b.n+'（本次探索有效）',
+            [{n:'繼續前進', f:()=>nextFloor(), primary:true}]); }
+        else if(r<0.8){ const g = cost*2; R.gold += g;
+          showEventScreen('🪙','許願池','池子把你的碎銀吐了回來——連本帶利，'+g+' 碎銀。它大概不喜歡你的願望。',
+            [{n:'也行', f:()=>nextFloor(), primary:true}]); }
+        else showEventScreen('🪙','許願池','碎銀沉底，什麼都沒發生。你聽見池底傳來一聲很小的「謝了」。',
+          [{n:'……走了', f:()=>nextFloor()}]);
+      }},
+      {n:'不許願', f:()=>walkAway('🪙','許願池')}]);
+  },
+  cyst(){ // 血肉迴廊
+    showEventScreen('🫧','搏動的囊腫','牆上鼓著一顆半透明的囊腫，隨著整條迴廊的心跳一起搏動。裡面有影子。',
+      [{n:'刺破它', f:()=>{
+        const r = Math.random();
+        if(r<0.4){ const it = makeItem(R.floor, 1); R.bag.push(it);
+          showLoot([it], 0, '🫧', '囊腫裡', '深淵消化不了的東西，都會被包起來。'); }
+        else if(r<0.75){ const d = Math.max(6, Math.round(playerMaxHp()*0.09)); R.hp = Math.max(1, R.hp-d); R.pendingStatus = {poison:4};
+          showEventScreen('🫧','囊腫裡','膿液噴了你一身。失去 '+d+' 點生命，毒素纏著你進入下一場戰鬥（中毒 4）。',
+            [{n:'擦掉，繼續前進', f:()=>nextFloor()}]); }
+        else { const g = 35 + R.floor*4; R.gold += g;
+          showEventScreen('🫧','囊腫裡','裡面是一個被消化到只剩錢袋的冒險者。'+g+' 碎銀，還有點黏。',
+            [{n:'收下', f:()=>nextFloor(), primary:true}]); }
+      }},
+      {n:'不碰', f:()=>walkAway('🫧','搏動的囊腫')}]);
+  },
+  vein(){ // 血肉迴廊
+    showEventScreen('🩸','裸露的血管','一根手臂粗的血管從牆裡垂下來，破口處滴著溫熱的血。喝的人聽說會變強。也聽說會變別的。',
+      [{n:'喝一口', f:()=>{
+        const r = Math.random();
+        if(r<0.5){ R.bless.push({k:'str',v:3}); const h = Math.min(Math.round(playerMaxHp()*0.2), playerMaxHp()-R.hp); R.hp += h;
+          showEventScreen('🩸','血管','深淵的血在你血管裡燒。力量 +3（本次探索），回復 '+h+' 點生命。',
+            [{n:'繼續前進', f:()=>nextFloor(), primary:true}]); }
+        else { R.pendingStatus = {wound:3};
+          showEventScreen('🩸','血管','血是甜的——太甜了。你的傷口開始不肯癒合（下場戰鬥重傷 3）。',
+            [{n:'……繼續前進', f:()=>nextFloor()}]); }
+      }},
+      {n:'不喝', f:()=>walkAway('🩸','裸露的血管')}]);
+  },
+  confess(){ // 無光教區
+    showEventScreen('🕳','懺悔室','一座黑木懺悔室立在路中央，簾子後面有呼吸聲。牌子上寫：「說出你的重量。」',
+      [{n:'進去懺悔', f:()=>{
+        const cursed = ['w','a','t'].some(sl=>G.equip[sl] && G.equip[sl].cursed);
+        const r = Math.random();
+        if(cursed && r<0.6){
+          for(const sl of ['w','a','t']){ const it = G.equip[sl];
+            if(it && it.cursed){ it.affixes = it.affixes.filter(a=>!AFFIXES[a.k].curse); it.cursed = false; it.name = it.name.replace('詛咒的',''); break; } }
+          showEventScreen('🕳','懺悔室','簾後的聲音聽完，嘆了口氣。你身上有什麼東西鬆開了。\n\n一件裝備的詛咒被赦免了。',
+            [{n:'繼續前進', f:()=>nextFloor(), primary:true}]); }
+        else if(r<0.55){ const h = Math.min(Math.round(playerMaxHp()*0.25), playerMaxHp()-R.hp); R.hp += h;
+          showEventScreen('🕳','懺悔室','你把一路的殺孽都說了。簾後只回了一句：「不重。」\n\n回復 '+h+' 點生命。',
+            [{n:'繼續前進', f:()=>nextFloor(), primary:true}]); }
+        else { const d = Math.max(5, Math.round(playerMaxHp()*0.08)); R.hp = Math.max(1, R.hp-d);
+          showEventScreen('🕳','懺悔室','簾後的聲音說：「不夠誠實。」一條看不見的鞭子抽在你背上。失去 '+d+' 點生命。',
+            [{n:'離開', f:()=>nextFloor()}]); }
+      }},
+      {n:'我沒什麼好懺悔的', f:()=>walkAway('🕳','懺悔室')}]);
+  },
+  candle(){ // 無光教區
+    showEventScreen('🕯','冷燭祭壇','祭壇上插滿了燒不起來的蠟燭。祭壇的說明只有一句：「借火者，還火。」',
+      [{n:'用自己的體溫點燃（失去 10% 血）', f:()=>{
+        const d = Math.max(4, Math.round(playerMaxHp()*0.1)); R.hp = Math.max(1, R.hp-d);
+        R.quench = {k:'btouch', v:3, battles:4};
+        showEventScreen('🕯','冷燭祭壇','蠟燭一根接一根亮起——燒的是你的溫度。你的武器泛著同樣的冷焰。\n\n攻擊附 3 層燃燒，持續 4 場戰鬥。',
+          [{n:'繼續前進', f:()=>nextFloor(), primary:true}]);
+      }},
+      {n:'不還火', f:()=>walkAway('🕯','冷燭祭壇')}]);
+  },
+  bloodspring(){ // 心室
+    showEventScreen('⛲','血泉','一眼泉，湧的是血——溫的、乾淨的、和你心跳同頻的血。',
+      [{n:'喝下', f:()=>{
+        const r = Math.random();
+        if(r<0.6){ R.bless.push({k:'hp',v:12}); const h = Math.min(Math.round(playerMaxHp()*0.35), playerMaxHp()-R.hp); R.hp += h;
+          showEventScreen('⛲','血泉','它認得你——你一路流的血，有一部分匯到了這裡。\n\n生命上限 +12（本次探索），回復 '+h+' 點生命。',
+            [{n:'繼續前進', f:()=>nextFloor(), primary:true}]); }
+        else { R.pendingStatus = {wound:2, weak:2};
+          showEventScreen('⛲','血泉','血認得你，但不喜歡你。（下場戰鬥重傷 2、虛弱 2）',
+            [{n:'……繼續前進', f:()=>nextFloor()}]); }
+      }},
+      {n:'不喝', f:()=>walkAway('⛲','血泉')}]);
+  },
+  calcified(){ // 心室
+    showEventScreen('🗿','鈣化的英雄','一位冒險者站在走廊中央——站了太久，深淵把他變成了鈣。他手上的裝備看起來還能用。',
+      [{n:'撬下他的裝備', f:()=>{
+        const r = Math.random();
+        if(r<0.5){ const it = makeItem(R.floor, 2); R.bag.push(it);
+          showLoot([it], 0, '🗿', '英雄的遺物', '他的手指斷裂的聲音像一句遲來的「拿去」。'); }
+        else { const e = makeRealmElite(Math.min(R.floor,50));
+          showEventScreen('🗿','英雄的遺物','你才碰到他的劍柄，走廊盡頭傳來腳步聲——看守遺物的東西回來了。',
+            [{n:'⚔️ 迎戰', f:()=>startBattle(e), primary:true}]); }
+      }},
+      {n:'讓他站著', f:()=>{
+        if(Math.random()<0.4){ const b = pick(BLESSINGS); R.bless.push({k:b.k,v:b.v});
+          showEventScreen('🗿','鈣化的英雄','你朝他點了點頭。轉身時，你發誓看到他也點了。\n\n'+b.n+'（本次探索有效）',
+            [{n:'繼續前進', f:()=>nextFloor(), primary:true}]); }
+        else walkAway('🗿','鈣化的英雄');
+      }}]);
+  },
+};
+function merchantLabel(st){
+  if(st.sold) return '（已售出）';
+  if(st.kind==='gear'){ const r = RARITIES[st.it.rar]; return `${r.n}裝備｜${st.it.name}（${itemStatLine(st.it)}）— ${st.price}🪙`; }
+  if(st.kind==='oil') return `✦ 祝福油（隨機一項本次探索祝福）— ${st.price}🪙`;
+  if(st.kind==='quench') return `🗡 淬毒服務（攻擊附 3 中毒，3 場戰鬥）— ${st.price}🪙`;
+  if(st.kind==='mat') return `${MATS[st.mat].i} ${MATS[st.mat].n} ×1 — ${st.price}🪙`;
+  return `${POTIONS[st.k].i} ${POTIONS[st.k].n}（${pdesc(st.k)}）— ${st.price}🪙`;
+}
+function buyMerchant(idx){
+  const st = R.shop[idx];
+  if(!st || st.sold) return;
+  if(R.gold < st.price){ toast('碎銀不夠'); return; }
+  if(st.kind==='gear'){ R.bag.push(st.it); toast('入手 '+st.it.name); }
+  else if(st.kind==='oil'){ const b = pick(BLESSINGS); R.bless.push({k:b.k,v:b.v}); toast(b.n); }
+  else if(st.kind==='quench'){ R.quench = {k:'ptouch', v:3, battles:3}; toast('刀刃泛起烏青色'); }
+  else if(st.kind==='mat'){ G.mats[st.mat]++; toast('入手 '+MATS[st.mat].n); }
+  else { if(!potAdd(st.k)){ toast('背不下了'); return; } toast('買到了'); }
+  R.gold -= st.price;
+  st.sold = true;
+  save();
+  renderMerchant();
+}
+function renderMerchant(){
+  const choices = R.shop.map((st, i)=>({ n:merchantLabel(st), f:()=>buyMerchant(i) }));
+  choices.push({n:'不買了，繼續前進', f:()=>nextFloor(), primary:true});
+  showEventScreen('🏮','迷路的商人','一盞紅燈籠下，商人縮在貨擔後面：「客人，深處的東西不收碎銀，趁現在換點有用的吧。」',choices);
+}
+/* ================= 敵人 ================= */
+const STAT_CAPS = {agile:35, vamp:60, crit:75};  // 百分比屬性上限（可調）
+const PCT_KEYS = ['agile','vamp','crit'];        // 退出稀有度倍率的百分比詞綴
+function cappedStat(key, v){ return STAT_CAPS[key]!==undefined ? Math.min(v, STAT_CAPS[key]) : v; }
+const CYC_MULT = [1.6, 2.4, 3.5];           // 輪迴 I/II/III 強度
+const CYC_VAL  = [0.10, 0.25, 0.40];         // 詞綴數值加成
+const CYC_NEXT = 50;                          // 輪迴 N 到此深度解鎖 N+1（可調）
+function cycMult(c){ if(c<=0) return 1; return c<=3 ? CYC_MULT[c-1] : CYC_MULT[2]*Math.pow(1.4, c-3); }
+function cycVal(c){ if(c<=0) return 0; return c<=3 ? CYC_VAL[c-1] : CYC_VAL[2] + (c-3)*0.15; }
+function scaleMult(floor){
+  const base = 1 + (floor-1)*0.08 + Math.max(0, floor-50)*0.04;
+  return base * cycMult((R&&R.cycle)||0);
+}
+function realmIdx(floor){ return Math.min(4, Math.floor((Math.min(floor,50)-1)/10)); }
+const CYC_PREFIX = [
+  {n:'荊棘的', mod:(e,c)=>{ e.thorns = 2 + c*2; }},
+  {n:'吸血的', mod:(e,c)=>{ e.evamp = 0.4; }},
+  {n:'堅殼的', mod:(e,c)=>{ e.autoblock = 4 + c*3; }},
+  {n:'狂怒的', mod:(e,c)=>{ e.dmgMul = 1.25; }},
+];
+function applyCycPrefix(e){
+  const c = (R&&R.cycle)||0;
+  if(c<=0) return e;
+  if(Math.random() < 0.35 + c*0.1){
+    const p = pick(CYC_PREFIX);
+    p.mod(e, c);
+    e.n = p.n + e.n;
+  }
+  return e;
+}
+function makeEnemy(floor, elite){
+  const ri = realmIdx(floor);
+  const pool = floor > 50
+    ? Object.entries(ENEMIES)
+    : Object.entries(ENEMIES).filter(([k,e])=>e.realm===ri);
+  const [key, t] = pick(pool);
+  const m = scaleMult(floor) * (elite?1.6:1);
+  const e = {key, n:(elite?'精英・':'')+t.n, i:t.i, hp:Math.round(t.hp*m), maxhp:Math.round(t.hp*m),
+    pat:t.pat, pi:0, block:0, st:{}, mult:m/(elite?1.6:1)*(elite?1.3:1), elite:elite?1:0, boss:false};
+  return elite ? applyCycPrefix(e) : ((R&&R.cycle>=2) ? applyCycPrefix(e) : e);
+}
+function makeRealmElite(floor){
+  const t = REALM_ELITES[realmIdx(floor)];
+  const m = scaleMult(floor);
+  const e = {key:t.key, n:'精英・'+t.n, i:t.i, hp:Math.round(t.hp*m), maxhp:Math.round(t.hp*m),
+    pat:t.pat, pi:0, block:0, st:{}, mult:m, elite:1, boss:false};
+  return applyCycPrefix(e);
+}
+function enemyMove(e){ return e.pat[e.pi % e.pat.length]; }
+function bossFor(floor){
+  if(floor % 50 === 0) return FINAL_BOSS;
+  if(floor % 10 === 0) return LORD_BOSSES[((floor/10 - 1) % 4 + 4) % 4] || LORD_BOSSES[(floor/10-1)%4];
+  return MINI_BOSSES[(Math.floor(floor/10)) % 5];
+}
+function makeBoss(floor){
+  if(floor % 50 === 0){
+    const m = scaleMult(floor)*0.9;
+    const hp = Math.round(185*m);
+    return {key:'final', n:FINAL_BOSS.n, i:FINAL_BOSS.i, hp, maxhp:hp,
+      pat:FINAL_BOSS.pat, pat2:FINAL_BOSS.pat2, p2:false, pi:0, block:0, st:{},
+      mult:m, elite:2, boss:true, final:true, intro:FINAL_BOSS.intro};
+  }
+  if(floor % 10 === 0){
+    const idx = ((floor/10 - 1) % 4 + 4) % 4; // 10,20,30,40 -> 0..3; 60,70.. 輪迴循環
+    const b = LORD_BOSSES[idx];
+    const m = scaleMult(floor)*1.0;
+    return {key:b.key, n:b.n, i:b.i, hp:Math.round(b.hp*m), maxhp:Math.round(b.hp*m),
+      pat:b.pat, pi:0, block:0, st:{}, mult:m, elite:2, boss:true, intro:b.intro};
+  }
+  const b = MINI_BOSSES[(Math.floor(floor/10)) % 5];
+  const m = scaleMult(floor)*1.0;
+  return {key:b.key, n:b.n, i:b.i, hp:Math.round(b.hp*m), maxhp:Math.round(b.hp*m),
+    pat:b.pat, pi:0, block:0, st:{}, mult:m, elite:2, boss:true, intro:b.intro};
+}
+function intentText(e){
+  const mv = enemyMove(e);
+  const rageMul = (B && B.turn >= 8) ? 1 + (B.turn - 7) * 0.15 : 1;
+  const weakMul = e.st.weak ? 0.75 : 1;
+  const v = mv.v ? Math.round(mv.v * e.mult * rageMul * (e.dmgMul||1) * weakMul) : 0;
+  const wm = e.st.weak && mv.v ? '↓' : '';
+  switch(mv.t){
+    case 'a': return ['🗡️', (mv.nm||'攻擊')+' '+v+wm];
+    case 'h': return ['💥', (mv.nm||'重擊')+' '+v+wm];
+    case 'm': return ['🌀', (mv.nm||'連擊')+' '+v+wm+'×'+mv.x];
+    case 'd': return ['🛡️', '防禦 '+v];
+    case 'c': return ['🌫️', mv.nm||'詛咒'];
+    case 'v': return ['🩸', (mv.nm||'吸血')+' '+v+wm];
+    case 's': return ['🪙', (mv.nm||'偷竊')+' '+v+wm];
+    case 'g': return ['⏳', mv.nm||'蓄力'];
+  }
+  return ['❔','？'];
+}
+/* ================= 戰鬥 ================= */
+function startBattle(enemies, opt){
+  if(!Array.isArray(enemies)) enemies = [enemies];
+  R.phase='battle';
+  B = {es:enemies, ti:0, energy:3, maxEnergy:3, block:0, st:{}, turn:1, nextCrit:0,
+       over:false, sparkN:0, rageWarned:false,
+       boss:enemies.some(e=>e.boss), elite:Math.max(...enemies.map(e=>e.elite||0)), duo:enemies.length>1};
+  if(sumAffix('ener')>0) B.energy++;
+  if(R.execEnergy){ B.energy += R.execEnergy; R.execEnergy = 0; }
+  if(R.pendingStatus){ B.st = Object.assign({}, R.pendingStatus); R.pendingStatus = null; }
+  if(opt && opt.ambush){ B.energy = Math.max(1, B.energy-1); }
+  $('p-name').textContent = CLASSES[G.cls].icon+' '+CLASSES[G.cls].name;
+  $('log').innerHTML='';
+  const e0 = enemies[0];
+  if(e0.boss && e0.intro) log(e0.intro,'sys');
+  else if(B.duo) log('遭遇了 '+enemies.map(e=>e.n).join(' 與 ')+'——先殺哪隻？','sys');
+  else log('遭遇了 '+e0.n+'。','sys');
+  if(opt && opt.ambush) log('你被偷襲了！第一回合能量 -1。','sys');
+  if(Object.keys(B.st).length) log('異常狀態纏著你進入了戰鬥。','sys');
+  startPlayerTurn(true);
+  save();
+  showScreen('s-battle');
+}
+function tgt(){ return B.es[B.ti]; }
+function aliveEs(){ return B.es.filter(e=>e.hp>0); }
+function selectTarget(i){ if(B && !B.over && B.es[i] && B.es[i].hp>0){ B.ti = i; renderBattle(); } }
+function ensureTarget(){ if(tgt().hp<=0){ const i = B.es.findIndex(e=>e.hp>0); if(i>=0) B.ti = i; } }
+function log(txt, cls){
+  const l = $('log');
+  l.insertAdjacentHTML('beforeend', `<div class="l-${cls||''}">${txt}</div>`);
+  l.scrollTop = l.scrollHeight;
+}
+function floatDmg(zone, txt, cls){
+  const z = $(zone); if(!z) return;
+  const d = document.createElement('div');
+  d.className = 'float-dmg '+(cls||''); d.textContent = txt;
+  z.appendChild(d); setTimeout(()=>d.remove(), 800);
+}
+function startPlayerTurn(first){
+  if(B.over) return;
+  if(!first){ B.energy = B.maxEnergy; if(!sumAffix('wall')) B.block = 0; }
+  B.sparkN = 0;
+  const plate = sumAffix('plate');
+  if(plate){ B.block += plate; }
+  const rg = sumAffix('regen');
+  if(rg && !first){ const h = healPlayer(3); if(h>0) log(`血甲：回復 ${h} 生命。`,'heal'); }
+  if(B.st.poison){ const d = B.st.poison; damagePlayer(d, '中毒');
+    log(`中毒發作，你受到 ${d} 點傷害。`,'dmg'); floatDmg('player-zone','-'+d,''); B.st.poison = Math.floor(B.st.poison*0.7); if(!B.st.poison) delete B.st.poison;
+    if(R.hp<=0){ playerDie(); return; } }
+  if(B.st.stun){ B.st.stun--; if(!B.st.stun) delete B.st.stun;
+    log('你被暈眩了，這回合無法行動。','sys'); renderBattle(); setTimeout(()=>enemyTurn(), 900); return; }
+  renderBattle();
+}
+function renderBattle(){
+  $('b-floor').textContent = R.floor;
+  $('b-gold').textContent = R.gold;
+  ensureTarget();
+  const zone = $('enemy-zone');
+  let html = `<div class="e-wrap${B.duo?' duo':''}">`;
+  B.es.forEach((e,i)=>{
+    const dead = e.hp<=0;
+    const [ii,it] = dead? ['💀','已倒下'] : intentText(e);
+    html += `<div class="e-block${(B.duo&&i===B.ti&&!dead)?' sel':''}${dead?' dead':''}" id="ez-${i}" onclick="selectTarget(${i})">
+      <div class="enemy-icon" id="eicon-${i}">${e.i}</div>
+      <div class="enemy-name">${e.boss?`<span class="boss">☠ ${e.n}</span>`: e.elite?`<span class="elite">${e.n}</span>`: e.n}</div>
+      <div><span class="intent"><span class="ii">${ii}</span>${dead?it:'下一步：'+it}</span></div>
+      <div class="hpbar"><div class="fill" style="width:${Math.max(0,e.hp/e.maxhp*100)}%"></div>
+        <div class="txt">${Math.max(0,e.hp)} / ${e.maxhp}${e.block?`（🛡${e.block}）`:''}</div></div>
+      <div class="status-row">${statusHtml(e.st, 0)}</div>
+    </div>`;
+  });
+  html += '</div>';
+  zone.innerHTML = html;
+  const mhp = playerMaxHp();
+  $('p-hpfill').style.width = Math.max(0, R.hp/mhp*100)+'%';
+  $('p-hptxt').textContent = `${R.hp} / ${mhp}`;
+  $('p-status').innerHTML = statusHtml(B.st, 0);
+  const bb = $('p-block');
+  if(B.block>0){ bb.style.display='inline-block'; bb.textContent = '🛡 '+B.block; } else bb.style.display='none';
+  const en = $('p-energy'); en.innerHTML = '';
+  for(let i=0;i<Math.max(B.maxEnergy, B.energy);i++){
+    en.insertAdjacentHTML('beforeend', `<span class="pip${i<B.energy?' on':''}"></span>`);
+  }
+  const grid = $('skill-grid'); grid.innerHTML='';
+  for(const sid of CLASSES[G.cls].skills){
+    const sk = SK(sid);
+    const b = document.createElement('button'); b.className = 'skill-btn';
+    b.disabled = B.energy < sk.c || B.over;
+    b.innerHTML = `<div class="sn">${sk.n}${(R.skillUps&&R.skillUps[sid])?'⁺':''}</div><div class="sd">${skillDesc(sid)}</div><span class="sc">◆${sk.c}</span>`;
+    b.onclick = ()=>useSkill(sid);
+    grid.appendChild(b);
+  }
+  $('btn-end').disabled = B.over;
+}
+function SK(sid){
+  const base = SKILLS[sid];
+  const up = R && R.skillUps && R.skillUps[sid];
+  if(!up) return base;
+  const u = SKILL_UPS[sid][up];
+  const sk = {n:u.n, c:base.c, d:u.d, f:JSON.parse(JSON.stringify(base.f))};
+  u.mod(sk.f, sk);
+  return sk;
+}
+function skillDesc(sid){
+  const sk = SK(sid), f = sk.f;
+  const vulnMark = (B && tgt().st.vuln) ? '▲' : '';
+  if(f.dmg){ const d = calcPlayerDmg(f.dmg, true);
+    return sk.d.replace(/\d+ 點傷害/, d+vulnMark+' 點傷害'); }
+  if(f.poisonDmg){ const stacks = (B&&tgt().st.poison)||0; const d = stacks? calcPlayerDmg(stacks*f.poisonDmg, true): calcPlayerDmg(5,true);
+    return `造成 ${d} 點傷害（中毒層數×${f.poisonDmg}）`; }
+  return sk.d;
+}
+function statusHtml(st, block){
+  const M = {poison:['☠️ 中毒','bad'],burn:['🔥 燃燒','bad'],weak:['💤 虛弱','bad'],vuln:['🎯 易傷','bad'],stun:['💫 暈眩','bad'],wound:['🩹 重傷','bad'],rage:['😡 狂怒','bad']};
+  let h = '';
+  for(const [k,v] of Object.entries(st)) if(v>0 && M[k]) h += `<span class="st ${M[k][1]}">${M[k][0]} ${v}</span>`;
+  if(block>0) h += `<span class="st blk">🛡 ${block}</span>`;
+  return h;
+}
+function damagePlayer(d, src){
+  if(d <= 0) return 0;
+  if(hasCurse('frail')) d = Math.round(d*1.15);
+  if(src && R) R.lastHit = {src, d, hpBefore:R.hp};
+  if(R.hp - d <= 0 && B && !B.gutsUsed && sumAffix('guts')){
+    B.gutsUsed = true;
+    R.hp = 1;
+    log('不屈——你在致死的一擊下站住了，剩 1 點生命。','sys');
+    floatDmg('player-zone','不屈!','crit');
+    return d;
+  }
+  R.hp = Math.max(0, R.hp - d);
+  return d;
+}
+function healPlayer(amount){
+  let h = Math.floor(amount * healMult());
+  if(B && B.st.wound) h = Math.floor(h/2);
+  const real = Math.min(h, playerMaxHp() - R.hp);
+  if(real > 0) R.hp += real;
+  return real;
+}
+function calcPlayerDmg(base, preview){
+  let d = base + playerAtk();
+  if(sumAffix('fury')) d = Math.round(d*1.4);
+  if(B && B.potRage) d = Math.round(d*1.5);
+  if(B && B.st.weak) d = Math.round(d*0.75);
+  if(B && tgt().st.vuln) d = Math.round(d*1.5);
+  return Math.max(1, Math.round(d));
+}
+function scaleDot(ap, rate){
+  const out = Object.assign({}, ap);
+  const bonus = Math.floor(playerAtk() * rate);
+  if(out.poison) out.poison += bonus;
+  if(out.burn) out.burn += bonus;
+  return out;
+}
+function useSkill(sid){
+  if(B.over) return;
+  const sk = SK(sid), f = sk.f;
+  if(B.energy < sk.c) return;
+  B.energy -= sk.c;
+  if(f.block){ B.block += f.block; log(`${sk.n}：獲得 ${f.block} 格擋。`); }
+  if(f.thornHit){ const e = tgt(); e.hp -= f.thornHit; log(`${sk.n}：反刺 ${f.thornHit} 傷害。`,'dmg'); }
+  if(f.heal){ const h = healPlayer(f.heal);
+    log(`${sk.n}：回復 ${h} 血${B.st.wound?'（重傷減半）':''}。`,'heal'); floatDmg('player-zone','+'+h,'heal'); }
+  if(f.nextCrit){ B.nextCrit = Math.max(B.nextCrit, f.nextCrit===true?1:f.nextCrit); }
+  let dmg = 0;
+  if(f.dmg) dmg = f.dmg;
+  if(f.poisonDmg){ const st = tgt().st.poison||0; dmg = st? st*f.poisonDmg : 5; }
+  if(dmg > 0) dealToEnemy(dmg, sk, f);
+  else if(f.apply) applyStatus(tgt().st, scaleDot(f.apply, 0.6), tgt().n);
+  if(aliveEs().length===0){ winBattle(); return; }
+  renderBattle();
+}
+function applyStatus(target, ap, name){
+  for(const [k,v] of Object.entries(ap)){
+    target[k] = Math.min(99, (target[k]||0) + v);
+  }
+  const names = {poison:'中毒',burn:'燃燒',weak:'虛弱',vuln:'易傷',stun:'暈眩',wound:'重傷'};
+  log((name?name+'：':'')+Object.entries(ap).map(([k,v])=>`${names[k]} +${v}`).join('、'));
+}
+function dealToEnemy(base, sk, f){
+  const e = tgt();
+  const zone = 'ez-'+B.ti;
+  let d = calcPlayerDmg(base);
+  if(sumAffix('exem') && e.hp <= e.maxhp*0.3) d = Math.round(d*1.5);
+  let crit = false;
+  if(B.nextCrit>0 || Math.random()*100 < playerCrit()){ d = Math.round(d*(sumAffix('luck7')?2.1:1.6)); crit = true;
+    if(B.nextCrit>0) B.nextCrit--;
+    if(sumAffix('spark') && B.sparkN < 2){ B.energy++; B.sparkN++; log('燧心：爆擊回復 1 能量。','sys'); } }
+  /* 蝕魂：傷害轉中毒（以毒為源的攻擊不轉換，防止複利循環） */
+  if(sumAffix('vform') && !(f && f.poisonDmg)){
+    const stacks = Math.max(1, Math.ceil(d*0.6));
+    applyStatus(e.st, {poison:stacks});
+    floatDmg(zone, '☠'+stacks, crit?'crit':'');
+    log(`${sk.n} 化作 ${stacks} 層蝕魂之毒${crit?'（爆擊！）':''}。`,'dmg');
+    if(f && f.apply) applyStatus(e.st, scaleDot(f.apply, 0.6));
+    return;
+  }
+  let absorbed = 0;
+  if(e.block > 0){ absorbed = Math.min(e.block, d); e.block -= absorbed; d -= absorbed; }
+  e.hp -= d;
+  const ic = $('eicon-'+B.ti);
+  if(ic){ ic.classList.remove('hit'); void ic.offsetWidth; ic.classList.add('hit'); }
+  floatDmg(zone, crit? d+'!':'-'+d, crit?'crit': d===0?'blocked':'');
+  log(`${sk.n} 對 ${e.n} 造成 ${d} 傷害${crit?'（爆擊！）':''}${absorbed?`（${absorbed} 被格擋）`:''}。`,'dmg');
+  if(d>0 && e.thorns){ damagePlayer(e.thorns, '荊棘反噬'); floatDmg('player-zone','-'+e.thorns,'');
+    log(`荊棘反噬 ${e.thorns} 傷害。`,'dmg'); if(R.hp<=0){ playerDie(); return; } }
+  if(d>0){
+    const vamp = cappedStat('vamp', sumAffix('vamp')) + (f && f.drain? f.drain*100:0);
+    if(vamp>0){ const real = healPlayer(Math.max(1, Math.round(d*vamp/100)));
+      if(real>0) log(`吸血回復 ${real}${B.st.wound?'（重傷減半）':''}。`,'heal'); }
+    const pt = sumAffix('ptouch'); if(pt) applyStatus(e.st, {poison:pt + Math.floor(playerAtk()*0.12)});
+    const bt = sumAffix('btouch'); if(bt) applyStatus(e.st, {burn:bt + Math.floor(playerAtk()*0.12)});
+  }
+  if(f && f.apply) applyStatus(e.st, scaleDot(f.apply, 0.6));
+  if(e.hp<=0) onEnemySlain(e);
+  if(e.hp<=0 && f && f.execKill){ R.execEnergy = (f.execEnergy||2); const h=healPlayer(f.execHeal||6);
+    log('處決成功！下場戰鬥 +'+(f.execEnergy||2)+' 能量，回復 '+h+' 血。','sys'); }
+  if(e.hp<=0 && B.duo) log(e.n+' 倒下了。','sys');
+}
+function onEnemySlain(e){
+  if(e._slain) return; e._slain = true;
+  if(sumAffix('feast')){ const h = healPlayer(Math.round(playerMaxHp()*0.15));
+    if(h>0){ log(`貪食：吞噬殘渣，回復 ${h} 生命。`,'heal'); floatDmg('player-zone','+'+h,'heal'); } }
+}
+function endTurn(){
+  if(B.over) return;
+  for(const e of aliveEs()) tickBurn(e, 'ez-'+B.es.indexOf(e), e.n);
+  if(aliveEs().length===0){ winBattle(); return; }
+  enemyTurn();
+}
+function tickBurn(who, zone, name){
+  if(who.st && who.st.burn){
+    const d = who.st.burn;
+    if(who.maxhp !== undefined){ who.hp -= d; } else { damagePlayer(d, '燃燒'); }
+    log(`${name}受到 ${d} 點燃燒傷害。`,'dmg');
+    floatDmg(zone, '-'+d, '');
+    who.st.burn = Math.floor(who.st.burn/2);
+    if(!who.st.burn) delete who.st.burn;
+  }
+}
+function enemyTurn(){
+  setTimeout(()=>{
+    let rageMul = 1;
+    if(B.turn >= 8){
+      rageMul = 1 + (B.turn - 7) * 0.15;
+      if(!B.rageWarned){ B.rageWarned = true; log('深淵不耐煩了——敵人陷入狂怒，傷害開始遞增！','sys'); }
+    }
+    for(const e of B.es){
+      if(e.hp<=0) continue;
+      if(B.turn >= 8) e.st.rage = B.turn - 7;
+      if(e.st.poison){ const d = e.st.poison; e.hp -= d;
+        log(`${e.n} 中毒受到 ${d} 傷害。`,'dmg'); floatDmg('ez-'+B.es.indexOf(e),'-'+d,'');
+        if(sumAffix('symbio')){ const h = healPlayer(Math.ceil(d*0.5));
+          if(h>0){ log(`腐生：回復 ${h} 生命。`,'heal'); } }
+        e.st.poison = Math.floor(e.st.poison*0.7); if(!e.st.poison) delete e.st.poison;
+        if(e.hp<=0){ log(e.n+' 被毒殺了。','sys'); onEnemySlain(e); continue; } }
+      if(e.st.stun){ e.st.stun--; if(!e.st.stun) delete e.st.stun;
+        log(`${e.n} 暈眩中，跳過行動。`,'sys'); continue; }
+      if(e.pat2 && !e.p2 && e.hp <= e.maxhp/2){
+        e.pat = e.pat2; e.pi = 0; e.p2 = true; e.block = 0;
+        log(FINAL_BOSS.intro2,'sys');
+      }
+      if(e.autoblock){ e.block += e.autoblock; }
+      const mv = enemyMove(e);
+      e.pi++;
+      const val = mv.v ? Math.round(mv.v * e.mult * rageMul * (e.dmgMul||1)) : 0;
+      const weakMul = e.st.weak ? 0.75 : 1;
+      switch(mv.t){
+        case 'a': case 'h': case 'v': case 's': case 'm': {
+          const times = mv.x || 1;
+          let totalDealt = 0;
+          for(let i=0;i<times;i++){
+            if(R.hp<=0) break;
+            let d = Math.round(val*weakMul);
+            if(B.st.vuln) d = Math.round(d*1.5);
+            if(Math.random()*100 < (hasCurse('heavy2')?0:cappedStat('agile', sumAffix('agile')))){ log('你閃過了'+e.n+'的攻擊。','sys'); floatDmg('player-zone','閃避','blocked'); continue; }
+            let absorbed = 0;
+            if(B.block>0){ absorbed = Math.min(B.block, d); B.block -= absorbed; d -= absorbed; }
+            if(d>0){ damagePlayer(d, `${e.n}的${mv.nm||'攻擊'}`); totalDealt += d;
+              floatDmg('player-zone','-'+d,''); }
+            else floatDmg('player-zone','格擋','blocked');
+            log(`${e.n} ${mv.nm||'攻擊'}造成 ${d} 傷害${absorbed?`（${absorbed} 被格擋）`:''}。`,'dmg');
+            const th = sumAffix('thorn');
+            if(th && ['a','h','m','v'].includes(mv.t)){ e.hp -= th; log(`荊棘反彈 ${th} 傷害。`,'dmg'); }
+            if(mv.t==='v' && d>0){ const h = Math.min(Math.round(d*0.5), e.maxhp - e.hp); if(h>0){ e.hp += h; log(`${e.n} 吸取了 ${h} 生命。`,'heal'); } }
+            if(e.evamp && d>0 && mv.t!=='v'){ const h = Math.min(Math.round(d*e.evamp), e.maxhp - e.hp); if(h>0){ e.hp += h; log(`${e.n} 汲取了 ${h} 生命。`,'heal'); } }
+            if(mv.t==='s' && d>0){ const steal = Math.min(R.gold, 10 + R.floor*2); R.gold -= steal; if(steal) log(`${e.n} 偷走了 ${steal} 碎銀！`,'sys'); }
+          }
+          if(mv.ap && totalDealt>0) applyStatus(B.st, mv.ap, null);
+          break;
+        }
+        case 'd': e.block += val; log(`${e.n} 進入防禦（+${val} 格擋）。`); break;
+        case 'c': applyStatus(B.st, mv.ap, e.n); break;
+        case 'g': log(`${e.n} 正在${mv.nm||'蓄力'}——下一擊會很痛。`,'sys'); break;
+      }
+      if(R.hp<=0){ playerDie(); return; }
+    }
+    if(aliveEs().length===0){ winBattle(); return; }
+    afterEnemyAct();
+  }, 500);
+}
+function afterEnemyAct(){
+  tickBurn({st:B.st}, 'player-zone', '你');
+  if(R.hp<=0){ playerDie(); return; }
+  for(const k of ['weak','vuln','wound']){
+    if(B.st[k]){ B.st[k]--; if(!B.st[k]) delete B.st[k]; }
+    for(const e of B.es){ if(e.st[k]){ e.st[k]--; if(!e.st[k]) delete e.st[k]; } }
+  }
+  B.turn++;
+  startPlayerTurn();
+  save();
+}
+/* ================= 勝負與戰利品 ================= */
+function winBattle(){
+  if(B.over) return; B.over = true;
+  R.kills += B.es.length;
+  if(B.boss) G.rec.boss++;
+  let firstKillBonus = 0;
+  for(const e of B.es){
+    const key = e.key || 'unknown';
+    if(!G.codex[key]){ G.codex[key] = 0; firstKillBonus += 30; }
+    G.codex[key]++;
+  }
+  if(firstKillBonus){ R.gold += firstKillBonus; toast('圖鑑首錄 +'+firstKillBonus+'🪙'); }
+  const mend = sumAffix('mend');
+  if(mend){ const h = Math.min(mend, playerMaxHp()-R.hp); if(h>0) R.hp += h; }
+  if(R.quench && R.quench.battles>0){ R.quench.battles--; }
+  let gold = Math.round((8 + R.floor*2.4 + rnd(0,6)) * (B.boss?4 : B.elite?2 : 1) * (B.duo?1.6:1) * (1 + (R.cycle||0)*0.2));
+  gold = Math.round(gold * (1 + sumAffix('greed')/100));
+  R.gold += gold;
+  const drops = [];
+  const dropChance = (B.boss||B.elite||B.duo)?1 : 0.55;
+  if(Math.random() < dropChance){
+    const bonus = B.boss?2 : (B.elite||B.duo)?1 : 0;
+    let it = makeItem(R.floor, bonus);
+    if(B.boss && it.rar < 2){ it = makeItem(R.floor, 2); it.rar = Math.max(2, it.rar); }
+    drops.push(it); R.bag.push(it);
+  }
+  if((B.boss || B.duo) && Math.random()<0.5){ const it2 = makeItem(R.floor, 1); drops.push(it2); R.bag.push(it2); }
+  if(B.es.some(e=>e.final)){
+    let it3 = makeItem(R.floor, 2); let tries = 0;
+    while(it3.rar < 3 && tries++ < 30) it3 = makeItem(R.floor, 2);
+    if(it3.rar < 3){ it3.rar = 3; const lp = LEG_KEYS.filter(k=>AFFIXES[k].slots.includes(it3.slot));
+      if(lp.length) it3.affixes.unshift({k:pick(lp), v:1}); }
+    drops.push(it3); R.bag.push(it3);
+  }
+  let matDrop = null;
+  if(R.cycle > 0 && R.floor >= 11){
+    const chance = (0.16 + (B.elite?0.10:0) + (B.boss?0.20:0)) * (1 + (R.cycle-1)*0.35);
+    if(Math.random() < chance){
+      matDrop = R.floor <= 30 ? 'iron' : 'steel';
+      G.mats[matDrop] = (G.mats[matDrop]||0) + 1;
+    }
+  }
+  let potionDrop = null, potionOverflow = 0;
+  if(Math.random() < (B.boss?0.8:0.22)){
+    const k = pick(potionPool());
+    if(potAdd(k)) potionDrop = k;
+    else { potionOverflow = 12 + Math.round(R.floor*0.8); R.gold += potionOverflow; }
+  }
+  const isFinal = B.es.some(e=>e.final);
+  if(isFinal){ G.rec.clear = (G.rec.clear||0) + 1; }
+  if(B.boss){
+    if(R.cycle === 0 && R.floor % 5 === 0) G.orig.cp = Math.max(G.orig.cp, Math.min(R.floor, 45));
+    if(R.cycle > 0 && R.floor % 10 === 0){ const c = cd(R.cycle); c.cp = Math.max(c.cp, R.floor); }
+  }
+  if(R.cycle === 0 && R.floor === 50 && B.boss){ R.origDone = true; G.orig.done = true; }
+  setTimeout(()=>{
+    showLoot(drops, gold, B.boss?'👑':'⚔️', isFinal?'你打穿了深淵的心臟':(B.boss?'首領倒下了':'戰鬥勝利'),
+      `獲得 ${gold} 碎銀` + (potionDrop? `，撿到 ${POTIONS[potionDrop].i}${POTIONS[potionDrop].n}`:'') + (potionOverflow? `，藥水袋滿——折成 ${potionOverflow} 碎銀`:'') + (matDrop? `，拾獲 ${MATS[matDrop].i}${MATS[matDrop].n} ×1`:''), mend? `（急救回復 ${mend} 血）`:'');
+  }, 600);
+  save();
+}
+function showLoot(items, gold, icon, title, sub, extra){
+  R.phase='loot';
+  $('loot-icon').textContent = icon;
+  $('loot-title').textContent = title;
+  $('loot-sub').textContent = (sub||'') + (extra||'');
+  const body = $('loot-body'); body.innerHTML = '';
+  if(!items.length){
+    body.innerHTML = '<p style="text-align:center;color:var(--dim);font-size:13px">這次沒有裝備掉落。</p>';
+  }
+  for(const it of items){
+    const r = RARITIES[it.rar];
+    const d = document.createElement('div'); d.className = `loot-card ${r.b}`;
+    d.innerHTML = `<div class="${r.cls}" style="font-size:16px">${it.name} <span style="font-size:11px">${r.n}</span></div>
+      <div style="font-size:13px;color:var(--dim);margin:4px 0">${slotName(it.slot)}｜${itemStatLine(it)}</div>
+      ${affixHtml(it)}${compareHtml(it)}
+      <button class="btn small primary" style="margin-top:10px" onclick="equipFromBag(${it.id});this.textContent='已裝上';this.disabled=true">立刻換上</button>`;
+    body.appendChild(d);
+  }
+  save();
+  showScreen('s-loot');
+}
+function equipFromBag(id, ret){
+  let it = R.bag.find(x=>x.id===id) || G.stash.find(x=>x.id===id);
+  if(!it) return;
+  const idx = R.bag.findIndex(x=>x.id===id);
+  if(idx>=0) R.bag.splice(idx,1);
+  const old = G.equip[it.slot];
+  if(old){ if(old.banked!==false) G.stash.push(old); else R.bag.push(old); }
+  it.banked = false;
+  G.equip[it.slot] = it;
+  // 換裝可能改變血量上限
+  R.hp = Math.min(R.hp, playerMaxHp());
+  closeSheet(); save(); toast('已裝備 '+it.name);
+  if(R.phase==='doors') showDoors();
+  if(ret==='stats') openRunStats();
+}
+function afterLoot(){
+  if(R.origDone){
+    // 本源完結：自動保管一切
+    for(const it of R.bag){ it.banked = true; G.stash.push(it); }
+    for(const sl of ['w','a','t']) if(G.equip[sl]) G.equip[sl].banked = true;
+    G.gold += R.gold;
+    const kills = R.kills;
+    R = null; B = null; save();
+    $('res-icon').textContent = '🌅';
+    $('res-title').textContent = '本源・完結';
+    $('res-sub').textContent = '深淵之心在你身後停止了跳動。五十層的路，你走到了底——但心臟之下傳來低語：「再來一次。這次我不裝睡。」';
+    $('res-body').innerHTML = `<div class="stat-grid">
+      <div class="stat-box"><div class="v">50</div><div class="k">走到了底</div></div>
+      <div class="stat-box"><div class="v">${kills}</div><div class="k">擊殺</div></div>
+      <div class="stat-box"><div class="v">🔄</div><div class="k">輪迴已開</div></div>
+    </div><p style="text-align:center;color:var(--green);font-size:13px">所有收穫已存入倉庫。輪迴在下潛選單等你。</p>`;
+    showScreen('s-result');
+    return;
+  }
+  nextFloor();
+}
+/* ================= 藥水 ================= */
+function usePotion(k, inBattle){
+  if(!R.pots || !R.pots[k]) return;
+  if(k==='heal'){ const v = potPower(k); const h = inBattle? healPlayer(v) : Math.min(v, playerMaxHp()-R.hp);
+    if(!inBattle) R.hp += h;
+    toast(`回復 ${h} 血`); if(inBattle){ log(`喝下治療藥水，回復 ${h} 血${B&&B.st.wound?'（重傷減半）':''}。`,'heal'); floatDmg('player-zone','+'+h,'heal'); } }
+  else if(k==='energy'){ if(!inBattle) return toast('只能在戰鬥中用'); B.energy += 2; log('灌下烈酒，+2 能量。','sys'); }
+  else if(k==='bomb'){ if(!inBattle) return toast('只能在戰鬥中用'); const v = potPower(k); const e = tgt(); e.hp -= v; applyStatus(e.st, {vuln:2}); log(`火油瓶對 ${e.n} 炸出 ${v} 傷害，火光中破綻畢露（易傷 2）。`,'dmg'); floatDmg('ez-'+B.ti,'-'+v,''); }
+  else if(k==='purge'){ B ? (B.st = {}) : null; toast('負面狀態已清除'); if(inBattle) log('淨化藥水洗去了所有異常。','sys'); }
+  else if(k==='wrath'){ if(!inBattle) return toast('只能在戰鬥中用'); B.potRage = true; log('狂暴藥劑燒進血管——本場戰鬥傷害 +50%！','sys'); }
+  else if(k==='stone'){ if(!inBattle) return toast('只能在戰鬥中用'); const v = potPower(k); B.block += v; log(`石膚藥劑：+${v} 格擋。`,'sys'); }
+  else if(k==='holy'){ if(!inBattle) return toast('只能在戰鬥中用'); B.st = {}; const v = potPower(k);
+    for(const e of aliveEs()){ e.hp -= v; floatDmg('ez-'+B.es.indexOf(e),'-'+v,''); }
+    log(`聖水潑灑——所有敵人受到 ${v} 傷害，你的異常被洗淨。`,'sys'); }
+  R.pots[k]--; if(!R.pots[k]) delete R.pots[k];
+  save();
+  if(inBattle){
+    closeSheet();
+    if(aliveEs().length===0){ winBattle(); return; }
+    renderBattle();
+  }
+}
+function openBattlePotions(){
+  if(!potTotal()){ toast('沒有藥水'); return; }
+  let html = '<h3>道具</h3><div class="item-list" style="margin-top:10px">';
+  for(const [k,n] of Object.entries(R.pots)){
+    const p = POTIONS[k];
+    html += `<div class="item-row" onclick="usePotion('${k}',true)"><span>${p.i} ${p.n}${n>1?' ×'+n:''}</span><span class="is">${pdesc(k)}</span></div>`;
+  }
+  html += '</div><button class="btn" style="margin-top:12px" onclick="closeSheet()">關閉</button>';
+  openSheet(html);
+}
+/* ================= 撤退 / 死亡 ================= */
+function retreat(){
+  const n = R.bag.length, g = R.gold;
+  // 保管一切
+  for(const it of R.bag){ it.banked = true; G.stash.push(it); }
+  for(const s of ['w','a','t']) if(G.equip[s]) G.equip[s].banked = true;
+  G.gold += g;
+  const deep = R.floor;
+  const kills = R.kills;
+  R = null; B = null; save();
+  $('res-icon').textContent = '🪢';
+  $('res-title').textContent = '平安歸來';
+  $('res-sub').textContent = `你在第 ${deep} 層拉了繩子。貪婪是美德，活著兌現它更是。`;
+  $('res-body').innerHTML = `<div class="stat-grid">
+    <div class="stat-box"><div class="v">${deep}</div><div class="k">抵達深度</div></div>
+    <div class="stat-box"><div class="v">${kills}</div><div class="k">擊殺</div></div>
+    <div class="stat-box"><div class="v">+${g}</div><div class="k">帶回碎銀</div></div>
+  </div>` + (n? `<p style="text-align:center;color:var(--green);font-size:13px">${n} 件裝備已存入倉庫。</p>`:'');
+  showScreen('s-result');
+}
+function playerDie(){
+  if(B) B.over = true;
+  const deep = R.floor, kills = R.kills, lostG = R.gold, lostN = R.bag.length;
+  const deathHit = R.lastHit || null;
+  // 未保管的裝備全部消失，裝備欄還原成下潛時的樣子
+  G.equip = R.equipBackup;
+  R = null; B = null; save();
+  setTimeout(()=>{
+    $('res-icon').textContent = '💀';
+    $('res-title').textContent = '深淵收下了你';
+    $('res-sub').textContent = '再貪一層，就這一層——每個死在這裡的人都這麼說過。';
+    const lh = deathHit;
+    const recap = lh ? `<p style="text-align:center;color:#e8a0a0;font-size:14px;margin:6px 0">死因：${lh.src} ${lh.d} 傷（當時剩 ${lh.hpBefore} 血）</p>` : '';
+    const realm = realmFor(deep);
+    $('res-body').innerHTML = recap + `<div class="stat-grid">
+      <div class="stat-box"><div class="v">${deep}</div><div class="k">${realm?realm.n:''} 倒下</div></div>
+      <div class="stat-box"><div class="v">${kills}</div><div class="k">擊殺</div></div>
+      <div class="stat-box"><div class="v" style="color:var(--red)">-${lostG}</div><div class="k">失去碎銀</div></div>
+    </div>` + (lostN? `<p style="text-align:center;color:var(--red);font-size:13px">${lostN} 件未保管的裝備沉入了深淵。</p>`:
+      '<p style="text-align:center;color:var(--dim);font-size:13px">至少你沒帶什麼可以失去的東西。</p>');
+    showScreen('s-result');
+  }, 700);
+}
+function backToCamp(){ renderCamp(); showScreen('s-camp'); }
+/* ================= 啟動 ================= */
+(function init(){
+  load();
+  const hasSave = !!G.cls;
+  $('btn-wipe').style.display = hasSave? 'block':'none';
+  // 存檔中若卡在戰鬥，回到門的畫面重新選（血量保留）
+  if(R && R.phase==='battle'){ R.phase='doors'; R.doors=null; R.forceDoor = R.lastDoor || 'fight'; }
+  showScreen('s-title');
+})();
+</script>
+</body>
+</html>
+
 <style>
 :root{
   --bg:#0b0d12; --panel:#141824; --panel2:#1b2132; --line:#2a3145;
