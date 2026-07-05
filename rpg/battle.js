@@ -135,7 +135,9 @@ function startPlayerTurn(first){
   if(B.st.poison){ const d = B.st.poison; damagePlayer(d, '中毒');
     log(`中毒發作，你受到 ${d} 點傷害。`,'dmg'); floatDmg('player-zone','-'+d,''); B.st.poison = Math.floor(B.st.poison*0.7); if(!B.st.poison) delete B.st.poison;
     if(R.hp<=0){ playerDie(); return; } }
-  if(B.st.stun){ B.st.stun--; if(!B.st.stun) delete B.st.stun;
+  if(B.st.stunImm){ B.st.stunImm--; if(!B.st.stunImm) delete B.st.stunImm; }
+  if(B.st.stun){ B.st.stun--;
+    if(!B.st.stun){ delete B.st.stun; B.st.stunImm = 2; }
     log('你被暈眩了，這回合無法行動。','sys'); renderBattle(); setTimeout(()=>enemyTurn(), 900); return; }
   renderBattle();
 }
@@ -203,7 +205,7 @@ function skillDesc(sid){
 }
 
 function statusHtml(st, block){
-  const M = {poison:['☠️ 中毒','bad'],burn:['🔥 燃燒','bad'],weak:['💤 虛弱','bad'],vuln:['🎯 易傷','bad'],stun:['💫 暈眩','bad'],wound:['🩹 重傷','bad'],rage:['😡 狂怒','bad']};
+  const M = {poison:['☠️ 中毒','bad'],burn:['🔥 燃燒','bad'],weak:['💤 虛弱','bad'],vuln:['🎯 易傷','bad'],stun:['💫 暈眩','bad'],stunImm:['🛡💫 暈眩抵抗','blk'],wound:['🩹 重傷','bad'],rage:['😡 狂怒','bad']};
   let h = '';
   for(const [k,v] of Object.entries(st)) if(v>0 && M[k]) h += `<span class="st ${M[k][1]}">${M[k][0]} ${v}</span>`;
   if(block>0) h += `<span class="st blk">🛡 ${block}</span>`;
@@ -271,10 +273,11 @@ function useSkill(sid){
 
 function applyStatus(target, ap, name){
   for(const [k,v] of Object.entries(ap)){
+    if(k==='stun' && target.stunImm){ log('暈眩被抵抗了！','sys'); continue; }
     target[k] = Math.min(99, (target[k]||0) + v);
   }
   const names = {poison:'中毒',burn:'燃燒',weak:'虛弱',vuln:'易傷',stun:'暈眩',wound:'重傷'};
-  log((name?name+'：':'')+Object.entries(ap).map(([k,v])=>`${names[k]} +${v}`).join('、'));
+  log((name?name+'：':'')+Object.entries(ap).filter(([k])=>!(k==='stun'&&target.stunImm)).map(([k,v])=>`${names[k]} +${v}`).join('、'));
 }
 
 function dealToEnemy(base, sk, f){
@@ -358,7 +361,9 @@ function enemyTurn(){
           if(h>0){ log(`腐生：回復 ${h} 生命。`,'heal'); } }
         e.st.poison = Math.floor(e.st.poison*0.7); if(!e.st.poison) delete e.st.poison;
         if(e.hp<=0){ log(e.n+' 被毒殺了。','sys'); onEnemySlain(e); continue; } }
-      if(e.st.stun){ e.st.stun--; if(!e.st.stun) delete e.st.stun;
+      if(e.st.stunImm){ e.st.stunImm--; if(!e.st.stunImm) delete e.st.stunImm; }
+      if(e.st.stun){ e.st.stun--;
+        if(!e.st.stun){ delete e.st.stun; e.st.stunImm = 2; }
         log(`${e.n} 暈眩中，跳過行動。`,'sys'); continue; }
       if(e.pat2 && !e.p2 && e.hp <= e.maxhp/2){
         e.pat = e.pat2; e.pi = 0; e.p2 = true; e.block = 0;
