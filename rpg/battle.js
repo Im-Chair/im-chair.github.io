@@ -12,26 +12,40 @@ function applyCycPrefix(e){
   return e;
 }
 
+/* 供需曲線敵人生成 (§13)：身分權重 × 樓層目標值 */
+const REALM_HP_MEAN = [0,0,0,0,0], REALM_DMG_MEAN = [0,0,0,0,0];
+(function(){
+  const hc=[0,0,0,0,0], dm=[0,0,0,0,0], dc=[0,0,0,0,0];
+  for(const e of Object.values(ENEMIES)){
+    REALM_HP_MEAN[e.realm]+=e.hp; hc[e.realm]++;
+    for(const m of e.pat) if(m.v){ dm[e.realm]+=m.v*(m.x||1); dc[e.realm]++; }
+  }
+  for(let i=0;i<5;i++){ REALM_HP_MEAN[i]/=hc[i]; REALM_DMG_MEAN[i]=dm[i]/dc[i]; }
+})();
+function patMean(pat){ let t=0,c=0; for(const m of pat) if(m.v){ t+=m.v*(m.x||1); c++; } return c? t/c : 10; }
 function makeEnemy(floor, elite){
   const ri = realmIdx(floor);
   const pool = floor > 50
     ? Object.entries(ENEMIES)
     : Object.entries(ENEMIES).filter(([k,e])=>e.realm===ri);
   const [key, t] = pick(pool);
-  const m = scaleMult(floor) * (elite?1.6:1);
-  const e = {key, n:(elite?'精英・':'')+t.n, i:t.i, hp:Math.round(t.hp*m), maxhp:Math.round(t.hp*m),
-    pat:t.pat, pi:0, block:0, st:{}, mult:m/(elite?1.6:1)*(elite?1.3:1), elite:elite?1:0, boss:false};
+  const cm = cycMult((R&&R.cycle)||0);
+  const hp = Math.round(CURVE.mobHP(floor) * (t.hp/REALM_HP_MEAN[t.realm]) * (elite?CURVE.eliteHP:1) * cm);
+  // 一般怪傷害：域內身分保留（打手打得比域均重）
+  const mult = CURVE.mobDMG(floor) * (elite?1.15:1) * cm / REALM_DMG_MEAN[t.realm];
+  const e = {key, n:(elite?'精英・':'')+t.n, i:t.i, hp, maxhp:hp,
+    pat:t.pat, pi:0, block:0, st:{}, mult, elite:elite?1:0, boss:false};
   return elite ? applyCycPrefix(e) : ((R&&R.cycle>=2) ? applyCycPrefix(e) : e);
 }
-
 function makeRealmElite(floor){
   const t = REALM_ELITES[realmIdx(floor)];
-  const m = scaleMult(floor);
-  const e = {key:t.key, n:'精英・'+t.n, i:t.i, hp:Math.round(t.hp*m), maxhp:Math.round(t.hp*m),
-    pat:t.pat, pi:0, block:0, st:{}, mult:m, elite:1, boss:false};
+  const cm = cycMult((R&&R.cycle)||0);
+  const em = 100; // 域限精英基準體重
+  const hp = Math.round(CURVE.mobHP(floor) * CURVE.eliteHP * (t.hp/em) * cm);
+  const e = {key:t.key, n:'精英・'+t.n, i:t.i, hp, maxhp:hp,
+    pat:t.pat, pi:0, block:0, st:{}, mult:CURVE.mobDMG(floor)*1.3*cm/patMean(t.pat), elite:1, boss:false};
   return applyCycPrefix(e);
 }
-
 function enemyMove(e){ return e.pat[e.pi % e.pat.length]; }
 
 function bossFor(floor){
@@ -41,26 +55,25 @@ function bossFor(floor){
 }
 
 function makeBoss(floor){
+  const cm = cycMult((R&&R.cycle)||0);
+  const mk = (b, hpMult, key, extra) => {
+    const hp = Math.round(CURVE.mobHP(floor) * hpMult * cm);
+    return Object.assign({key, n:b.n, i:b.i, hp, maxhp:hp,
+      pat:b.pat, pi:0, block:0, st:{},
+      mult: CURVE.mobDMG(floor) * CURVE.bossDMG * cm / patMean(b.pat),
+      elite:2, boss:true, intro:b.intro}, extra||{});
+  };
   if(floor % 50 === 0){
-    const m = scaleMult(floor)*0.9;
-    const hp = Math.round(185*m);
-    return {key:'final', n:FINAL_BOSS.n, i:FINAL_BOSS.i, hp, maxhp:hp,
-      pat:FINAL_BOSS.pat, pat2:FINAL_BOSS.pat2, p2:false, pi:0, block:0, st:{},
-      mult:m, elite:2, boss:true, final:true, intro:FINAL_BOSS.intro};
+    const e = mk(FINAL_BOSS, CURVE.finalHP, 'final', {pat2:FINAL_BOSS.pat2, p2:false, final:true});
+    return e;
   }
   if(floor % 10 === 0){
-    const idx = ((floor/10 - 1) % 4 + 4) % 4; // 10,20,30,40 -> 0..3; 60,70.. 輪迴循環
-    const b = LORD_BOSSES[idx];
-    const m = scaleMult(floor)*1.0;
-    return {key:b.key, n:b.n, i:b.i, hp:Math.round(b.hp*m), maxhp:Math.round(b.hp*m),
-      pat:b.pat, pi:0, block:0, st:{}, mult:m, elite:2, boss:true, intro:b.intro};
+    const idx = ((floor/10 - 1) % 4 + 4) % 4;
+    return mk(LORD_BOSSES[idx], CURVE.lordHP, LORD_BOSSES[idx].key);
   }
   const b = MINI_BOSSES[(Math.floor(floor/10)) % 5];
-  const m = scaleMult(floor)*1.0;
-  return {key:b.key, n:b.n, i:b.i, hp:Math.round(b.hp*m), maxhp:Math.round(b.hp*m),
-    pat:b.pat, pi:0, block:0, st:{}, mult:m, elite:2, boss:true, intro:b.intro};
+  return mk(b, CURVE.miniHP, b.key);
 }
-
 function intentText(e){
   const mv = enemyMove(e);
   const rageMul = (B && B.turn >= 8) ? 1 + (B.turn - 7) * 0.15 : 1;
@@ -131,9 +144,13 @@ function startPlayerTurn(first){
   const plate = sumAffix('plate');
   if(plate){ B.block += plate; }
   const rg = sumAffix('regen');
-  if(rg && !first){ const h = healPlayer(3); if(h>0) log(`血甲：回復 ${h} 生命。`,'heal'); }
-  if(B.st.poison){ const d = B.st.poison; damagePlayer(d, '中毒');
-    log(`中毒發作，你受到 ${d} 點傷害。`,'dmg'); floatDmg('player-zone','-'+d,''); B.st.poison = Math.floor(B.st.poison*0.7); if(!B.st.poison) delete B.st.poison;
+  if(rg && !first){ const h = healPlayer(Math.ceil(playerMaxHp()*0.03)); if(h>0) log(`血甲：回復 ${h} 生命。`,'heal'); }
+  if(playerMaxMana() > 0 && !first){
+    const mm = playerMaxMana();
+    R.mana = Math.min(mm, (R.mana||0) + Math.round(mm * manaRegenPct()/100));
+  }
+  if(B.st.poison){ const d = Math.ceil(playerMaxHp() * DOT.poisonPct * B.st.poison); damagePlayer(d, '中毒');
+    log(`中毒發作，你受到 ${d} 點傷害（${B.st.poison} 層）。`,'dmg'); floatDmg('player-zone','-'+d,''); B.st.poison -= 1; if(B.st.poison<=0) delete B.st.poison;
     if(R.hp<=0){ playerDie(); return; } }
   if(B.st.stunImm){ B.st.stunImm--; if(!B.st.stunImm) delete B.st.stunImm; }
   if(B.st.stun){ B.st.stun--;
@@ -199,16 +216,31 @@ function skillDesc(sid){
   const vulnMark = (B && tgt().st.vuln) ? '▲' : '';
   if(f.dmg){ const d = calcPlayerDmg(f.dmg, true);
     return sk.d.replace(/\d+ 點傷害/, d+vulnMark+' 點傷害'); }
-  if(f.poisonDmg){ const stacks = (B&&tgt().st.poison)||0; const d = stacks? calcPlayerDmg(stacks*f.poisonDmg, true): calcPlayerDmg(5,true);
+  if(f.poisonDmg){ const stacks = (B&&tgt().st.poison)||0; const d = calcPlayerDmg(12*(1+0.15*stacks), true);
     return `造成 ${d} 點傷害（中毒層數×${f.poisonDmg}）`; }
   return sk.d;
 }
 
+const STATUS_INFO = {
+  poison:'☠️ 中毒：每回合失去（層數 × 最大生命 1.2%），每回合層數 −1。無視防禦與格擋。',
+  burn:'🔥 燃燒：每回合失去（層數 × 最大生命 2%），每回合層數減半。無視防禦與格擋。',
+  weak:'💤 虛弱：造成的傷害 ×0.75。',
+  vuln:'🎯 易傷：受到的傷害 ×1.5。',
+  stun:'💫 暈眩：跳過整個回合。結束後獲得 2 回合暈眩抵抗。',
+  stunImm:'🛡💫 暈眩抵抗：期間不會再被暈眩。',
+  wound:'🩹 重傷：受到的治療效果減半。',
+  rage:'😡 狂怒：造成的傷害提升。',
+  block:'🛡 格擋：在防禦結算後吸收等量傷害，回合結束清零（壁壘詞綴可保留）。斧與法術剋格擋、匕首刮不動。',
+};
+function explainStatus(k){
+  if(STATUS_INFO[k]) openSheet(`<h3>狀態說明</h3><p class="base">${STATUS_INFO[k]}</p>
+    <button class="btn" onclick="closeSheet()">關閉</button>`);
+}
 function statusHtml(st, block){
   const M = {poison:['☠️ 中毒','bad'],burn:['🔥 燃燒','bad'],weak:['💤 虛弱','bad'],vuln:['🎯 易傷','bad'],stun:['💫 暈眩','bad'],stunImm:['🛡💫 暈眩抵抗','blk'],wound:['🩹 重傷','bad'],rage:['😡 狂怒','bad']};
   let h = '';
-  for(const [k,v] of Object.entries(st)) if(v>0 && M[k]) h += `<span class="st ${M[k][1]}">${M[k][0]} ${v}</span>`;
-  if(block>0) h += `<span class="st blk">🛡 ${block}</span>`;
+  for(const [k,v] of Object.entries(st)) if(v>0 && M[k]) h += `<span class="st ${M[k][1]}" onclick="explainStatus('${k}')">${M[k][0]} ${v}</span>`;
+  if(block>0) h += `<span class="st blk" onclick="explainStatus('block')">🛡 ${block}</span>`;
   return h;
 }
 
@@ -236,20 +268,16 @@ function healPlayer(amount){
 }
 
 function calcPlayerDmg(base, preview){
-  let d = base + playerAtk();
+  // 唯一公式：(武器攻擊＋主素質) × 武器係數 × 招式倍率
+  // 過渡期：舊技能 flat 值 ÷7 換算為招式倍率（第3批換十六招後移除）
+  const w = G.equip.w;
+  const wAtk = w ? w.base + w.up : 3;
+  let d = (wAtk + mainStat()) * weaponType().coef * (base / 7);
   if(sumAffix('fury')) d = Math.round(d*1.4);
   if(B && B.potRage) d = Math.round(d*1.5);
   if(B && B.st.weak) d = Math.round(d*0.75);
   if(B && tgt().st.vuln) d = Math.round(d*1.5);
   return Math.max(1, Math.round(d));
-}
-
-function scaleDot(ap, rate){
-  const out = Object.assign({}, ap);
-  const bonus = Math.floor(playerAtk() * rate);
-  if(out.poison) out.poison += bonus;
-  if(out.burn) out.burn += bonus;
-  return out;
 }
 
 function useSkill(sid){
@@ -264,9 +292,9 @@ function useSkill(sid){
   if(f.nextCrit){ B.nextCrit = Math.max(B.nextCrit, f.nextCrit===true?1:f.nextCrit); }
   let dmg = 0;
   if(f.dmg) dmg = f.dmg;
-  if(f.poisonDmg){ const st = tgt().st.poison||0; dmg = st? st*f.poisonDmg : 5; }
+  if(f.poisonDmg){ dmg = 12 * (1 + 0.15 * (tgt().st.poison||0)); }
   if(dmg > 0) dealToEnemy(dmg, sk, f);
-  else if(f.apply) applyStatus(tgt().st, scaleDot(f.apply, 0.6), tgt().n);
+  else if(f.apply) applyStatus(tgt().st, f.apply, tgt().n);
   if(aliveEs().length===0){ winBattle(); return; }
   renderBattle();
 }
@@ -274,7 +302,8 @@ function useSkill(sid){
 function applyStatus(target, ap, name){
   for(const [k,v] of Object.entries(ap)){
     if(k==='stun' && target.stunImm){ log('暈眩被抵抗了！','sys'); continue; }
-    target[k] = Math.min(99, (target[k]||0) + v);
+    const cap = (k==='poison'||k==='burn') ? DOT.stackCap : 99;
+    target[k] = Math.min(cap, (target[k]||0) + v);
   }
   const names = {poison:'中毒',burn:'燃燒',weak:'虛弱',vuln:'易傷',stun:'暈眩',wound:'重傷'};
   log((name?name+'：':'')+Object.entries(ap).filter(([k])=>!(k==='stun'&&target.stunImm)).map(([k,v])=>`${names[k]} +${v}`).join('、'));
@@ -288,18 +317,24 @@ function dealToEnemy(base, sk, f){
   let crit = false;
   if(B.nextCrit>0 || Math.random()*100 < playerCrit()){ d = Math.round(d*(sumAffix('luck7')?2.1:1.6)); crit = true;
     if(B.nextCrit>0) B.nextCrit--;
-    if(sumAffix('spark') && B.sparkN < 2){ B.energy++; B.sparkN++; log('燧心：爆擊回復 1 能量。','sys'); } }
-  /* 蝕魂：傷害轉中毒（以毒為源的攻擊不轉換，防止複利循環） */
+    if(sumAffix('spark') && B.sparkN < 1){ B.energy++; B.sparkN++; log('燧心：爆擊回復 1 行動點。','sys'); } }
+  /* 蝕魂：攻擊轉中毒，每擊 2 層，受 10 層上限結構性封頂 (§4d) */
   if(sumAffix('vform') && !(f && f.poisonDmg)){
-    const stacks = Math.max(1, Math.ceil(d*0.6));
+    const stacks = 2;
     applyStatus(e.st, {poison:stacks});
     floatDmg(zone, '☠'+stacks, crit?'crit':'');
     log(`${sk.n} 化作 ${stacks} 層蝕魂之毒${crit?'（爆擊！）':''}。`,'dmg');
-    if(f && f.apply) applyStatus(e.st, scaleDot(f.apply, 0.6));
+    if(f && f.apply) applyStatus(e.st, f.apply);
     return;
   }
   let absorbed = 0;
-  if(e.block > 0){ absorbed = Math.min(e.block, d); e.block -= absorbed; d -= absorbed; }
+  if(e.block > 0){
+    const bm = weaponType().blockMod;             // 對盾相性：斧/法術 0.5、劍 1.0、匕首 1.5
+    const effBlock = Math.round(e.block * bm);
+    absorbed = Math.min(effBlock, d);
+    e.block = Math.max(0, e.block - Math.round(absorbed / bm));
+    d -= absorbed;
+  }
   e.hp -= d;
   const ic = $('eicon-'+B.ti);
   if(ic){ ic.classList.remove('hit'); void ic.offsetWidth; ic.classList.add('hit'); }
@@ -308,13 +343,13 @@ function dealToEnemy(base, sk, f){
   if(d>0 && e.thorns){ damagePlayer(e.thorns, '荊棘反噬'); floatDmg('player-zone','-'+e.thorns,'');
     log(`荊棘反噬 ${e.thorns} 傷害。`,'dmg'); if(R.hp<=0){ playerDie(); return; } }
   if(d>0){
-    const vamp = cappedStat('vamp', sumAffix('vamp')) + (f && f.drain? f.drain*100:0);
+    const vamp = Math.min(VAMP_CAP, sumAffix('vamp')) + (f && f.drain? f.drain*100:0);
     if(vamp>0){ const real = healPlayer(Math.max(1, Math.round(d*vamp/100)));
       if(real>0) log(`吸血回復 ${real}${B.st.wound?'（重傷減半）':''}。`,'heal'); }
-    const pt = sumAffix('ptouch'); if(pt) applyStatus(e.st, {poison:pt + Math.floor(playerAtk()*0.12)});
-    const bt = sumAffix('btouch'); if(bt) applyStatus(e.st, {burn:bt + Math.floor(playerAtk()*0.12)});
+    const pt = sumAffix('ptouch'); if(pt) applyStatus(e.st, {poison:pt});
+    const bt = sumAffix('btouch'); if(bt) applyStatus(e.st, {burn:bt});
   }
-  if(f && f.apply) applyStatus(e.st, scaleDot(f.apply, 0.6));
+  if(f && f.apply) applyStatus(e.st, f.apply);
   if(e.hp<=0) onEnemySlain(e);
   if(e.hp<=0 && f && f.execKill){ R.execEnergy = (f.execEnergy||2); const h=healPlayer(f.execHeal||6);
     log('處決成功！下場戰鬥 +'+(f.execEnergy||2)+' 能量，回復 '+h+' 血。','sys'); }
@@ -336,10 +371,11 @@ function endTurn(){
 
 function tickBurn(who, zone, name){
   if(who.st && who.st.burn){
-    const d = who.st.burn;
+    const maxhp = who.maxhp !== undefined ? who.maxhp : playerMaxHp();
+    const d = Math.ceil(maxhp * DOT.burnPct * who.st.burn);
     if(who.maxhp !== undefined){ who.hp -= d; } else { damagePlayer(d, '燃燒'); }
-    log(`${name}受到 ${d} 點燃燒傷害。`,'dmg');
-    floatDmg(zone, '-'+d, '');
+    log(`${name} 被燃燒灼傷 ${d}（${who.st.burn} 層）。`,'dmg');
+    if(zone) floatDmg(zone, '-'+d, '');
     who.st.burn = Math.floor(who.st.burn/2);
     if(!who.st.burn) delete who.st.burn;
   }
@@ -355,11 +391,11 @@ function enemyTurn(){
     for(const e of B.es){
       if(e.hp<=0) continue;
       if(B.turn >= 8) e.st.rage = B.turn - 7;
-      if(e.st.poison){ const d = e.st.poison; e.hp -= d;
-        log(`${e.n} 中毒受到 ${d} 傷害。`,'dmg'); floatDmg('ez-'+B.es.indexOf(e),'-'+d,'');
+      if(e.st.poison){ const d = Math.ceil(e.maxhp * DOT.poisonPct * e.st.poison); e.hp -= d;
+        log(`${e.n} 中毒受到 ${d} 傷害（${e.st.poison} 層）。`,'dmg'); floatDmg('ez-'+B.es.indexOf(e),'-'+d,'');
         if(sumAffix('symbio')){ const h = healPlayer(Math.ceil(d*0.5));
           if(h>0){ log(`腐生：回復 ${h} 生命。`,'heal'); } }
-        e.st.poison = Math.floor(e.st.poison*0.7); if(!e.st.poison) delete e.st.poison;
+        e.st.poison -= 1; if(e.st.poison<=0) delete e.st.poison;
         if(e.hp<=0){ log(e.n+' 被毒殺了。','sys'); onEnemySlain(e); continue; } }
       if(e.st.stunImm){ e.st.stunImm--; if(!e.st.stunImm) delete e.st.stunImm; }
       if(e.st.stun){ e.st.stun--;
@@ -382,7 +418,9 @@ function enemyTurn(){
             if(R.hp<=0) break;
             let d = Math.round(val*weakMul);
             if(B.st.vuln) d = Math.round(d*1.5);
-            if(Math.random()*100 < (hasCurse('heavy2')?0:cappedStat('agile', sumAffix('agile')))){ log('你閃過了'+e.n+'的攻擊。','sys'); floatDmg('player-zone','閃避','blocked'); continue; }
+            if(Math.random()*100 < dodgeRate()){ log('你閃過了'+e.n+'的攻擊。','sys'); floatDmg('player-zone','閃避','blocked'); continue; }
+            // 防禦結算：(敵傷 − 防禦力/10) × (1 − 防禦率) → 格擋最後吸收
+            d = Math.max(1, Math.round((d - playerDef()/10) * (1 - defRate()/100)));
             let absorbed = 0;
             if(B.block>0){ absorbed = Math.min(B.block, d); B.block -= absorbed; d -= absorbed; }
             if(d>0){ damagePlayer(d, `${e.n}的${mv.nm||'攻擊'}`); totalDealt += d;
@@ -546,7 +584,9 @@ function usePotion(k, inBattle){
   if(!R.pots || !R.pots[k]) return;
   if(k==='heal'){ const v = potPower(k); const h = inBattle? healPlayer(v) : Math.min(v, playerMaxHp()-R.hp);
     if(!inBattle) R.hp += h;
-    toast(`回復 ${h} 血`); if(inBattle){ log(`喝下治療藥水，回復 ${h} 血${B&&B.st.wound?'（重傷減半）':''}。`,'heal'); floatDmg('player-zone','+'+h,'heal'); } }
+    const mm = playerMaxMana();
+    if(mm > 0){ R.mana = Math.min(mm, (R.mana||0) + Math.round(mm*0.3)); }
+    toast(`回復 ${h} 血${mm>0?'＋30%法力':''}`); if(inBattle){ log(`喝下治療藥水，回復 ${h} 血${B&&B.st.wound?'（重傷減半）':''}。`,'heal'); floatDmg('player-zone','+'+h,'heal'); } }
   else if(k==='energy'){ if(!inBattle) return toast('只能在戰鬥中用'); B.energy += 2; log('灌下烈酒，+2 能量。','sys'); }
   else if(k==='bomb'){ if(!inBattle) return toast('只能在戰鬥中用'); const v = potPower(k); const e = tgt(); e.hp -= v; applyStatus(e.st, {vuln:2}); log(`火油瓶對 ${e.n} 炸出 ${v} 傷害，火光中破綻畢露（易傷 2）。`,'dmg'); floatDmg('ez-'+B.ti,'-'+v,''); }
   else if(k==='purge'){ B ? (B.st = {}) : null; toast('負面狀態已清除'); if(inBattle) log('淨化藥水洗去了所有異常。','sys'); }

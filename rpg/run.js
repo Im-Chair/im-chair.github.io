@@ -68,7 +68,7 @@ function tryStart(floor){
 function startRun(startFloor, cycle){
   closeSheet();
   startFloor = startFloor || 1;
-  R = {floor:startFloor, hp:playerMaxHp(), gold:0, bag:[], pots:{heal:1}, skillUps:{},
+  R = {floor:startFloor, hp:playerMaxHp(), mana:playerMaxMana(), gold:0, bag:[], pots:{heal:1}, skillUps:{},
        bless:[], equipBackup:JSON.parse(JSON.stringify(G.equip)),
        doors:null, phase:'doors', kills:0};
   R.cycle = cycle || 0;

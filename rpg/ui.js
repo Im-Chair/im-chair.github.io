@@ -23,7 +23,9 @@ function renderClassSelect(){
     const d = document.createElement('div');
     d.className = 'class-card'; d.dataset.k = k;
     d.innerHTML = `<div class="ci">${c.icon}</div><div class="cn">${c.name}</div>
-      <div class="cd">${c.desc}</div><div style="font-size:11px;color:var(--dim)">生命 ${c.hp}｜爆擊 ${c.crit}%</div>`;
+      <div class="cd">${c.desc}</div>
+      <div style="font-size:11px;color:var(--dim)">❤️${c.hp}　🛡${c.def}　💨${c.dodge}%　🎯${c.crit}%${c.mana?'　🔮'+c.mana:''}</div>
+      <div style="font-size:10px;color:var(--dim)">主素質：${STATS[c.mainStat].i}${STATS[c.mainStat].n}</div>`;
     d.onclick = ()=>{ document.querySelectorAll('.class-card').forEach(x=>x.classList.remove('selected'));
       d.classList.add('selected'); pendingClass = k; };
     g.appendChild(d);
@@ -32,7 +34,14 @@ function renderClassSelect(){
 
 function confirmClass(){
   if(!pendingClass){ toast('先選一個職業'); return; }
-  G.cls = pendingClass; save(); renderCamp(); showScreen('s-camp');
+  G.cls = pendingClass;
+  if(!G.equip.w){
+    const starter = {sword:['sword','傳家的舊劍'], assassin:['dagger','磨薄的短刃'],
+                     white:['staff','見習法杖'], dark:['staff','裂紋咒杖']}[pendingClass];
+    G.equip.w = {id:uid++, slot:'w', rar:0, up:0, banked:true, base:5,
+                 wtype:starter[0], name:starter[1], affixes:[]};
+  }
+  save(); renderCamp(); showScreen('s-camp');
 }
 
 function renderCamp(){
@@ -131,26 +140,39 @@ function openCodex(){
 
 function openRunStats(){
   const rows = [];
-  rows.push(['⚔️ 攻擊加成', '+'+playerAtk()]);
-  rows.push(['❤️ 生命上限', playerMaxHp()]);
-  const rawCrit = CLASSES[G.cls].crit + sumAffix('crit');
-  rows.push(['🎯 爆擊率', playerCrit()+'%'+(rawCrit>STAT_CAPS.crit?'（上限'+STAT_CAPS.crit+'）':'')]);
+  const w = G.equip.w, wt = weaponType();
+  rows.push([`${wt.i} ${w? (w.base+w.up):0}（${wt.magic?'魔攻':'物攻'}）`, '武器攻擊']);
+  rows.push(['+'+mainStat(), STATS[CLASSES[G.cls].mainStat].i+' 主素質（'+STATS[CLASSES[G.cls].mainStat].n+'）']);
+  rows.push([`${R? R.hp : playerMaxHp()}/${playerMaxHp()}`, '❤️ 生命']);
+  if(playerMaxMana()>0) rows.push([`${R? (R.mana||0) : playerMaxMana()}/${playerMaxMana()}`, '🔮 法力（回 '+manaRegenPct()+'%/回合）']);
+  rows.push([playerDef(), '🛡 防禦力（減 '+(playerDef()/10).toFixed(1)+' 點）']);
+  const mkRate = (fn, statKey, label) => {
+    const total = fn(), fromStat = rateFromStat(statTotal(statKey));
+    return [total.toFixed(0)+'%'+(total>=RATE_CAP?'（頂）':''), label+(fromStat>0.5?'（素質貢獻 '+fromStat.toFixed(0)+'%）':'')];
+  };
+  rows.push(mkRate(defRate, 'vit', '🛡 防禦率'));
+  rows.push(mkRate(dodgeRate, 'agi', '💨 閃避率'));
+  rows.push(mkRate(critRate, 'spi', '🎯 爆擊率'));
+  // 五素質列
+  const statRow = ['str','int','vit','agi','spi']
+    .map(k=>`${STATS[k].i}${statTotal(k)}`).join('　');
+  // 功能與傳說
   const extra = [
-    ['agile','💨 閃避', v=>cappedStat('agile',v)+'%'+(v>STAT_CAPS.agile?'（上限'+STAT_CAPS.agile+'）':'')],
-    ['vamp','🩸 吸血', v=>cappedStat('vamp',v)+'%'+(v>STAT_CAPS.vamp?'（上限'+STAT_CAPS.vamp+'）':'')],
-    ['plate','🛡 守勢', v=>'每回合 +'+v+' 格擋'], ['thorn','🌵 荊棘', v=>'反彈 '+v],
-    ['ptouch','☠️ 淬毒', v=>'攻擊附 '+v+' 中毒'], ['btouch','🔥 燃焰', v=>'攻擊附 '+v+' 燃燒'],
-    ['mend','💊 急救', v=>'戰後回 '+v+' 血'], ['greed','🪙 貪婪', v=>'+'+v+'%'],
-    ['ener','⚡ 蓄能', v=>'首回合 +1 能量'],
+    ['vamp','🩸 吸血', v=>Math.min(VAMP_CAP,v)+'%'+(v>VAMP_CAP?'（上限'+VAMP_CAP+'）':'')],
+    ['thorns','🌵 荊棘', v=>'反彈 '+v], ['mend','💊 急救', v=>'戰後回 '+v+' 血'],
+    ['ptouch','☠️ 淬毒', v=>'攻擊附 '+v+' 層'], ['btouch','🔥 燃焰', v=>'攻擊附 '+v+' 層'],
+    ['greed','🪙 貪婪', v=>'+'+v+'%'],
     ['vform','✸ 蝕魂', v=>'攻擊轉中毒'], ['wall','✸ 壁壘', v=>'格擋不消失'],
-    ['fury','✸ 狂血', v=>'傷害+40% 血-30%'], ['spark','✸ 燧心', v=>'爆擊回能量'],
-    ['symbio','✸ 腐生', v=>'毒傷回血50%'], ['exem','✸ 斬首', v=>'低血敵傷害+50%'],
-    ['regen','✸ 血甲', v=>'每回合回3血'], ['feast','✸ 貪食', v=>'擊殺回15%血'],
+    ['fury','✸ 狂血', v=>'傷害+40% 血-30%'], ['spark','✸ 燧心', v=>'爆擊回行動'],
+    ['symbio','✸ 腐生', v=>'毒傷回血50%'], ['exem','✸ 斬首', v=>'低血敵+50%'],
+    ['regen','✸ 血甲', v=>'每回合回3%血'], ['feast','✸ 貪食', v=>'擊殺回15%血'],
     ['guts','✸ 不屈', v=>'免死一次/場'], ['luck7','✸ 賭運', v=>'爆傷2.1倍'],
   ];
-  for(const [k, label, fmt] of extra){ const v = sumAffix(k); if(v>0) rows.push([label, fmt(v)]); }
-  let html = '<h3>角色檢視</h3><div class="stat-grid" style="grid-template-columns:1fr 1fr">' +
-    rows.map(([k,v])=>`<div class="stat-box"><div class="v" style="font-size:15px">${v}</div><div class="k">${k}</div></div>`).join('') + '</div>';
+  for(const [k, label, fmt] of extra){ const v = sumAffix(k); if(v>0) rows.push([fmt(v), label]); }
+  let html = '<h3>角色檢視</h3>' +
+    `<div style="text-align:center;color:var(--gold);font-size:14px;margin:6px 0">${statRow}</div>` +
+    '<div class="stat-grid" style="grid-template-columns:1fr 1fr">' +
+    rows.map(([v,k])=>`<div class="stat-box"><div class="v" style="font-size:15px">${v}</div><div class="k">${k}</div></div>`).join('') + '</div>';
   html += '<div class="section-title">身上裝備</div>';
   for(const sk of ['w','a','t']){
     const it = G.equip[sk];

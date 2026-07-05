@@ -2,17 +2,15 @@
 // ============ items.js — 裝備：生成/詞綴/裝備介面/鐵匠(精煉+重鑄)/深淵黑市 ============
 
 function rollAffixVal(k, ri, floor){
-  const a = AFFIXES[k];
-  if(a.min === a.max) return a.min;
-  if(PCT_KEYS.includes(k)){
-    // 百分比詞綴：稀有度提高取樣次數（偏向區間頂端），絕不突破原始上限
-    let best = a.min;
-    for(let i=0; i<=ri; i++) best = Math.max(best, rnd(a.min, a.max));
-    return best;
-  }
-  const cv = 1 + cycVal((R&&R.cycle)||0);
-  const v = rnd(a.min, a.max) * RARITIES[ri].val * (1 + floor*0.012) * cv;
-  return Math.max(1, Math.round(Math.min(a.max * RARITIES[ri].val * 1.25 * cv, v)));
+  const A = AFFIXES[k];
+  if(A.min === A.max && !AFFIX_BAND[k]) return A.min;
+  const band = ROLL_BANDS[AFFIX_BAND[k]] || [[A.min,A.max],[A.min,A.max],[A.min,A.max],[A.min,A.max]];
+  const [lo, hi] = band[ri];
+  let v = rnd(lo, hi);
+  if(A.stat) v += Math.round(floor * 0.3);           // 素質吃樓層 +0.3/層
+  if(R && R.cycle > 0 && (A.stat || AFFIX_BAND[k]==='hp' || AFFIX_BAND[k]==='mp'))
+    v = Math.round(v * (1 + cycVal(R.cycle)));       // 輪迴裝備價值
+  return Math.max(1, v);
 }
 
 function rollRarity(floor, bonus){ // bonus: 0一般 1精英 2首領
@@ -29,8 +27,12 @@ function makeItem(floor, bonus){
   const ri = rollRarity(floor, bonus||0), rar = RARITIES[ri];
   const slot = pick(['w','w','a','a','t']);
   const it = {id:uid++, slot, rar:ri, up:0, banked:false, affixes:[]};
-  if(slot==='w'){ it.base = Math.round(2 + floor*0.7 + rar.mult); it.name = pick(WEAPON_NAMES); }
-  else if(slot==='a'){ it.base = Math.round(7 + floor*1.3 + rar.mult*4); it.name = pick(ARMOR_NAMES); }
+  if(slot==='w'){
+    it.wtype = pick(['dagger','sword','axe','staff']);
+    it.base = Math.round(CURVE.wpnBase(floor) * CURVE.rarMult[ri]);
+    it.name = pick(WEAPON_NAMES[it.wtype]);
+  }
+  else if(slot==='a'){ it.base = Math.round(CURVE.armBase(floor) * CURVE.rarMult[ri]); it.name = pick(ARMOR_NAMES); }
   else { it.base = 0; it.name = pick(TRINKET_NAMES); }
   it.name = pick(PREFIX[rar.id]) + it.name;
   const n = rnd(rar.afx[0], rar.afx[1]);
@@ -56,8 +58,11 @@ function makeItem(floor, bonus){
 }
 
 function itemStatLine(it){
-  if(it.slot==='w') return `攻擊 +${it.base + it.up}`;
-  if(it.slot==='a') return `生命上限 +${it.base + it.up*4}`;
+  if(it.slot==='w'){
+    const wt = WEAPON_TYPES[it.wtype||'sword'];
+    return `${wt.i}${wt.n}｜攻擊 ${it.base + it.up}（${wt.magic?'魔攻':'物攻'}）`;
+  }
+  if(it.slot==='a') return `防禦 ${it.base + it.up}`;
   return '飾品';
 }
 
