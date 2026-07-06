@@ -89,44 +89,44 @@ const SKILL_UPS = {
 const ENEMIES = {
   /* 淺穴 1-10 */
   rat:   {n:'洞穴巨鼠', i:'🐀', hp:16, realm:0, pat:[{t:'a',v:4},{t:'a',v:5},{t:'a',v:3,ap:{weak:1},nm:'撕咬'}]},
-  slime: {n:'腐蝕黏液', i:'🟢', hp:22, realm:0, pat:[{t:'a',v:5,ap:{weak:1},nm:'酸液'},{t:'d',v:5},{t:'a',v:6}]},
-  skel:  {n:'骷髏兵',   i:'💀', hp:24, realm:0, pat:[{t:'a',v:6},{t:'d',v:6},{t:'a',v:8}]},
-  bat:   {n:'蝙蝠群',   i:'🦇', hp:19, realm:0, pat:[{t:'m',v:3,x:2},{t:'a',v:4},{t:'m',v:2,x:3}]},
+  slime: {n:'腐蝕黏液', i:'🟢', hp:22, tag:'bImm', realm:0, pat:[{t:'a',v:5,ap:{weak:1},nm:'酸液'},{t:'d',v:5},{t:'a',v:6}]},
+  skel:  {n:'骷髏兵',   i:'💀', hp:24, tag:'pImm', realm:0, pat:[{t:'a',v:6},{t:'d',v:6},{t:'a',v:8}]},
+  bat:   {n:'蝙蝠群',   i:'🦇', hp:19, tag:'naked', realm:0, pat:[{t:'m',v:3,x:2},{t:'a',v:4},{t:'m',v:2,x:3}]},
   spider:{n:'穴居蛛',   i:'🕷️', hp:21, realm:0, pat:[{t:'a',v:4,ap:{poison:2},nm:'毒牙'},{t:'d',v:5},{t:'a',v:6}]},
   thief: {n:'盜墓賊',   i:'🥷', hp:26, realm:0, pat:[{t:'s',v:6,nm:'搶奪'},{t:'a',v:7},{t:'d',v:6}]},
-  garg:  {n:'石像鬼',   i:'🗿', hp:30, realm:0, pat:[{t:'d',v:8},{t:'g',nm:'蓄力'},{t:'h',v:15}]},
+  garg:  {n:'石像鬼',   i:'🗿', hp:30, tag:'heavy', realm:0, pat:[{t:'d',v:8},{t:'g',nm:'蓄力'},{t:'h',v:15}]},
   /* 沉沒王國 11-20 */
-  drown: {n:'溺水者',   i:'🧟', hp:34, realm:1, pat:[{t:'a',v:9},{t:'v',v:8,nm:'拖拽'},{t:'a',v:10}]},
+  drown: {n:'溺水者',   i:'🧟', hp:34, tag:'bImm', realm:1, pat:[{t:'a',v:9},{t:'v',v:8,nm:'拖拽'},{t:'a',v:10}]},
   eel:   {n:'窟窿鰻',   i:'🐍', hp:30, realm:1, pat:[{t:'m',v:5,x:2},{t:'a',v:11},{t:'d',v:8}]},
-  sguard:{n:'沉沒衛兵', i:'♜', hp:40, realm:1, pat:[{t:'d',v:10},{t:'a',v:11},{t:'h',v:15}]},
-  jelly: {n:'水母群',   i:'🪼', hp:28, realm:1, pat:[{t:'a',v:8,ap:{weak:1},nm:'螫刺'},{t:'c',ap:{vuln:2},nm:'纏繞'},{t:'a',v:10}]},
+  sguard:{n:'沉沒衛兵', i:'♜', hp:40, tag:'heavy', realm:1, pat:[{t:'d',v:10},{t:'a',v:11},{t:'h',v:15}]},
+  jelly: {n:'水母群',   i:'🪼', hp:28, tag:'naked', realm:1, pat:[{t:'a',v:8,ap:{weak:1},nm:'螫刺'},{t:'c',ap:{vuln:2},nm:'纏繞'},{t:'a',v:10}]},
   crab:  {n:'珍珠蟹',   i:'🦀', hp:38, realm:1, pat:[{t:'d',v:12},{t:'h',v:15},{t:'a',v:9}]},
   siren: {n:'海妖歌者', i:'🧜', hp:32, realm:1, pat:[{t:'c',ap:{weak:2},nm:'魅歌'},{t:'a',v:10},{t:'v',v:10,nm:'汲取'}]},
-  corpse2:{n:'浮屍',    i:'⚰️', hp:36, realm:1, pat:[{t:'a',v:10},{t:'a',v:11},{t:'g',nm:'鼓脹'},{t:'h',v:17,nm:'脹裂'}]},
+  corpse2:{n:'浮屍',    i:'⚰️', hp:36, tag:'pImm', realm:1, pat:[{t:'a',v:10},{t:'a',v:11},{t:'g',nm:'鼓脹'},{t:'h',v:17,nm:'脹裂'}]},
   /* 血肉迴廊 21-30 */
-  leech: {n:'血蛭',     i:'🪱', hp:42, realm:2, pat:[{t:'v',v:11,nm:'吸附'},{t:'v',v:13,nm:'吸附'},{t:'a',v:12}]},
+  leech: {n:'血蛭',     i:'🪱', hp:42, tag:'naked', realm:2, pat:[{t:'v',v:11,nm:'吸附'},{t:'v',v:13,nm:'吸附'},{t:'a',v:12}]},
   clot:  {n:'蠕行血塊', i:'🩸', hp:46, realm:2, pat:[{t:'a',v:12},{t:'m',v:7,x:2},{t:'a',v:14}]},
   eye:   {n:'眼球簇',   i:'👁️', hp:40, realm:2, pat:[{t:'c',ap:{weak:2,vuln:2},nm:'凝視'},{t:'g',nm:'蓄力'},{t:'h',v:21,nm:'湮滅光線'}]},
-  teeth: {n:'齒牆',     i:'🦷', hp:52, realm:2, pat:[{t:'d',v:13},{t:'a',v:14},{t:'h',v:19,nm:'咬合'}]},
-  hound: {n:'雙頭地獄犬',i:'🐕', hp:46, realm:2, pat:[{t:'m',v:7,x:2},{t:'a',v:13},{t:'a',v:10,ap:{weak:2},nm:'咆哮撕咬'}]},
-  necro: {n:'亡靈法師', i:'🧙', hp:42, realm:2, pat:[{t:'c',ap:{vuln:2},nm:'咒言'},{t:'a',v:12},{t:'a',v:13}]},
+  teeth: {n:'齒牆',     i:'🦷', hp:52, tag:'heavy', realm:2, pat:[{t:'d',v:13},{t:'a',v:14},{t:'h',v:19,nm:'咬合'}]},
+  hound: {n:'雙頭地獄犬',i:'🐕', hp:46, tag:'bImm', realm:2, pat:[{t:'m',v:7,x:2},{t:'a',v:13},{t:'a',v:10,ap:{weak:2},nm:'咆哮撕咬'}]},
+  necro: {n:'亡靈法師', i:'🧙', hp:42, tag:'pImm', realm:2, pat:[{t:'c',ap:{vuln:2},nm:'咒言'},{t:'a',v:12},{t:'a',v:13}]},
   flower:{n:'食人魔花', i:'🌺', hp:44, realm:2, pat:[{t:'v',v:11,nm:'吸食'},{t:'a',v:13},{t:'v',v:12,nm:'吸食'}]},
   /* 無光教區 31-40 */
   monk:  {n:'苦修士',   i:'🧎', hp:52, realm:3, pat:[{t:'a',v:15},{t:'d',v:13},{t:'a',v:16,ap:{wound:1},nm:'鞭笞'}]},
-  choir: {n:'唱詩者',   i:'🎭', hp:48, realm:3, pat:[{t:'c',ap:{weak:2},nm:'低吟'},{t:'a',v:15},{t:'c',ap:{vuln:2},nm:'高音'}]},
-  lantern:{n:'提燈人',  i:'🏮', hp:50, realm:3, pat:[{t:'a',v:14,ap:{burn:2},nm:'燈油'},{t:'d',v:13},{t:'h',v:20,ap:{burn:2},nm:'潑焚'}]},
-  knight:{n:'深淵騎士', i:'♞', hp:58, realm:3, pat:[{t:'d',v:14},{t:'a',v:16},{t:'h',v:21}]},
+  choir: {n:'唱詩者',   i:'🎭', hp:48, tag:'naked', realm:3, pat:[{t:'c',ap:{weak:2},nm:'低吟'},{t:'a',v:15},{t:'c',ap:{vuln:2},nm:'高音'}]},
+  lantern:{n:'提燈人',  i:'🏮', hp:50, tag:'bImm', realm:3, pat:[{t:'a',v:14,ap:{burn:2},nm:'燈油'},{t:'d',v:13},{t:'h',v:20,ap:{burn:2},nm:'潑焚'}]},
+  knight:{n:'深淵騎士', i:'♞', hp:58, tag:'heavy', realm:3, pat:[{t:'d',v:14},{t:'a',v:16},{t:'h',v:21}]},
   zealot:{n:'盲信者',   i:'🙇', hp:54, realm:3, pat:[{t:'a',v:15},{t:'a',v:15},{t:'g',nm:'禱告'},{t:'h',v:25,nm:'殉道'}]},
-  reliq: {n:'聖物匣',   i:'🏺', hp:60, realm:3, pat:[{t:'d',v:16},{t:'c',ap:{wound:2},nm:'聖灰'},{t:'h',v:22}]},
+  reliq: {n:'聖物匣',   i:'🏺', hp:60, tag:'pImm', realm:3, pat:[{t:'d',v:16},{t:'c',ap:{wound:2},nm:'聖灰'},{t:'h',v:22}]},
   sister:{n:'影修女',   i:'👥', hp:50, realm:3, pat:[{t:'m',v:8,x:2},{t:'a',v:16,ap:{weak:1},nm:'割禮'},{t:'d',v:12}]},
   /* 心室 41-50 */
   throm: {n:'血栓',     i:'🫘', hp:66, realm:4, pat:[{t:'d',v:17},{t:'a',v:18},{t:'h',v:24,nm:'栓塞'}]},
-  valve: {n:'瓣膜守衛', i:'🦾', hp:70, realm:4, pat:[{t:'d',v:19},{t:'h',v:26,nm:'閉鎖'},{t:'a',v:17}]},
+  valve: {n:'瓣膜守衛', i:'🦾', hp:70, tag:'heavy', realm:4, pat:[{t:'d',v:19},{t:'h',v:26,nm:'閉鎖'},{t:'a',v:17}]},
   worm:  {n:'心蟲',     i:'🐛', hp:58, realm:4, pat:[{t:'a',v:16,ap:{poison:2},nm:'鑽咬'},{t:'m',v:9,x:2},{t:'a',v:18}]},
   pulse: {n:'脈搏亡魂', i:'👻', hp:60, realm:4, pat:[{t:'a',v:18},{t:'c',ap:{weak:2,vuln:1},nm:'共振'},{t:'h',v:25}]},
-  mist:  {n:'血霧',     i:'🌫️', hp:56, realm:4, pat:[{t:'m',v:7,x:3},{t:'v',v:14,nm:'滲透'}]},
-  puppet:{n:'腔室傀儡', i:'🪆', hp:72, realm:4, pat:[{t:'d',v:19},{t:'a',v:19},{t:'g',nm:'上弦'},{t:'h',v:31,nm:'斷弦'}]},
-  magma: {n:'沸血魔',   i:'🌋', hp:62, realm:4, pat:[{t:'a',v:17,ap:{burn:3},nm:'噴濺'},{t:'d',v:15},{t:'h',v:23,ap:{burn:2,wound:2},nm:'沸流'}]},
+  mist:  {n:'血霧',     i:'🌫️', hp:56, tag:'naked', realm:4, pat:[{t:'m',v:7,x:3},{t:'v',v:14,nm:'滲透'}]},
+  puppet:{n:'腔室傀儡', i:'🪆', hp:72, tag:'pImm', realm:4, pat:[{t:'d',v:19},{t:'a',v:19},{t:'g',nm:'上弦'},{t:'h',v:31,nm:'斷弦'}]},
+  magma: {n:'沸血魔',   i:'🌋', hp:62, tag:'bImm', realm:4, pat:[{t:'a',v:17,ap:{burn:3},nm:'噴濺'},{t:'d',v:15},{t:'h',v:23,ap:{burn:2,wound:2},nm:'沸流'}]},
 };
 /* 域限精英：精英門機率出現，帶域主題機制 */
 
@@ -163,7 +163,7 @@ const LORD_BOSSES = [
   {key:'bb1', n:'溺亡之王', i:'👑', hp:155, intro:'王座淹在水裡，泡脹的君主仍端坐著。王冠下的臉轉向你：「朕的國，不缺子民。」',
    pat:[{t:'v',v:13,nm:'萬民供奉'},{t:'c',ap:{weak:2,vuln:1},nm:'溺令'},{t:'d',v:15},{t:'g',nm:'漲潮'},{t:'h',v:26,nm:'滅頂'}]},
   {key:'bb2', n:'深淵之母', i:'🕷️', hp:185, intro:'無數細足在血肉的甬道裡沙沙作響。牠孵化了你一路殺過來的所有東西，而牠記仇。',
-   pat:[{t:'a',v:10,ap:{poison:3,wound:2},nm:'毒牙'},{t:'v',v:15,nm:'吸食'},{t:'c',ap:{weak:2,vuln:2},nm:'織網'},{t:'h',v:22,nm:'撲殺'}]},
+   pat:[{t:'a',v:10,ap:{poison:2,wound:1},nm:'毒牙'},{t:'v',v:15,nm:'吸食'},{t:'c',ap:{weak:2,vuln:1},nm:'織網'},{t:'h',v:20,nm:'撲殺'}]},
   {key:'bb3', n:'盲眼主教', i:'🛐', hp:215, intro:'主教的眼睛在很多年前獻給了深淵。他朝你的方向精準地轉過頭：「看，多虔誠的祭品，自己走上了祭壇。」',
    pat:[{t:'c',ap:{wound:2,vuln:2},nm:'禱告'},{t:'a',v:17,ap:{wound:1},nm:'聖鞭'},{t:'d',v:18},{t:'g',nm:'冷燭齊燃'},{t:'h',v:31,nm:'神罰'}]},
 ];
@@ -183,8 +183,9 @@ const CURVE = {
   rarMult: [0.8, 1.0, 1.2, 1.4],    // 白藍金橙
   mobHP:   f => f<=10 ? f*23 : 70 + f*16,     // 雜魚血量目標（1-10層俯衝、10層起接 §13 對表）
   mobDMG:  f => f<=10 ? f*1.8 : 3 + f*1.5,    // 雜魚單發目標
-  eliteHP: 1.8, miniHP: 2.5, lordHP: 3.6, finalHP: 3.7,  // 相對雜魚
-  bossDMG: 1.6,
+  eliteHP: 1.8, miniHP: 2.2, lordHP: 2.6, finalHP: 2.9,  // 相對雜魚（第6批校準：域主≈8回合）
+  bossDMG: 1.1,
+  duoStart: 20, duoRate: 0.03, duoLock: 40,   // 多敵曲線：20層起 (f-20)×3%，40+ 固定雙怪
 };
 /* 異常狀態 (§8)：毒燃吃目標最大生命% */
 const DOT = {
@@ -319,9 +320,20 @@ const MREGEN_CAP = 100; // 回法彙總上限%
 const STAT_DIV = [[100,8],[200,16],[Infinity,32]]; // 素質→率 分段換算 (§5)
 
 
-const CYC_MULT = [1.6, 2.4, 3.5];           // 輪迴 I/II/III 強度
+/* 敵人標籤 (§11)：免疫制門檻 */
+const ENEMY_TAGS = {
+  pImm: {n:'毒免', i:'☠️🚫', d:'免疫中毒——毒層無法施加，這場改打直傷'},
+  bImm: {n:'燃免', i:'🔥🚫', d:'免疫燃燒——燃層無法施加'},
+  heavy:{n:'重甲', i:'🪨',   d:'常駐格擋外殼，每回合恢復——斧碾盾、法術繞盾、毒燃無視'},
+  naked:{n:'裸皮', i:'🩸',   d:'受到的直接傷害 +15%——快點集火'},
+};
+const HEAVY_SHELL = 0.12;   // 重甲外殼＝血量×此係數
+const LORD_PHASE_TAGS = [   // 域主上/下半場標籤（血線 50% 切換）
+  ['heavy','naked'], ['pImm','bImm'], ['bImm','pImm'], ['naked','heavy'],
+];
+const CYC_MULT = [1.9, 5.5, 15.7];          // 輪迴 I/II/III 強度（§9 錨反解，等比×2.86）
 
-const CYC_VAL  = [0.10, 0.25, 0.40];         // 詞綴數值加成
+const CYC_VAL  = [0.7, 1.9, 3.9];           // 輪迴裝備價值（×1.7/重）
 
 const CYC_NEXT = 50;                          // 輪迴 N 到此深度解鎖 N+1（可調）
 

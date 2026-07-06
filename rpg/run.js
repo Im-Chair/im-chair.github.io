@@ -213,7 +213,7 @@ function renderDoorPotions(){
 function enterDoor(d){
   R.doors = null;
   R.lastDoor = d.t;
-  if(d.t==='fight') startBattle(makeEnemy(R.floor, 0));
+  if(d.t==='fight') startBattle(makeEncounter(R.floor, 0));
   else if(d.t==='elite'){
     const roll = Math.random();
     if(roll < 0.4){
@@ -222,9 +222,9 @@ function enterDoor(d){
       const e1 = makeEnemy(R.floor, 0), e2 = makeEnemy(R.floor, 0);
       for(const e of [e1,e2]){ e.hp = Math.round(e.hp*0.85); e.maxhp = e.hp; }
       startBattle([e1, e2]);
-    } else startBattle(makeEnemy(R.floor, 1));
+    } else startBattle(makeEncounter(R.floor, 1));
   }
-  else if(d.t==='boss') startBattle(makeBoss(R.floor));
+  else if(d.t==='boss') startBattle(makeBossEncounter(R.floor));
   else if(d.t==='rest') doRest();
   else if(d.t==='chest') doChest();
   else if(d.t==='event'){ R.pendingEv = d.ev || null; runEvent(); }

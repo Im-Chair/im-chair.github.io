@@ -161,9 +161,9 @@ function cyclesUnlocked(){
 
 function cd(c){ if(!G.cycData[c]) G.cycData[c] = {deep:0, cp:0}; return G.cycData[c]; }
 
-function cycMult(c){ if(c<=0) return 1; return c<=3 ? CYC_MULT[c-1] : CYC_MULT[2]*Math.pow(1.4, c-3); }
+function cycMult(c){ if(c<=0) return 1; return c<=3 ? CYC_MULT[c-1] : CYC_MULT[2]*Math.pow(2.86, c-3); } // 等比×2.86/重 (§9)
 
-function cycVal(c){ if(c<=0) return 0; return c<=3 ? CYC_VAL[c-1] : CYC_VAL[2] + (c-3)*0.15; }
+function cycVal(c){ if(c<=0) return 0; return c<=3 ? CYC_VAL[c-1] : (1+CYC_VAL[2])*Math.pow(1.7, c-3) - 1; } // 裝備價值×1.7/重
 
 function scaleMult(floor){
   const base = 1 + (floor-1)*0.08 + Math.max(0, floor-50)*0.04;

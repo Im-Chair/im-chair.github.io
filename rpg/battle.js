@@ -22,6 +22,16 @@ const REALM_HP_MEAN = [0,0,0,0,0], REALM_DMG_MEAN = [0,0,0,0,0];
   }
   for(let i=0;i<5;i++){ REALM_HP_MEAN[i]/=hc[i]; REALM_DMG_MEAN[i]=dm[i]/dc[i]; }
 })();
+function applyTag(e, tag){ // 敵人標籤 (§11)：免疫制門檻
+  if(e.tag === tag) return;
+  delete e.st._immP; delete e.st._immB; e.naked = false; e.shell = 0;
+  e.tag = tag;
+  if(!tag) return;
+  if(tag==='pImm') e.st._immP = 1;
+  if(tag==='bImm') e.st._immB = 1;
+  if(tag==='naked') e.naked = true;
+  if(tag==='heavy'){ e.shell = Math.round(e.maxhp * HEAVY_SHELL); e.block = Math.max(e.block, e.shell); }
+}
 function patMean(pat){ let t=0,c=0; for(const m of pat) if(m.v){ t+=m.v*(m.x||1); c++; } return c? t/c : 10; }
 function makeEnemy(floor, elite){
   const ri = realmIdx(floor);
@@ -35,7 +45,22 @@ function makeEnemy(floor, elite){
   const mult = CURVE.mobDMG(floor) * (elite?1.15:1) * cm / REALM_DMG_MEAN[t.realm];
   const e = {key, n:(elite?'精英・':'')+t.n, i:t.i, hp, maxhp:hp,
     pat:t.pat, pi:0, block:0, st:{}, mult, elite:elite?1:0, boss:false};
+  if(t.tag) applyTag(e, t.tag);
   return elite ? applyCycPrefix(e) : ((R&&R.cycle>=2) ? applyCycPrefix(e) : e);
+}
+function makeEncounter(floor, elite){ // 多敵曲線 (§11)
+  const duo = floor >= CURVE.duoLock
+    || (floor >= CURVE.duoStart && Math.random() < (floor - CURVE.duoStart) * CURVE.duoRate);
+  if(duo) return [makeEnemy(floor, elite), makeEnemy(floor, 0)];
+  return makeEnemy(floor, elite);
+}
+function makeBossEncounter(floor){
+  const boss = makeBoss(floor);
+  if(R && R.cycle > 0){
+    if(floor >= 100) return [boss, makeBoss(floor)];  // 輪迴深處：雙王
+    return [boss, makeEnemy(floor, 0)];               // 輪迴王戰帶隨從
+  }
+  return boss;
 }
 function makeRealmElite(floor){
   const t = REALM_ELITES[realmIdx(floor)];
@@ -69,7 +94,10 @@ function makeBoss(floor){
   }
   if(floor % 10 === 0){
     const idx = ((floor/10 - 1) % 4 + 4) % 4;
-    return mk(LORD_BOSSES[idx], CURVE.lordHP, LORD_BOSSES[idx].key);
+    const lord = mk(LORD_BOSSES[idx], CURVE.lordHP, LORD_BOSSES[idx].key);
+    lord.phaseTags = LORD_PHASE_TAGS[idx];
+    applyTag(lord, lord.phaseTags[0]);
+    return lord;
   }
   const b = MINI_BOSSES[(Math.floor(floor/10)) % 5];
   return mk(b, CURVE.miniHP, b.key);
@@ -186,7 +214,7 @@ function renderBattle(){
     const [ii,it] = dead? ['💀','已倒下'] : intentText(e);
     html += `<div class="e-block${(B.duo&&i===B.ti&&!dead)?' sel':''}${dead?' dead':''}" id="ez-${i}" onclick="selectTarget(${i})">
       <div class="enemy-icon" id="eicon-${i}">${e.i}</div>
-      <div class="enemy-name">${e.boss?`<span class="boss">☠ ${e.n}</span>`: e.elite?`<span class="elite">${e.n}</span>`: e.n}</div>
+      <div class="enemy-name">${e.boss?`<span class="boss">☠ ${e.n}</span>`: e.elite?`<span class="elite">${e.n}</span>`: e.n}${e.tag?` <span class="st" style="cursor:pointer" onclick="explainStatus('tag_${e.tag}')">${ENEMY_TAGS[e.tag].i}${ENEMY_TAGS[e.tag].n}</span>`:''}</div>
       <div><span class="intent"><span class="ii">${ii}</span>${dead?it:'下一步：'+it}</span></div>
       <div class="hpbar"><div class="fill" style="width:${Math.max(0,e.hp/e.maxhp*100)}%"></div>
         <div class="txt">${Math.max(0,e.hp)} / ${e.maxhp}${e.block?`（🛡${e.block}）`:''}</div></div>
@@ -275,6 +303,10 @@ const STATUS_INFO = {
   wound:'🩹 重傷：受到的治療效果減半。',
   rage:'😡 狂怒：造成的傷害提升。',
   block:'🛡 格擋：在防禦結算後吸收等量傷害，回合結束清零（壁壘詞綴可保留）。斧與法術剋格擋、匕首刮不動。',
+  tag_pImm:'☠️🚫 毒免：毒層無法施加。毒 build 這場改打直傷。',
+  tag_bImm:'🔥🚫 燃免：燃層無法施加。',
+  tag_heavy:'🪨 重甲：常駐格擋外殼，每回合恢復。斧碾盾、法術繞盾、毒燃無視——換手段的時候到了。',
+  tag_naked:'🩸 裸皮：受到的直接傷害 +15%。快但脆，優先集火。',
 };
 function explainStatus(k){
   if(STATUS_INFO[k]) openSheet(`<h3>狀態說明</h3><p class="base">${STATUS_INFO[k]}</p>
@@ -399,6 +431,8 @@ function castSkill(sk){
 function applyStatus(target, ap, name){
   for(const [k,v] of Object.entries(ap)){
     if(k==='stun' && target.stunImm){ log('暈眩被抵抗了！','sys'); continue; }
+    if(k==='poison' && target._immP){ log('☠️🚫 毒免——毒層無法施加。','sys'); continue; }
+    if(k==='burn' && target._immB){ log('🔥🚫 燃免——燃層無法施加。','sys'); continue; }
     const cap = (k==='poison'||k==='burn') ? DOT.stackCap : 99;
     target[k] = Math.min(cap, (target[k]||0) + v);
   }
@@ -413,6 +447,7 @@ function dealToEnemy(mult, sk, f){
   if(sumAffix('exem') && e.hp <= e.maxhp*0.3) d = Math.round(d*1.5);
   if(f && f.execLine && e.hp <= e.maxhp*f.execLine) d = Math.round(d*1.5);
   if(chemOn('corrode') && e.st.poison && e.st.burn) d = Math.round(d*1.2); // 腐燃
+  if(e.naked) d = Math.round(d*1.15); // 裸皮
   let crit = false;
   if(B.nextCrit>0 || Math.random()*100 < playerCrit()){
     let cm = sumAffix('luck7') ? 2.1 : 1.6;
@@ -477,6 +512,11 @@ function dealToEnemy(mult, sk, f){
     e.hp -= pd; floatDmg(zone, '-'+pd, '');
     log(`催毒——${e.n} 的毒立即發作 ${pd} 傷害。`,'dmg');
   }
+  if(e.boss && e.phaseTags && !e._p2 && e.hp > 0 && e.hp <= e.maxhp/2){
+    e._p2 = true;
+    applyTag(e, e.phaseTags[1]);
+    log(`${e.n} 的外殼碎裂——性質改變了！（${ENEMY_TAGS[e.tag].i} ${ENEMY_TAGS[e.tag].n}）`,'sys');
+  }
   if(e.hp<=0){
     onEnemySlain(e);
     if(f && f.killHeal){ const h = healPlayer(Math.round(playerMaxHp()*f.killHeal));
@@ -540,6 +580,7 @@ function enemyTurn(){
           if(h>0){ log(`腐生：回復 ${h} 生命。`,'heal'); } }
         e.st.poison -= 1; if(e.st.poison<=0) delete e.st.poison;
         if(e.hp<=0){ log(e.n+' 被毒殺了。','sys'); onEnemySlain(e); continue; } }
+      if(e.shell && !e.boss) e.block = Math.max(e.block, e.shell); // 重甲外殼恢復（王的殼只給一次，破了就破了）
       if(e.st.stunImm){ e.st.stunImm--; if(!e.st.stunImm) delete e.st.stunImm; }
       if(e.st.stun){ e.st.stun--;
         if(!e.st.stun){ delete e.st.stun; e.st.stunImm = 2; }
