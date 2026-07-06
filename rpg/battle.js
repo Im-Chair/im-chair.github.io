@@ -96,13 +96,12 @@ function intentText(e){
 function startBattle(enemies, opt){
   if(!Array.isArray(enemies)) enemies = [enemies];
   R.phase='battle';
-  B = {es:enemies, ti:0, energy:3, maxEnergy:3, block:0, st:{}, turn:1, nextCrit:0,
-       over:false, sparkN:0, rageWarned:false,
+  const agiBonusU = statTotal('agi') >= 100 ? 4 : statTotal('agi') >= 40 ? 2 : 0; // 敏捷行動點（硬上限+2點）
+  B = {es:enemies, ti:0, energy:6+agiBonusU, maxEnergy:6+agiBonusU, block:0, shield:0, st:{}, turn:1, nextCrit:0,
+       over:false, sparkN:0, rageWarned:false, charge:null,
        boss:enemies.some(e=>e.boss), elite:Math.max(...enemies.map(e=>e.elite||0)), duo:enemies.length>1};
-  if(sumAffix('ener')>0) B.energy++;
-  if(R.execEnergy){ B.energy += R.execEnergy; R.execEnergy = 0; }
   if(R.pendingStatus){ B.st = Object.assign({}, R.pendingStatus); R.pendingStatus = null; }
-  if(opt && opt.ambush){ B.energy = Math.max(1, B.energy-1); }
+  if(opt && opt.ambush){ B.energy = Math.max(2, B.energy-2); }
   $('p-name').textContent = CLASSES[G.cls].icon+' '+CLASSES[G.cls].name;
   $('log').innerHTML='';
   const e0 = enemies[0];
@@ -141,8 +140,6 @@ function startPlayerTurn(first){
   if(B.over) return;
   if(!first){ B.energy = B.maxEnergy; if(!sumAffix('wall')) B.block = 0; }
   B.sparkN = 0;
-  const plate = sumAffix('plate');
-  if(plate){ B.block += plate; }
   const rg = sumAffix('regen');
   if(rg && !first){ const h = healPlayer(Math.ceil(playerMaxHp()*0.03)); if(h>0) log(`血甲：回復 ${h} 生命。`,'heal'); }
   if(playerMaxMana() > 0 && !first){
@@ -156,6 +153,25 @@ function startPlayerTurn(first){
   if(B.st.stun){ B.st.stun--;
     if(!B.st.stun){ delete B.st.stun; B.st.stunImm = 2; }
     log('你被暈眩了，這回合無法行動。','sys'); renderBattle(); setTimeout(()=>enemyTurn(), 900); return; }
+  if(B.charge){
+    const need = B.charge.cost - B.charge.paid;
+    if(B.energy >= need){
+      B.energy -= need;
+      const sid = B.charge.sid;
+      B.charge = null;
+      const sk = SK(sid);
+      log(`蓄力完成——【${sk.n}】釋放！`,'sys');
+      castSkill(sk);
+      if(B.over) return;
+    } else {
+      B.charge.paid += B.energy;
+      B.energy = 0;
+      log(`蓄力中（${fmtPts(B.charge.paid)}/${fmtPts(B.charge.cost)}）……`,'sys');
+      renderBattle();
+      setTimeout(()=>enemyTurn(), 900);
+      return;
+    }
+  }
   renderBattle();
 }
 
@@ -185,40 +201,68 @@ function renderBattle(){
   $('p-status').innerHTML = statusHtml(B.st, 0);
   const bb = $('p-block');
   if(B.block>0){ bb.style.display='inline-block'; bb.textContent = '🛡 '+B.block; } else bb.style.display='none';
-  const en = $('p-energy'); en.innerHTML = '';
-  for(let i=0;i<Math.max(B.maxEnergy, B.energy);i++){
-    en.insertAdjacentHTML('beforeend', `<span class="pip${i<B.energy?' on':''}"></span>`);
-  }
+  const en = $('p-energy');
+  en.innerHTML = `<span style="color:var(--gold);font-size:13px">◆ ${fmtPts(B.energy)}/${fmtPts(B.maxEnergy)} 行動</span>` +
+    (playerMaxMana()>0? `<span style="color:#7fb3e8;font-size:13px">　🔮 ${R.mana||0}/${playerMaxMana()}</span>` : '') +
+    (B.shield>0? `<span style="color:#9fd8ff;font-size:13px">　🔷 ${B.shield}</span>` : '');
   const grid = $('skill-grid'); grid.innerHTML='';
   for(const sid of CLASSES[G.cls].skills){
     const sk = SK(sid);
+    const cost = skillCostU(sk), mc = skillManaC(sk);
+    const charging = B.charge && B.charge.sid === sid;
+    const noMana = mc > 0 && (R.mana||0) < mc;
     const b = document.createElement('button'); b.className = 'skill-btn';
-    b.disabled = B.energy < sk.c || B.over;
-    b.innerHTML = `<div class="sn">${sk.n}${(R.skillUps&&R.skillUps[sid])?'⁺':''}</div><div class="sd">${skillDesc(sid)}</div><span class="sc">◆${sk.c}</span>`;
+    b.disabled = B.over || !!B.charge || noMana;
+    b.innerHTML = `<div class="sn">${sk.n}${sk.upN?'⁺':''}${charging?'（蓄力中 '+fmtPts(B.charge.paid)+'/'+fmtPts(cost)+'）':''}</div>
+      <div class="sd">${skillDesc(sid)}</div>
+      <span class="sc">◆${fmtPts(cost)}${mc?'｜🔮'+mc:''}${cost>B.energy&&!B.charge?'（蓄）':''}</span>`;
     b.onclick = ()=>useSkill(sid);
     grid.appendChild(b);
   }
-  $('btn-end').disabled = B.over;
+  $('btn-end').disabled = B.over || !!B.charge;
 }
 
 function SK(sid){
   const base = SKILLS[sid];
+  const sk = Object.assign({}, base);
   const up = R && R.skillUps && R.skillUps[sid];
-  if(!up) return base;
-  const u = SKILL_UPS[sid][up];
-  const sk = {n:u.n, c:base.c, d:u.d, f:JSON.parse(JSON.stringify(base.f))};
-  u.mod(sk.f, sk);
+  if(up){ SKILL_UPS[sid][up].mod(sk); sk.upN = SKILL_UPS[sid][up].n; }
   return sk;
 }
-
+function skillCostU(sk){ // 內部單位（每回合 6 = 3 點）
+  if(sk.fixed) return Math.round(sk.fixed * 2 * (sk.costMul||1));
+  const ap = WEAPON_TYPES[(G.equip.w && G.equip.w.wtype) || 'sword'].ap;
+  return Math.max(1, Math.round(ap * 2 * sk.costW * (sk.costMul||1)));
+}
+function skillManaC(sk){ return Math.round((sk.mana||0) * (sk.manaMul||1)); }
+function fmtPts(u){ return (u/2) % 1 === 0 ? String(u/2) : (u/2).toFixed(1); }
 function skillDesc(sid){
-  const sk = SK(sid), f = sk.f;
-  const vulnMark = (B && tgt().st.vuln) ? '▲' : '';
-  if(f.dmg){ const d = calcPlayerDmg(f.dmg, true);
-    return sk.d.replace(/\d+ 點傷害/, d+vulnMark+' 點傷害'); }
-  if(f.poisonDmg){ const stacks = (B&&tgt().st.poison)||0; const d = calcPlayerDmg(12*(1+0.15*stacks), true);
-    return `造成 ${d} 點傷害（中毒層數×${f.poisonDmg}）`; }
-  return sk.d;
+  const sk = SK(sid);
+  const vulnMark = (B && tgt() && tgt().st.vuln) ? '▲' : '';
+  const parts = [];
+  if(sk.mult){
+    let mult = sk.mult;
+    if(sk.poisonAmp && B && tgt()) mult = sk.mult * (1 + sk.poisonAmp * (tgt().st.poison||0));
+    if(sk.debuffAmp && B && tgt() && !sk._solo){
+      const kinds = ['weak','vuln','poison','burn'].filter(k=>tgt().st[k]).length;
+      mult = sk.mult * (1 + sk.debuffAmp * Math.min(4,kinds));
+    }
+    const d = calcPlayerDmg(mult, true);
+    parts.push(`${sk.hits?sk.hits+'段各 ':''}${d}${vulnMark} 傷${sk.aoe&&sk.mult?'（全體）':''}`);
+  }
+  if(sk.blockCoef !== undefined) parts.push(`格擋 ${10 + Math.round(statTotal('vit')*sk.blockCoef)}`);
+  if(sk.shieldCoef !== undefined) parts.push(`護盾 ${Math.round(statTotal('int')*sk.shieldCoef)}`);
+  if(sk.applyOnly){
+    const nm = {poison:'毒',burn:'燃',weak:'虛弱',vuln:'易傷'};
+    parts.push(Object.entries(sk.applyOnly).map(([k,v])=>`${nm[k]}${v}層`).join('+') + (sk.aoe?'（全體）':''));
+  }
+  if(sk.apply && sk.mult){
+    const nm = {poison:'毒',burn:'燃',weak:'虛弱',vuln:'易傷'};
+    parts.push('附'+Object.entries(sk.apply).map(([k,v])=>`${nm[k]}${v}`).join('、'));
+  }
+  if(sk.drain) parts.push(`${Math.round(sk.drain*100)}%回血`);
+  if(sk.execLine) parts.push(`<${Math.round(sk.execLine*100)}%血 ×1.5`);
+  return parts.join('｜') || sk.d;
 }
 
 const STATUS_INFO = {
@@ -267,12 +311,11 @@ function healPlayer(amount){
   return real;
 }
 
-function calcPlayerDmg(base, preview){
-  // 唯一公式：(武器攻擊＋主素質) × 武器係數 × 招式倍率
-  // 過渡期：舊技能 flat 值 ÷7 換算為招式倍率（第3批換十六招後移除）
+function calcPlayerDmg(mult, preview){
+  // 唯一公式 (§6)：(武器攻擊＋主素質) × 武器係數 × 招式倍率
   const w = G.equip.w;
   const wAtk = w ? w.base + w.up : 3;
-  let d = (wAtk + mainStat()) * weaponType().coef * (base / 7);
+  let d = (wAtk + mainStat()) * weaponType().coef * mult;
   if(sumAffix('fury')) d = Math.round(d*1.4);
   if(B && B.potRage) d = Math.round(d*1.5);
   if(B && B.st.weak) d = Math.round(d*0.75);
@@ -281,20 +324,74 @@ function calcPlayerDmg(base, preview){
 }
 
 function useSkill(sid){
-  if(B.over) return;
-  const sk = SK(sid), f = sk.f;
-  if(B.energy < sk.c) return;
-  B.energy -= sk.c;
-  if(f.block){ B.block += f.block; log(`${sk.n}：獲得 ${f.block} 格擋。`); }
-  if(f.thornHit){ const e = tgt(); e.hp -= f.thornHit; log(`${sk.n}：反刺 ${f.thornHit} 傷害。`,'dmg'); }
-  if(f.heal){ const h = healPlayer(f.heal);
-    log(`${sk.n}：回復 ${h} 血${B.st.wound?'（重傷減半）':''}。`,'heal'); floatDmg('player-zone','+'+h,'heal'); }
-  if(f.nextCrit){ B.nextCrit = Math.max(B.nextCrit, f.nextCrit===true?1:f.nextCrit); }
-  let dmg = 0;
-  if(f.dmg) dmg = f.dmg;
-  if(f.poisonDmg){ dmg = 12 * (1 + 0.15 * (tgt().st.poison||0)); }
-  if(dmg > 0) dealToEnemy(dmg, sk, f);
-  else if(f.apply) applyStatus(tgt().st, f.apply, tgt().n);
+  if(B.over || B.charge) return;
+  const sk = SK(sid);
+  const cost = skillCostU(sk), mc = skillManaC(sk);
+  if(mc > 0 && (R.mana||0) < mc){ toast('法力不足'); return; }
+  if(cost > B.energy){
+    // 蓄力制 (§6)：投入剩餘行動點並結束回合，下回合補足自動釋放
+    if(mc > 0) R.mana -= mc; // 法力先付
+    B.charge = {sid, paid:B.energy, cost};
+    B.energy = 0;
+    log(`開始蓄力【${sk.n}】——本回合剩餘行動全數投入（${fmtPts(B.charge.paid)}/${fmtPts(cost)}）。`,'sys');
+    renderBattle();
+    setTimeout(()=>enemyTurn(), 700);
+    return;
+  }
+  B.energy -= cost;
+  if(mc > 0) R.mana -= mc;
+  castSkill(sk);
+}
+function castSkill(sk){
+  /* 輔助類 */
+  if(sk.blockCoef !== undefined){
+    const v = 10 + Math.round(statTotal('vit') * sk.blockCoef);
+    B.block += v; B.spike = sk.spike || 0;
+    log(`${sk.n}：獲得 ${v} 格擋。`);
+  }
+  if(sk.shieldCoef !== undefined){
+    const v = Math.round(statTotal('int') * sk.shieldCoef);
+    B.shield += v; B.reflect = Math.max(B.reflect||0, sk.reflect||0);
+    log(`${sk.n}：獲得 ${v} 護盾。`,'sys');
+  }
+  if(sk.applyOnly){
+    const targets = sk.aoe ? aliveEs() : [tgt()];
+    for(const e of targets) applyStatus(e.st, sk.applyOnly, sk.n + (sk.aoe?'（'+e.n+'）':''));
+  }
+  /* 攻擊類 */
+  if(sk.mult){
+    if(sk.aoe){
+      // 災厄：多體逐個結算；單體切強化模式
+      const targets = aliveEs();
+      if(targets.length === 1 && sk.debuffAmp){
+        const solo = Object.assign({}, sk, {mult:1.8, _solo:true});
+        dealToEnemy(1.8, solo, solo);
+        if(aliveEs().length) applyStatus(tgt().st, {weak:2, vuln:2, poison:2}, sk.n+'・鋪滿');
+      } else {
+        const ti0 = B.ti;
+        for(const e of targets){
+          if(e.hp <= 0) continue;
+          B.ti = B.es.indexOf(e);
+          let mult = sk.mult;
+          if(sk.debuffAmp){
+            const kinds = ['weak','vuln','poison','burn'].filter(k=>e.st[k]).length;
+            mult = sk.mult * (1 + sk.debuffAmp * Math.min(4, kinds));
+          }
+          dealToEnemy(mult, sk, sk);
+        }
+        B.ti = aliveEs().includes(B.es[ti0]) ? ti0 : (B.es.indexOf(aliveEs()[0]) >= 0 ? B.es.indexOf(aliveEs()[0]||B.es[0]) : 0);
+      }
+    } else {
+      const hits = sk.hits || 1;
+      for(let i=0; i<hits; i++){
+        if(!aliveEs().length) break;
+        if(tgt().hp <= 0) ensureTarget();
+        let mult = sk.mult;
+        if(sk.poisonAmp) mult = sk.mult * (1 + sk.poisonAmp * Math.min(DOT.stackCap, tgt().st.poison||0));
+        dealToEnemy(mult, sk, sk);
+      }
+    }
+  }
   if(aliveEs().length===0){ winBattle(); return; }
   renderBattle();
 }
@@ -309,32 +406,40 @@ function applyStatus(target, ap, name){
   log((name?name+'：':'')+Object.entries(ap).filter(([k])=>!(k==='stun'&&target.stunImm)).map(([k,v])=>`${names[k]} +${v}`).join('、'));
 }
 
-function dealToEnemy(base, sk, f){
+function dealToEnemy(mult, sk, f){
   const e = tgt();
   const zone = 'ez-'+B.ti;
-  let d = calcPlayerDmg(base);
+  let d = calcPlayerDmg(mult);
   if(sumAffix('exem') && e.hp <= e.maxhp*0.3) d = Math.round(d*1.5);
+  if(f && f.execLine && e.hp <= e.maxhp*f.execLine) d = Math.round(d*1.5);
+  if(chemOn('corrode') && e.st.poison && e.st.burn) d = Math.round(d*1.2); // 腐燃
   let crit = false;
-  if(B.nextCrit>0 || Math.random()*100 < playerCrit()){ d = Math.round(d*(sumAffix('luck7')?2.1:1.6)); crit = true;
+  if(B.nextCrit>0 || Math.random()*100 < playerCrit()){
+    let cm = sumAffix('luck7') ? 2.1 : 1.6;
+    if(f && f.critBonus) cm += f.critBonus;
+    d = Math.round(d*cm); crit = true;
     if(B.nextCrit>0) B.nextCrit--;
-    if(sumAffix('spark') && B.sparkN < 1){ B.energy++; B.sparkN++; log('燧心：爆擊回復 1 行動點。','sys'); } }
-  /* 蝕魂：攻擊轉中毒，每擊 2 層，受 10 層上限結構性封頂 (§4d) */
-  if(sumAffix('vform') && !(f && f.poisonDmg)){
-    const stacks = 2;
-    applyStatus(e.st, {poison:stacks});
-    floatDmg(zone, '☠'+stacks, crit?'crit':'');
-    log(`${sk.n} 化作 ${stacks} 層蝕魂之毒${crit?'（爆擊！）':''}。`,'dmg');
+    if(sumAffix('spark') && B.sparkN < 1){ B.energy = Math.min(B.maxEnergy, B.energy+2); B.sparkN++; log('燧心：爆擊回復 1 行動點。','sys'); } }
+  /* 蝕魂：攻擊轉中毒，每擊 2 層，受 10 層上限結構性封頂 */
+  if(sumAffix('vform') && !(f && f.poisonAmp)){
+    applyStatus(e.st, {poison:2});
+    floatDmg(zone, '☠2', crit?'crit':'');
+    log(`${sk.n} 化作 2 層蝕魂之毒${crit?'（爆擊！）':''}。`,'dmg');
     if(f && f.apply) applyStatus(e.st, f.apply);
     return;
   }
   let absorbed = 0;
   if(e.block > 0){
-    const bm = weaponType().blockMod;             // 對盾相性：斧/法術 0.5、劍 1.0、匕首 1.5
-    const effBlock = Math.round(e.block * bm);
-    absorbed = Math.min(effBlock, d);
-    e.block = Math.max(0, e.block - Math.round(absorbed / bm));
-    d -= absorbed;
+    // 對盾相性：物理走武器 blockMod；法術繞一半；pierce 完全無視
+    const bm = (f && f.pierce) ? 0 : (f && f.magic) ? 0.5 : weaponType().blockMod;
+    if(bm > 0){
+      const effBlock = Math.round(e.block * bm);
+      absorbed = Math.min(effBlock, d);
+      e.block = Math.max(0, e.block - Math.round(absorbed / bm));
+      d -= absorbed;
+    }
   }
+  if(f && f.shatter && e.block > 0){ log(`${sk.n} 擊碎了 ${e.n} 的格擋（${e.block}）。`,'sys'); e.block = 0; }
   e.hp -= d;
   const ic = $('eicon-'+B.ti);
   if(ic){ ic.classList.remove('hit'); void ic.offsetWidth; ic.classList.add('hit'); }
@@ -344,16 +449,49 @@ function dealToEnemy(base, sk, f){
     log(`荊棘反噬 ${e.thorns} 傷害。`,'dmg'); if(R.hp<=0){ playerDie(); return; } }
   if(d>0){
     const vamp = Math.min(VAMP_CAP, sumAffix('vamp')) + (f && f.drain? f.drain*100:0);
-    if(vamp>0){ const real = healPlayer(Math.max(1, Math.round(d*vamp/100)));
-      if(real>0) log(`吸血回復 ${real}${B.st.wound?'（重傷減半）':''}。`,'heal'); }
-    const pt = sumAffix('ptouch'); if(pt) applyStatus(e.st, {poison:pt});
+    if(vamp>0){
+      const want = Math.max(1, Math.round(d*vamp/100));
+      const real = healPlayer(want);
+      if(real>0) log(`吸血回復 ${real}${B.st.wound?'（重傷減半）':''}。`,'heal');
+      const over = want - real;
+      if(over>0 && chemOn('overshield')){ // 溢血成盾
+        const cap = Math.round(playerMaxHp()*0.2);
+        const add = Math.min(over, cap - (B.chemShield||0));
+        if(add>0){ B.shield += add; B.chemShield = (B.chemShield||0) + add;
+          log(`溢血成盾：+${add} 護盾。`,'sys'); }
+      }
+    }
+    if(f && f.manaGain && playerMaxMana()>0){
+      const g = Math.round(playerMaxMana()*f.manaGain);
+      R.mana = Math.min(playerMaxMana(), (R.mana||0)+g);
+    }
+    if(f && f.weakChance && Math.random() < f.weakChance) applyStatus(e.st, {weak:1}, sk.n);
+    let pt = sumAffix('ptouch');
+    if(pt && crit && chemOn('pcrit')) pt *= 2; // 毒爆
+    if(pt) applyStatus(e.st, {poison:pt});
     const bt = sumAffix('btouch'); if(bt) applyStatus(e.st, {burn:bt});
   }
   if(f && f.apply) applyStatus(e.st, f.apply);
-  if(e.hp<=0) onEnemySlain(e);
-  if(e.hp<=0 && f && f.execKill){ R.execEnergy = (f.execEnergy||2); const h=healPlayer(f.execHeal||6);
-    log('處決成功！下場戰鬥 +'+(f.execEnergy||2)+' 能量，回復 '+h+' 血。','sys'); }
-  if(e.hp<=0 && B.duo) log(e.n+' 倒下了。','sys');
+  if(f && f.poisonProc && e.st.poison && e.hp > 0){
+    const pd = Math.ceil(e.maxhp * DOT.poisonPct * e.st.poison * (sumAffix('vform')?1.5:1));
+    e.hp -= pd; floatDmg(zone, '-'+pd, '');
+    log(`催毒——${e.n} 的毒立即發作 ${pd} 傷害。`,'dmg');
+  }
+  if(e.hp<=0){
+    onEnemySlain(e);
+    if(f && f.killHeal){ const h = healPlayer(Math.round(playerMaxHp()*f.killHeal));
+      if(h>0) log(`血償：回復 ${h} 生命。`,'heal'); }
+    if(f && f.transferCurse){
+      const others = aliveEs();
+      if(others.length){
+        const to = pick(others);
+        const moved = {};
+        for(const k of ['weak','vuln','poison','burn']) if(e.st[k]) moved[k] = e.st[k];
+        if(Object.keys(moved).length){ applyStatus(to.st, moved, '輪迴咒'); }
+      }
+    }
+    if(B.duo) log(e.n+' 倒下了。','sys');
+  }
 }
 
 function onEnemySlain(e){
@@ -373,7 +511,11 @@ function tickBurn(who, zone, name){
   if(who.st && who.st.burn){
     const maxhp = who.maxhp !== undefined ? who.maxhp : playerMaxHp();
     const d = Math.ceil(maxhp * DOT.burnPct * who.st.burn);
-    if(who.maxhp !== undefined){ who.hp -= d; } else { damagePlayer(d, '燃燒'); }
+    if(who.maxhp !== undefined){
+      who.hp -= d;
+      if(chemOn('burnvamp')){ const h = healPlayer(Math.ceil(d*0.3)); // 焚血
+        if(h>0) log(`焚血：回復 ${h} 生命。`,'heal'); }
+    } else { damagePlayer(d, '燃燒'); }
     log(`${name} 被燃燒灼傷 ${d}（${who.st.burn} 層）。`,'dmg');
     if(zone) floatDmg(zone, '-'+d, '');
     who.st.burn = Math.floor(who.st.burn/2);
@@ -391,7 +533,8 @@ function enemyTurn(){
     for(const e of B.es){
       if(e.hp<=0) continue;
       if(B.turn >= 8) e.st.rage = B.turn - 7;
-      if(e.st.poison){ const d = Math.ceil(e.maxhp * DOT.poisonPct * e.st.poison); e.hp -= d;
+      if(e.st.poison){ const vf = sumAffix('vform') ? 1.5 : 1; // 蝕魂：中毒傷害 +50%
+        const d = Math.ceil(e.maxhp * DOT.poisonPct * e.st.poison * vf); e.hp -= d;
         log(`${e.n} 中毒受到 ${d} 傷害（${e.st.poison} 層）。`,'dmg'); floatDmg('ez-'+B.es.indexOf(e),'-'+d,'');
         if(sumAffix('symbio')){ const h = healPlayer(Math.ceil(d*0.5));
           if(h>0){ log(`腐生：回復 ${h} 生命。`,'heal'); } }
@@ -418,16 +561,34 @@ function enemyTurn(){
             if(R.hp<=0) break;
             let d = Math.round(val*weakMul);
             if(B.st.vuln) d = Math.round(d*1.5);
-            if(Math.random()*100 < dodgeRate()){ log('你閃過了'+e.n+'的攻擊。','sys'); floatDmg('player-zone','閃避','blocked'); continue; }
+            if(Math.random()*100 < dodgeRate()){
+              log('你閃過了'+e.n+'的攻擊。','sys'); floatDmg('player-zone','閃避','blocked');
+              const wt = sumAffix('thorns');
+              if(wt && chemOn('windthorn')){ e.hp -= wt*2; log(`風棘——閃身反刺 ${wt*2} 傷害。`,'dmg'); }
+              continue; }
             // 防禦結算：(敵傷 − 防禦力/10) × (1 − 防禦率) → 格擋最後吸收
             d = Math.max(1, Math.round((d - playerDef()/10) * (1 - defRate()/100)));
             let absorbed = 0;
-            if(B.block>0){ absorbed = Math.min(B.block, d); B.block -= absorbed; d -= absorbed; }
+            if(B.block>0){
+              absorbed = Math.min(B.block, d); B.block -= absorbed; d -= absorbed;
+              if(B.spike > 0 && absorbed > 0){
+                const sp = Math.max(1, Math.round(absorbed * B.spike));
+                e.hp -= sp; log(`尖壁反刺 ${sp} 傷害。`,'dmg');
+              }
+            }
+            if(d>0 && B.shield>0){
+              const sa = Math.min(B.shield, d); B.shield -= sa; d -= sa;
+              if(B.reflect > 0 && sa > 0){
+                const rf = Math.max(1, Math.round(sa * B.reflect));
+                e.hp -= rf; log(`反射膜彈回 ${rf} 傷害。`,'dmg');
+              }
+              if(sa > 0) log(`護盾吸收了 ${sa} 傷害。`,'sys');
+            }
             if(d>0){ damagePlayer(d, `${e.n}的${mv.nm||'攻擊'}`); totalDealt += d;
               floatDmg('player-zone','-'+d,''); }
             else floatDmg('player-zone','格擋','blocked');
             log(`${e.n} ${mv.nm||'攻擊'}造成 ${d} 傷害${absorbed?`（${absorbed} 被格擋）`:''}。`,'dmg');
-            const th = sumAffix('thorn');
+            const th = sumAffix('thorns');
             if(th && ['a','h','m','v'].includes(mv.t)){ e.hp -= th; log(`荊棘反彈 ${th} 傷害。`,'dmg'); }
             if(mv.t==='v' && d>0){ const h = Math.min(Math.round(d*0.5), e.maxhp - e.hp); if(h>0){ e.hp += h; log(`${e.n} 吸取了 ${h} 生命。`,'heal'); } }
             if(e.evamp && d>0 && mv.t!=='v'){ const h = Math.min(Math.round(d*e.evamp), e.maxhp - e.hp); if(h>0){ e.hp += h; log(`${e.n} 汲取了 ${h} 生命。`,'heal'); } }
@@ -587,7 +748,7 @@ function usePotion(k, inBattle){
     const mm = playerMaxMana();
     if(mm > 0){ R.mana = Math.min(mm, (R.mana||0) + Math.round(mm*0.3)); }
     toast(`回復 ${h} 血${mm>0?'＋30%法力':''}`); if(inBattle){ log(`喝下治療藥水，回復 ${h} 血${B&&B.st.wound?'（重傷減半）':''}。`,'heal'); floatDmg('player-zone','+'+h,'heal'); } }
-  else if(k==='energy'){ if(!inBattle) return toast('只能在戰鬥中用'); B.energy += 2; log('灌下烈酒，+2 能量。','sys'); }
+  else if(k==='energy'){ if(!inBattle) return toast('只能在戰鬥中用'); B.energy += 4; log('灌下烈酒，+2 行動點。','sys'); }
   else if(k==='bomb'){ if(!inBattle) return toast('只能在戰鬥中用'); const v = potPower(k); const e = tgt(); e.hp -= v; applyStatus(e.st, {vuln:2}); log(`火油瓶對 ${e.n} 炸出 ${v} 傷害，火光中破綻畢露（易傷 2）。`,'dmg'); floatDmg('ez-'+B.ti,'-'+v,''); }
   else if(k==='purge'){ B ? (B.st = {}) : null; toast('負面狀態已清除'); if(inBattle) log('淨化藥水洗去了所有異常。','sys'); }
   else if(k==='wrath'){ if(!inBattle) return toast('只能在戰鬥中用'); B.potRage = true; log('狂暴藥劑燒進血管——本場戰鬥傷害 +50%！','sys'); }

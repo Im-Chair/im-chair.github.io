@@ -11,10 +11,10 @@ const CLASSES = {
     skills:['stab','venom','shadow','garrote']},
   white:{name:'法師', icon:'🔮', hp:55, def:0, dodge:5, crit:5, mana:40, mainStat:'int',
     desc:'玻璃砲。高魔攻脆皮，法力傾瀉的一輪爆發。',
-    skills:['smite','mend','aegis','judge']},
+    skills:['smite','shield','fireball','oblivion']},
   dark:{name:'制魔師', icon:'🕯️', hp:80, def:5, dodge:5, crit:10, mana:25, mainStat:'int',
     desc:'韌法。buff 與 debuff 的操盤手，越拖越強的收割者。',
-    skills:['bolt','drain','hex','hellfire']},
+    skills:['wstrike','hex','siphon','calam']},
 };
 /* 五素質定義 */
 const STATS = {
@@ -25,61 +25,67 @@ const STATS = {
   spi:{n:'精神', i:'✨', d:'法力＋爆擊率'},
 };
 const SKILLS = {
-  slash:{n:'斬擊',c:1,d:'造成 7 點傷害',f:{dmg:7}},
-  guard:{n:'堅守',c:1,d:'獲得 8 點格擋',f:{block:8}},
-  sunder:{n:'破甲斬',c:2,d:'造成 9 點傷害，敵人易傷 2 回合',f:{dmg:9,apply:{vuln:2}}},
-  execute:{n:'處決',c:2,d:'造成 13 點傷害；擊殺時回復 2 能量（下場戰鬥）與 6 血',f:{dmg:13,execKill:true}},
-  stab:{n:'疾刺',c:1,d:'造成 6 點傷害',f:{dmg:6}},
-  venom:{n:'淬毒',c:1,d:'施加 4 層中毒（每回合受層數傷害，遞減）',f:{apply:{poison:4}}},
-  shadow:{n:'暗影步',c:1,d:'獲得 6 點格擋，下一次攻擊必定爆擊',f:{block:6,nextCrit:true}},
-  garrote:{n:'絞殺',c:2,d:'造成中毒層數 ×4 的傷害（無中毒則 5）',f:{poisonDmg:4}},
-  smite:{n:'聖光',c:1,d:'造成 7 點傷害',f:{dmg:7}},
-  mend:{n:'治癒',c:1,d:'回復 9 點生命',f:{heal:9}},
-  aegis:{n:'庇護',c:2,d:'獲得 14 點格擋',f:{block:14}},
-  judge:{n:'制裁',c:3,d:'造成 24 點傷害',f:{dmg:24}},
-  bolt:{n:'暗蝕',c:1,d:'造成 6 點傷害，敵人虛弱 1 回合',f:{dmg:6,apply:{weak:1}}},
-  drain:{n:'吸命',c:2,d:'造成 11 點傷害，回復造成傷害的一半',f:{dmg:11,drain:.5}},
-  hex:{n:'詛咒',c:1,d:'敵人易傷、虛弱各 2 回合',f:{apply:{vuln:2,weak:2}}},
-  hellfire:{n:'冥火',c:3,d:'造成 17 點傷害，施加 6 層燃燒（回合結束受傷後減半）',f:{dmg:17,apply:{burn:6}}},
+  /* 結算規則 (§6/§9)：
+     費用 = 武器行動點 × costW（fixed 招式固定費用，不經武器）
+     傷害 = (武器攻擊＋主素質) × 武器係數 × mult
+     magic 招式吃法力、以法術判定對盾（繞一半；pierce=完全無視格擋） */
+  /* —— 🛡️ 劍士 —— */
+  slash:  {n:'揮擊',   slot:'普', costW:1, mult:1.0, d:'基礎攻擊'},
+  guard:  {n:'壁壘',   slot:'輔', fixed:1, blockCoef:0.5, d:'獲得格擋（10＋體力×0.5）'},
+  sunder: {n:'破甲斬', slot:'中', costW:2, mult:1.6, apply:{vuln:2}, d:'重擊並附加易傷'},
+  execute:{n:'處決',   slot:'大', costW:3, mult:2.5, execLine:0.3, d:'斬殺一擊，低血敵人加倍'},
+  /* —— 🗡️ 盜賊 —— */
+  stab:   {n:'刺擊',   slot:'普', costW:1, mult:1.0, d:'基礎攻擊'},
+  venom:  {n:'淬毒',   slot:'輔', fixed:1, applyOnly:{poison:3}, d:'對目標上毒'},
+  shadow: {n:'連環刃', slot:'中', costW:2, mult:0.6, hits:3, d:'三段攻擊，各自觸發爆擊與附加效果'},
+  garrote:{n:'絞殺',   slot:'大', costW:3, mult:2.0, poisonAmp:0.15, d:'依目標毒層加成的收割一擊（只讀不耗）'},
+  /* —— 🔮 法師 —— */
+  smite:  {n:'敲擊',   slot:'普', costW:1, mult:1.0, d:'物理保底攻擊'},
+  shield: {n:'屏障',   slot:'輔', fixed:1, mana:15, shieldCoef:1.2, d:'獲得護盾（智力×1.2，可疊加）'},
+  fireball:{n:'火球',  slot:'中', costW:2, mana:20, mult:1.6, magic:true, apply:{burn:2}, d:'法術轟擊並點燃'},
+  oblivion:{n:'湮滅',  slot:'大', costW:3, mana:40, mult:2.8, magic:true, pierce:true, d:'無視格擋的毀滅法術'},
+  /* —— 🕯️ 制魔師 —— */
+  wstrike:{n:'杖擊',   slot:'普', costW:1, mult:1.0, d:'物理保底攻擊'},
+  hex:    {n:'蝕咒',   slot:'輔', fixed:1, mana:10, applyOnly:{weak:2,vuln:2}, d:'對目標同時施加虛弱與易傷'},
+  siphon: {n:'汲取',   slot:'中', costW:2, mana:20, mult:1.4, magic:true, drain:0.5, d:'法術吸取，傷害半數轉為回血'},
+  calam:  {n:'災厄',   slot:'大', costW:3, mana:35, mult:1.2, magic:true, aoe:true, debuffAmp:0.3,
+           d:'全體法術，目標每種負面狀態加傷；單體時強化並鋪滿負面'},
 };
-/* 技能精進：每招兩個分支，營火擇一，本次探索有效 */
-
+/* 精進三十二分支 (§10)：純參數變形、比例制、只讀不耗 */
 const SKILL_UPS = {
-  slash:  {a:{n:'利刃斬', d:'造成 11 點傷害', mod:f=>{f.dmg=11;}},
-           b:{n:'破勢斬', d:'造成 7 點傷害，敵人易傷 1 回合', mod:f=>{f.apply={vuln:1};}}},
-  guard:  {a:{n:'壁守', d:'獲得 12 點格擋', mod:f=>{f.block=12;}},
-           b:{n:'反守', d:'獲得 8 點格擋，反刺 6 傷害', mod:f=>{f.thornHit=6;}}},
-  sunder: {a:{n:'碎甲斬', d:'造成 14 點傷害，敵人易傷 2 回合', mod:f=>{f.dmg=14;}},
-           b:{n:'裂魂斬', d:'造成 9 點傷害，敵人易傷 3 回合', mod:f=>{f.apply={vuln:3};}}},
-  execute:{a:{n:'斷頭台', d:'造成 19 點傷害；擊殺獎勵不變', mod:f=>{f.dmg=19;}},
-           b:{n:'收割者', d:'造成 13 點傷害；擊殺回 3 能量與 12 血', mod:f=>{f.execEnergy=3;f.execHeal=12;}}},
-  stab:   {a:{n:'穿刺', d:'造成 9 點傷害', mod:f=>{f.dmg=9;}},
-           b:{n:'毒刺', d:'造成 6 點傷害，附 2 層中毒', mod:f=>{f.apply={poison:2};}}},
-  venom:  {a:{n:'劇毒', d:'施加 6 層中毒', mod:f=>{f.apply={poison:6};}},
-           b:{n:'毒霧', d:'施加 4 層中毒，獲得 4 格擋', mod:f=>{f.block=4;}}},
-  shadow: {a:{n:'影遁', d:'獲得 10 點格擋，下次攻擊必爆', mod:f=>{f.block=10;}},
-           b:{n:'雙影', d:'獲得 6 點格擋，下兩次攻擊必爆', mod:f=>{f.nextCrit=2;}}},
-  garrote:{a:{n:'絞刑', d:'傷害提升為中毒層數 ×5', mod:f=>{f.poisonDmg=5;}},
-           b:{n:'速殺', d:'消耗降為 1 能量', mod:(f,sk)=>{sk.c=1;}}},
-  smite:  {a:{n:'聖焰', d:'造成 10 點傷害', mod:f=>{f.dmg=10;}},
-           b:{n:'懲戒', d:'造成 7 點傷害，敵人虛弱 1 回合', mod:f=>{f.apply={weak:1};}}},
-  mend:   {a:{n:'大治癒', d:'回復 14 點生命', mod:f=>{f.heal=14;}},
-           b:{n:'聖護', d:'回復 9 血，獲得 5 格擋', mod:f=>{f.block=5;}}},
-  aegis:  {a:{n:'聖壁', d:'獲得 20 點格擋', mod:f=>{f.block=20;}},
-           b:{n:'荊冠', d:'獲得 14 點格擋，反刺 8 傷害', mod:f=>{f.thornHit=8;}}},
-  judge:  {a:{n:'天罰', d:'造成 32 點傷害', mod:f=>{f.dmg=32;}},
-           b:{n:'審判', d:'造成 24 點傷害，暈眩 1 回合', mod:f=>{f.apply={stun:1};}}},
-  bolt:   {a:{n:'蝕光', d:'造成 9 點傷害，虛弱 1 回合', mod:f=>{f.dmg=9;}},
-           b:{n:'衰蝕', d:'造成 6 點傷害，虛弱 2 回合', mod:f=>{f.apply={weak:2};}}},
-  drain:  {a:{n:'噬命', d:'造成 15 點傷害，回復一半', mod:f=>{f.dmg=15;}},
-           b:{n:'鯨吞', d:'造成 11 點傷害，回復全額', mod:f=>{f.drain=1;}}},
-  hex:    {a:{n:'厄咒', d:'易傷、虛弱各 3 回合', mod:f=>{f.apply={vuln:3,weak:3};}},
-           b:{n:'腐咒', d:'易傷、虛弱各 2 回合，附 2 層中毒', mod:f=>{f.apply={vuln:2,weak:2,poison:2};}}},
-  hellfire:{a:{n:'獄炎', d:'造成 24 點傷害，6 層燃燒', mod:f=>{f.dmg=24;}},
-           b:{n:'業火', d:'造成 17 點傷害，10 層燃燒', mod:f=>{f.apply={burn:10};}}},
+  slash:  {a:{n:'重手', d:'倍率 1.0→1.3', mod:s=>{s.mult=1.3;}},
+           b:{n:'輕靈', d:'費用 ×0.5、倍率 ×0.7', mod:s=>{s.costMul=0.5; s.mult=+(s.mult*0.7).toFixed(2);}}},
+  guard:  {a:{n:'厚壁', d:'體力係數 0.5→0.9', mod:s=>{s.blockCoef=0.9;}},
+           b:{n:'尖壁', d:'格擋存在期間，受擊反彈格擋值 30%', mod:s=>{s.spike=0.3;}}},
+  sunder: {a:{n:'撕裂', d:'易傷 2→4 層', mod:s=>{s.apply={vuln:4};}},
+           b:{n:'碎盾', d:'額外移除目標全部格擋（倍率 1.6→1.3）', mod:s=>{s.mult=1.3; s.shatter=true;}}},
+  execute:{a:{n:'梟首', d:'斬殺線 30%→45%', mod:s=>{s.execLine=0.45;}},
+           b:{n:'血償', d:'擊殺時回復 15% 生命', mod:s=>{s.killHeal=0.15;}}},
+  stab:   {a:{n:'淬鋒', d:'此招爆擊傷害 +50%', mod:s=>{s.critBonus=0.5;}},
+           b:{n:'毒鋒', d:'命中附毒 1 層', mod:s=>{s.apply=Object.assign({},s.apply,{poison:1});}}},
+  venom:  {a:{n:'濃毒', d:'3→5 層', mod:s=>{s.applyOnly={poison:5};}},
+           b:{n:'潑毒', d:'改為全體各上毒 2 層', mod:s=>{s.applyOnly={poison:2}; s.aoe=true;}}},
+  shadow: {a:{n:'亂舞', d:'3 段→5 段、各 0.6→0.45', mod:s=>{s.hits=5; s.mult=0.45;}},
+           b:{n:'重段', d:'3 段各 0.6→0.85', mod:s=>{s.mult=0.85;}}},
+  garrote:{a:{n:'深絞', d:'每層毒 0.15→0.20（封頂 +200%）', mod:s=>{s.poisonAmp=0.20;}},
+           b:{n:'催毒', d:'命中後目標毒立即額外跳一次（不動層數）', mod:s=>{s.poisonProc=true;}}},
+  smite:  {a:{n:'重敲', d:'倍率 1.0→1.3', mod:s=>{s.mult=1.3;}},
+           b:{n:'引流', d:'命中回復 5% 法力', mod:s=>{s.manaGain=0.05;}}},
+  shield: {a:{n:'堅壁', d:'智力係數 1.2→1.8', mod:s=>{s.shieldCoef=1.8;}},
+           b:{n:'反射膜', d:'護盾存在期間受擊反彈 10% 傷害', mod:s=>{s.reflect=0.10;}}},
+  fireball:{a:{n:'燎原', d:'燃 2→4 層', mod:s=>{s.apply={burn:4};}},
+           b:{n:'速唱', d:'費用 ×0.75、法力 −25%', mod:s=>{s.costMul=0.75; s.manaMul=0.75;}}},
+  oblivion:{a:{n:'過載', d:'倍率 2.8→3.5、法力 +40%', mod:s=>{s.mult=3.5; s.manaMul=1.4;}},
+           b:{n:'餘燼', d:'倍率 →2.0、附燃 5 層', mod:s=>{s.mult=2.0; s.apply={burn:5};}}},
+  wstrike:{a:{n:'重擊', d:'倍率 1.0→1.3', mod:s=>{s.mult=1.3;}},
+           b:{n:'蝕擊', d:'命中 30% 機率附虛弱 1 層', mod:s=>{s.weakChance=0.3;}}},
+  hex:    {a:{n:'深蝕', d:'虛弱易傷各 2→3', mod:s=>{s.applyOnly={weak:3,vuln:3};}},
+           b:{n:'廣蝕', d:'改為全體各 2 層', mod:s=>{s.aoe=true;}}},
+  siphon: {a:{n:'貪飲', d:'回血 50%→80%', mod:s=>{s.drain=0.8;}},
+           b:{n:'裂魂', d:'倍率 1.4→1.8、回血 →25%', mod:s=>{s.mult=1.8; s.drain=0.25;}}},
+  calam:  {a:{n:'絕望', d:'每種負面 0.3→0.4（封頂 +160%）', mod:s=>{s.debuffAmp=0.4;}},
+           b:{n:'輪迴咒', d:'擊殺時目標身上的負面轉移至隨機存活敵人', mod:s=>{s.transferCurse=true;}}},
 };
-/* 敵人動作: a=攻擊 h=重擊 m=連擊 d=防禦 c=詛咒 v=吸血 s=偷竊 g=蓄力 */
-
 const ENEMIES = {
   /* 淺穴 1-10 */
   rat:   {n:'洞穴巨鼠', i:'🐀', hp:16, realm:0, pat:[{t:'a',v:4},{t:'a',v:5},{t:'a',v:3,ap:{weak:1},nm:'撕咬'}]},
@@ -184,6 +190,14 @@ const CURVE = {
 const DOT = {
   poisonPct: 0.012, burnPct: 0.02, stackCap: 10,
 };
+/* 詞綴化學反應 (§批4)：兩詞綴齊備自動啟動的隱藏協同——配方可調 */
+const CHEMISTRY = [
+  {id:'pcrit',     n:'毒爆',     i:'\u2620\ufe0f\ud83c\udfaf', need:['ptouch','crit'],  d:'爆擊時，淬毒之刃的層數加倍施加'},
+  {id:'burnvamp',  n:'焚血',     i:'\ud83d\udd25\ud83e\ude78', need:['btouch','vamp'],  d:'敵人燃燒跳傷時，你回復其 30%'},
+  {id:'windthorn', n:'風棘',     i:'\ud83d\udca8\ud83c\udf35', need:['agile','thorns'], d:'成功閃避時，反彈荊棘值 ×2 的傷害'},
+  {id:'overshield',n:'溢血成盾', i:'\ud83e\ude78\ud83d\udd37', need:['vamp','hp'],      d:'吸血溢出時轉為護盾（每場上限 20% 生命上限）'},
+  {id:'corrode',   n:'腐燃',     i:'\u2620\ufe0f\ud83d\udd25', need:['ptouch','btouch'],d:'對同時中毒與燃燒的目標，傷害 +20%'},
+];
 const AFFIXES = {
   /* —— 素質類（吃樓層 +0.3/層）—— */
   str:  {n:'力量', fmt:v=>`力量 +${v}`, min:3, max:24, slots:'w', stat:true},
@@ -207,7 +221,7 @@ const AFFIXES = {
   greed:{n:'貪婪', fmt:v=>`碎銀獲取 +${v}%`, min:8, max:40, slots:'t'},
   mregen:{n:'回法', fmt:v=>`每回合額外回復 ${v}% 法力（彙總上限 100%）`, min:5, max:28, slots:'t'},
   /* —— 傳說（橙裝保底一條）—— */
-  vform:{n:'蝕魂', fmt:v=>`攻擊不再造成傷害，改為施加中毒（每擊 2 層，受 10 層上限）`, min:1, max:1, slots:'w', leg:true},
+  vform:{n:'蝕魂', fmt:v=>`攻擊不再造成傷害，改為施加 2 層中毒；你的中毒傷害 +50%`, min:1, max:1, slots:'w', leg:true},
   exem: {n:'斬首', fmt:v=>`對生命低於 30% 的敵人，傷害 +50%`, min:1, max:1, slots:'w', leg:true},
   symbio:{n:'腐生', fmt:v=>`敵人因中毒受傷時，你回復其 50% 的生命`, min:1, max:1, slots:'w', leg:true},
   fury: {n:'狂血', fmt:v=>`造成的傷害 +40%，生命上限 -30%`, min:1, max:1, slots:'w', leg:true},
@@ -297,7 +311,7 @@ const EV_REALM = {mine:0, oldfire:0, wreck:1, wishwell:1, cyst:2, vein:2, confes
 const EV_HINTS = {shrine:'香灰味', gambler:'骰子聲', merchant:'燈籠的紅光', spring:'水聲', can:'金屬滾動聲',
   rock:'碎石味', corpse:'腐味', crack:'微光', box:'鐵鏽味', whisper:'低語聲',
   mine:'鎬敲石的回音', oldfire:'煙味', wreck:'船木吱呀聲', wishwell:'銅錢落水聲',
-  cyst:'黏膩的搏動', vein:'血腥味', confess:'壓低的呼吸聲', candle:'蠟味', bloodspring:'溫熱的水氣', calcified:'一動不動的人影'};
+  cyst:'黏膩的搏動', vein:'血腥味', confess:'壓低的呼吸聲', candle:'蠟味', bloodspring:'溫熱的水氣', calcified:'一動不動的人影', scroll:'紙頁翻動聲'};
 
 const RATE_CAP = 70;   // 三率上限% (§5)
 const VAMP_CAP = 60;   // 吸血彙總上限%

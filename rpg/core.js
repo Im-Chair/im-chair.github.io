@@ -127,6 +127,7 @@ function playerDef(){ // 防禦力（點數）：職業基底＋護甲面板
 function playerMaxHp(){
   let hp = CLASSES[G.cls].hp + statTotal('vit')*2 + sumAffix('hp');
   if(sumAffix('fury')) hp = Math.round(hp*0.7);
+  if(R && R.hpCut) hp = Math.round(hp * (1 - R.hpCut)); // 殘卷血契 (§10)
   return Math.max(1, hp);
 }
 function playerMaxMana(){
@@ -140,6 +141,11 @@ function playerAtk(){ // 顯示用：武器攻擊＋主素質
   return (w ? w.base + w.up : 0) + mainStat();
 }
 function playerCrit(){ return critRate(); }
+
+function chemOn(id){ // 化學反應是否啟動：配方所需詞綴齊備
+  const c = CHEMISTRY.find(x=>x.id===id);
+  return !!c && c.need.every(k=>sumAffix(k)>0);
+}
 
 function openSheet(html){ $('sheet').innerHTML = html; $('sheet-mask').classList.add('show'); }
 

@@ -249,25 +249,11 @@ function nextFloor(){
 
 function doRest(){
   const heal = Math.round(playerMaxHp()*0.3*healMult());
-  const upgradable = CLASSES[G.cls].skills.filter(sid=>!(R.skillUps&&R.skillUps[sid]));
   const choices = [{n:`🩹 休息（回復 ${heal} 血）`, f:()=>{
     R.hp = Math.min(playerMaxHp(), R.hp + heal);
     showEventScreen('🕯️','營火','火光照不遠，但夠暖。\n\n回復了 '+heal+' 點生命。',
       [{n:'繼續前進', f:()=>nextFloor(), primary:true}]);
   }, primary:true}];
-  if(upgradable.length){
-    choices.push({n:'⚒️ 在火邊精進一招（本次探索有效）', f:()=>{
-      const c = [];
-      for(const sid of upgradable){
-        const base = SKILLS[sid], ups = SKILL_UPS[sid];
-        c.push({n:`【${base.n}→${ups.a.n}】${ups.a.d}`, f:()=>pickUp(sid,'a')});
-        c.push({n:`【${base.n}→${ups.b.n}】${ups.b.d}`, f:()=>pickUp(sid,'b')});
-      }
-      c.push({n:'還是休息好了（回復 '+heal+' 血）', f:()=>{
-        R.hp = Math.min(playerMaxHp(), R.hp + heal); nextFloor(); }});
-      showEventScreen('🕯️','營火・精進','火光裡，你反覆演練著自己的招式。選一條路——選了就回不去了。', c);
-    }});
-  }
   choices.push(fireExtra());
   showEventScreen('🕯️','營火','你在深淵裡生了一小堆火。火只有一堆，事只能做一件。', choices);
 }
@@ -385,6 +371,8 @@ function rollEvent(){
   const ri = realmIdx(R.floor);
   const weights = {shrine:9, gambler:8, merchant:12, spring:9, can:4,
                    rock:9, corpse:9, crack:7, box:9, whisper:7};
+  if(!(R.scrollSeen && R.scrollSeen[ri]) && CLASSES[G.cls].skills.some(sid=>!(R.skillUps&&R.skillUps[sid])))
+    weights.scroll = 14;
   for(const [k,zr] of Object.entries(EV_REALM)) if(zr===ri) weights[k] = 16;
   if(!R.seenEv) R.seenEv = {};
   const evs = Object.keys(weights);
@@ -761,6 +749,50 @@ const EVENTS = {
             [{n:'……繼續前進', f:()=>nextFloor()}]); }
       }},
       {n:'不喝', f:()=>walkAway('⛲','血泉')}]);
+  },
+  scroll(){ // 📜 殘卷：技能精進唯一來源，每域至多一次
+    const ri = realmIdx(R.floor);
+    if(!R.scrollSeen) R.scrollSeen = {};
+    R.scrollSeen[ri] = true;
+    const upgradable = CLASSES[G.cls].skills.filter(sid=>!(R.skillUps&&R.skillUps[sid]));
+    if(!upgradable.length){
+      const g = 40 + R.floor*3; R.gold += g;
+      showEventScreen('📜','殘卷','石臺上攤著一頁殘卷，但上面的招式你都已經會了。\n\n卷頁化為 '+g+' 碎銀。',
+        [{n:'收下，繼續前進', f:()=>nextFloor(), primary:true}]);
+      return;
+    }
+    const sacrifice = (payFn, payDesc) => {
+      const c = [];
+      for(const sid of upgradable){
+        const base = SKILLS[sid], ups = SKILL_UPS[sid];
+        c.push({n:`【${base.n}→${ups.a.n}】${ups.a.d}`, f:()=>{ payFn(); pickUp(sid,'a'); }});
+        c.push({n:`【${base.n}→${ups.b.n}】${ups.b.d}`, f:()=>{ payFn(); pickUp(sid,'b'); }});
+      }
+      c.push({n:'……還是算了', f:()=>walkAway('📜','殘卷')});
+      showEventScreen('📜','殘卷・'+payDesc,'代價談妥了。殘卷上的文字開始蠕動——選一招，讓它爬進你的骨頭裡。', c);
+    };
+    const choices = [
+      {n:'✂️ 以血立契（本次探索生命上限 −15%）', f:()=>{
+        sacrifice(()=>{
+          R.hpCut = (R.hpCut||0) + 0.15;
+          R.hp = Math.min(R.hp, playerMaxHp());
+        }, '血契');
+      }},
+    ];
+    if(R.bag.length){
+      choices.push({n:'🔥 以物立契（熔掉行囊中一件裝備）', f:()=>{
+        const c = R.bag.slice(0,6).map(it=>({n:`熔掉 ${it.name}`, f:()=>{
+          const i = R.bag.findIndex(x=>x.id===it.id);
+          if(i>=0) R.bag.splice(i,1);
+          sacrifice(()=>{}, '物契');
+        }}));
+        c.push({n:'捨不得', f:()=>EVENTS.scroll()});
+        showEventScreen('📜','殘卷・獻祭','殘卷要吃東西。選一件——它不挑，但要真的痛。', c);
+      }});
+    }
+    choices.push({n:'不碰它', f:()=>walkAway('📜','殘卷')});
+    showEventScreen('📜','殘卷','石臺上攤著一頁會呼吸的殘卷——上面是失傳的招式變體。\n\n它明碼標價：變強要流血。',
+      choices);
   },
   calcified(){ // 心室
     showEventScreen('🗿','鈣化的英雄','一位冒險者站在走廊中央——站了太久，深淵把他變成了鈣。他手上的裝備看起來還能用。',

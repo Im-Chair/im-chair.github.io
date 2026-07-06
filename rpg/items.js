@@ -255,8 +255,8 @@ function compareHtml(it){
   let lines = [`<div class="cmp">目前身上：<span class="${RARITIES[cur.rar].cls}">${cur.name}${cur.up?'+'+cur.up:''}</span>　<span style="color:var(--dim)">${itemStatLine(cur)}</span>`];
   if(it.slot==='w'){ const d = (it.base+it.up)-(cur.base+cur.up);
     lines.push(`<div>攻擊差 ${d>=0?'<span class="up">+'+d+'</span>':'<span class="dn">'+d+'</span>'}</div>`); }
-  if(it.slot==='a'){ const d = (it.base+it.up*4)-(cur.base+cur.up*4);
-    lines.push(`<div>生命差 ${d>=0?'<span class="up">+'+d+'</span>':'<span class="dn">'+d+'</span>'}</div>`); }
+  if(it.slot==='a'){ const d = (it.base+it.up)-(cur.base+cur.up);
+    lines.push(`<div>防禦差 ${d>=0?'<span class="up">+'+d+'</span>':'<span class="dn">'+d+'</span>'}</div>`); }
   lines.push(`<div style="margin-top:4px">${affixHtml(cur)}</div>`);
   lines.push('</div>');
   return lines.join('');
@@ -380,7 +380,7 @@ function renderSmith(){
   for(const sl of ['w','a']){
     const it = G.equip[sl]; if(!it) continue; any = true;
     const cost = smithCost(it);
-    const gain = sl==='w' ? '攻擊 +1' : '生命 +4';
+    const gain = sl==='w' ? '攻擊 +1' : '防禦 +1';
     const cap = RARITIES[it.rar].upCap;
     const tier = smithTier(it.up);
     const d = document.createElement('div'); d.className = `item-row ${RARITIES[it.rar].b}`;
