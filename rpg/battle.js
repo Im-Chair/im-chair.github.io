@@ -279,7 +279,7 @@ function skillDesc(sid){
     parts.push(`${sk.hits?sk.hits+'段各 ':''}${d}${vulnMark} 傷${sk.aoe&&sk.mult?'（全體）':''}`);
   }
   if(sk.blockCoef !== undefined) parts.push(`格擋 ${10 + Math.round(statTotal('vit')*sk.blockCoef)}`);
-  if(sk.shieldCoef !== undefined) parts.push(`護盾 ${Math.round(statTotal('int')*sk.shieldCoef)}`);
+  if(sk.shieldCoef !== undefined) parts.push(`護盾 ${10 + Math.round(statTotal('int')*sk.shieldCoef)}`);
   if(sk.applyOnly){
     const nm = {poison:'毒',burn:'燃',weak:'虛弱',vuln:'易傷'};
     parts.push(Object.entries(sk.applyOnly).map(([k,v])=>`${nm[k]}${v}層`).join('+') + (sk.aoe?'（全體）':''));
@@ -360,15 +360,19 @@ function useSkill(sid){
   const sk = SK(sid);
   const cost = skillCostU(sk), mc = skillManaC(sk);
   if(mc > 0 && (R.mana||0) < mc){ toast('法力不足'); return; }
-  if(cost > B.energy){
-    // 蓄力制 (§6)：投入剩餘行動點並結束回合，下回合補足自動釋放
-    if(mc > 0) R.mana -= mc; // 法力先付
-    B.charge = {sid, paid:B.energy, cost};
-    B.energy = 0;
-    log(`開始蓄力【${sk.n}】——本回合剩餘行動全數投入（${fmtPts(B.charge.paid)}/${fmtPts(cost)}）。`,'sys');
-    renderBattle();
-    setTimeout(()=>enemyTurn(), 700);
-    return;
+  if(cost > B.maxEnergy){
+    // 蓄力制 (§6)：僅限先天費用超過每回合上限的招（斧大招）；一般「點數不足」不給蓄
+    if(cost > B.energy){
+      if(mc > 0) R.mana -= mc; // 法力先付
+      B.charge = {sid, paid:B.energy, cost};
+      B.energy = 0;
+      log(`開始蓄力【${sk.n}】——本回合剩餘行動全數投入（${fmtPts(B.charge.paid)}/${fmtPts(cost)}）。`,'sys');
+      renderBattle();
+      setTimeout(()=>enemyTurn(), 700);
+      return;
+    }
+  } else if(cost > B.energy){
+    toast('行動點不足'); return;
   }
   B.energy -= cost;
   if(mc > 0) R.mana -= mc;
@@ -382,7 +386,7 @@ function castSkill(sk){
     log(`${sk.n}：獲得 ${v} 格擋。`);
   }
   if(sk.shieldCoef !== undefined){
-    const v = Math.round(statTotal('int') * sk.shieldCoef);
+    const v = 10 + Math.round(statTotal('int') * sk.shieldCoef);
     B.shield += v; B.reflect = Math.max(B.reflect||0, sk.reflect||0);
     log(`${sk.n}：獲得 ${v} 護盾。`,'sys');
   }

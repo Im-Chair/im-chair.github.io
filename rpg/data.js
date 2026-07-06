@@ -41,7 +41,7 @@ const SKILLS = {
   garrote:{n:'絞殺',   slot:'大', costW:3, mult:2.0, poisonAmp:0.15, d:'依目標毒層加成的收割一擊（只讀不耗）'},
   /* —— 🔮 法師 —— */
   smite:  {n:'敲擊',   slot:'普', costW:1, mult:1.0, d:'物理保底攻擊'},
-  shield: {n:'屏障',   slot:'輔', fixed:1, mana:15, shieldCoef:1.2, d:'獲得護盾（智力×1.2，可疊加）'},
+  shield: {n:'屏障',   slot:'輔', fixed:1, mana:15, shieldCoef:1.2, d:'獲得護盾（10＋智力×1.2，可疊加）'},
   fireball:{n:'火球',  slot:'中', costW:2, mana:20, mult:1.6, magic:true, apply:{burn:2}, d:'法術轟擊並點燃'},
   oblivion:{n:'湮滅',  slot:'大', costW:3, mana:40, mult:2.8, magic:true, pierce:true, d:'無視格擋的毀滅法術'},
   /* —— 🕯️ 制魔師 —— */
