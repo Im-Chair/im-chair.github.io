@@ -104,8 +104,9 @@ function sumAffix(key){
   return v;
 }
 
-function statTotal(key){ // 五素質彙總（詞綴＋祝福）
-  return sumAffix(key);
+function statTotal(key){ // 五素質彙總（出廠 baseStats ＋ 裝備詞綴）
+  const base = (G.cls && CLASSES[G.cls].baseStats) ? (CLASSES[G.cls].baseStats[key]||0) : 0;
+  return base + sumAffix(key);
 }
 function rateFromStat(v){ // 素質→率 分段換算：前100÷8、100-200÷16、200+÷32
   let r = 0, used = 0;
@@ -117,21 +118,22 @@ function rateFromStat(v){ // 素質→率 分段換算：前100÷8、100-200÷16
   }
   return r;
 }
-function defRate(){ return Math.min(RATE_CAP, rateFromStat(statTotal('vit')) + sumAffix('defr')); }
-function dodgeRate(){ return hasCurse('heavy2') ? 0 : Math.min(RATE_CAP, CLASSES[G.cls].dodge + rateFromStat(statTotal('agi')) + sumAffix('agile')); }
-function critRate(){ return Math.min(RATE_CAP, CLASSES[G.cls].crit + rateFromStat(statTotal('spi')) + sumAffix('crit')); }
-function playerDef(){ // 防禦力（點數）：職業基底＋護甲面板
+function defRate(){ return Math.min(RATE_CAP, (CLASSES[G.cls].baseRates.def||0) + rateFromStat(statTotal('vit')) + sumAffix('defr')); }
+function dodgeRate(){ return hasCurse('heavy2') ? 0 : Math.min(RATE_CAP, (CLASSES[G.cls].baseRates.dodge||0) + rateFromStat(statTotal('agi')) + sumAffix('agile')); }
+function critRate(){ return Math.min(RATE_CAP, (CLASSES[G.cls].baseRates.crit||0) + rateFromStat(statTotal('spi')) + sumAffix('crit')); }
+function playerDef(){ // 防禦力（點數）：全職通用底＋護甲面板
   const a = G.equip.a;
-  return CLASSES[G.cls].def + (a ? a.base + a.up : 0);
+  return BASE_DEF + (a ? a.base + a.up : 0);
 }
 function playerMaxHp(){
-  let hp = CLASSES[G.cls].hp + statTotal('vit')*2 + sumAffix('hp');
+  let hp = BASE_HP + statTotal('vit')*2 + sumAffix('hp');
   if(sumAffix('fury')) hp = Math.round(hp*0.7);
   if(R && R.hpCut) hp = Math.round(hp * (1 - R.hpCut)); // 殘卷血契 (§10)
   return Math.max(1, hp);
 }
 function playerMaxMana(){
-  return Math.round(CLASSES[G.cls].mana + statTotal('spi')*1.5 + sumAffix('mp'));
+  if(CLASSES[G.cls].mainStat !== 'int') return sumAffix('mp'); // 物攻職業無基礎法力（除非裝備給）
+  return Math.round(BASE_MANA + statTotal('spi')*1.5 + sumAffix('mp'));
 }
 function manaRegenPct(){ return Math.min(MREGEN_CAP, 15 + sumAffix('mregen')); }
 function weaponType(){ const w = G.equip.w; return WEAPON_TYPES[(w && w.wtype) || 'sword']; }

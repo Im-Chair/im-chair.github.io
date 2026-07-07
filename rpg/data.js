@@ -3,19 +3,31 @@
 // 調平衡改這裡：RATE_CAP 三率上限、STAT_DIV 換算分段、CURVE 供需曲線、DOT 毒燃參數、CYC_MULT 輪迴強度 ============
 
 const CLASSES = {
-  sword:{name:'劍士', icon:'🛡️', hp:110, def:10, dodge:0, crit:5, mana:0, mainStat:'str',
+  sword:{name:'劍士', icon:'🛡️', mainStat:'str',
+    baseStats:{str:40, int:0, vit:30, agi:0, spi:10},
+    baseRates:{dodge:0, crit:5, def:8},
     desc:'鐵罐。高物攻高防，站著換血，把仗打成自己的節奏。',
     skills:['slash','guard','sunder','execute']},
-  assassin:{name:'盜賊', icon:'🗡️', hp:60, def:0, dodge:20, crit:15, mana:0, mainStat:'str',
+  assassin:{name:'盜賊', icon:'🗡️', mainStat:'str',
+    baseStats:{str:30, int:0, vit:5, agi:40, spi:15},
+    baseRates:{dodge:15, crit:12, def:0},
     desc:'影子。中傷高敏多段觸發，讓敵人死在千百道小傷口裡。',
     skills:['stab','venom','shadow','garrote']},
-  white:{name:'法師', icon:'🔮', hp:55, def:0, dodge:5, crit:5, mana:40, mainStat:'int',
+  white:{name:'法師', icon:'🔮', mainStat:'int',
+    baseStats:{str:0, int:40, vit:0, agi:0, spi:20},
+    baseRates:{dodge:3, crit:5, def:0},
     desc:'玻璃砲。高魔攻脆皮，法力傾瀉的一輪爆發。',
     skills:['smite','shield','fireball','oblivion']},
-  dark:{name:'制魔師', icon:'🕯️', hp:80, def:5, dodge:5, crit:10, mana:25, mainStat:'int',
+  dark:{name:'制魔師', icon:'🕯️', mainStat:'int',
+    baseStats:{str:0, int:30, vit:15, agi:0, spi:40},
+    baseRates:{dodge:3, crit:5, def:4},
     desc:'韌法。buff 與 debuff 的操盤手，越拖越強的收割者。',
     skills:['wstrike','hex','siphon','calam']},
 };
+/* 全職通用底值：一切從素質長出，這些是不吃素質的硬底 */
+const BASE_HP = 50;    // 基礎生命（再加 體力×2）
+const BASE_MANA = 20;  // 基礎法力（再加 精神×1.5）——僅智力主素質職業啟用
+const BASE_DEF = 0;    // 基礎防禦力（再加護甲）
 /* 五素質定義 */
 const STATS = {
   str:{n:'力量', i:'💪', d:'物理攻擊加成'},

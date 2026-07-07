@@ -24,7 +24,7 @@ function renderClassSelect(){
     d.className = 'class-card'; d.dataset.k = k;
     d.innerHTML = `<div class="ci">${c.icon}</div><div class="cn">${c.name}</div>
       <div class="cd">${c.desc}</div>
-      <div style="font-size:11px;color:var(--dim)">❤️${c.hp}　🛡${c.def}　💨${c.dodge}%　🎯${c.crit}%${c.mana?'　🔮'+c.mana:''}</div>
+      <div style="font-size:11px;color:var(--dim)">${['str','int','vit','agi','spi'].filter(k=>c.baseStats[k]>0).map(k=>STATS[k].i+c.baseStats[k]).join('　')}</div>
       <div style="font-size:10px;color:var(--dim)">主素質：${STATS[c.mainStat].i}${STATS[c.mainStat].n}</div>`;
     d.onclick = ()=>{ document.querySelectorAll('.class-card').forEach(x=>x.classList.remove('selected'));
       d.classList.add('selected'); pendingClass = k; };
@@ -173,16 +173,11 @@ function openRunStats(){
     `<div style="text-align:center;color:var(--gold);font-size:14px;margin:6px 0">${statRow}</div>` +
     '<div class="stat-grid" style="grid-template-columns:1fr 1fr">' +
     rows.map(([v,k])=>`<div class="stat-box"><div class="v" style="font-size:15px">${v}</div><div class="k">${k}</div></div>`).join('') + '</div>';
-  // 化學反應：齊備顯示、差一件給提示（探索誘餌）
+  // 化學反應：純彩蛋——只在湊齊時顯示，沒湊到不提示
   const chemRows = [];
   for(const c of CHEMISTRY){
-    const have = c.need.filter(k=>sumAffix(k)>0).length;
-    if(have === c.need.length)
+    if(c.need.every(k=>sumAffix(k)>0))
       chemRows.push(`<div class="base" style="color:var(--gold)">${c.i}【${c.n}】${c.d}</div>`);
-    else if(have === c.need.length-1){
-      const missing = c.need.find(k=>sumAffix(k)<=0);
-      chemRows.push(`<div class="base" style="color:var(--dim)">${c.i}【？？】隱約感覺缺了「${AFFIXES[missing].n}」……</div>`);
-    }
   }
   if(chemRows.length) html += '<div class="section-title">⚗️ 詞綴反應</div>' + chemRows.join('');
   html += '<div class="section-title">身上裝備</div>';
