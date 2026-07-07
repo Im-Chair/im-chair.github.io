@@ -239,15 +239,29 @@ function renderBattle(){
     const cost = skillCostU(sk), mc = skillManaC(sk);
     const charging = B.charge && B.charge.sid === sid;
     const noMana = mc > 0 && (R.mana||0) < mc;
+    const chargeable = cost > B.maxEnergy;              // 先天超過每回合上限＝真・可蓄力（斧大招）
+    const noEnergy = (cost > B.energy && !chargeable) || (chargeable && B.energy <= 0); // 點數不足不可用；可蓄招也需 >0 點才能起蓄
     const b = document.createElement('button'); b.className = 'skill-btn';
-    b.disabled = B.over || !!B.charge || noMana;
+    b.disabled = B.over || !!B.charge || noMana || noEnergy;
     b.innerHTML = `<div class="sn">${sk.n}${sk.upN?'⁺':''}${charging?'（蓄力中 '+fmtPts(B.charge.paid)+'/'+fmtPts(cost)+'）':''}</div>
       <div class="sd">${skillDesc(sid)}</div>
-      <span class="sc">◆${fmtPts(cost)}${mc?'｜🔮'+mc:''}${cost>B.energy&&!B.charge?'（蓄）':''}</span>`;
+      <span class="sc">◆${fmtPts(cost)}${mc?'｜🔮'+mc:''}${chargeable&&!B.charge?'（蓄）':''}</span>`;
     b.onclick = ()=>useSkill(sid);
     grid.appendChild(b);
   }
   $('btn-end').disabled = B.over || !!B.charge;
+  // 行動點耗盡、無招可出 → 自動結束回合（蓄力中或已結束不觸發）
+  if(!B.over && !B.charge && !B._autoEnding){
+    const canAct = CLASSES[G.cls].skills.some(sid=>{
+      const sk = SK(sid), c = skillCostU(sk), mc = skillManaC(sk);
+      if(c > B.maxEnergy) return B.energy > 0;          // 斧大招：有點數就能起蓄
+      return c <= B.energy && (mc===0 || (R.mana||0) >= mc);
+    });
+    if(!canAct){
+      B._autoEnding = true;
+      setTimeout(()=>{ B._autoEnding = false; if(!B.over && !B.charge) endTurn(); }, 500);
+    }
+  }
 }
 
 function SK(sid){
