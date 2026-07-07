@@ -712,6 +712,7 @@ function winBattle(){
       if(lp.length) it3.affixes.unshift({k:pick(lp), v:1}); }
     drops.push(it3); R.bag.push(it3);
   }
+  if(B.boss) tryDropRope(ROPE_DROP.boss, '首領');
   let matDrop = null;
   if(R.cycle > 0 && R.floor >= 11){
     const chance = (0.16 + (B.elite?0.10:0) + (B.boss?0.20:0)) * (1 + (R.cycle-1)*0.35);

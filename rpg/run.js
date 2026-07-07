@@ -160,6 +160,8 @@ function showDoors(){
   document.querySelector('#s-doors .depth-gauge .lbl').textContent = zz.i+' '+zz.n;
   $('d-gold').textContent = R.gold;
   $('d-hp').textContent = `❤️ ${R.hp}/${playerMaxHp()}`;
+  const rb = document.getElementById('retreat-btn');
+  if(rb) rb.style.display = R.hasRope ? '' : 'none';
   $('d-bonus').textContent = rarityBonusText(f);
   const grid = $('door-grid'); grid.innerHTML = '';
   if(R.forceDoor){
@@ -322,6 +324,7 @@ function pickUp(sid, branch){
 }
 
 function doChest(){
+  tryDropRope(ROPE_DROP.chest, '寶箱');
   if(Math.random() < 0.18){
     // 寶箱怪
     showEventScreen('📦','寶箱','你伸手掀開箱蓋——箱子也張開了嘴。',
@@ -459,6 +462,9 @@ const EVENTS = {
     else if(k2==='quench') shop.push({kind:'quench', price:35 + R.floor*2, sold:false});
     else shop.push({kind:'mat', mat:(R.floor<=30?'iron':'steel'), price:70 + R.floor*3, sold:false});
     shop.push({kind:'potion', k:pick(potionPool()), price:25 + R.floor*3, sold:false});
+    if(!R.hasRope && !R.ropeSeen && Math.random() < ROPE_DROP.merchant){
+      shop.push({kind:'rope', price:Math.round(120 + R.floor*8), sold:false});
+    }
     R.shop = shop;
     renderMerchant();
   },
@@ -819,6 +825,7 @@ function merchantLabel(st){
   if(st.kind==='oil') return `✦ 祝福油（隨機一項本次探索祝福）— ${st.price}🪙`;
   if(st.kind==='quench') return `🗡 淬毒服務（攻擊附 3 中毒，3 場戰鬥）— ${st.price}🪙`;
   if(st.kind==='mat') return `${MATS[st.mat].i} ${MATS[st.mat].n} ×1 — ${st.price}🪙`;
+  if(st.kind==='rope') return `🪢 逃脫之繩（活著離開，記錄這趟深度）— ${st.price}🪙`;
   return `${POTIONS[st.k].i} ${POTIONS[st.k].n}（${pdesc(st.k)}）— ${st.price}🪙`;
 }
 
@@ -830,6 +837,7 @@ function buyMerchant(idx){
   else if(st.kind==='oil'){ const b = pick(BLESSINGS); R.bless.push({k:b.k,v:b.v}); toast(b.n); }
   else if(st.kind==='quench'){ R.quench = {k:'ptouch', v:3, battles:3}; toast('刀刃泛起烏青色'); }
   else if(st.kind==='mat'){ G.mats[st.mat]++; toast('入手 '+MATS[st.mat].n); }
+  else if(st.kind==='rope'){ R.hasRope = true; R.ropeSeen = true; toast('🪢 入手逃脫之繩'); }
   else { if(!potAdd(st.k)){ toast('背不下了'); return; } toast('買到了'); }
   R.gold -= st.price;
   st.sold = true;
@@ -843,7 +851,18 @@ function renderMerchant(){
   showEventScreen('🏮','迷路的商人','一盞紅燈籠下，商人縮在貨擔後面：「客人，深處的東西不收碎銀，趁現在換點有用的吧。」',choices);
 }
 
+function tryDropRope(chance, srcLabel){ // 逃脫之繩掉落：單趟唯一
+  if(R.hasRope || R.ropeSeen) return false;   // 已有繩、或這趟已給過就不再給
+  if(Math.random() < chance){
+    R.hasRope = true; R.ropeSeen = true;
+    toast('🪢 獲得逃脫之繩！');
+    return true;
+  }
+  return false;
+}
+
 function retreat(){
+  if(!R.hasRope){ toast('沒有逃脫之繩'); return; }
   const n = R.bag.length, g = R.gold;
   // 保管一切
   for(const it of R.bag){ it.banked = true; G.stash.push(it); }
@@ -851,6 +870,9 @@ function retreat(){
   G.gold += g;
   const deep = R.floor;
   const kills = R.kills;
+  // 認證深度：只有活著逃脫才寫進榮譽紀錄（歷史是贏家寫的）
+  if(R.cycle === 0){ if(deep > (G.rec.certDeep||0)) G.rec.certDeep = deep; }
+  else { const c = cd(R.cycle); if(deep > (c.certDeep||0)) c.certDeep = deep; }
   R = null; B = null; save();
   $('res-icon').textContent = '🪢';
   $('res-title').textContent = '平安歸來';

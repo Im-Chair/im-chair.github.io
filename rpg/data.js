@@ -28,6 +28,8 @@ const CLASSES = {
 const BASE_HP = 50;    // 基礎生命（再加 體力×2）
 const BASE_MANA = 20;  // 基礎法力（再加 精神×1.5）——僅智力主素質職業啟用
 const BASE_DEF = 0;    // 基礎防禦力（再加護甲）
+/* 逃脫之繩掉落率（單趟唯一，空手率約 40%）*/
+const ROPE_DROP = { boss:0.12, merchant:0.08, chest:0.05 };
 /* 五素質定義 */
 const STATS = {
   str:{n:'力量', i:'💪', d:'物理攻擊加成'},

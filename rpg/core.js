@@ -48,7 +48,7 @@ const pick = arr=>arr[Math.floor(Math.random()*arr.length)];
 const $ = id=>document.getElementById(id);
 
 function newSave(){ return {v3:1, cls:null, gold:0, stash:[], equip:{w:null,a:null,t:null},
-  rec:{deep:0,runs:0,boss:0}, mats:{iron:0,steel:0}, codex:{}, cyc:{unlocked:0},
+  rec:{deep:0,certDeep:0,runs:0,boss:0}, mats:{iron:0,steel:0}, codex:{}, cyc:{unlocked:0},
   orig:{deep:0,cp:0,done:false}, cycData:{}, run:null, uid:1}; }
 
 function realmFor(floor){ return REALMS.find(z=>floor>=z.from && floor<=z.to); }
