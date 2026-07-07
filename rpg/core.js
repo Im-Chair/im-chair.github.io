@@ -48,9 +48,23 @@ const pick = arr=>arr[Math.floor(Math.random()*arr.length)];
 const $ = id=>document.getElementById(id);
 
 function newSave(){ return {v3:1, cls:null, gold:0, stash:[], equip:{w:null,a:null,t:null},
-  rec:{deep:0,certDeep:0,runs:0,boss:0}, mats:{iron:0,steel:0}, codex:{}, cyc:{unlocked:0},
+  rec:{deep:0,cert:null,runs:0,boss:0}, mats:{iron:0,steel:0}, codex:{}, cyc:{unlocked:0},
   orig:{deep:0,cp:0,done:false}, cycData:{}, run:null, uid:1}; }
 
+function certScore(cert){ // 認證難度分數：輪迴階級碾壓層數（輪迴I-1 > 本源-50）
+  if(!cert) return -1;
+  return cert.cycle * 1000 + cert.floor;
+}
+function recordCert(cycle, floor){ // 只保留最難的認證成就
+  const cand = {cycle, floor};
+  if(certScore(cand) > certScore(G.rec.cert)) G.rec.cert = cand;
+}
+function certText(cert){ // 認證成就顯示文字
+  if(!cert) return '—';
+  if(cert.cycle === 0) return '本源 '+cert.floor+(cert.floor>=50?'✓':'');
+  const roman = 'I'.repeat(Math.min(cert.cycle,3)) + (cert.cycle>3?'+'+(cert.cycle-3):'');
+  return '輪迴'+roman+' '+cert.floor;
+}
 function realmFor(floor){ return REALMS.find(z=>floor>=z.from && floor<=z.to); }
 
 function healMult(){ const z = R? realmFor(R.floor):null; return (z && z.rule==='heal75')? 0.75 : 1; }

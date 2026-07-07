@@ -48,7 +48,7 @@ function renderCamp(){
   const c = CLASSES[G.cls];
   $('camp-cls').textContent = `${c.icon} ${c.name}`;
   $('camp-gold').textContent = G.gold;
-  $('rec-deep').textContent = G.rec.certDeep||0;
+  $('rec-deep').textContent = certText(G.rec.cert);
   $('rec-runs').textContent = G.rec.runs;
   $('rec-boss').textContent = G.rec.boss;
   $('stash-count').textContent = `倉庫 ${G.stash.length} 件`;

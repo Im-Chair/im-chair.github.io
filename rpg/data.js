@@ -197,7 +197,7 @@ const CURVE = {
   rarMult: [0.8, 1.0, 1.2, 1.4],    // 白藍金橙
   mobHP:   f => f<=10 ? f*23 : 70 + f*16,     // 雜魚血量目標（1-10層俯衝、10層起接 §13 對表）
   mobDMG:  f => f<=10 ? f*1.8 : 3 + f*1.5,    // 雜魚單發目標
-  eliteHP: 1.8, miniHP: 2.2, lordHP: 2.6, finalHP: 2.9,  // 相對雜魚（第6批校準：域主≈8回合）
+  eliteHP: 1.5, miniHP: 2.2, lordHP: 2.6, finalHP: 2.9,  // 相對雜魚（精英壓到域主之下）
   bossDMG: 1.1,
   duoStart: 20, duoRate: 0.03, duoLock: 40,   // 多敵曲線：20層起 (f-20)×3%，40+ 固定雙怪
 };

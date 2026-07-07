@@ -43,7 +43,7 @@ function makeEnemy(floor, elite){
   const hp = Math.round(CURVE.mobHP(floor) * (t.hp/REALM_HP_MEAN[t.realm]) * (elite?CURVE.eliteHP:1) * cm);
   // 一般怪傷害：域內身分保留（打手打得比域均重）
   const mult = CURVE.mobDMG(floor) * (elite?1.15:1) * cm / REALM_DMG_MEAN[t.realm];
-  const e = {key, n:(elite?'精英・':'')+t.n, i:t.i, hp, maxhp:hp,
+  const e = {key, n:t.n, i:t.i, hp, maxhp:hp,
     pat:t.pat, pi:0, block:0, st:{}, mult, elite:elite?1:0, boss:false};
   if(t.tag) applyTag(e, t.tag);
   return elite ? applyCycPrefix(e) : ((R&&R.cycle>=2) ? applyCycPrefix(e) : e);
@@ -67,8 +67,8 @@ function makeRealmElite(floor){
   const cm = cycMult((R&&R.cycle)||0);
   const em = 100; // 域限精英基準體重
   const hp = Math.round(CURVE.mobHP(floor) * CURVE.eliteHP * (t.hp/em) * cm);
-  const e = {key:t.key, n:'精英・'+t.n, i:t.i, hp, maxhp:hp,
-    pat:t.pat, pi:0, block:0, st:{}, mult:CURVE.mobDMG(floor)*1.3*cm/patMean(t.pat), elite:1, boss:false};
+  const e = {key:t.key, n:t.n, i:t.i, hp, maxhp:hp,
+    pat:t.pat, pi:0, block:0, st:{}, mult:CURVE.mobDMG(floor)*1.15*cm/patMean(t.pat), elite:1, boss:false};
   return applyCycPrefix(e);
 }
 function enemyMove(e){ return e.pat[e.pi % e.pat.length]; }
@@ -734,6 +734,10 @@ function winBattle(){
     if(R.cycle > 0 && R.floor % 10 === 0){ const c = cd(R.cycle); c.cp = Math.max(c.cp, R.floor); }
   }
   if(R.cycle === 0 && R.floor === 50 && B.boss){ R.origDone = true; G.orig.done = true; }
+  // 過關＝走到底打贏＝活著的證明，認證深度比照逃脫寫入（分本源/輪迴）
+  if(isFinal || (B.boss && R.floor % 10 === 0)){
+    recordCert(R.cycle, R.floor);  // 過關＝活著的證明，只留最難成就
+  }
   setTimeout(()=>{
     showLoot(drops, gold, B.boss?'👑':'⚔️', isFinal?'你打穿了深淵的心臟':(B.boss?'首領倒下了':'戰鬥勝利'),
       `獲得 ${gold} 碎銀` + (potionDrop? `，撿到 ${POTIONS[potionDrop].i}${POTIONS[potionDrop].n}`:'') + (potionOverflow? `，藥水袋滿——折成 ${potionOverflow} 碎銀`:'') + (matDrop? `，拾獲 ${MATS[matDrop].i}${MATS[matDrop].n} ×1`:''), mend? `（急救回復 ${mend} 血）`:'');

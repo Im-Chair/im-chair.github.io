@@ -870,9 +870,8 @@ function retreat(){
   G.gold += g;
   const deep = R.floor;
   const kills = R.kills;
-  // 認證深度：只有活著逃脫才寫進榮譽紀錄（歷史是贏家寫的）
-  if(R.cycle === 0){ if(deep > (G.rec.certDeep||0)) G.rec.certDeep = deep; }
-  else { const c = cd(R.cycle); if(deep > (c.certDeep||0)) c.certDeep = deep; }
+  // 認證：只有活著逃脫才寫進榮譽紀錄（歷史是贏家寫的），只留最難成就
+  recordCert(R.cycle, deep);
   R = null; B = null; save();
   $('res-icon').textContent = '🪢';
   $('res-title').textContent = '平安歸來';
