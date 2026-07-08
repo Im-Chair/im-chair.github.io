@@ -33,8 +33,8 @@ function openDivePicker(){
   } else {
     const c = cd(pendingMode);
     html += `<p class="base" style="margin-top:8px">深淵重演，敵人 ×${cycMult(pendingMode).toFixed(1)}，掉落更兇，材料只在這裡。本輪最深 ${c.deep} 層。</p>`;
-    if(pendingMode === cu && !(G.cycData[cu] && G.cycData[cu].deep >= CYC_NEXT))
-      html += `<p style="color:var(--dim);font-size:12px">本輪抵達 ${CYC_NEXT} 層解鎖下一重輪迴。</p>`;
+    if(pendingMode === cu && !(certScore(G.rec.cert) >= cu*1000 + CYC_NEXT))
+      html += `<p style="color:var(--dim);font-size:12px">本輪逃離並認證 ${CYC_NEXT} 層，解鎖下一重輪迴。</p>`;
   }
   // 起點列
   html += '<div class="item-list" style="margin-top:8px">';
@@ -48,7 +48,7 @@ function openDivePicker(){
   html += '</div>';
   const nextCp = pendingMode==='orig' ? '打贏第 '+(Math.min(G.orig.cp+5,50))+' 層首領解鎖下一個傳送點' : '打贏第 '+(cd(pendingMode).cp+10)+' 層域主解鎖下一個傳送點';
   html += `<p style="color:var(--dim);font-size:12px;margin-top:8px">🔒 ${nextCp}。</p>`;
-  if(cu === 0) html += '<p style="color:var(--dim);font-size:12px">🔒 本源抵達 30 層解鎖輪迴。</p>';
+  if(cu === 0) html += '<p style="color:var(--dim);font-size:12px">🔒 打穿本源 50 層通關，解鎖輪迴。</p>';
   html += '<button class="btn" style="margin-top:8px" onclick="closeSheet()">取消</button>';
   openSheet(html);
 }
@@ -138,7 +138,7 @@ function doorPool(){
   const f = R.floor;
   const pool = [];
   pool.push({t:'fight', i:'⚔️', n:'戰鬥', d:'普通的敵人', w:42});
-  if(f>=3) pool.push({t:'elite', i:'😈', n:'精英', d:R.floor>=8?'更強，可能不只一隻':'更強，掉落更好', w:16});
+  if(f>=3) pool.push({t:'elite', i:'😈', n:'精英', d:'更強，掉落更好', w:16});
   const pev = rollEvent();
   const hint = Math.random()<0.5 ? '你察覺到：'+(EV_HINTS[pev]||'說不上來的氣息') : '誰知道呢';
   pool.push({t:'event', i:'❓', n:'未知', d:hint, ev:pev, w:22});

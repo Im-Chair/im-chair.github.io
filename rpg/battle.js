@@ -317,10 +317,10 @@ const STATUS_INFO = {
   wound:'🩹 重傷：受到的治療效果減半。',
   rage:'😡 狂怒：造成的傷害提升。',
   block:'🛡 格擋：在防禦結算後吸收等量傷害，回合結束清零（壁壘詞綴可保留）。斧與法術剋格擋、匕首刮不動。',
-  tag_pImm:'☠️🚫 毒免：毒層無法施加。毒 build 這場改打直傷。',
+  tag_pImm:'☠️🚫 毒免：毒層無法施加，這場改靠直接傷害。',
   tag_bImm:'🔥🚫 燃免：燃層無法施加。',
-  tag_heavy:'🪨 重甲：常駐格擋外殼，每回合恢復。斧碾盾、法術繞盾、毒燃無視——換手段的時候到了。',
-  tag_naked:'🩸 裸皮：受到的直接傷害 +15%。快但脆，優先集火。',
+  tag_heavy:'🪨 重甲：常駐格擋外殼，每回合恢復。斧、法術、毒燃能繞過。',
+  tag_naked:'🩸 脆弱：受到的直接傷害 +15%。',
 };
 function explainStatus(k){
   if(STATUS_INFO[k]) openSheet(`<h3>狀態說明</h3><p class="base">${STATUS_INFO[k]}</p>
@@ -735,8 +735,9 @@ function winBattle(){
   }
   if(R.cycle === 0 && R.floor === 50 && B.boss){ R.origDone = true; G.orig.done = true; }
   // 過關＝走到底打贏＝活著的證明，認證深度比照逃脫寫入（分本源/輪迴）
-  if(isFinal || (B.boss && R.floor % 10 === 0)){
-    recordCert(R.cycle, R.floor);  // 過關＝活著的證明，只留最難成就
+  // 免逃離認證唯一例外：本源打穿第50層（走到底＝活著的證明）；輪迴無此例外，只能靠逃離
+  if(R.cycle === 0 && R.floor === 50 && isFinal){
+    recordCert(0, 50);
   }
   setTimeout(()=>{
     showLoot(drops, gold, B.boss?'👑':'⚔️', isFinal?'你打穿了深淵的心臟':(B.boss?'首領倒下了':'戰鬥勝利'),

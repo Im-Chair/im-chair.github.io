@@ -168,10 +168,11 @@ function openSheet(html){ $('sheet').innerHTML = html; $('sheet-mask').classList
 function closeSheet(){ $('sheet-mask').classList.remove('show'); }
 
 function cyclesUnlocked(){
+  // 開輪迴 I：必須打穿本源 50 通關；開輪迴 II+：前一輪「認證深度」≥ CYC_NEXT（逃離才算）
   const legacy = G.cyc && G.cyc.unlocked > 0;
-  if(G.orig.deep < 30 && !G.orig.done && !legacy) return 0;
+  if(!G.orig.done && !legacy) return 0;
   let n = 1;
-  while(G.cycData[n] && G.cycData[n].deep >= CYC_NEXT) n++;
+  while(certScore(G.rec.cert) >= (n)*1000 + CYC_NEXT) n++;  // 認證已達輪迴n且深度≥門檻 → 解鎖 n+1
   return n;
 }
 
