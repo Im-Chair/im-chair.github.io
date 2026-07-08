@@ -30,6 +30,8 @@ const BASE_MANA = 20;  // 基礎法力（再加 精神×1.5）——僅智力主
 const BASE_DEF = 0;    // 基礎防禦力（再加護甲）
 /* 逃脫之繩掉落率（單趟唯一，空手率約 40%）*/
 const ROPE_DROP = { boss:0.12, merchant:0.08, chest:0.05 };
+const ROPE_BOSS_RAMP = 0.02;  // 首領繩掉率採深遞增：0.12 起、每深一層 +2%（上限 90%）
+const ROPE_PITY = 25;         // 保底：深入到此層之後的首領必給繩（單趟仍限一條）
 /* 五素質定義 */
 const STATS = {
   str:{n:'力量', i:'💪', d:'物理攻擊加成'},

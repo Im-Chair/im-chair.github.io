@@ -167,7 +167,7 @@ function showDoors(){
   const rb = document.getElementById('retreat-btn');
   if(rb) rb.style.display = R.hasRope ? '' : 'none';
   const rh = document.getElementById('rope-hint');
-  if(rh) rh.textContent = R.hasRope ? '' : '🪢 逃脫之繩掉落：首領 12%／寶箱 5%／商人 8%（單趟限一條）';
+  if(rh) rh.textContent = R.hasRope ? '' : `🪢 逃脫之繩：首領掉率隨深度提升（第 ${ROPE_PITY} 層起必給）／寶箱 5%／商人 8%｜單趟限一條`;
   $('d-bonus').textContent = rarityBonusText(f);
   const grid = $('door-grid'); grid.innerHTML = '';
   if(R.forceDoor){
