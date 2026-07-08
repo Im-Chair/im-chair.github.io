@@ -25,9 +25,7 @@ function pdesc(k){
 
 function potAdd(k){
   if(!R.pots) R.pots = {};
-  if(R.pots[k]){ if(R.pots[k] >= 3) return false; R.pots[k]++; return true; }
-  if(Object.keys(R.pots).length >= 4) return false;
-  R.pots[k] = 1; return true;
+  R.pots[k] = (R.pots[k]||0) + 1; return true; // 無上限：種類與數量皆不限（已移除 4種×3瓶 上限）
 }
 
 function potTotal(){ return R && R.pots ? Object.values(R.pots).reduce((a,b)=>a+b,0) : 0; }
@@ -83,7 +81,7 @@ function load(){ try{ const d = localStorage.getItem(SAVE_KEY); if(d){ G = JSON.
   if(!G.cyc) G.cyc = {unlocked: G.rec.clear? 1:0};
   if(!G.orig){
     const dp = Math.min(G.rec.deep||0, 50);
-    G.orig = {deep:dp, cp:Math.min(45, Math.max(0, Math.floor((dp-1)/5)*5)), done:false};
+    G.orig = {deep:dp, cp:Math.min(41, dp), done:false};
     G.cycData = {};
     const map = {boss0:'bb0', boss1:'bb2', boss2:'mb2'};
     for(const [ok,nk] of Object.entries(map)){

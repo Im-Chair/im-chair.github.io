@@ -2,13 +2,13 @@
 // ============ run.js — 探索：下潛選單/門/樓層推進/全部事件/商人/撤退與死亡 ============
 
 function startOptions(mode){
-  // 回傳 [{floor, fee}]
+  // 回傳 [{floor, fee}]；傳送點以「成功逃脫的最深層」解鎖，每 10 層一階（1,11,21,31,41…）
   const opts = [{floor:1, fee:0}];
   if(mode === 'orig'){
-    for(let f = 5; f <= G.orig.cp && f < 50; f += 5) opts.push({floor:f+1, fee:(f+1)*10});
+    for(let s = 11; s <= Math.min(G.orig.cp, 41); s += 10) opts.push({floor:s, fee:s*10}); // 本源最深傳送點 41（打穿50王不再多開一階）
   } else {
     const c = cd(mode);
-    for(let f = 20; f <= c.cp; f += 10) opts.push({floor:f-9, fee:(f-9)*12});
+    for(let s = 11; s <= c.cp; s += 10) opts.push({floor:s, fee:s*12});                     // 輪迴無上限
   }
   return opts;
 }
@@ -17,7 +17,7 @@ var pendingMode = 'orig';
 
 function openDivePicker(){
   const cu = cyclesUnlocked();
-  if(cu === 0 && G.orig.cp < 5){ startRun(1, 0); return; }
+  if(cu === 0 && G.orig.cp < 11){ startRun(1, 0); return; }
   if(pendingMode !== 'orig' && pendingMode > cu) pendingMode = 'orig';
   let html = '<h3>下潛</h3>';
   // 模式列
@@ -46,8 +46,17 @@ function openDivePicker(){
     }
   }
   html += '</div>';
-  const nextCp = pendingMode==='orig' ? '打贏第 '+(Math.min(G.orig.cp+5,50))+' 層首領解鎖下一個傳送點' : '打贏第 '+(cd(pendingMode).cp+10)+' 層域主解鎖下一個傳送點';
-  html += `<p style="color:var(--dim);font-size:12px;margin-top:8px">🔒 ${nextCp}。</p>`;
+  let nextCp = '';
+  if(pendingMode==='orig'){
+    const ds = G.orig.cp>=11 ? Math.min(41, Math.floor((G.orig.cp-1)/10)*10+1) : 1;
+    const nxt = ds<41 ? (ds===1?11:ds+10) : 0;   // 本源到 41 就不再開下一階
+    if(nxt) nextCp = '活著逃脫到第 '+nxt+' 層並拉繩，解鎖傳送至該層';
+  } else {
+    const cp = cd(pendingMode).cp;
+    const ds = cp>=11 ? Math.floor((cp-1)/10)*10+1 : 1;
+    nextCp = '活著逃脫到第 '+(ds===1?11:ds+10)+' 層並拉繩，解鎖傳送至該層';
+  }
+  if(nextCp) html += `<p style="color:var(--dim);font-size:12px;margin-top:8px">🔒 ${nextCp}。</p>`;
   if(cu === 0) html += '<p style="color:var(--dim);font-size:12px">🔒 打穿本源 50 層通關，解鎖輪迴。</p>';
   html += '<button class="btn" style="margin-top:8px" onclick="closeSheet()">取消</button>';
   openSheet(html);
@@ -109,14 +118,9 @@ function enterFloor(){
         R.hp = Math.min(playerMaxHp(), R.hp + heal); nextFloorSame();
       }, primary:true},
       {n:'⚒️ 借火光精進一招', f:()=>{
-        const upgradable = CLASSES[G.cls].skills.filter(sid=>!(R.skillUps&&R.skillUps[sid]));
-        const c = [];
-        for(const sid of upgradable){
-          const base = SKILLS[sid], ups = SKILL_UPS[sid];
-          c.push({n:`【${base.n}→${ups.a.n}】${ups.a.d}`, f:()=>pickUpStay(sid,'a')});
-          c.push({n:`【${base.n}→${ups.b.n}】${ups.b.d}`, f:()=>pickUpStay(sid,'b')});
-        }
-        showEventScreen('🪢','繩降平台・精進','借著別人的火，練自己的刀。', c);
+        showSkillUpScreen('🪢','繩降平台・精進','借著別人的火，練自己的刀。',
+          (sid, branch)=>pickUpStay(sid, branch),
+          [{n:'直接出發（不精進）', f:()=>nextFloorSame()}]);
       }},
       {n:'直接出發', f:()=>nextFloorSame()}]);
     return;
@@ -162,6 +166,8 @@ function showDoors(){
   $('d-hp').textContent = `❤️ ${R.hp}/${playerMaxHp()}`;
   const rb = document.getElementById('retreat-btn');
   if(rb) rb.style.display = R.hasRope ? '' : 'none';
+  const rh = document.getElementById('rope-hint');
+  if(rh) rh.textContent = R.hasRope ? '' : '🪢 逃脫之繩掉落：首領 12%／寶箱 5%／商人 8%（單趟限一條）';
   $('d-bonus').textContent = rarityBonusText(f);
   const grid = $('door-grid'); grid.innerHTML = '';
   if(R.forceDoor){
@@ -345,6 +351,38 @@ function showEventScreen(icon,title,text,choices){
   $('ev-text').textContent = text;
   const c = $('ev-choices'); c.innerHTML='';
   for(const ch of choices){
+    const b = document.createElement('button'); b.className='btn'+(ch.primary?' primary':'');
+    b.textContent = ch.n; b.onclick = ch.f; c.appendChild(b);
+  }
+  save(); showScreen('s-event');
+}
+/* 精進三欄選擇：左 技能名/功能、中 A分支、右 B分支。onPick(sid, 'a'|'b') */
+function showSkillUpScreen(icon, title, text, onPick, extraChoices){
+  R.phase='event';
+  $('ev-floor').textContent = R.floor;
+  $('ev-gold').textContent = R.gold;
+  $('ev-icon').textContent = icon;
+  $('ev-title').textContent = title;
+  $('ev-text').textContent = text;
+  const c = $('ev-choices'); c.innerHTML='';
+  const upgradable = CLASSES[G.cls].skills.filter(sid=>!(R.skillUps&&R.skillUps[sid]));
+  const grid = document.createElement('div'); grid.className='su-grid';
+  const head = document.createElement('div'); head.className='su-row su-head';
+  head.innerHTML = '<div class="su-name">技能／功能</div><div class="su-cell">A 分支</div><div class="su-cell">B 分支</div>';
+  grid.appendChild(head);
+  for(const sid of upgradable){
+    const base = SKILLS[sid], ups = SKILL_UPS[sid];
+    const row = document.createElement('div'); row.className='su-row';
+    const name = document.createElement('div'); name.className='su-name';
+    name.innerHTML = `<b>${base.n}</b><span>${base.d}</span>`;
+    const ba = document.createElement('button'); ba.className='su-cell su-pick';
+    ba.innerHTML = `<b>${ups.a.n}</b><span>${ups.a.d}</span>`; ba.onclick = ()=>onPick(sid,'a');
+    const bb = document.createElement('button'); bb.className='su-cell su-pick';
+    bb.innerHTML = `<b>${ups.b.n}</b><span>${ups.b.d}</span>`; bb.onclick = ()=>onPick(sid,'b');
+    row.append(name, ba, bb); grid.appendChild(row);
+  }
+  c.appendChild(grid);
+  for(const ch of (extraChoices||[])){
     const b = document.createElement('button'); b.className='btn'+(ch.primary?' primary':'');
     b.textContent = ch.n; b.onclick = ch.f; c.appendChild(b);
   }
@@ -768,14 +806,9 @@ const EVENTS = {
       return;
     }
     const sacrifice = (payFn, payDesc) => {
-      const c = [];
-      for(const sid of upgradable){
-        const base = SKILLS[sid], ups = SKILL_UPS[sid];
-        c.push({n:`【${base.n}→${ups.a.n}】${ups.a.d}`, f:()=>{ payFn(); pickUp(sid,'a'); }});
-        c.push({n:`【${base.n}→${ups.b.n}】${ups.b.d}`, f:()=>{ payFn(); pickUp(sid,'b'); }});
-      }
-      c.push({n:'……還是算了', f:()=>walkAway('📜','殘卷')});
-      showEventScreen('📜','殘卷・'+payDesc,'代價談妥了。殘卷上的文字開始蠕動——選一招，讓它爬進你的骨頭裡。', c);
+      showSkillUpScreen('📜','殘卷・'+payDesc,'代價談妥了。殘卷上的文字開始蠕動——選一招，讓它爬進你的骨頭裡。',
+        (sid, branch)=>{ payFn(); pickUp(sid, branch); },
+        [{n:'……還是算了', f:()=>walkAway('📜','殘卷')}]);
     };
     const choices = [
       {n:'✂️ 以血立契（本次探索生命上限 −15%）', f:()=>{
@@ -872,6 +905,9 @@ function retreat(){
   const kills = R.kills;
   // 認證：只有活著逃脫才寫進榮譽紀錄（歷史是贏家寫的），只留最難成就
   recordCert(R.cycle, deep);
+  // 傳送點也一樣——只有活著逃脫才解鎖（本源上限 41 層）
+  if(R.cycle === 0) G.orig.cp = Math.max(G.orig.cp, Math.min(deep, 41));
+  else { const c = cd(R.cycle); c.cp = Math.max(c.cp, deep); }
   R = null; B = null; save();
   $('res-icon').textContent = '🪢';
   $('res-title').textContent = '平安歸來';

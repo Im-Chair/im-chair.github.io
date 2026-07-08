@@ -104,7 +104,8 @@ function makeBoss(floor){
 }
 function intentText(e){
   const mv = enemyMove(e);
-  const rageMul = (B && B.turn >= 8) ? 1 + (B.turn - 7) * 0.15 : 1;
+  const _ra = (B && B.rageAt) || 8;
+  const rageMul = (B && B.turn >= _ra) ? 1 + (B.turn - (_ra-1)) * 0.15 : 1;
   const weakMul = e.st.weak ? 0.75 : 1;
   const v = mv.v ? Math.round(mv.v * e.mult * rageMul * (e.dmgMul||1) * weakMul) : 0;
   const wm = e.st.weak && mv.v ? '↓' : '';
@@ -128,6 +129,9 @@ function startBattle(enemies, opt){
   B = {es:enemies, ti:0, energy:6+agiBonusU, maxEnergy:6+agiBonusU, block:0, shield:0, st:{}, turn:1, nextCrit:0,
        over:false, sparkN:0, rageWarned:false, charge:null,
        boss:enemies.some(e=>e.boss), elite:Math.max(...enemies.map(e=>e.elite||0)), duo:enemies.length>1};
+  const _zrule = realmFor(R.floor) && realmFor(R.floor).rule;
+  B.rageAt = _zrule==='rage5' ? 5 : 8;                       // 心室：狂怒提前到第 5 回合
+  if(_zrule==='drain1') B.energy = Math.max(2, B.energy-2);  // 沉沒王國：首回合行動點 −1
   if(R.pendingStatus){ B.st = Object.assign({}, R.pendingStatus); R.pendingStatus = null; }
   if(opt && opt.ambush){ B.energy = Math.max(2, B.energy-2); }
   $('p-name').textContent = CLASSES[G.cls].icon+' '+CLASSES[G.cls].name;
@@ -461,6 +465,11 @@ function applyStatus(target, ap, name){
 function dealToEnemy(mult, sk, f){
   const e = tgt();
   const zone = 'ez-'+B.ti;
+  // 無光教區：敵人閃避（首領除外）
+  if(!e.boss && realmFor(R.floor) && realmFor(R.floor).rule==='dodge12' && Math.random()<0.12){
+    floatDmg(zone, '閃避', 'blocked'); log(`${e.n} 閃過了你的攻擊。`,'sys');
+    return;
+  }
   let d = calcPlayerDmg(mult);
   if(sumAffix('exem') && e.hp <= e.maxhp*0.3) d = Math.round(d*1.5);
   if(f && f.execLine && e.hp <= e.maxhp*f.execLine) d = Math.round(d*1.5);
@@ -583,14 +592,15 @@ function tickBurn(who, zone, name){
 
 function enemyTurn(){
   setTimeout(()=>{
+    const _ra = B.rageAt || 8;
     let rageMul = 1;
-    if(B.turn >= 8){
-      rageMul = 1 + (B.turn - 7) * 0.15;
+    if(B.turn >= _ra){
+      rageMul = 1 + (B.turn - (_ra-1)) * 0.15;
       if(!B.rageWarned){ B.rageWarned = true; log('深淵不耐煩了——敵人陷入狂怒，傷害開始遞增！','sys'); }
     }
     for(const e of B.es){
       if(e.hp<=0) continue;
-      if(B.turn >= 8) e.st.rage = B.turn - 7;
+      if(B.turn >= _ra) e.st.rage = B.turn - (_ra-1);
       if(e.st.poison){ const vf = sumAffix('vform') ? 1.5 : 1; // 蝕魂：中毒傷害 +50%
         const d = Math.ceil(e.maxhp * DOT.poisonPct * e.st.poison * vf); e.hp -= d;
         log(`${e.n} 中毒受到 ${d} 傷害（${e.st.poison} 層）。`,'dmg'); floatDmg('ez-'+B.es.indexOf(e),'-'+d,'');
@@ -729,10 +739,7 @@ function winBattle(){
   }
   const isFinal = B.es.some(e=>e.final);
   if(isFinal){ G.rec.clear = (G.rec.clear||0) + 1; }
-  if(B.boss){
-    if(R.cycle === 0 && R.floor % 5 === 0) G.orig.cp = Math.max(G.orig.cp, Math.min(R.floor, 45));
-    if(R.cycle > 0 && R.floor % 10 === 0){ const c = cd(R.cycle); c.cp = Math.max(c.cp, R.floor); }
-  }
+  // 傳送點不再靠「打贏首領」解鎖——改為只有活著逃脫才記錄（見 retreat()）。
   if(R.cycle === 0 && R.floor === 50 && B.boss){ R.origDone = true; G.orig.done = true; }
   // 過關＝走到底打贏＝活著的證明，認證深度比照逃脫寫入（分本源/輪迴）
   // 免逃離認證唯一例外：本源打穿第50層（走到底＝活著的證明）；輪迴無此例外，只能靠逃離

@@ -56,7 +56,7 @@ function renderCamp(){
   const cu = cyclesUnlocked();
   $('dive-hint').textContent = cu > 0
     ? `本源 ${G.orig.deep}${G.orig.done?'✓':''}｜輪迴 ${'I'.repeat(Math.min(cu,3))}${cu>3?'+'+(cu-3):''} 開放`
-    : (G.orig.cp >= 5 ? `本源最深 ${G.orig.deep}｜傳送點至 ${G.orig.cp+1} 層` : '五十層的旅程，從這裡開始');
+    : (G.orig.cp >= 11 ? `本源最深 ${G.orig.deep}｜傳送至 ${Math.min(41, Math.floor((G.orig.cp-1)/10)*10+1)} 層` : '五十層的旅程，從這裡開始');
   const seen = Object.keys(G.codex).length;
   const total = Object.keys(ENEMIES).length + REALM_ELITES.length + MINI_BOSSES.length + LORD_BOSSES.length + 1;
   $('codex-hint').textContent = `收錄 ${seen}/${total}`;
@@ -141,8 +141,8 @@ function openCodex(){
 function openRunStats(){
   const rows = [];
   const w = G.equip.w, wt = weaponType();
-  rows.push([`${wt.i} ${w? (w.base+w.up):0}（${wt.magic?'魔攻':'物攻'}）`, '武器攻擊']);
-  rows.push(['+'+mainStat(), STATS[CLASSES[G.cls].mainStat].i+' 主素質（'+STATS[CLASSES[G.cls].mainStat].n+'）']);
+  const wVal = w? (w.base+w.up):0, msVal = mainStat(), msName = STATS[CLASSES[G.cls].mainStat].n;
+  rows.push([`${wt.i} ${wVal+msVal}`, `${wt.magic?'魔攻':'物攻'}攻擊力（武器${wVal}＋${msName}${msVal}）`]);
   rows.push([`${R? R.hp : playerMaxHp()}/${playerMaxHp()}`, '❤️ 生命']);
   if(playerMaxMana()>0) rows.push([`${R? (R.mana||0) : playerMaxMana()}/${playerMaxMana()}`, '🔮 法力（回 '+manaRegenPct()+'%/回合）']);
   rows.push([playerDef(), '🛡 防禦力（減 '+(playerDef()/10).toFixed(1)+' 點）']);
