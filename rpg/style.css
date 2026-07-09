@@ -137,13 +137,13 @@ h1.title{
 .e-block{position:relative;text-align:center;border:1px solid transparent;border-radius:12px;padding:4px 2px;}
 .e-wrap.duo .e-block{cursor:pointer;}
 .e-wrap.duo .e-block.sel{border-color:var(--gold);background:rgba(216,168,76,.05);}
-.e-wrap.duo .enemy-icon{font-size:46px;height:46px;}
-.e-wrap.duo .enemy-icon>svg{width:42px;height:42px;}
+.e-wrap.duo .enemy-icon{font-size:69px;height:69px;}
+.e-wrap.duo .enemy-icon>svg{width:63px;height:63px;}
 .e-wrap.duo .enemy-name{font-size:13px;}
 .e-wrap.duo .intent{font-size:12px;padding:2px 8px;}
 .e-block.dead{opacity:.3;filter:grayscale(1);}
-.enemy-icon{font-size:64px;line-height:1;height:64px;display:flex;align-items:center;justify-content:center;transition:transform .1s;filter:drop-shadow(0 6px 16px rgba(0,0,0,.6));}
-.enemy-icon>svg{width:58px;height:58px;display:block;color:#cfc6b4;}
+.enemy-icon{font-size:96px;line-height:1;height:96px;display:flex;align-items:center;justify-content:center;transition:transform .1s;filter:drop-shadow(0 6px 16px rgba(0,0,0,.6));}
+.enemy-icon>svg{width:87px;height:87px;display:block;color:#cfc6b4;}
 .e-block.sel .enemy-icon>svg{color:var(--gold);}
 .enemy-icon.hit{animation:shake .3s;}
 @keyframes shake{0%{transform:translateX(0)}25%{transform:translateX(-7px)}50%{transform:translateX(6px)}75%{transform:translateX(-3px)}100%{transform:none}}
