@@ -2,7 +2,7 @@
   --bg:#0b0d12; --panel:#141824; --panel2:#1b2132; --line:#2a3145;
   --text:#e6e1d3; --dim:#8b8fa3; --gold:#d8a84c; --red:#d05252;
   --green:#6fbf8f; --blue:#5a9bd4; --orange:#e0813f; --white-r:#b8bcc8;
-  --safe-b:env(safe-area-inset-bottom,0px);
+  --safe-b:max(env(safe-area-inset-bottom,0px), 32px);
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 html,body{height:100%;overflow:hidden;}
