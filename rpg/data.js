@@ -83,7 +83,7 @@ const SKILL_UPS = {
            b:{n:'潑毒', d:'改為全體各上毒 2 層', mod:s=>{s.applyOnly={poison:2}; s.aoe=true;}}},
   shadow: {a:{n:'亂舞', d:'3 段→5 段、各 0.6→0.45', mod:s=>{s.hits=5; s.mult=0.45;}},
            b:{n:'重段', d:'3 段各 0.6→0.85', mod:s=>{s.mult=0.85;}}},
-  garrote:{a:{n:'深絞', d:'每層毒 0.15→0.20（封頂 +200%）', mod:s=>{s.poisonAmp=0.20;}},
+  garrote:{a:{n:'深絞', d:'每層毒 0.15→0.20（封頂 +100%）', mod:s=>{s.poisonAmp=0.20;}},
            b:{n:'催毒', d:'命中後目標毒立即額外跳一次（不動層數）', mod:s=>{s.poisonProc=true;}}},
   smite:  {a:{n:'重敲', d:'倍率 1.0→1.3', mod:s=>{s.mult=1.3;}},
            b:{n:'引流', d:'命中回復 5% 法力', mod:s=>{s.manaGain=0.05;}}},
@@ -205,7 +205,7 @@ const CURVE = {
 };
 /* 異常狀態 (§8)：毒燃吃目標最大生命% */
 const DOT = {
-  poisonPct: 0.012, burnPct: 0.02, stackCap: 10,
+  poisonPct: 0.012, burnPct: 0.02, stackCap: 5,
 };
 /* 詞綴化學反應 (§批4)：兩詞綴齊備自動啟動的隱藏協同——配方可調 */
 const CHEMISTRY = [

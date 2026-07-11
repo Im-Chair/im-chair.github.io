@@ -293,7 +293,7 @@ function skillDesc(sid){
       const kinds = ['weak','vuln','poison','burn'].filter(k=>tgt().st[k]).length;
       mult = sk.mult * (1 + sk.debuffAmp * Math.min(4,kinds));
     }
-    const d = calcPlayerDmg(mult, true);
+    const d = calcPlayerDmg(mult, sk);
     parts.push(`${sk.hits?sk.hits+'段各 ':''}${d}${vulnMark} 傷${sk.aoe&&sk.mult?'（全體）':''}`);
   }
   if(sk.blockCoef !== undefined) parts.push(`格擋 ${10 + Math.round(statTotal('vit')*sk.blockCoef)}`);
@@ -362,10 +362,18 @@ function healPlayer(amount){
   return real;
 }
 
-function calcPlayerDmg(mult, preview){
-  // 唯一公式 (§6)：(武器攻擊＋主素質) × 武器係數 × 招式倍率
+function weaponFit(sk){   // 職業/武器不匹配時的武器攻擊力折算
+  const classMagic = CLASSES[G.cls].mainStat === 'int';
+  const weaponMagic = weaponType().magic;
+  const skillMagic = !!(sk && sk.magic);
+  if(!classMagic) return weaponMagic ? 0 : 1;   // 物攻角色拿魔攻武器(杖)→0
+  if(weaponMagic) return 1;                      // 魔攻角色拿魔攻武器(杖)→正常
+  return skillMagic ? 0 : 0.5;                   // 魔攻角色拿物攻武器：魔法技能0、普攻50%
+}
+function calcPlayerDmg(mult, sk){
+  // 唯一公式 (§6)：(武器攻擊×合手 ＋ 主素質) × 武器係數 × 招式倍率
   const w = G.equip.w;
-  const wAtk = w ? w.base + w.up : 3;
+  const wAtk = Math.round((w ? w.base + w.up : 3) * weaponFit(sk));
   let d = (wAtk + mainStat()) * weaponType().coef * mult;
   if(sumAffix('fury')) d = Math.round(d*1.4);
   if(B && B.potRage) d = Math.round(d*1.5);
@@ -471,7 +479,7 @@ function dealToEnemy(mult, sk, f){
     floatDmg(zone, '閃避', 'blocked'); log(`${e.n} 閃過了你的攻擊。`,'sys');
     return;
   }
-  let d = calcPlayerDmg(mult);
+  let d = calcPlayerDmg(mult, f);
   if(sumAffix('exem') && e.hp <= e.maxhp*0.3) d = Math.round(d*1.5);
   if(f && f.execLine && e.hp <= e.maxhp*f.execLine) d = Math.round(d*1.5);
   if(chemOn('corrode') && e.st.poison && e.st.burn) d = Math.round(d*1.2); // 腐燃
