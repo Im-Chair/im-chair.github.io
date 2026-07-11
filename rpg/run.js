@@ -239,7 +239,26 @@ function enterDoor(d){
   else if(d.t==='event'){ R.pendingEv = d.ev || null; runEvent(); }
 }
 
+function cycleComplete(){   // 輪迴盡頭（第100層）——強制帶著戰利品送回，記錄認證
+  const n = R.bag.length, g = R.gold, deep = R.floor, kills = R.kills;
+  for(const it of R.bag){ it.banked = true; G.stash.push(it); }
+  for(const s of ['w','a','t']) if(G.equip[s]) G.equip[s].banked = true;
+  G.gold += g;
+  recordCert(R.cycle, deep);
+  const c = cd(R.cycle); c.cp = Math.max(c.cp, deep);
+  R = null; B = null; save();
+  $('res-icon').textContent = '🏁';
+  $('res-title').textContent = '輪迴盡頭';
+  $('res-sub').textContent = `你打到了輪迴的第 ${deep} 層盡頭，深淵替你收了手。貪婪有邊界——這次它站在你這邊。`;
+  $('res-body').innerHTML = `<div class="stat-grid">
+    <div class="stat-box"><div class="v">${deep}</div><div class="k">抵達深度</div></div>
+    <div class="stat-box"><div class="v">${kills}</div><div class="k">擊殺</div></div>
+    <div class="stat-box"><div class="v">+${g}</div><div class="k">帶回碎銀</div></div>
+  </div>` + (n? `<p style="text-align:center;color:var(--green);font-size:13px">${n} 件裝備已存入倉庫。</p>`:'');
+  showScreen('s-result');
+}
 function nextFloor(){
+  if(R.cycle > 0 && R.floor >= 100){ cycleComplete(); return; }   // 輪迴樓層上限 100
   if(hasCurse('bloodtax')){ R.hp = Math.max(1, R.hp - 3); toast('血稅：-3 生命'); }
   const before = realmFor(R.floor);
   R.floor++;
@@ -983,8 +1002,8 @@ function genBounty(){
   const r = Math.random();
   let reward;
   if(mode>0 && r<0.3) reward = {kind:'mat', mat: floor<=30?'iron':'steel', amt: hard>1?2:1};
-  else if(r<0.25) reward = {kind:'gear', amt:1, bonus: hard>1?2:1};
-  else reward = {kind:'gold', amt: Math.round(50 + diff*7)};
+  else if(r<0.12) reward = {kind:'gear', amt:1, bonus: hard>1?2:1};
+  else reward = {kind:'gold', amt: Math.round(120 + diff*16)};
   return {mode, floor, target, type, reward, state:'offer'};
 }
 function ensureBounties(){

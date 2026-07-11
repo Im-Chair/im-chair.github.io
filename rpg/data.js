@@ -234,8 +234,9 @@ const AFFIXES = {
   vamp: {n:'吸血', fmt:v=>`攻擊吸血 ${v}%（彙總上限 60%）`, min:4, max:22, slots:'w'},
   ptouch:{n:'淬毒之刃', fmt:v=>`攻擊附加 ${v} 層中毒`, min:1, max:3, slots:'w'},
   btouch:{n:'淬焰之刃', fmt:v=>`攻擊附加 ${v} 層燃燒`, min:1, max:3, slots:'w'},
-  bpyre:{n:'烈焰', fmt:v=>`燃燒每回合跳傷 +${v}%`, min:10, max:45, slots:'wt'},
-  thorns:{n:'荊棘', fmt:v=>`受擊反彈 ${v} 點傷害`, min:2, max:16, slots:'a'},
+  bpyre:{n:'烈焰', fmt:v=>`燃燒每回合跳傷 +${v}%`, min:6, max:30, slots:'wt'},
+  ppyre:{n:'劇毒', fmt:v=>`中毒每回合跳傷 +${v}%`, min:12, max:55, slots:'wt'},
+  thorns:{n:'荊棘', fmt:v=>`受擊反彈 ${v} 點傷害`, min:6, max:40, slots:'a'},
   mend: {n:'急救', fmt:v=>`戰鬥勝利回復 ${v}% 生命上限`, min:3, max:12, slots:'a'},
   dotdrain:{n:'蝕取', fmt:v=>`敵人因中毒或燃燒跳傷時，回復其 ${v}%（不需吸血）`, min:15, max:45, slots:'t'},
   greed:{n:'貪婪', fmt:v=>`碎銀獲取 +${v}%`, min:8, max:40, slots:'t'},
@@ -249,7 +250,7 @@ const AFFIXES = {
   fury: {n:'狂血', fmt:v=>`造成的傷害 +40%，生命上限 -30%`, min:1, max:1, slots:'w', leg:true},
   wall: {n:'壁壘', fmt:v=>`格擋在回合結束時不再清零`, min:1, max:1, slots:'a', leg:true},
   guts: {n:'不屈', fmt:v=>`每場戰鬥第一次受到致死傷害時，改為保留 1 點生命`, min:1, max:1, slots:'a', leg:true},
-  regen:{n:'血甲', fmt:v=>`每回合開始回復 3% 生命上限`, min:1, max:1, slots:'a', leg:true},
+  regen:{n:'血甲', fmt:v=>`每回合開始回復 6% 生命上限`, min:1, max:1, slots:'a', leg:true},
   spark:{n:'燧心', fmt:v=>`爆擊回復行動點（每回合上限 1 點）`, min:1, max:1, slots:'t', leg:true},
   luck7:{n:'賭運', fmt:v=>`爆擊傷害倍率 1.6 → 2.1`, min:1, max:1, slots:'t', leg:true},
   feast:{n:'貪食', fmt:v=>`擊殺敵人時回復 15% 生命上限`, min:1, max:1, slots:'t', leg:true},
@@ -266,16 +267,17 @@ const ROLL_BANDS = {
   rate:  [[2,4],[3,6],[5,9],[7,12]],
   vamp:  [[4,8],[6,12],[9,16],[12,22]],
   touch: [[1,1],[1,1],[2,2],[2,3]],
-  thorns:[[2,4],[4,7],[6,11],[9,16]],
+  thorns:[[6,10],[10,18],[16,28],[24,40]],
   mend:  [[3,5],[4,7],[6,10],[8,12]],
   dotdrain:[[15,22],[20,30],[26,38],[32,45]],
   greed: [[8,14],[12,20],[16,28],[22,40]],
   mregen:[[5,8],[8,13],[12,19],[16,28]],
-  bpyre: [[10,18],[15,26],[22,35],[30,45]],
+  bpyre: [[6,10],[9,15],[13,22],[18,30]],
+  ppyre: [[12,20],[18,30],[25,40],[34,55]],
 };
 const AFFIX_BAND = {str:'stat',int:'stat',spi:'stat',vit:'stat',agi:'stat',hp:'hp',mp:'mp',
   crit:'rate',defr:'rate',agile:'rate',vamp:'vamp',ptouch:'touch',btouch:'touch',
-  thorns:'thorns',mend:'mend',greed:'greed',mregen:'mregen',bpyre:'bpyre',dotdrain:'dotdrain'};
+  thorns:'thorns',mend:'mend',greed:'greed',mregen:'mregen',bpyre:'bpyre',ppyre:'ppyre',dotdrain:'dotdrain'};
 const CURSE_KEYS = ['bloodtax','heavy2','frail'];
 
 const LEG_KEYS = ['vform','wall','fury','spark','guts','luck7','symbio','exem','regen','feast','ember','wildfire'];
@@ -308,7 +310,7 @@ const POTIONS = {
   purge:{n:'淨化藥水', i:'💧', d:'清除自身所有負面狀態', battle:true, any:true},
   wrath:{n:'狂暴藥劑', i:'🧨', d:'本場戰鬥傷害 +50%', battle:true, any:false, m:20},
   stone:{n:'石膚藥劑', i:'🪨', d:'獲得 20 點格擋', battle:true, any:false, m:20},
-  holy:{n:'聖水',     i:'💦', d:'對所有敵人 14 傷害，清除自身異常', battle:true, any:false, m:20},
+  holy:{n:'聖水',     i:'💦', d:'對所有敵人 14 傷害', battle:true, any:false, m:20},
 };
 
 const MATS = {iron:{n:'沉鐵', i:'⛓️', d:'沉到這個深度的鐵，比地面的密'}, steel:{n:'心鋼', i:'🔩', d:'離心臟越近的金屬，越記得跳動'}};

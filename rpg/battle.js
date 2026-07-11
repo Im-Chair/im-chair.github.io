@@ -174,7 +174,7 @@ function startPlayerTurn(first){
   if(!first){ B.energy = B.maxEnergy; if(!sumAffix('wall')) B.block = 0; }
   B.sparkN = 0;
   const rg = sumAffix('regen');
-  if(rg && !first){ const h = healPlayer(Math.ceil(playerMaxHp()*0.03)); if(h>0) log(`血甲：回復 ${h} 生命。`,'heal'); }
+  if(rg && !first){ const h = healPlayer(Math.ceil(playerMaxHp()*0.06)); if(h>0) log(`血甲：回復 ${h} 生命。`,'heal'); }
   if(playerMaxMana() > 0 && !first){
     const mm = playerMaxMana();
     R.mana = Math.min(mm, (R.mana||0) + Math.round(mm * manaRegenPct()/100));
@@ -503,7 +503,7 @@ function dealToEnemy(mult, sk, f){
   let absorbed = 0;
   if(e.block > 0){
     // 對盾相性：物理走武器 blockMod；法術繞一半；pierce 完全無視
-    let bm = (f && f.pierce) ? 0 : (f && f.magic) ? 0.5 : weaponType().blockMod;
+    let bm = (f && f.pierce) ? 0 : (f && f.magic) ? 0 : weaponType().blockMod;   // 法術無視格擋
     if(bm > 0 && weaponType().armorPen && !(f && f.magic) && !(f && f.pierce)) bm *= (1 - weaponType().armorPen); // 斧破防
     if(bm > 0){
       const effBlock = Math.round(e.block * bm);
@@ -546,7 +546,7 @@ function dealToEnemy(mult, sk, f){
   }
   if(f && f.apply) applyStatus(e.st, f.apply);
   if(f && f.poisonProc && e.st.poison && e.hp > 0){
-    const pd = Math.ceil(e.maxhp * DOT.poisonPct * e.st.poison * (sumAffix('vform')?1.5:1));
+    const pd = Math.ceil(e.maxhp * DOT.poisonPct * e.st.poison * (sumAffix('vform')?1.5:1) * (1 + sumAffix('ppyre')/100));
     e.hp -= pd; floatDmg(zone, '-'+pd, '');
     log(`催毒——${e.n} 的毒立即發作 ${pd} 傷害。`,'dmg');
   }
@@ -623,7 +623,7 @@ function enemyTurn(){
       if(e.hp<=0) continue;
       if(B.turn >= _ra) e.st.rage = B.turn - (_ra-1);
       if(e.st.poison){ const vf = sumAffix('vform') ? 1.5 : 1; // 蝕魂：中毒傷害 +50%
-        const d = Math.ceil(e.maxhp * DOT.poisonPct * e.st.poison * vf); e.hp -= d;
+        const d = Math.ceil(e.maxhp * DOT.poisonPct * e.st.poison * vf * (1 + sumAffix('ppyre')/100)); e.hp -= d;
         log(`${e.n} 中毒受到 ${d} 傷害（${e.st.poison} 層）。`,'dmg'); floatDmg('ez-'+B.es.indexOf(e),'-'+d,'');
         if(sumAffix('symbio')){ const h = healPlayer(Math.ceil(d*0.5));
           if(h>0){ log(`腐生：回復 ${h} 生命。`,'heal'); } }
@@ -855,14 +855,14 @@ function usePotion(k, inBattle){
     const mm = playerMaxMana();
     if(mm > 0){ R.mana = Math.min(mm, (R.mana||0) + Math.round(mm*0.3)); }
     toast(`回復 ${h} 血${mm>0?'＋30%法力':''}`); if(inBattle){ log(`喝下治療藥水，回復 ${h} 血${B&&B.st.wound?'（重傷減半）':''}。`,'heal'); floatDmg('player-zone','+'+h,'heal'); } }
-  else if(k==='energy'){ if(!inBattle) return toast('只能在戰鬥中用'); B.energy += 4; log('灌下烈酒，+2 行動點。','sys'); }
+  else if(k==='energy'){ if(!inBattle) return toast('只能在戰鬥中用'); B.energy += 2; log('灌下烈酒，+2 行動點。','sys'); }
   else if(k==='bomb'){ if(!inBattle) return toast('只能在戰鬥中用'); const v = potPower(k); const e = tgt(); e.hp -= v; applyStatus(e.st, {vuln:2}); log(`火油瓶對 ${e.n} 炸出 ${v} 傷害，火光中破綻畢露（易傷 2）。`,'dmg'); floatDmg('ez-'+B.ti,'-'+v,''); }
   else if(k==='purge'){ B ? (B.st = {}) : null; toast('負面狀態已清除'); if(inBattle) log('淨化藥水洗去了所有異常。','sys'); }
   else if(k==='wrath'){ if(!inBattle) return toast('只能在戰鬥中用'); B.potRage = true; log('狂暴藥劑燒進血管——本場戰鬥傷害 +50%！','sys'); }
   else if(k==='stone'){ if(!inBattle) return toast('只能在戰鬥中用'); const v = potPower(k); B.block += v; log(`石膚藥劑：+${v} 格擋。`,'sys'); }
-  else if(k==='holy'){ if(!inBattle) return toast('只能在戰鬥中用'); B.st = {}; const v = potPower(k);
+  else if(k==='holy'){ if(!inBattle) return toast('只能在戰鬥中用'); const v = potPower(k);
     for(const e of aliveEs()){ e.hp -= v; floatDmg('ez-'+B.es.indexOf(e),'-'+v,''); }
-    log(`聖水潑灑——所有敵人受到 ${v} 傷害，你的異常被洗淨。`,'sys'); }
+    log(`聖水潑灑——所有敵人受到 ${v} 傷害。`,'sys'); }
   R.pots[k]--; if(!R.pots[k]) delete R.pots[k];
   save();
   if(inBattle){
