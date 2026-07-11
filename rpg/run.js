@@ -949,15 +949,34 @@ function playerDie(){
 /* ===== 委託板（可接任務） ===== */
 const MAX_ACTIVE = 2;
 function romanCyc(c){ return c===0?'本源':'輪迴'+('I'.repeat(Math.min(c,3))+(c>3?'+'+(c-3):'')); }
-function genBounty(){
+function bountyMode(){   // 依認證階級加權：越接近目前在玩的階級越常出，本源保底少量
   const cu = cyclesUnlocked();
-  const mode = (cu>0 && Math.random()<0.45) ? (1+Math.floor(Math.random()*cu)) : 0;
+  if(cu === 0) return 0;
+  const curCyc = (G.rec.cert && G.rec.cert.cycle) || 0;
+  const w = [];
+  for(let m=0; m<=cu; m++){ const dist = Math.abs(m - curCyc); w.push([m, dist===0 ? 5 : dist===1 ? 2 : 0.6]); }
+  let tot = w.reduce((s,x)=>s+x[1],0), r = Math.random()*tot;
+  for(const [m,ww] of w){ r -= ww; if(r<0) return m; }
+  return curCyc;
+}
+function genBounty(){
+  const mode = bountyMode();
+  const cert = G.rec.cert;
   const cap = mode===0 ? Math.min(50, Math.max(10, G.orig.cp+9)) : Math.max(20, cd(mode).cp+14);
   const lo  = mode===0 ? 5 : 11;
   const type = pick(['reach','kill','loot','boss','streakkill','flawless','dotkill']);
-  let floor = lo + Math.floor(Math.random()*Math.max(1,(cap-lo+1)));
+  // 認證深度附近取樣（若此模式正是玩家的認證階級）
+  let floor;
+  if(cert && cert.cycle === mode && cert.floor >= lo)
+    floor = Math.min(cap, Math.max(lo, cert.floor + Math.floor(Math.random()*15) - 9));  // 認證 −9 ~ +5
+  else
+    floor = lo + Math.floor(Math.random()*Math.max(1,(cap-lo+1)));
   let target = 0;
-  if(type==='boss'){ const bosses=[]; for(let f=Math.ceil(lo/5)*5; f<=cap; f+=5) bosses.push(f); floor = bosses.length? pick(bosses) : 10; }
+  if(type==='boss'){
+    const bosses=[]; for(let f=Math.ceil(lo/5)*5; f<=cap; f+=5) bosses.push(f);
+    if(bosses.length){ bosses.sort((a,b)=>Math.abs(a-floor)-Math.abs(b-floor)); floor = bosses[Math.floor(Math.random()*Math.min(2,bosses.length))]; }
+    else floor = 10;
+  }
   if(type==='streakkill'){ target = 5 + Math.floor(Math.random()*10); floor = lo; }
   const hard = (type==='flawless'||type==='dotkill'||type==='boss') ? 1.5 : 1;   // 挑戰型獎勵更高
   const diff = (floor||lo) * (mode? cycMult(mode):1) * hard;
@@ -971,6 +990,7 @@ function genBounty(){
 function ensureBounties(){
   if(!G.bounties) G.bounties = [];
   for(const b of G.bounties) if(b.state===undefined) b.state = b.done ? 'done' : 'offer'; // 舊檔轉新制
+  if(!G.bountyV2){ G.bounties = G.bounties.filter(b=>b.state==='active'); G.bountyV2 = 1; } // 一次性：舊 offer 依新進度重生
   G.bounties = G.bounties.filter(b=>b.state!=='done');
   let offers = G.bounties.filter(b=>b.state==='offer').length;
   while(offers < 3){ G.bounties.push(genBounty()); offers++; }
