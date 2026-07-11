@@ -187,10 +187,10 @@ const LORD_BOSSES = [
 
 /* 武器四柱 (§3)：行動點費用第3批上線，本批先落地 係數/類型/對盾 */
 const WEAPON_TYPES = {
-  dagger:{n:'匕首', i:'🗡️', ap:0.5, coef:0.6, blockMod:1.5, magic:false},
-  sword: {n:'劍',   i:'⚔️', ap:1.0, coef:1.0, blockMod:1.0, magic:false},
-  axe:   {n:'斧',   i:'🪓', ap:1.5, coef:1.5, blockMod:0.5, magic:false},
-  staff: {n:'杖',   i:'🪄', ap:1.0, coef:1.0, blockMod:0.5, magic:true},
+  dagger:{n:'匕首', i:'🗡️', pts:4, coef:0.6, blockMod:1.5, magic:false},                 // 連擊·多觸發
+  sword: {n:'劍',   i:'⚔️', pts:3, coef:1.0, blockMod:1.0, magic:false, critRate:8},      // 均衡·普攻爆擊率+8%
+  axe:   {n:'斧',   i:'🪓', pts:2, coef:1.5, blockMod:0.5, magic:false, armorPen:0.35},   // 破防·無視35%格擋
+  staff: {n:'杖',   i:'🪄', pts:3, coef:1.0, blockMod:0.5, magic:true,  spellAmp:0.15},   // 法術·法術傷害+15%
 };
 /* 供需曲線 (§13)：全部可調 */
 const CURVE = {
@@ -214,6 +214,7 @@ const CHEMISTRY = [
   {id:'windthorn', n:'風棘',     i:'\ud83d\udca8\ud83c\udf35', need:['agile','thorns'], d:'成功閃避時，反彈荊棘值 ×2 的傷害'},
   {id:'overshield',n:'溢血成盾', i:'\ud83e\ude78\ud83d\udd37', need:['vamp','hp'],      d:'吸血溢出時轉為護盾（每場上限 20% 生命上限）'},
   {id:'corrode',   n:'腐燃',     i:'\u2620\ufe0f\ud83d\udd25', need:['ptouch','btouch'],d:'對同時中毒與燃燒的目標，傷害 +20%'},
+  {id:'poisonvamp',n:'毒吸',     i:'☠️🩸', need:['ptouch','vamp'],  d:'敵人中毒跳傷時，你回復其 30%'},
 ];
 const AFFIXES = {
   /* —— 素質類（吃樓層 +0.3/層）—— */
@@ -233,6 +234,7 @@ const AFFIXES = {
   vamp: {n:'吸血', fmt:v=>`攻擊吸血 ${v}%（彙總上限 60%）`, min:4, max:22, slots:'w'},
   ptouch:{n:'淬毒之刃', fmt:v=>`攻擊附加 ${v} 層中毒`, min:1, max:3, slots:'w'},
   btouch:{n:'淬焰之刃', fmt:v=>`攻擊附加 ${v} 層燃燒`, min:1, max:3, slots:'w'},
+  bpyre:{n:'烈焰', fmt:v=>`燃燒每回合跳傷 +${v}%`, min:10, max:45, slots:'wt'},
   thorns:{n:'荊棘', fmt:v=>`受擊反彈 ${v} 點傷害`, min:2, max:16, slots:'a'},
   mend: {n:'急救', fmt:v=>`戰鬥勝利回復 ${v} 血`, min:3, max:18, slots:'a'},
   greed:{n:'貪婪', fmt:v=>`碎銀獲取 +${v}%`, min:8, max:40, slots:'t'},
@@ -241,6 +243,8 @@ const AFFIXES = {
   vform:{n:'蝕魂', fmt:v=>`攻擊不再造成傷害，改為施加 2 層中毒；你的中毒傷害 +50%`, min:1, max:1, slots:'w', leg:true},
   exem: {n:'斬首', fmt:v=>`對生命低於 30% 的敵人，傷害 +50%`, min:1, max:1, slots:'w', leg:true},
   symbio:{n:'腐生', fmt:v=>`敵人因中毒受傷時，你回復其 50% 的生命`, min:1, max:1, slots:'w', leg:true},
+  ember:{n:'餘燼', fmt:v=>`你施加的燃燒不再每回合減半，改為每回合 −1 層`, min:1, max:1, slots:'w', leg:true},
+  wildfire:{n:'延燒', fmt:v=>`帶燃燒的敵人死亡時，將當前燃層傳給隨機存活敵人`, min:1, max:1, slots:'t', leg:true},
   fury: {n:'狂血', fmt:v=>`造成的傷害 +40%，生命上限 -30%`, min:1, max:1, slots:'w', leg:true},
   wall: {n:'壁壘', fmt:v=>`格擋在回合結束時不再清零`, min:1, max:1, slots:'a', leg:true},
   guts: {n:'不屈', fmt:v=>`每場戰鬥第一次受到致死傷害時，改為保留 1 點生命`, min:1, max:1, slots:'a', leg:true},
@@ -265,13 +269,14 @@ const ROLL_BANDS = {
   mend:  [[3,5],[5,8],[7,12],[10,18]],
   greed: [[8,14],[12,20],[16,28],[22,40]],
   mregen:[[5,8],[8,13],[12,19],[16,28]],
+  bpyre: [[10,18],[15,26],[22,35],[30,45]],
 };
 const AFFIX_BAND = {str:'stat',int:'stat',spi:'stat',vit:'stat',agi:'stat',hp:'hp',mp:'mp',
   crit:'rate',defr:'rate',agile:'rate',vamp:'vamp',ptouch:'touch',btouch:'touch',
-  thorns:'thorns',mend:'mend',greed:'greed',mregen:'mregen'};
+  thorns:'thorns',mend:'mend',greed:'greed',mregen:'mregen',bpyre:'bpyre'};
 const CURSE_KEYS = ['bloodtax','heavy2','frail'];
 
-const LEG_KEYS = ['vform','wall','fury','spark','guts','luck7','symbio','exem','regen','feast'];
+const LEG_KEYS = ['vform','wall','fury','spark','guts','luck7','symbio','exem','regen','feast','ember','wildfire'];
 
 const RARITIES = [
   {id:'white', n:'普通', cls:'r-white', b:'b-white', afx:[0,1], mult:0, val:0.7, upCap:3},

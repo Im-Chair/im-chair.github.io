@@ -61,7 +61,8 @@ function makeItem(floor, bonus){
 function itemStatLine(it){
   if(it.slot==='w'){
     const wt = WEAPON_TYPES[it.wtype||'sword'];
-    return `${wt.i}${wt.n}｜攻擊 ${it.base + it.up}（${wt.magic?'魔攻':'物攻'}）`;
+    const perk = {dagger:'連擊', sword:'爆擊', axe:'破防', staff:'法術'}[it.wtype||'sword'] || '';
+    return `${wt.i}${wt.n}｜攻擊 ${it.base + it.up}（${wt.magic?'魔攻':'物攻'}）｜${wt.pts}行動·${perk}`;
   }
   if(it.slot==='a') return `防禦 ${it.base + it.up}`;
   return '飾品';

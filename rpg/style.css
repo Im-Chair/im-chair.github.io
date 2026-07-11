@@ -14,7 +14,7 @@ body{
   user-select:none;-webkit-user-select:none;
 }
 #app{max-width:520px;margin:0 auto;height:100%;height:100dvh;display:flex;flex-direction:column;position:relative;}
-.screen{display:none;flex:1;flex-direction:column;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px 16px calc(20px + var(--safe-b));}
+.screen{display:none;flex:1;flex-direction:column;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px 16px calc(30px + var(--safe-b));}
 .screen.show{display:flex;}
 h1.title{
   font-family:"Songti TC","Noto Serif TC",serif; font-weight:700;
@@ -70,6 +70,24 @@ h1.title{
 .menu-item .mt{font-size:16px;letter-spacing:1px;}
 .menu-item .ms{font-size:12px;color:var(--dim);}
 .menu-item .arrow{margin-left:auto;color:var(--dim);}
+/* 營地地圖（圓弧據點） */
+.camp-map{position:relative;height:344px;margin:8px 0 2px;}
+.camp-pit{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:148px;height:148px;border-radius:50%;background:radial-gradient(circle at 50% 40%,#2a1e12 0%,var(--bg) 74%);box-shadow:0 0 34px rgba(216,168,76,.22),0 0 24px rgba(216,168,76,.14) inset;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;}
+.camp-pit:active{transform:translate(-50%,-50%) scale(.97);}
+.camp-pit .pit-i{font-size:50px;line-height:1;}
+.camp-pit .pit-t{font-size:21px;color:var(--gold);letter-spacing:5px;margin-top:2px;}
+.camp-pit .pit-s{font-size:11px;color:var(--dim);margin-top:3px;text-align:center;max-width:128px;line-height:1.3;}
+.camp-node{position:absolute;transform:translate(-50%,-50%);width:88px;text-align:center;cursor:pointer;}
+.camp-node:active{opacity:.55;}
+.camp-node .ni{font-size:38px;line-height:1;}
+.camp-node .nt{font-size:17px;color:var(--gold);margin-top:1px;letter-spacing:1px;}
+.camp-node .ns{font-size:11px;color:var(--dim);}
+.node-badge{position:absolute;top:-4px;right:12px;background:var(--red);color:#fff;font-size:12px;border-radius:9px;padding:0 6px;min-width:18px;}
+.n-tl{left:18%;top:18%;} .n-ml{left:11%;top:50%;} .n-bl{left:18%;top:82%;}
+.n-tr{left:82%;top:18%;} .n-mr{left:89%;top:50%;} .n-br{left:82%;top:82%;}
+.camp-save{text-align:center;color:var(--dim);font-size:17px;padding:10px;cursor:pointer;}
+.camp-save:active{opacity:.55;}
+.milestone{font-size:12px;color:var(--dim);text-align:center;margin-top:2px;}
 /* ---------- gear ---------- */
 .slot-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0;}
 .slot{
@@ -147,6 +165,13 @@ h1.title{
 .e-block.sel .enemy-icon>svg{color:var(--gold);}
 .enemy-icon.hit{animation:shake .3s;}
 @keyframes shake{0%{transform:translateX(0)}25%{transform:translateX(-7px)}50%{transform:translateX(6px)}75%{transform:translateX(-3px)}100%{transform:none}}
+/* 狀態染色：中毒染紫、燃燒染紅（emoji 與 SVG 皆適用） */
+.e-block.poisoned .enemy-icon{filter:drop-shadow(0 6px 16px rgba(0,0,0,.6)) drop-shadow(0 0 7px #9b6dd6) drop-shadow(0 0 3px #7a3fb0);}
+.e-block.poisoned .enemy-icon>svg{color:#c39cf0;}
+.e-block.burning .enemy-icon{filter:drop-shadow(0 6px 16px rgba(0,0,0,.6)) drop-shadow(0 0 7px #e0813f) drop-shadow(0 0 3px #d05252);}
+.e-block.burning .enemy-icon>svg{color:#f0a86b;}
+.e-block.poisoned.burning .enemy-icon{filter:drop-shadow(0 6px 16px rgba(0,0,0,.6)) drop-shadow(0 0 6px #e0813f) drop-shadow(0 0 6px #9b6dd6);}
+.e-block.poisoned.burning .enemy-icon>svg{color:#e79ad0;}
 .enemy-name{font-size:16px;letter-spacing:2px;margin-top:2px;}
 .enemy-name .elite{color:var(--orange);} .enemy-name .boss{color:var(--red);}
 .intent{

@@ -90,6 +90,7 @@ function startRun(startFloor, cycle){
     R.cycIntro = true;
   }
   G.rec.runs++; save();
+  bountyProgress('reach');
   enterFloor();
 }
 
@@ -242,6 +243,7 @@ function nextFloor(){
   if(hasCurse('bloodtax')){ R.hp = Math.max(1, R.hp - 3); toast('血稅：-3 生命'); }
   const before = realmFor(R.floor);
   R.floor++;
+  bountyProgress('reach');
   if(R.floor > G.rec.deep) G.rec.deep = R.floor;
   if(R.cycle === 0){ if(R.floor > G.orig.deep) G.orig.deep = Math.min(50, R.floor); }
   else { const c = cd(R.cycle); if(R.floor > c.deep) c.deep = R.floor; }
@@ -943,6 +945,59 @@ function playerDie(){
     showScreen('s-result');
   }, 700);
 }
+
+/* ===== 定點懸賞 ===== */
+function romanCyc(c){ return c===0?'本源':'輪迴'+('I'.repeat(Math.min(c,3))+(c>3?'+'+(c-3):'')); }
+function genBounty(){
+  const cu = cyclesUnlocked();
+  const mode = (cu>0 && Math.random()<0.45) ? (1+Math.floor(Math.random()*cu)) : 0;
+  const cap = mode===0 ? Math.min(50, Math.max(10, G.orig.cp+9)) : Math.max(20, cd(mode).cp+14);
+  const lo  = mode===0 ? 5 : 11;
+  const type = pick(['reach','kill','loot','boss']);
+  let floor;
+  if(type==='boss'){ const bosses=[]; for(let f=Math.ceil(lo/5)*5; f<=cap; f+=5) bosses.push(f); floor = bosses.length? pick(bosses) : 10; }
+  else floor = lo + Math.floor(Math.random()*Math.max(1,(cap-lo+1)));
+  const diff = floor * (mode? cycMult(mode):1);
+  const r = Math.random();
+  let reward;
+  if(mode>0 && r<0.3) reward = {kind:'mat', mat: floor<=30?'iron':'steel', amt:1};
+  else if(r<0.2) reward = {kind:'gear', amt:1};
+  else reward = {kind:'gold', amt: Math.round(40 + diff*6)};
+  return {mode, floor, type, reward, done:false};
+}
+function ensureBounties(){ if(!G.bounties) G.bounties = []; while(G.bounties.length < 3) G.bounties.push(genBounty()); }
+function bountyText(b){
+  const m = romanCyc(b.mode);
+  const t = b.type==='reach'? `抵達第 ${b.floor} 層` : b.type==='kill'? `在第 ${b.floor} 層擊殺敵人`
+    : b.type==='loot'? `在第 ${b.floor} 層取得裝備` : `擊殺第 ${b.floor} 層首領`;
+  return `${m}・${t}`;
+}
+function rewardText(r){ if(r.kind==='gold') return `🪙 ${r.amt}`; if(r.kind==='mat') return `${MATS[r.mat].i}${MATS[r.mat].n} ×${r.amt}`; return `🎁 一件裝備`; }
+function claimBounty(b){
+  if(b.done) return; b.done = true; const r = b.reward;
+  if(r.kind==='gold') G.gold += r.amt;
+  else if(r.kind==='mat') G.mats[r.mat] = (G.mats[r.mat]||0) + r.amt;
+  else if(r.kind==='gear'){ const it = makeItem(b.floor, 1); it.banked=true; G.stash.push(it); }
+  toast('懸賞完成！' + rewardText(r)); save();
+}
+function bountyProgress(kind){
+  if(!R || !G.bounties) return;
+  for(const b of G.bounties){
+    if(b.done || b.mode !== R.cycle || b.type !== kind) continue;
+    const ok = kind==='reach' ? R.floor >= b.floor : R.floor === b.floor;
+    if(ok) claimBounty(b);
+  }
+}
+function openBounties(){
+  ensureBounties();
+  let html = '<h3>懸賞板</h3><p class="base">接下深淵的定點委託，達成即領獎；完成的可換新。</p><div class="item-list" style="margin-top:8px">';
+  for(const b of G.bounties) html += `<div class="item-row" style="${b.done?'opacity:.55':''}"><span class="in">${b.done?'✅ ':'📌 '}${bountyText(b)}</span><span class="is">${b.done?'已完成':rewardText(b.reward)}</span></div>`;
+  html += '</div>';
+  if(G.bounties.some(b=>b.done)) html += '<button class="btn primary" style="margin-top:10px" onclick="rerollBounties()">刷新已完成的懸賞</button>';
+  html += '<button class="btn" style="margin-top:8px" onclick="closeSheet()">關閉</button>';
+  openSheet(html);
+}
+function rerollBounties(){ G.bounties = G.bounties.filter(b=>!b.done); ensureBounties(); save(); openBounties(); }
 
 function backToCamp(){ renderCamp(); showScreen('s-camp'); }
 

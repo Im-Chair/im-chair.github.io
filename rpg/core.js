@@ -47,7 +47,7 @@ const $ = id=>document.getElementById(id);
 
 function newSave(){ return {v3:1, cls:null, gold:0, stash:[], equip:{w:null,a:null,t:null},
   rec:{deep:0,cert:null,runs:0,boss:0}, mats:{iron:0,steel:0}, codex:{}, cyc:{unlocked:0},
-  orig:{deep:0,cp:0,done:false}, cycData:{}, run:null, uid:1}; }
+  orig:{deep:0,cp:0,done:false}, cycData:{}, bounties:[], run:null, uid:1}; }
 
 function certScore(cert){ // 認證難度分數：輪迴階級碾壓層數（輪迴I-1 > 本源-50）
   if(!cert) return -1;
@@ -90,6 +90,7 @@ function load(){ try{ const d = localStorage.getItem(SAVE_KEY); if(d){ G = JSON.
     R = null; G.run = null; // v2 結構變動過大，舊探索不續
   }
   if(!G.cycData) G.cycData = {};
+  if(!G.bounties) G.bounties = [];
   if(R && Array.isArray(R.potions)){ R.pots = {}; for(const k of R.potions) R.pots[k] = Math.min(3,(R.pots[k]||0)+1); delete R.potions; }
   if(R && !R.pots) R.pots = {};
   return true; } }catch(e){} G = newSave(); return false; }

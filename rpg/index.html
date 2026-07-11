@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#0b0d12">
 <title>貪婪深淵</title>
-<link rel="stylesheet" href="style.css?v=322">
+<link rel="stylesheet" href="style.css?v=325">
 </head>
 <body>
 <div id="app">
@@ -16,7 +16,7 @@
   <div class="spacer"></div>
   <h1 class="title">貪婪深淵</h1>
   <div class="subtitle">深入一層，或帶著一切離開</div>
-  <div style="text-align:center;color:var(--dim);font-size:12px;letter-spacing:2px;margin-top:8px">V3.22</div>
+  <div style="text-align:center;color:var(--dim);font-size:12px;letter-spacing:2px;margin-top:8px">V3.25</div>
   <div class="spacer"></div>
   <button class="btn primary" onclick="titleStart()">進入深淵</button>
   <div style="height:10px"></div>
@@ -42,39 +42,24 @@
     <span id="camp-cls"></span>
     <span class="gold-chip">🪙 <span id="camp-gold">0</span></span>
   </div>
-  <div class="camp-hero">
-    <div class="flame">🔥</div>
-    <div style="color:var(--dim);font-size:13px;margin-top:6px">深淵入口的營地。火堆之外，只有往下的路。</div>
-  </div>
   <div class="stat-grid">
     <div class="stat-box"><div class="v" id="rec-deep">0</div><div class="k">認證深度</div></div>
     <div class="stat-box"><div class="v" id="rec-runs">0</div><div class="k">探索次數</div></div>
     <div class="stat-box"><div class="v" id="rec-boss">0</div><div class="k">首領擊殺</div></div>
   </div>
-  <div class="menu-list">
-    <div class="menu-item" onclick="openDivePicker()">
-      <span class="mi">🕳</span><span><div class="mt">下潛</div><div class="ms" id="dive-hint">開始新的探索</div></span><span class="arrow">›</span>
+  <div class="camp-map">
+    <div class="camp-pit" onclick="openDivePicker()">
+      <div class="pit-i">🕳️</div><div class="pit-t">下 潛</div><div class="pit-s" id="dive-hint"></div>
     </div>
-    <div class="menu-item" onclick="openRunStats()">
-      <span class="mi">🧍</span><span><div class="mt">角色檢視</div><div class="ms">彙總屬性與全身詞綴</div></span><span class="arrow">›</span>
-    </div>
-    <div class="menu-item" onclick="openGear()">
-      <span class="mi">🎒</span><span><div class="mt">裝備與倉庫</div><div class="ms" id="stash-count"></div></span><span class="arrow">›</span>
-    </div>
-    <div class="menu-item" onclick="openSmith()">
-      <span class="mi">⚒️</span><span><div class="mt">鐵匠</div><div class="ms" id="smith-hint">強化身上的武器與護甲</div></span><span class="arrow">›</span>
-    </div>
-    <div class="menu-item" onclick="openSaveMgr()">
-      <span class="mi">💾</span><span><div class="mt">存檔管理</div><div class="ms">匯出備份／匯入還原</div></span><span class="arrow">›</span>
-    </div>
-    <div class="menu-item" onclick="openCodex()">
-      <span class="mi">📖</span><span><div class="mt">深淵圖鑑</div><div class="ms" id="codex-hint"></div></span><span class="arrow">›</span>
-    </div>
-    <div class="menu-item" id="market-item" onclick="openMarket()">
-      <span class="mi">🕯️</span><span><div class="mt">深淵黑市</div><div class="ms" id="market-hint"></div></span><span class="arrow">›</span>
-    </div>
+    <div class="camp-node n-tl" onclick="openRunStats()"><div class="ni">🧍</div><div class="nt">角色</div></div>
+    <div class="camp-node n-ml" onclick="openGear()"><div class="ni">🎒</div><div class="nt">倉庫</div><div class="ns" id="stash-count"></div></div>
+    <div class="camp-node n-bl" onclick="openCodex()"><div class="ni">📖</div><div class="nt">圖鑑</div><div class="ns" id="codex-hint"></div></div>
+    <div class="camp-node n-tr" onclick="openSmith()"><div class="ni">⚒️</div><div class="nt">鐵匠</div><div class="ns" id="smith-hint"></div></div>
+    <div class="camp-node n-mr" id="market-item" onclick="openMarket()"><div class="ni">🕯️</div><div class="nt">黑市</div><div class="ns" id="market-hint"></div></div>
+    <div class="camp-node n-br" onclick="openBounties()"><div class="ni">📌</div><div class="nt">懸賞板</div><span class="node-badge" id="bounty-badge"></span></div>
   </div>
-  <div style="font-size:12px;color:var(--dim);margin-top:14px;text-align:center" id="milestone-line"></div>
+  <div class="camp-save" onclick="openSaveMgr()">💾 存檔管理</div>
+  <div class="milestone" id="milestone-line"></div>
 </div>
 
 <!-- ===== 裝備 ===== -->
@@ -180,6 +165,6 @@
 </div>
 <div class="sheet-mask" id="sheet-mask" onclick="if(event.target===this)closeSheet()"><div class="sheet" id="sheet"></div></div>
 <div class="toast" id="toast"></div>
-<script src="data.js?v=322"></script><script src="core.js?v=322"></script><script src="items.js?v=322"></script><script src="battle.js?v=322"></script><script src="run.js?v=322"></script><script src="ui.js?v=322"></script>
+<script src="data.js?v=325"></script><script src="core.js?v=325"></script><script src="items.js?v=325"></script><script src="battle.js?v=325"></script><script src="run.js?v=325"></script><script src="ui.js?v=325"></script>
 </body>
 </html>

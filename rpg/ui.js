@@ -46,13 +46,14 @@ function confirmClass(){
 
 function renderCamp(){
   const c = CLASSES[G.cls];
+  ensureBounties();
   $('camp-cls').textContent = `${c.icon} ${c.name}`;
   $('camp-gold').textContent = G.gold;
   $('rec-deep').textContent = certText(G.rec.cert);
   $('rec-runs').textContent = G.rec.runs;
   $('rec-boss').textContent = G.rec.boss;
-  $('stash-count').textContent = `倉庫 ${G.stash.length} 件`;
-  $('smith-hint').textContent = G.rec.deep>=10 ? '強化與重鑄' : '強化身上的武器與護甲';
+  $('stash-count').textContent = `${G.stash.length} 件`;
+  $('smith-hint').textContent = G.rec.deep>=10 ? '強化·重鑄' : '強化裝備';
   const cu = cyclesUnlocked();
   $('dive-hint').textContent = cu > 0
     ? `本源 ${G.orig.deep}${G.orig.done?'✓':''}｜輪迴 ${'I'.repeat(Math.min(cu,3))}${cu>3?'+'+(cu-3):''} 開放`
@@ -61,8 +62,10 @@ function renderCamp(){
   const total = Object.keys(ENEMIES).length + REALM_ELITES.length + MINI_BOSSES.length + LORD_BOSSES.length + 1;
   $('codex-hint').textContent = `收錄 ${seen}/${total}`;
   const mi = $('market-item');
-  if(G.rec.deep >= 30){ mi.style.display='flex'; $('market-hint').textContent='封條盲盒——開了才算數'; }
+  if(G.rec.deep >= 30){ mi.style.display=''; $('market-hint').textContent='封條盲盒'; }
   else mi.style.display='none';
+  const bd = (G.bounties||[]).filter(b=>b.done).length;
+  const bb = $('bounty-badge'); if(bb){ bb.textContent = bd||''; bb.style.display = bd? '' : 'none'; }
   const ms = [];
   ms.push((G.rec.deep>=10?'✓':'🔒')+' 10層 鐵匠重鑄');
   ms.push((G.rec.deep>=20?'✓':'🔒')+' 20層 深層藥劑');
@@ -142,7 +145,7 @@ function openRunStats(){
   const rows = [];
   const w = G.equip.w, wt = weaponType();
   const wVal = w? (w.base+w.up):0, msVal = mainStat(), msName = STATS[CLASSES[G.cls].mainStat].n;
-  rows.push([`${wt.i} ${wVal+msVal}`, `${wt.magic?'魔攻':'物攻'}攻擊力（武器${wVal}＋${msName}${msVal}）`]);
+  rows.push([`${wt.i} ${wVal+msVal}`, `攻擊力（武器${wVal}＋${msName}${msVal}）${wt.magic?'｜普攻物理·法術對盾減半':''}`]);
   rows.push([`${R? R.hp : playerMaxHp()}/${playerMaxHp()}`, '❤️ 生命']);
   if(playerMaxMana()>0) rows.push([`${R? (R.mana||0) : playerMaxMana()}/${playerMaxMana()}`, '🔮 法力（回 '+manaRegenPct()+'%/回合）']);
   rows.push([playerDef(), '🛡 防禦力（減 '+(playerDef()/10).toFixed(1)+' 點）']);
@@ -160,13 +163,15 @@ function openRunStats(){
   const extra = [
     ['vamp','🩸 吸血', v=>Math.min(VAMP_CAP,v)+'%'+(v>VAMP_CAP?'（上限'+VAMP_CAP+'）':'')],
     ['thorns','🌵 荊棘', v=>'反彈 '+v], ['mend','💊 急救', v=>'戰後回 '+v+' 血'],
-    ['ptouch','☠️ 淬毒', v=>'攻擊附 '+v+' 層'], ['btouch','🔥 燃焰', v=>'攻擊附 '+v+' 層'],
+    ['ptouch','☠️ 淬毒', v=>'攻擊附 '+v+' 層'], ['btouch','🔥 淬焰', v=>'攻擊附 '+v+' 層'],
+    ['bpyre','🔥 烈焰', v=>'燃傷 +'+v+'%'],
     ['greed','🪙 貪婪', v=>'+'+v+'%'],
     ['vform','✸ 蝕魂', v=>'攻擊轉中毒'], ['wall','✸ 壁壘', v=>'格擋不消失'],
     ['fury','✸ 狂血', v=>'傷害+40% 血-30%'], ['spark','✸ 燧心', v=>'爆擊回行動'],
     ['symbio','✸ 腐生', v=>'毒傷回血50%'], ['exem','✸ 斬首', v=>'低血敵+50%'],
     ['regen','✸ 血甲', v=>'每回合回3%血'], ['feast','✸ 貪食', v=>'擊殺回15%血'],
     ['guts','✸ 不屈', v=>'免死一次/場'], ['luck7','✸ 賭運', v=>'爆傷2.1倍'],
+    ['ember','✸ 餘燼', v=>'燃燒不減半'], ['wildfire','✸ 延燒', v=>'擊殺傳燃層'],
   ];
   for(const [k, label, fmt] of extra){ const v = sumAffix(k); if(v>0) rows.push([fmt(v), label]); }
   let html = '<h3>角色檢視</h3>' +
