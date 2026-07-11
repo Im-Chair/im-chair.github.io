@@ -162,7 +162,8 @@ function openRunStats(){
   // 功能與傳說
   const extra = [
     ['vamp','🩸 吸血', v=>Math.min(VAMP_CAP,v)+'%'+(v>VAMP_CAP?'（上限'+VAMP_CAP+'）':'')],
-    ['thorns','🌵 荊棘', v=>'反彈 '+v], ['mend','💊 急救', v=>'戰後回 '+v+' 血'],
+    ['thorns','🌵 荊棘', v=>'反彈 '+v], ['mend','💊 急救', v=>'戰後回 '+v+'%'],
+    ['dotdrain','🩸 蝕取', v=>'毒燃回血 '+v+'%'],
     ['ptouch','☠️ 淬毒', v=>'攻擊附 '+v+' 層'], ['btouch','🔥 淬焰', v=>'攻擊附 '+v+' 層'],
     ['bpyre','🔥 烈焰', v=>'燃傷 +'+v+'%'],
     ['greed','🪙 貪婪', v=>'+'+v+'%'],

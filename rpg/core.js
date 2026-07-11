@@ -146,9 +146,9 @@ function playerMaxHp(){
 }
 function playerMaxMana(){
   if(CLASSES[G.cls].mainStat !== 'int') return sumAffix('mp'); // 物攻職業無基礎法力（除非裝備給）
-  return Math.round(BASE_MANA + statTotal('spi')*1.5 + sumAffix('mp'));
+  return Math.round(BASE_MANA + statTotal('spi')*2 + sumAffix('mp'));
 }
-function manaRegenPct(){ return Math.min(MREGEN_CAP, 15 + sumAffix('mregen')); }
+function manaRegenPct(){ return Math.min(MREGEN_CAP, 25 + sumAffix('mregen')); }
 function weaponType(){ const w = G.equip.w; return WEAPON_TYPES[(w && w.wtype) || 'sword']; }
 function mainStat(){ return statTotal(CLASSES[G.cls].mainStat); }
 function playerAtk(){ // 顯示用：武器攻擊＋主素質

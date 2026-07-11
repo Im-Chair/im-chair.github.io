@@ -26,7 +26,7 @@ const CLASSES = {
 };
 /* 全職通用底值：一切從素質長出，這些是不吃素質的硬底 */
 const BASE_HP = 50;    // 基礎生命（再加 體力×2）
-const BASE_MANA = 20;  // 基礎法力（再加 精神×1.5）——僅智力主素質職業啟用
+const BASE_MANA = 30;  // 基礎法力（再加 精神×2）——僅智力主素質職業啟用
 const BASE_DEF = 0;    // 基礎防禦力（再加護甲）
 /* 逃脫之繩掉落率（單趟唯一，空手率約 40%）*/
 const ROPE_DROP = { boss:0.12, merchant:0.08, chest:0.05 };
@@ -236,7 +236,8 @@ const AFFIXES = {
   btouch:{n:'淬焰之刃', fmt:v=>`攻擊附加 ${v} 層燃燒`, min:1, max:3, slots:'w'},
   bpyre:{n:'烈焰', fmt:v=>`燃燒每回合跳傷 +${v}%`, min:10, max:45, slots:'wt'},
   thorns:{n:'荊棘', fmt:v=>`受擊反彈 ${v} 點傷害`, min:2, max:16, slots:'a'},
-  mend: {n:'急救', fmt:v=>`戰鬥勝利回復 ${v} 血`, min:3, max:18, slots:'a'},
+  mend: {n:'急救', fmt:v=>`戰鬥勝利回復 ${v}% 生命上限`, min:3, max:12, slots:'a'},
+  dotdrain:{n:'蝕取', fmt:v=>`敵人因中毒或燃燒跳傷時，回復其 ${v}%（不需吸血）`, min:15, max:45, slots:'t'},
   greed:{n:'貪婪', fmt:v=>`碎銀獲取 +${v}%`, min:8, max:40, slots:'t'},
   mregen:{n:'回法', fmt:v=>`每回合額外回復 ${v}% 法力（彙總上限 100%）`, min:5, max:28, slots:'t'},
   /* —— 傳說（橙裝保底一條）—— */
@@ -266,14 +267,15 @@ const ROLL_BANDS = {
   vamp:  [[4,8],[6,12],[9,16],[12,22]],
   touch: [[1,1],[1,1],[2,2],[2,3]],
   thorns:[[2,4],[4,7],[6,11],[9,16]],
-  mend:  [[3,5],[5,8],[7,12],[10,18]],
+  mend:  [[3,5],[4,7],[6,10],[8,12]],
+  dotdrain:[[15,22],[20,30],[26,38],[32,45]],
   greed: [[8,14],[12,20],[16,28],[22,40]],
   mregen:[[5,8],[8,13],[12,19],[16,28]],
   bpyre: [[10,18],[15,26],[22,35],[30,45]],
 };
 const AFFIX_BAND = {str:'stat',int:'stat',spi:'stat',vit:'stat',agi:'stat',hp:'hp',mp:'mp',
   crit:'rate',defr:'rate',agile:'rate',vamp:'vamp',ptouch:'touch',btouch:'touch',
-  thorns:'thorns',mend:'mend',greed:'greed',mregen:'mregen',bpyre:'bpyre'};
+  thorns:'thorns',mend:'mend',greed:'greed',mregen:'mregen',bpyre:'bpyre',dotdrain:'dotdrain'};
 const CURSE_KEYS = ['bloodtax','heavy2','frail'];
 
 const LEG_KEYS = ['vform','wall','fury','spark','guts','luck7','symbio','exem','regen','feast','ember','wildfire'];

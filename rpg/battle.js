@@ -592,6 +592,8 @@ function tickBurn(who, zone, name){
       who.hp -= d;
       if(chemOn('burnvamp')){ const h = healPlayer(Math.ceil(d*0.3)); // 焚血
         if(h>0) log(`焚血：回復 ${h} 生命。`,'heal'); }
+      if(sumAffix('dotdrain')){ const h = healPlayer(Math.ceil(d*sumAffix('dotdrain')/100)); // 蝕取
+        if(h>0) log(`蝕取：回復 ${h} 生命。`,'heal'); }
     } else { damagePlayer(d, '燃燒'); }
     log(`${name} 被燃燒灼傷 ${d}（${who.st.burn} 層）。`,'dmg');
     if(zone) floatDmg(zone, '-'+d, '');
@@ -619,6 +621,8 @@ function enemyTurn(){
           if(h>0){ log(`腐生：回復 ${h} 生命。`,'heal'); } }
         if(chemOn('poisonvamp')){ const h = healPlayer(Math.ceil(d*0.3)); // 毒吸
           if(h>0){ log(`毒吸：回復 ${h} 生命。`,'heal'); } }
+        if(sumAffix('dotdrain')){ const h = healPlayer(Math.ceil(d*sumAffix('dotdrain')/100)); // 蝕取
+          if(h>0){ log(`蝕取：回復 ${h} 生命。`,'heal'); } }
         e.st.poison -= 1; if(e.st.poison<=0) delete e.st.poison;
         if(e.hp<=0){ log(e.n+' 被毒殺了。','sys'); onEnemySlain(e); continue; } }
       if(e.shell && !e.boss) e.block = Math.max(e.block, e.shell); // 重甲外殼恢復（王的殼只給一次，破了就破了）
@@ -714,7 +718,8 @@ function winBattle(){
   }
   if(firstKillBonus){ R.gold += firstKillBonus; toast('圖鑑首錄 +'+firstKillBonus+'🪙'); }
   const mend = sumAffix('mend');
-  if(mend){ const h = Math.min(mend, playerMaxHp()-R.hp); if(h>0) R.hp += h; }
+  let mendHeal = 0;
+  if(mend){ mendHeal = Math.min(Math.round(playerMaxHp()*mend/100), playerMaxHp()-R.hp); if(mendHeal>0) R.hp += mendHeal; }
   if(R.quench && R.quench.battles>0){ R.quench.battles--; }
   let gold = Math.round((8 + R.floor*2.4 + rnd(0,6)) * (B.boss?4 : B.elite?2 : 1) * (B.duo?1.6:1) * (1 + (R.cycle||0)*0.2));
   gold = Math.round(gold * (1 + sumAffix('greed')/100));
@@ -770,7 +775,7 @@ function winBattle(){
   if(B.noHit) bountyProgress('flawless');
   setTimeout(()=>{
     showLoot(drops, gold, B.boss?'👑':'⚔️', isFinal?'你打穿了深淵的心臟':(B.boss?'首領倒下了':'戰鬥勝利'),
-      `獲得 ${gold} 碎銀` + (potionDrop? `，撿到 ${POTIONS[potionDrop].i}${POTIONS[potionDrop].n}`:'') + (potionOverflow? `，藥水袋滿——折成 ${potionOverflow} 碎銀`:'') + (matDrop? `，拾獲 ${MATS[matDrop].i}${MATS[matDrop].n} ×1`:''), mend? `（急救回復 ${mend} 血）`:'');
+      `獲得 ${gold} 碎銀` + (potionDrop? `，撿到 ${POTIONS[potionDrop].i}${POTIONS[potionDrop].n}`:'') + (potionOverflow? `，藥水袋滿——折成 ${potionOverflow} 碎銀`:'') + (matDrop? `，拾獲 ${MATS[matDrop].i}${MATS[matDrop].n} ×1`:''), mendHeal? `（急救回復 ${mendHeal} 血）`:'');
   }, 600);
   save();
 }
