@@ -946,58 +946,95 @@ function playerDie(){
   }, 700);
 }
 
-/* ===== 定點懸賞 ===== */
+/* ===== 委託板（可接任務） ===== */
+const MAX_ACTIVE = 2;
 function romanCyc(c){ return c===0?'本源':'輪迴'+('I'.repeat(Math.min(c,3))+(c>3?'+'+(c-3):'')); }
 function genBounty(){
   const cu = cyclesUnlocked();
   const mode = (cu>0 && Math.random()<0.45) ? (1+Math.floor(Math.random()*cu)) : 0;
   const cap = mode===0 ? Math.min(50, Math.max(10, G.orig.cp+9)) : Math.max(20, cd(mode).cp+14);
   const lo  = mode===0 ? 5 : 11;
-  const type = pick(['reach','kill','loot','boss']);
-  let floor;
+  const type = pick(['reach','kill','loot','boss','streakkill','flawless','dotkill']);
+  let floor = lo + Math.floor(Math.random()*Math.max(1,(cap-lo+1)));
+  let target = 0;
   if(type==='boss'){ const bosses=[]; for(let f=Math.ceil(lo/5)*5; f<=cap; f+=5) bosses.push(f); floor = bosses.length? pick(bosses) : 10; }
-  else floor = lo + Math.floor(Math.random()*Math.max(1,(cap-lo+1)));
-  const diff = floor * (mode? cycMult(mode):1);
+  if(type==='streakkill'){ target = 5 + Math.floor(Math.random()*10); floor = lo; }
+  const hard = (type==='flawless'||type==='dotkill'||type==='boss') ? 1.5 : 1;   // 挑戰型獎勵更高
+  const diff = (floor||lo) * (mode? cycMult(mode):1) * hard;
   const r = Math.random();
   let reward;
-  if(mode>0 && r<0.3) reward = {kind:'mat', mat: floor<=30?'iron':'steel', amt:1};
-  else if(r<0.2) reward = {kind:'gear', amt:1};
-  else reward = {kind:'gold', amt: Math.round(40 + diff*6)};
-  return {mode, floor, type, reward, done:false};
+  if(mode>0 && r<0.3) reward = {kind:'mat', mat: floor<=30?'iron':'steel', amt: hard>1?2:1};
+  else if(r<0.25) reward = {kind:'gear', amt:1, bonus: hard>1?2:1};
+  else reward = {kind:'gold', amt: Math.round(50 + diff*7)};
+  return {mode, floor, target, type, reward, state:'offer'};
 }
-function ensureBounties(){ if(!G.bounties) G.bounties = []; while(G.bounties.length < 3) G.bounties.push(genBounty()); }
+function ensureBounties(){
+  if(!G.bounties) G.bounties = [];
+  for(const b of G.bounties) if(b.state===undefined) b.state = b.done ? 'done' : 'offer'; // 舊檔轉新制
+  G.bounties = G.bounties.filter(b=>b.state!=='done');
+  let offers = G.bounties.filter(b=>b.state==='offer').length;
+  while(offers < 3){ G.bounties.push(genBounty()); offers++; }
+}
 function bountyText(b){
-  const m = romanCyc(b.mode);
-  const t = b.type==='reach'? `抵達第 ${b.floor} 層` : b.type==='kill'? `在第 ${b.floor} 層擊殺敵人`
-    : b.type==='loot'? `在第 ${b.floor} 層取得裝備` : `擊殺第 ${b.floor} 層首領`;
+  const m = romanCyc(b.mode); let t;
+  switch(b.type){
+    case 'reach': t = `抵達第 ${b.floor} 層`; break;
+    case 'kill':  t = `在第 ${b.floor} 層擊殺敵人`; break;
+    case 'loot':  t = `在第 ${b.floor} 層取得裝備`; break;
+    case 'boss':  t = `擊殺第 ${b.floor} 層首領`; break;
+    case 'streakkill': t = `一趟累積擊殺 ${b.target} 隻`; break;
+    case 'flawless':   t = `第 ${b.floor} 層起·不受傷贏一場`; break;
+    case 'dotkill':    t = `第 ${b.floor} 層起·斬殺中毒或燃燒的敵人`; break;
+    default: t = '？';
+  }
   return `${m}・${t}`;
 }
-function rewardText(r){ if(r.kind==='gold') return `🪙 ${r.amt}`; if(r.kind==='mat') return `${MATS[r.mat].i}${MATS[r.mat].n} ×${r.amt}`; return `🎁 一件裝備`; }
+function rewardText(r){ if(r.kind==='gold') return `🪙 ${r.amt}`; if(r.kind==='mat') return `${MATS[r.mat].i}${MATS[r.mat].n} ×${r.amt}`; return `🎁 ${(r.bonus>1?'稀有':'')}裝備`; }
 function claimBounty(b){
-  if(b.done) return; b.done = true; const r = b.reward;
+  if(b.state==='done') return; b.state = 'done'; const r = b.reward;
   if(r.kind==='gold') G.gold += r.amt;
   else if(r.kind==='mat') G.mats[r.mat] = (G.mats[r.mat]||0) + r.amt;
-  else if(r.kind==='gear'){ const it = makeItem(b.floor, 1); it.banked=true; G.stash.push(it); }
-  toast('懸賞完成！' + rewardText(r)); save();
+  else if(r.kind==='gear'){ const it = makeItem(b.floor||R.floor||10, r.bonus||1); it.banked=true; G.stash.push(it); }
+  toast('委託完成！' + rewardText(r)); save();
 }
 function bountyProgress(kind){
   if(!R || !G.bounties) return;
   for(const b of G.bounties){
-    if(b.done || b.mode !== R.cycle || b.type !== kind) continue;
-    const ok = kind==='reach' ? R.floor >= b.floor : R.floor === b.floor;
+    if(b.state !== 'active' || b.mode !== R.cycle || b.type !== kind) continue;
+    let ok;
+    if(kind==='reach') ok = R.floor >= b.floor;
+    else if(kind==='streakkill') ok = R.kills >= b.target;
+    else if(kind==='flawless' || kind==='dotkill') ok = R.floor >= b.floor;  // 特殊條件已由呼叫端確認
+    else ok = R.floor === b.floor;                                            // kill/loot/boss
     if(ok) claimBounty(b);
   }
 }
+function acceptBounty(i){
+  const b = G.bounties[i]; if(!b || b.state!=='offer') return;
+  if(G.bounties.filter(x=>x.state==='active').length >= MAX_ACTIVE){ toast(`同時最多接 ${MAX_ACTIVE} 個委託`); return; }
+  b.state = 'active'; save(); openBounties();
+}
+function abandonBounty(i){
+  const b = G.bounties[i]; if(!b || b.state!=='active') return;
+  G.bounties.splice(i,1); ensureBounties(); save(); openBounties();
+}
 function openBounties(){
   ensureBounties();
-  let html = '<h3>懸賞板</h3><p class="base">接下深淵的定點委託，達成即領獎；完成的可換新。</p><div class="item-list" style="margin-top:8px">';
-  for(const b of G.bounties) html += `<div class="item-row" style="${b.done?'opacity:.55':''}"><span class="in">${b.done?'✅ ':'📌 '}${bountyText(b)}</span><span class="is">${b.done?'已完成':rewardText(b.reward)}</span></div>`;
-  html += '</div>';
-  if(G.bounties.some(b=>b.done)) html += '<button class="btn primary" style="margin-top:10px" onclick="rerollBounties()">刷新已完成的懸賞</button>';
-  html += '<button class="btn" style="margin-top:8px" onclick="closeSheet()">關閉</button>';
+  const active = G.bounties.filter(b=>b.state==='active');
+  const offers = G.bounties.filter(b=>b.state==='offer');
+  let html = `<h3>懸賞板</h3><p class="base">自己挑委託接下——只有接下的才會追蹤並發獎。同時最多 ${MAX_ACTIVE} 個。</p>`;
+  html += `<div class="section-title">進行中 ${active.length}/${MAX_ACTIVE}</div>`;
+  if(!active.length) html += '<p class="base" style="color:var(--dim)">還沒接委託，往下挑一個。</p>';
+  for(const b of active){ const i = G.bounties.indexOf(b);
+    html += `<div class="item-row"><span class="in">🎯 ${bountyText(b)}</span><span class="is">${rewardText(b.reward)}　<span style="color:var(--red);cursor:pointer" onclick="abandonBounty(${i})">放棄</span></span></div>`;
+  }
+  html += '<div class="section-title">可接委託</div><div class="item-list">';
+  for(const b of offers){ const i = G.bounties.indexOf(b);
+    html += `<div class="item-row" onclick="acceptBounty(${i})"><span class="in">📌 ${bountyText(b)}</span><span class="is">${rewardText(b.reward)}　<span style="color:var(--gold)">接下 ›</span></span></div>`;
+  }
+  html += '</div><button class="btn" style="margin-top:12px" onclick="closeSheet()">關閉</button>';
   openSheet(html);
 }
-function rerollBounties(){ G.bounties = G.bounties.filter(b=>!b.done); ensureBounties(); save(); openBounties(); }
 
 function backToCamp(){ renderCamp(); showScreen('s-camp'); }
 

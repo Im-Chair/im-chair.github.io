@@ -64,8 +64,8 @@ function renderCamp(){
   const mi = $('market-item');
   if(G.rec.deep >= 30){ mi.style.display=''; $('market-hint').textContent='封條盲盒'; }
   else mi.style.display='none';
-  const bd = (G.bounties||[]).filter(b=>b.done).length;
-  const bb = $('bounty-badge'); if(bb){ bb.textContent = bd||''; bb.style.display = bd? '' : 'none'; }
+  const ba = (G.bounties||[]).filter(b=>b.state==='active').length;
+  const bb = $('bounty-badge'); if(bb){ bb.textContent = ba||''; bb.style.display = ba? '' : 'none'; }
   const ms = [];
   ms.push((G.rec.deep>=10?'✓':'🔒')+' 10層 鐵匠重鑄');
   ms.push((G.rec.deep>=20?'✓':'🔒')+' 20層 深層藥劑');

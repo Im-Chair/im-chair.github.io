@@ -128,7 +128,7 @@ function startBattle(enemies, opt){
   const agiBonus = statTotal('agi') >= 100 ? 2 : statTotal('agi') >= 40 ? 1 : 0; // 敏捷追加行動點（點）
   const _wpts = weaponType().pts || 3;                                            // 武器每回合行動點
   B = {es:enemies, ti:0, energy:_wpts+agiBonus, maxEnergy:_wpts+agiBonus, block:0, shield:0, st:{}, turn:1, nextCrit:0,
-       over:false, sparkN:0, rageWarned:false, charge:null,
+       over:false, sparkN:0, rageWarned:false, charge:null, noHit:true,
        boss:enemies.some(e=>e.boss), elite:Math.max(...enemies.map(e=>e.elite||0)), duo:enemies.length>1};
   const _zrule = realmFor(R.floor) && realmFor(R.floor).rule;
   B.rageAt = _zrule==='rage5' ? 5 : 8;                       // 心室：狂怒提前到第 5 回合
@@ -340,6 +340,7 @@ function statusHtml(st, block){
 
 function damagePlayer(d, src){
   if(d <= 0) return 0;
+  if(B) B.noHit = false;   // 受傷即破「不受傷」委託
   if(hasCurse('frail')) d = Math.round(d*1.15);
   if(src && R) R.lastHit = {src, d, hpBefore:R.hp};
   if(R.hp - d <= 0 && B && !B.gutsUsed && sumAffix('guts')){
@@ -565,6 +566,7 @@ function dealToEnemy(mult, sk, f){
 
 function onEnemySlain(e){
   if(e._slain) return; e._slain = true;
+  if(e.st && (e.st.poison||e.st.burn)) bountyProgress('dotkill');   // 委託：中毒/燃燒擊殺
   if(sumAffix('wildfire') && e.st && e.st.burn){          // 延燒：把燃層傳給隨機存活敵人
     const others = aliveEs().filter(x=>x.hp>0 && x!==e);
     if(others.length) applyStatus(pick(others).st, {burn:e.st.burn}, '延燒');
@@ -764,6 +766,8 @@ function winBattle(){
   bountyProgress('kill');
   if(B.boss) bountyProgress('boss');
   if(drops.length) bountyProgress('loot');
+  bountyProgress('streakkill');
+  if(B.noHit) bountyProgress('flawless');
   setTimeout(()=>{
     showLoot(drops, gold, B.boss?'👑':'⚔️', isFinal?'你打穿了深淵的心臟':(B.boss?'首領倒下了':'戰鬥勝利'),
       `獲得 ${gold} 碎銀` + (potionDrop? `，撿到 ${POTIONS[potionDrop].i}${POTIONS[potionDrop].n}`:'') + (potionOverflow? `，藥水袋滿——折成 ${potionOverflow} 碎銀`:'') + (matDrop? `，拾獲 ${MATS[matDrop].i}${MATS[matDrop].n} ×1`:''), mend? `（急救回復 ${mend} 血）`:'');
