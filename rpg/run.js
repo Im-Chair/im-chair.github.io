@@ -1004,7 +1004,7 @@ function genBounty(){
   if(r < (hard>1 ? 0.6 : 0.28)) reward = {kind:'legendary'};                // 挑戰型60%／一般28% → 保底傳說
   else if(r < (hard>1 ? 0.85 : 0.6)) reward = {kind:'gear', bonus:2};        // 稀有以上裝備
   else reward = {kind:'gold', amt: Math.round(120 + diff*16)};              // 碎銀（墊底）
-  return {mode, floor, target, type, reward, state:'offer'};
+  return {mode, floor, target, type, reward, gems:rnd(1,3), state:'offer'};
 }
 function ensureBounties(){
   if(!G.bounties) G.bounties = [];
@@ -1042,7 +1042,7 @@ function claimBounty(b){
     }
     it.banked=true; G.stash.push(it);
   }
-  const gg = rnd(1,3); G.gems = (G.gems||0) + gg;   // 每筆委託額外給 1~3 💎
+  const gg = b.gems || rnd(1,3); G.gems = (G.gems||0) + gg;   // 委託額外給 💎
   toast('委託完成！' + rewardText(r) + '　＋💎'+gg); save();
 }
 function bountyProgress(kind){
@@ -1074,11 +1074,11 @@ function openBounties(){
   html += `<div class="section-title">進行中 ${active.length}/${MAX_ACTIVE}</div>`;
   if(!active.length) html += '<p class="base" style="color:var(--dim)">還沒接委託，往下挑一個。</p>';
   for(const b of active){ const i = G.bounties.indexOf(b);
-    html += `<div class="item-row"><span class="in">🎯 ${bountyText(b)}</span><span class="is">${rewardText(b.reward)}　<span style="color:var(--red);cursor:pointer" onclick="abandonBounty(${i})">放棄</span></span></div>`;
+    html += `<div class="item-row"><span class="in">🎯 ${bountyText(b)}</span><span class="is">${rewardText(b.reward)} ＋💎${b.gems||'1~3'}　<span style="color:var(--red);cursor:pointer" onclick="abandonBounty(${i})">放棄</span></span></div>`;
   }
   html += '<div class="section-title">可接委託</div><div class="item-list">';
   for(const b of offers){ const i = G.bounties.indexOf(b);
-    html += `<div class="item-row" onclick="acceptBounty(${i})"><span class="in">📌 ${bountyText(b)}</span><span class="is">${rewardText(b.reward)}　<span style="color:var(--gold)">接下 ›</span></span></div>`;
+    html += `<div class="item-row" onclick="acceptBounty(${i})"><span class="in">📌 ${bountyText(b)}</span><span class="is">${rewardText(b.reward)} ＋💎${b.gems||'1~3'}　<span style="color:var(--gold)">接下 ›</span></span></div>`;
   }
   html += '</div><button class="btn" style="margin-top:12px" onclick="closeSheet()">關閉</button>';
   openSheet(html);
