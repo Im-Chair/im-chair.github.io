@@ -503,8 +503,7 @@ function dealToEnemy(mult, sk, f){
   let absorbed = 0;
   if(e.block > 0){
     // 對盾相性：物理走武器 blockMod；法術繞一半；pierce 完全無視
-    let bm = (f && f.pierce) ? 0 : (f && f.magic) ? 0 : weaponType().blockMod;   // 法術無視格擋
-    if(bm > 0 && weaponType().armorPen && !(f && f.magic) && !(f && f.pierce)) bm *= (1 - weaponType().armorPen); // 斧破防
+    let bm = (f && f.pierce) ? 0 : (f && f.magic) ? 0 : weaponType().blockMod;   // 法術無視格擋；匕1.5/劍1.0/斧0.5
     if(bm > 0){
       const effBlock = Math.round(e.block * bm);
       absorbed = Math.min(effBlock, d);
@@ -816,7 +815,7 @@ function equipFromBag(id, ret){
   const idx = R.bag.findIndex(x=>x.id===id);
   if(idx>=0) R.bag.splice(idx,1);
   const old = G.equip[it.slot];
-  if(old){ if(old.banked!==false) G.stash.push(old); else R.bag.push(old); }
+  if(old){ if(R){ old.banked = false; R.bag.push(old); } else if(old.banked!==false) G.stash.push(old); else R.bag.push(old); }
   it.banked = false;
   G.equip[it.slot] = it;
   // 換裝可能改變血量上限

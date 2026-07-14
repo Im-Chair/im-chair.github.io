@@ -1001,9 +1001,9 @@ function genBounty(){
   const diff = (floor||lo) * (mode? cycMult(mode):1) * hard;
   const r = Math.random();
   let reward;
-  if(mode>0 && r<0.3) reward = {kind:'mat', mat: floor<=30?'iron':'steel', amt: hard>1?2:1};
-  else if(r<0.12) reward = {kind:'gear', amt:1, bonus: hard>1?2:1};
-  else reward = {kind:'gold', amt: Math.round(120 + diff*16)};
+  if(r < (hard>1 ? 0.6 : 0.28)) reward = {kind:'legendary'};                // 挑戰型60%／一般28% → 保底傳說
+  else if(r < (hard>1 ? 0.85 : 0.6)) reward = {kind:'gear', bonus:2};        // 稀有以上裝備
+  else reward = {kind:'gold', amt: Math.round(120 + diff*16)};              // 碎銀（墊底）
   return {mode, floor, target, type, reward, state:'offer'};
 }
 function ensureBounties(){
@@ -1028,12 +1028,20 @@ function bountyText(b){
   }
   return `${m}・${t}`;
 }
-function rewardText(r){ if(r.kind==='gold') return `🪙 ${r.amt}`; if(r.kind==='mat') return `${MATS[r.mat].i}${MATS[r.mat].n} ×${r.amt}`; return `🎁 ${(r.bonus>1?'稀有':'')}裝備`; }
+function rewardText(r){ if(r.kind==='gold') return `🪙 ${r.amt}`; if(r.kind==='mat') return `${MATS[r.mat].i}${MATS[r.mat].n} ×${r.amt}`; if(r.kind==='legendary') return `🌟 傳說裝備`; return `🎁 裝備`; }
 function claimBounty(b){
   if(b.state==='done') return; b.state = 'done'; const r = b.reward;
   if(r.kind==='gold') G.gold += r.amt;
   else if(r.kind==='mat') G.mats[r.mat] = (G.mats[r.mat]||0) + r.amt;
-  else if(r.kind==='gear'){ const it = makeItem(b.floor||R.floor||10, r.bonus||1); it.banked=true; G.stash.push(it); }
+  else {   // gear / legendary
+    const f = b.floor||R.floor||10;
+    let it = makeItem(f, 2);
+    if(r.kind==='legendary'){
+      let tries=0; while(it.rar<3 && tries++<30) it = makeItem(f, 2);
+      if(it.rar<3){ it.rar=3; const lp = LEG_KEYS.filter(k=>AFFIXES[k].slots.includes(it.slot)); if(lp.length) it.affixes.unshift({k:pick(lp), v:1}); }
+    }
+    it.banked=true; G.stash.push(it);
+  }
   toast('委託完成！' + rewardText(r)); save();
 }
 function bountyProgress(kind){

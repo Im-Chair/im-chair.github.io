@@ -67,33 +67,20 @@ function realmFor(floor){ return REALMS.find(z=>floor>=z.from && floor<=z.to); }
 
 function healMult(){ const z = R? realmFor(R.floor):null; return (z && z.rule==='heal75')? 0.75 : 1; }
 
-function save(){ G.run = R; G.uid = uid; localStorage.setItem(SAVE_KEY, JSON.stringify(G));
-  const cg = document.getElementById('camp-gold'); if(cg) cg.textContent = G.gold;
-  const sc = document.getElementById('stash-count'); if(sc) sc.textContent = `倉庫 ${G.stash.length} 件`;
-  const gg = document.getElementById('gear-gold'); if(gg) gg.textContent = '🪙 ' + G.gold;
+function save(){ if(G) G.run = R; accSave();   // 寫回帳號（G 就是當前角色，已在 ACC 內）
+  const cg = document.getElementById('camp-gold'); if(cg && G) cg.textContent = G.gold;
+  const sc = document.getElementById('stash-count'); if(sc && G) sc.textContent = `倉庫 ${G.stash.length} 件`;
+  const gg = document.getElementById('gear-gold'); if(gg && G) gg.textContent = '🪙 ' + G.gold;
 }
 
-function load(){ try{ const d = localStorage.getItem(SAVE_KEY); if(d){ G = JSON.parse(d);
-  if(!G.v3){ G = newSave(); localStorage.removeItem(SAVE_KEY); return false; } // v3 結構重製，舊檔重開（已拍板）
-  uid = G.uid||1; R = G.run||null;
-  if(!G.mats) G.mats = {iron:0, steel:0};
-  if(!G.codex) G.codex = {};
-  if(!G.cyc) G.cyc = {unlocked: G.rec.clear? 1:0};
-  if(!G.orig){
-    const dp = Math.min(G.rec.deep||0, 50);
-    G.orig = {deep:dp, cp:Math.min(41, dp), done:false};
-    G.cycData = {};
-    const map = {boss0:'bb0', boss1:'bb2', boss2:'mb2'};
-    for(const [ok,nk] of Object.entries(map)){
-      if(G.codex[ok]){ G.codex[nk] = (G.codex[nk]||0) + G.codex[ok]; delete G.codex[ok]; }
-    }
-    R = null; G.run = null; // v2 結構變動過大，舊探索不續
-  }
-  if(!G.cycData) G.cycData = {};
-  if(!G.bounties) G.bounties = [];
+function load(){ try{
+  accLoad();                       // 建立/遷移帳號、挑出當前角色到 G（每角色遷移在 account.js）
+  if(!G) return false;             // 沒有任何角色 → 交由流程去創角
+  R = G.run || null;
   if(R && Array.isArray(R.potions)){ R.pots = {}; for(const k of R.potions) R.pots[k] = Math.min(3,(R.pots[k]||0)+1); delete R.potions; }
   if(R && !R.pots) R.pots = {};
-  return true; } }catch(e){} G = newSave(); return false; }
+  return true;
+}catch(e){} G = null; R = null; return false; }
 
 function showScreen(id){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('show'));

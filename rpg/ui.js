@@ -2,18 +2,17 @@
 // ============ ui.js — 介面：標題/選職業/營地/角色檢視/圖鑑/存檔管理/啟動 ============
 
 function titleStart(){
-  if(!G.cls){ renderClassSelect(); showScreen('s-class'); return; }
-  if(R){ resumeRun(); return; }
-  renderCamp(); showScreen('s-camp');
+  if(!ACC.chars.length){ newChar(); return; }   // 沒角色 → 直接創第一個
+  openRoster();                                   // 有角色 → 角色選擇
 }
 
 function wipeConfirm(){
-  openSheet(`<h3>放棄一切？</h3><p class="base">職業、倉庫、紀錄全部歸零。這不是深淵的懲罰，是你自己選的。</p>
+  openSheet(`<h3>放棄一切？</h3><p class="base">所有角色、共用倉庫、紀錄全部歸零。這不是深淵的懲罰，是你自己選的。</p>
   <div class="row" style="margin-top:14px"><button class="btn danger" onclick="wipeAll()">歸零</button>
   <button class="btn" onclick="closeSheet()">算了</button></div>`);
 }
 
-function wipeAll(){ localStorage.removeItem(SAVE_KEY); G = newSave(); R=null; closeSheet(); titleStart(); }
+function wipeAll(){ localStorage.removeItem(ACC_KEY); localStorage.removeItem(SAVE_KEY); ACC={v:1,chars:[],active:0,sharedStash:[],uid:1}; G=null; R=null; closeSheet(); titleStart(); }
 
 let pendingClass = null;
 
@@ -34,47 +33,31 @@ function renderClassSelect(){
 
 function confirmClass(){
   if(!pendingClass){ toast('先選一個職業'); return; }
-  G.cls = pendingClass;
-  if(!G.equip.w){
+  let c;
+  if(pendingCreate || !G){ c = newSave(); ACC.chars.push(c); ACC.active = ACC.chars.length-1; G = c; R = null; B = null; }
+  else { c = G; }
+  pendingCreate = false;
+  c.cls = pendingClass;
+  if(!c.equip.w){
     const starter = {sword:['sword','傳家的舊劍'], assassin:['dagger','磨薄的短刃'],
                      white:['staff','見習法杖'], dark:['staff','裂紋咒杖']}[pendingClass];
-    G.equip.w = {id:uid++, slot:'w', rar:0, up:0, banked:true, base:5,
+    c.equip.w = {id:uid++, slot:'w', rar:0, up:0, banked:true, base:5,
                  wtype:starter[0], name:starter[1], affixes:[]};
   }
   save(); renderCamp(); showScreen('s-camp');
 }
 
 function renderCamp(){
-  const c = CLASSES[G.cls];
+  if(!G || !G.cls) return;
   ensureBounties();
-  $('camp-cls').textContent = `${c.icon} ${c.name}`;
-  $('camp-gold').textContent = G.gold;
-  $('rec-deep').textContent = certText(G.rec.cert);
-  $('rec-runs').textContent = G.rec.runs;
-  $('rec-boss').textContent = G.rec.boss;
-  $('stash-count').textContent = `${G.stash.length} 件`;
-  $('smith-hint').textContent = G.rec.deep>=10 ? '強化·重鑄' : '強化裝備';
-  const cu = cyclesUnlocked();
-  $('dive-hint').textContent = cu > 0
-    ? `本源 ${G.orig.deep}${G.orig.done?'✓':''}｜輪迴 ${'I'.repeat(Math.min(cu,3))}${cu>3?'+'+(cu-3):''} 開放`
-    : (G.orig.cp >= 11 ? `本源最深 ${G.orig.deep}｜傳送至 ${Math.min(41, Math.floor((G.orig.cp-1)/10)*10+1)} 層` : '五十層的旅程，從這裡開始');
-  const seen = Object.keys(G.codex).length;
-  const total = Object.keys(ENEMIES).length + REALM_ELITES.length + MINI_BOSSES.length + LORD_BOSSES.length + 1;
-  $('codex-hint').textContent = `收錄 ${seen}/${total}`;
-  const mi = $('market-item');
-  if(G.rec.deep >= 30){ mi.style.display=''; $('market-hint').textContent='封條盲盒'; }
-  else mi.style.display='none';
+  const c = CLASSES[G.cls];
+  const set = (id,v)=>{ const e=$(id); if(e) e.textContent = v; };
+  set('camp-gold', G.gold);
+  set('camp-cls-ic', c.icon);
+  set('camp-cls', c.name);
+  set('camp-cert', '認證 '+certText(G.rec.cert));
   const ba = (G.bounties||[]).filter(b=>b.state==='active').length;
   const bb = $('bounty-badge'); if(bb){ bb.textContent = ba||''; bb.style.display = ba? '' : 'none'; }
-  const ms = [];
-  ms.push((G.rec.deep>=10?'✓':'🔒')+' 10層 鐵匠重鑄');
-  ms.push((G.rec.deep>=20?'✓':'🔒')+' 20層 深層藥劑');
-  ms.push((G.rec.deep>=30?'✓':'🔒')+' 30層 深淵黑市');
-  if(G.rec.clear) ms.push('🫀 通關 ×'+G.rec.clear);
-  const cun = cyclesUnlocked();
-  if(cun) ms.push('🔄 輪迴 ×'+cun);
-  if(G.orig.done) ms.push('🌅 本源完結');
-  $('milestone-line').textContent = ms.join('　');
   save();
 }
 
@@ -90,7 +73,7 @@ function openSaveMgr(){
 
 function exportSave(){
   save();
-  const code = btoa(unescape(encodeURIComponent(localStorage.getItem(SAVE_KEY))));
+  const code = btoa(unescape(encodeURIComponent(localStorage.getItem(ACC_KEY))));
   openSheet(`<h3>匯出存檔</h3>
     <p class="base">全選複製下面這串，貼到備忘錄保存：</p>
     <textarea id="sv-out" readonly style="width:100%;height:120px;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px;font-size:11px">${code}</textarea>
@@ -111,10 +94,14 @@ function importSave(){
     const raw = document.getElementById('sv-in').value.trim();
     const json = decodeURIComponent(escape(atob(raw)));
     const data = JSON.parse(json);
-    if(!data.cls || !data.rec) throw new Error('格式不對');
-    localStorage.setItem(SAVE_KEY, json);
+    let acc;
+    if(data.chars) acc = data;                                                                            // 帳號格式
+    else if(data.cls || data.rec) acc = {v:1, chars:[data], active:0, sharedStash:[], uid:data.uid||1};   // 舊單角色 → 包成帳號
+    else throw new Error('格式不對');
+    localStorage.setItem(ACC_KEY, JSON.stringify(acc));
     G = null; R = null; B = null; load();
-    closeSheet(); renderCamp(); showScreen('s-camp');
+    closeSheet();
+    if(G && G.cls){ renderCamp(); showScreen('s-camp'); } else { showScreen('s-title'); }
     toast('匯入成功');
   }catch(e){ toast('匯入失敗：存檔碼無效'); }
 }
@@ -222,10 +209,7 @@ function openBagItem(id){
 
 (function init(){
   load();
-  const hasSave = !!G.cls;
-  $('btn-wipe').style.display = hasSave? 'block':'none';
-  // 存檔中若卡在戰鬥，回到門的畫面重新選（血量保留）
-  if(R && R.phase==='battle'){ R.phase='doors'; R.doors=null; R.forceDoor = R.lastDoor || 'fight'; }
+  $('btn-wipe').style.display = (ACC.chars.length>0)? 'block':'none';
   showScreen('s-title');
 })();
 

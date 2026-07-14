@@ -189,7 +189,7 @@ const LORD_BOSSES = [
 const WEAPON_TYPES = {
   dagger:{n:'匕首', i:'🗡️', pts:4, coef:0.6, blockMod:1.5, magic:false},                 // 連擊·多觸發
   sword: {n:'劍',   i:'⚔️', pts:3, coef:1.0, blockMod:1.0, magic:false, critRate:8},      // 均衡·普攻爆擊率+8%
-  axe:   {n:'斧',   i:'🪓', pts:2, coef:1.5, blockMod:0.5, magic:false, armorPen:0.35},   // 破防·無視35%格擋
+  axe:   {n:'斧',   i:'🪓', pts:2, coef:1.5, blockMod:0.5, magic:false},   // 破防·對格擋只被吸收 50%（100盾→門檻50）
   staff: {n:'杖',   i:'🪄', pts:3, coef:1.0, blockMod:0.5, magic:true,  spellAmp:0.15},   // 法術·法術傷害+15%
 };
 /* 供需曲線 (§13)：全部可調 */
