@@ -24,6 +24,8 @@ function migrateChar(c){
   }
   if(!c.cycData) c.cycData = {};
   if(!c.bounties) c.bounties = [];
+  if(!c.runes) c.runes = [null,null,null];
+  if(!c.runeBag) c.runeBag = [];
 }
 
 function accLoad(){

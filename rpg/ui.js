@@ -142,7 +142,7 @@ function openCodex(){
 function openRunStats(){
   const rows = [];
   const w = G.equip.w, wt = weaponType();
-  const wVal = w? (w.base+w.up):0, msVal = mainStat(), msName = STATS[CLASSES[G.cls].mainStat].n;
+  const wVal = eqStat(w), msVal = mainStat(), msName = STATS[CLASSES[G.cls].mainStat].n;
   const cMagic = CLASSES[G.cls].mainStat==='int', misW = cMagic !== !!wt.magic;
   rows.push([`${wt.i} ${wVal+msVal}`, `攻擊力（武器${wVal}＋${msName}${msVal}）${misW?(cMagic?'｜⚠不合手·普攻武器×0.5、法術×0':'｜⚠不合手·武器攻擊×0'):(wt.magic?'｜普攻物理·法術對盾減半':'')}`]);
   rows.push([`${R? R.hp : playerMaxHp()}/${playerMaxHp()}`, '❤️ 生命']);
@@ -185,6 +185,7 @@ function openRunStats(){
       chemRows.push(`<div class="base" style="color:var(--gold)">${c.i}【${c.n}】${c.d}</div>`);
   }
   if(chemRows.length) html += '<div class="section-title">⚗️ 詞綴反應</div>' + chemRows.join('');
+  html += `<button class="btn" style="margin-top:10px" onclick="openRunes()">🔯 符文槽 ${(G.runes||[]).filter(Boolean).length}/3${(G.runeBag||[]).length?'　（持有 '+G.runeBag.length+'）':''}</button>`;
   html += '<div class="section-title">身上裝備</div>';
   for(const sk of ['w','a','t']){
     const it = G.equip[sk];

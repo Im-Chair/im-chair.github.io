@@ -47,7 +47,7 @@ const $ = id=>document.getElementById(id);
 
 function newSave(){ return {v3:1, cls:null, gold:0, stash:[], equip:{w:null,a:null,t:null},
   rec:{deep:0,cert:null,runs:0,boss:0}, mats:{iron:0,steel:0}, codex:{}, cyc:{unlocked:0},
-  orig:{deep:0,cp:0,done:false}, cycData:{}, bounties:[], run:null, uid:1}; }
+  orig:{deep:0,cp:0,done:false}, cycData:{}, bounties:[], runes:[null,null,null], runeBag:[], run:null, uid:1}; }
 
 function certScore(cert){ // 認證難度分數：輪迴階級碾壓層數（輪迴I-1 > 本源-50）
   if(!cert) return -1;
@@ -100,6 +100,7 @@ function sumAffix(key){
     const it = G.equip[s]; if(!it) continue;
     for(const a of it.affixes) if(a.k===key && !AFFIXES[a.k].curse) v += a.v;
   }
+  if(G.runes) for(const rn of G.runes){ if(rn) for(const a of rn.affixes) if(a.k===key && !AFFIXES[a.k].curse) v += a.v; } // 符文被動
   if(R && R.bless) for(const b of R.bless) if(b.k===key) v += b.v;
   if(R && R.quench && R.quench.battles>0 && R.quench.k===key) v += R.quench.v;
   return v;
@@ -122,9 +123,10 @@ function rateFromStat(v){ // 素質→率 分段換算：前100÷8、100-200÷16
 function defRate(){ return Math.min(RATE_CAP, (CLASSES[G.cls].baseRates.def||0) + rateFromStat(statTotal('vit')) + sumAffix('defr')); }
 function dodgeRate(){ return hasCurse('heavy2') ? 0 : Math.min(RATE_CAP, (CLASSES[G.cls].baseRates.dodge||0) + rateFromStat(statTotal('agi')) + sumAffix('agile')); }
 function critRate(){ return Math.min(RATE_CAP, (CLASSES[G.cls].baseRates.crit||0) + rateFromStat(statTotal('spi')) + sumAffix('crit')); }
+function eqStat(it){ return it ? it.base + it.up*2 : 0; }   // 裝備有效攻防：每強化等級 +2
 function playerDef(){ // 防禦力（點數）：全職通用底＋護甲面板
   const a = G.equip.a;
-  return BASE_DEF + (a ? a.base + a.up : 0);
+  return BASE_DEF + eqStat(a);
 }
 function playerMaxHp(){
   let hp = BASE_HP + statTotal('vit')*2 + sumAffix('hp');
@@ -141,7 +143,7 @@ function weaponType(){ const w = G.equip.w; return WEAPON_TYPES[(w && w.wtype) |
 function mainStat(){ return statTotal(CLASSES[G.cls].mainStat); }
 function playerAtk(){ // 顯示用：武器攻擊＋主素質
   const w = G.equip.w;
-  return (w ? w.base + w.up : 0) + mainStat();
+  return eqStat(w) + mainStat();
 }
 function playerCrit(){ return critRate(); }
 

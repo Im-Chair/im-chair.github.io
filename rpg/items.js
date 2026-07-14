@@ -62,9 +62,9 @@ function itemStatLine(it){
   if(it.slot==='w'){
     const wt = WEAPON_TYPES[it.wtype||'sword'];
     const perk = {dagger:'連擊', sword:'爆擊', axe:'破防', staff:'法術'}[it.wtype||'sword'] || '';
-    return `${wt.i}${wt.n}｜攻擊 ${it.base + it.up}（${wt.magic?'魔攻':'物攻'}）｜${wt.pts}行動·${perk}`;
+    return `${wt.i}${wt.n}｜攻擊 ${eqStat(it)}（${wt.magic?'魔攻':'物攻'}）｜${wt.pts}行動·${perk}`;
   }
-  if(it.slot==='a') return `防禦 ${it.base + it.up}`;
+  if(it.slot==='a') return `防禦 ${eqStat(it)}`;
   return '飾品';
 }
 
@@ -191,7 +191,52 @@ function buyBox(i){
 
 var stashFilter = 'all';
 
+let gearTab = 'own';   // 倉庫分頁：own 個人 / shared 共用
 function openGear(){ renderGear(); showScreen('s-gear'); }
+function moveToShared(id){
+  const i = G.stash.findIndex(x=>x.id===id); if(i<0) return;
+  const it = G.stash.splice(i,1)[0]; it.banked = true; ACC.sharedStash.push(it);
+  closeSheet(); renderGear(); save(); toast('已存入共用倉庫');
+}
+function sharedToOwn(id){
+  const i = ACC.sharedStash.findIndex(x=>x.id===id); if(i<0) return;
+  const it = ACC.sharedStash.splice(i,1)[0]; G.stash.push(it);
+  closeSheet(); renderGear(); save(); toast('已取回個人倉庫');
+}
+function equipFromShared(id){
+  const i = ACC.sharedStash.findIndex(x=>x.id===id); if(i<0) return;
+  const it = ACC.sharedStash.splice(i,1)[0];
+  if(G.equip[it.slot]) G.stash.push(G.equip[it.slot]);
+  G.equip[it.slot] = it; closeSheet(); renderGear(); save(); toast('已裝備 '+it.name);
+}
+/* ===== 符文（放進符文槽即被動生效） ===== */
+function makeRune(floor){
+  const pool = Object.keys(AFFIXES).filter(k=>!AFFIXES[k].leg && !AFFIXES[k].curse);
+  const k = pick(pool);
+  const ri = Math.min(3, Math.floor(Math.random()*(floor>40?4:floor>20?3:2)));   // 越深越可能高階
+  const v = rollAffixVal(k, ri, floor);
+  return {id:uid++, isRune:true, rar:ri, name:'符文·'+AFFIXES[k].n, icon:'🔯', affixes:[{k,v}]};
+}
+function openRunes(){
+  if(!G.runes) G.runes=[null,null,null]; if(!G.runeBag) G.runeBag=[];
+  let html='<h3>符文</h3><p class="base">符文鑲進符文槽即被動生效，不佔裝備、跨探索永久保留。</p><div class="section-title">符文槽 '+G.runes.filter(Boolean).length+'/3</div><div class="item-list">';
+  G.runes.forEach((rn,i)=>{ if(rn){ const a=rn.affixes[0];
+    html+=`<div class="item-row ${RARITIES[rn.rar].b}" onclick="unsocketRune(${i})"><span class="in ${RARITIES[rn.rar].cls}">${rn.icon} ${rn.name}</span><span class="is">${AFFIXES[a.k].fmt(a.v)}　<span style="color:var(--red)">取下</span></span></div>`;
+  } else html+=`<div class="item-row" style="opacity:.6"><span class="in" style="color:var(--dim)">◇ 空符文槽</span></div>`; });
+  html+='</div><div class="section-title">持有符文</div><div class="item-list">';
+  if(!G.runeBag.length) html+='<p style="color:var(--dim);font-size:13px">還沒有符文。深淵裡打得到。</p>';
+  for(const rn of G.runeBag){ const a=rn.affixes[0];
+    html+=`<div class="item-row ${RARITIES[rn.rar].b}" onclick="socketRune(${rn.id})"><span class="in ${RARITIES[rn.rar].cls}">${rn.icon} ${rn.name}</span><span class="is">${AFFIXES[a.k].fmt(a.v)}　<span style="color:var(--gold)">鑲入</span></span></div>`; }
+  html+='</div><button class="btn" style="margin-top:12px" onclick="closeSheet()">關閉</button>';
+  openSheet(html);
+}
+function socketRune(id){
+  const i=G.runeBag.findIndex(r=>r.id===id); if(i<0) return;
+  const slot=G.runes.indexOf(null); if(slot<0){ toast('符文槽已滿——先取下一個'); return; }
+  G.runes[slot]=G.runeBag.splice(i,1)[0]; if(R) R.hp=Math.min(R.hp, playerMaxHp());
+  save(); openRunes();
+}
+function unsocketRune(i){ if(!G.runes[i]) return; G.runeBag.push(G.runes[i]); G.runes[i]=null; save(); openRunes(); }
 
 function renderGear(){
   $('gear-gold').textContent = '🪙 ' + G.gold;
@@ -206,19 +251,34 @@ function renderGear(){
     er.appendChild(d);
   }
   const sl = $('stash-list'); sl.innerHTML = '';
-  if(!G.stash.length){ sl.innerHTML = '<p style="color:var(--dim);font-size:13px">倉庫空空。深淵裡什麼都有，去搬。</p>'; }
-  else {
-    const fr = document.createElement('div');
-    fr.className = 'row'; fr.style.cssText = 'gap:6px;margin-bottom:8px';
-    for(const [f, label] of [['all','全部'],['w','武器'],['a','護甲'],['t','飾品']]){
-      const b = document.createElement('button');
-      b.className = 'btn small' + (stashFilter===f?' primary':'');
-      b.style.flex = '1';
-      b.textContent = label + (f==='all' ? ` ${G.stash.length}` : ` ${G.stash.filter(i=>i.slot===f).length}`);
-      b.onclick = ()=>{ stashFilter = f; renderGear(); };
-      fr.appendChild(b);
-    }
-    sl.appendChild(fr);
+  // 個人／共用 分頁
+  const tabRow = document.createElement('div');
+  tabRow.className = 'row'; tabRow.style.cssText = 'gap:6px;margin-bottom:8px';
+  for(const [t, label, arr] of [['own','個人倉庫',G.stash],['shared','共用倉庫',ACC.sharedStash]]){
+    const b = document.createElement('button');
+    b.className = 'btn small' + (gearTab===t?' primary':''); b.style.flex = '1';
+    b.textContent = `${label} ${arr.length}`;
+    b.onclick = ()=>{ gearTab = t; renderGear(); };
+    tabRow.appendChild(b);
+  }
+  sl.appendChild(tabRow);
+  const stash = gearTab==='shared' ? ACC.sharedStash : G.stash;
+  const fromKind = gearTab==='shared' ? 'shared' : 'stash';
+  if(!stash.length){
+    sl.insertAdjacentHTML('beforeend', `<p style="color:var(--dim);font-size:13px">${gearTab==='shared'?'共用倉庫是空的。把想跨角色共享的裝備存進來。':'倉庫空空。深淵裡什麼都有，去搬。'}</p>`);
+    return;
+  }
+  const fr = document.createElement('div');
+  fr.className = 'row'; fr.style.cssText = 'gap:6px;margin-bottom:8px';
+  for(const [f, label] of [['all','全部'],['w','武器'],['a','護甲'],['t','飾品']]){
+    const b = document.createElement('button');
+    b.className = 'btn small' + (stashFilter===f?' primary':''); b.style.flex = '1';
+    b.textContent = label + (f==='all' ? ` ${stash.length}` : ` ${stash.filter(i=>i.slot===f).length}`);
+    b.onclick = ()=>{ stashFilter = f; renderGear(); };
+    fr.appendChild(b);
+  }
+  sl.appendChild(fr);
+  if(gearTab==='own'){
     const junk = G.stash.filter(i=>i.rar<=1);
     if(junk.length>=2){
       const v = junk.reduce((s,i)=>s+6+i.rar*10+Math.floor(i.base/2),0);
@@ -230,14 +290,14 @@ function renderGear(){
     }
   }
   const slotOrder = {w:0, a:1, t:2};
-  const sorted = G.stash
+  const sorted = stash
     .filter(i=>stashFilter==='all' || i.slot===stashFilter)
-    .sort((a,b)=>(slotOrder[a.slot]-slotOrder[b.slot]) || (b.rar-a.rar) || ((b.base+b.up)-(a.base+a.up)));
+    .sort((a,b)=>(slotOrder[a.slot]-slotOrder[b.slot]) || (b.rar-a.rar) || (eqStat(b)-eqStat(a)));
   for(const it of sorted){
     const d = document.createElement('div'); d.className = `item-row ${RARITIES[it.rar].b}`;
     d.innerHTML = `<span class="in ${RARITIES[it.rar].cls}">${it.name}${it.up?'+'+it.up:''}</span>
       <span class="is">${slotName(it.slot)}｜${itemStatLine(it)}</span>`;
-    d.onclick = ()=>openItemSheet(it, 'stash');
+    d.onclick = ()=>openItemSheet(it, fromKind);
     sl.appendChild(d);
   }
 }
@@ -255,9 +315,9 @@ function compareHtml(it){
   const cur = G.equip[it.slot];
   if(!cur || cur.id===it.id) return '';
   let lines = [`<div class="cmp">目前身上：<span class="${RARITIES[cur.rar].cls}">${cur.name}${cur.up?'+'+cur.up:''}</span>　<span style="color:var(--dim)">${itemStatLine(cur)}</span>`];
-  if(it.slot==='w'){ const d = (it.base+it.up)-(cur.base+cur.up);
+  if(it.slot==='w'){ const d = eqStat(it)-eqStat(cur);
     lines.push(`<div>攻擊差 ${d>=0?'<span class="up">+'+d+'</span>':'<span class="dn">'+d+'</span>'}</div>`); }
-  if(it.slot==='a'){ const d = (it.base+it.up)-(cur.base+cur.up);
+  if(it.slot==='a'){ const d = eqStat(it)-eqStat(cur);
     lines.push(`<div>防禦差 ${d>=0?'<span class="up">+'+d+'</span>':'<span class="dn">'+d+'</span>'}</div>`); }
   lines.push(`<div style="margin-top:4px">${affixHtml(cur)}</div>`);
   lines.push('</div>');
@@ -268,15 +328,18 @@ function openItemSheet(it, from){
   const r = RARITIES[it.rar];
   const salvage = 6 + it.rar*10 + Math.floor(it.base/2);
   const backCall = from==='bag' ? 'openRunStats()' : 'closeSheet()';
-  let btns = '';
-  if(from==='stash') btns = `<button class="btn primary" onclick="equipFromStash(${it.id})">裝備</button>
+  let btns = ''; let extra = '';
+  if(from==='stash'){ btns = `<button class="btn primary" onclick="equipFromStash(${it.id})">裝備</button>
     <button class="btn danger" onclick="salvageItem(${it.id})">分解 +${salvage}🪙</button>`;
+    extra = `<button class="btn" style="margin-top:8px" onclick="moveToShared(${it.id})">📦 存入共用倉庫</button>`; }
+  else if(from==='shared'){ btns = `<button class="btn primary" onclick="equipFromShared(${it.id})">裝備</button>
+    <button class="btn" onclick="sharedToOwn(${it.id})">↩ 取回個人</button>`; }
   else if(from==='equipped') btns = `<button class="btn" onclick="unequipItem('${it.slot}')">卸下</button>`;
   else if(from==='bag') btns = `<button class="btn primary" onclick="equipFromBag(${it.id},'stats')">立刻換上</button>`;
   openSheet(`<h3 class="${r.cls}">${it.name}${it.up?' +'+it.up:''}</h3>
     <div class="base">${r.n}${slotName(it.slot)}｜${itemStatLine(it)}${it.banked===false&&from!=='equipped'&&R?'｜<span style="color:var(--orange)">未保管</span>':''}</div>
     ${affixHtml(it)}${compareHtml(it)}
-    <div class="row" style="margin-top:16px">${btns}<button class="btn" onclick="${backCall}">${from==='bag'?'返回':'關閉'}</button></div>`);
+    <div class="row" style="margin-top:16px">${btns}<button class="btn" onclick="${backCall}">${from==='bag'?'返回':'關閉'}</button></div>${extra}`);
 }
 
 function equipFromStash(id){
@@ -331,32 +394,52 @@ function reforgeCost(it){ return Math.round((60 + it.rar*40) * Math.pow(1.5, it.
 
 var pendingReforge = null;
 
-function reforgeItem(slot){
-  const it = G.equip[slot]; if(!it) return;
+var reforgeSlot = null, reforgeLocks = [];
+function reforgeItem(slot){ const it = G.equip[slot]; if(!it) return; reforgeSlot = slot; reforgeLocks = []; renderReforgeLock(); }
+function toggleReforgeLock(i){ const p = reforgeLocks.indexOf(i); if(p>=0) reforgeLocks.splice(p,1); else reforgeLocks.push(i); renderReforgeLock(); }
+function renderReforgeLock(){
+  const it = G.equip[reforgeSlot]; if(!it) return;
   const cost = reforgeCost(it);
-  if(G.gold < cost){ toast('碎銀不夠'); return; }
-  G.gold -= cost;
-  it.rf = (it.rf||0) + 1;
+  const normals = it.affixes.filter(a=>!AFFIXES[a.k].leg && !AFFIXES[a.k].curse);
+  const fixed = it.affixes.filter(a=>AFFIXES[a.k].leg || AFFIXES[a.k].curse);
+  let html = `<h3>重鑄・${it.name}</h3><p class="base">鎖定想保留的詞綴（🔒），其餘重鑄；數量隨機、可能變多。傳說與詛咒自動保留。</p>`;
+  html += fixed.map(a=>`<div class="affix ${AFFIXES[a.k].leg?'leg':'curse'}">${AFFIXES[a.k].leg?'✸':'☠'} ${AFFIXES[a.k].n}：${AFFIXES[a.k].fmt(a.v)}　<span style="color:var(--dim)">保留</span></div>`).join('');
+  html += '<div class="item-list" style="margin-top:6px">';
+  normals.forEach((a,i)=>{ const locked = reforgeLocks.includes(i);
+    html += `<div class="item-row" onclick="toggleReforgeLock(${i})"><span class="in">${locked?'🔒':'🔓'} ${AFFIXES[a.k].n}：${AFFIXES[a.k].fmt(a.v)}</span><span class="is">${locked?'<span style="color:var(--gold)">鎖定</span>':'重鑄'}</span></div>`; });
+  html += '</div>';
+  html += `<div class="row" style="margin-top:16px"><button class="btn primary" onclick="doReforge()">重鑄（${cost}🪙）</button><button class="btn" onclick="closeSheet()">取消</button></div>`;
+  openSheet(html);
+}
+function doReforge(){
+  const slot = reforgeSlot, it = G.equip[slot]; if(!it) return;
+  const cost = reforgeCost(it); if(G.gold < cost){ toast('碎銀不夠'); return; }
+  G.gold -= cost; it.rf = (it.rf||0) + 1;
   const legs = it.affixes.filter(a=>AFFIXES[a.k].leg);
   const curses = it.affixes.filter(a=>AFFIXES[a.k].curse);
-  const n = it.affixes.length - legs.length - curses.length;
-  const pool = Object.keys(AFFIXES).filter(k=>AFFIXES[k].slots.includes(it.slot) && !AFFIXES[k].leg && !AFFIXES[k].curse);
-  const chosen = [];
-  for(let i=0;i<n && pool.length;i++){
+  const normals = it.affixes.filter(a=>!AFFIXES[a.k].leg && !AFFIXES[a.k].curse);
+  const kept = reforgeLocks.map(i=>normals[i]).filter(Boolean);
+  const keptKeys = new Set(kept.map(a=>a.k));
+  const rar = RARITIES[it.rar];
+  const targetN = rnd(rar.afx[0], rar.afx[1]);                 // 隨機普通詞綴數
+  const toRoll = Math.max(0, targetN - kept.length);
+  const pool = Object.keys(AFFIXES).filter(k=>AFFIXES[k].slots.includes(it.slot) && !AFFIXES[k].leg && !AFFIXES[k].curse && !keptKeys.has(k));
+  const rolled = [];
+  for(let i=0;i<toRoll && pool.length;i++){
     const k = pool.splice(Math.floor(Math.random()*pool.length),1)[0];
     let v = rollAffixVal(k, it.rar, G.rec.deep);
     if(it.cursed) v = Math.round(v*1.4);
-    chosen.push({k, v});
+    rolled.push({k, v});
   }
-  pendingReforge = {slot, affixes: legs.concat(curses).concat(chosen)};
+  pendingReforge = {slot, affixes: legs.concat(curses).concat(kept).concat(rolled)};
   save();
-  const oldList = it.affixes.filter(a=>!AFFIXES[a.k].leg && !AFFIXES[a.k].curse)
-    .map(a=>`<div class="affix">◆ ${AFFIXES[a.k].n}：${AFFIXES[a.k].fmt(a.v)}</div>`).join('') || '<div class="affix" style="color:var(--dim)">（無）</div>';
-  const newList = chosen.map(a=>`<div class="affix">◆ ${AFFIXES[a.k].n}：${AFFIXES[a.k].fmt(a.v)}</div>`).join('') || '<div class="affix" style="color:var(--dim)">（無）</div>';
+  const oldList = normals.map(a=>`<div class="affix">◆ ${AFFIXES[a.k].n}：${AFFIXES[a.k].fmt(a.v)}</div>`).join('') || '<div class="affix" style="color:var(--dim)">（無）</div>';
+  const newNormals = kept.concat(rolled);
+  const newList = newNormals.map(a=>`<div class="affix">◆ ${AFFIXES[a.k].n}：${AFFIXES[a.k].fmt(a.v)}${kept.includes(a)?' 🔒':''}</div>`).join('') || '<div class="affix" style="color:var(--dim)">（無）</div>';
   openSheet(`<h3>重鑄・${it.name}</h3>
-    <p class="base">鐵匠把新詞綴敲了出來，攤在鐵砧上讓你過目。傳說與詛咒詞綴不受影響。</p>
-    <div class="section-title">原本的</div>${oldList}
-    <div class="section-title">新鑄的</div>${newList}
+    <p class="base">鎖定的保留，其餘重鑄。傳說與詛咒不受影響。</p>
+    <div class="section-title">原本的（${normals.length}）</div>${oldList}
+    <div class="section-title">新鑄的（${newNormals.length}）</div>${newList}
     <div class="row" style="margin-top:16px">
       <button class="btn primary" onclick="applyReforge()">換上新的</button>
       <button class="btn" onclick="cancelReforge()">保留原本</button></div>
@@ -382,7 +465,7 @@ function renderSmith(){
   for(const sl of ['w','a']){
     const it = G.equip[sl]; if(!it) continue; any = true;
     const cost = smithCost(it);
-    const gain = sl==='w' ? '攻擊 +1' : '防禦 +1';
+    const gain = sl==='w' ? '攻擊 +2' : '防禦 +2';
     const cap = RARITIES[it.rar].upCap;
     const tier = smithTier(it.up);
     const d = document.createElement('div'); d.className = `item-row ${RARITIES[it.rar].b}`;
