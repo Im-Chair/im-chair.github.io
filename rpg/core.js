@@ -86,6 +86,7 @@ function showScreen(id){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('show'));
   $(id).classList.add('show');
   $(id).scrollTop = 0;
+  if(id==='s-camp' && typeof layoutCamp==='function') requestAnimationFrame(layoutCamp);
 }
 
 let toastT = null;

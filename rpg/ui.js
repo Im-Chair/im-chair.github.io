@@ -47,6 +47,17 @@ function confirmClass(){
   save(); renderCamp(); showScreen('s-camp');
 }
 
+function layoutCamp(){   // 依實際畫面把熱區對準美圖（cover 縮放）
+  const scene = document.querySelector('.camp-scene'); if(!scene) return;
+  const cw = scene.clientWidth, ch = scene.clientHeight; if(!cw || !ch) return;
+  const iw=1080, ih=1747, scale=Math.max(cw/iw, ch/ih), dw=iw*scale, dh=ih*scale, ox=(cw-dw)/2, oy=(ch-dh)/2;
+  scene.querySelectorAll('.hot').forEach(h=>{
+    const fx=+h.dataset.fx, fy=+h.dataset.fy, fw=+h.dataset.fw, fh=+h.dataset.fh;
+    h.style.left=(ox+fx*dw)+'px'; h.style.top=(oy+fy*dh)+'px';
+    h.style.width=(fw*dw)+'px'; h.style.height=(fh*dh)+'px';
+  });
+}
+window.addEventListener('resize', layoutCamp);
 function renderCamp(){
   if(!G || !G.cls) return;
   ensureBounties();
