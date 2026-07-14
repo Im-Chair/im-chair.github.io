@@ -99,9 +99,13 @@ function marketStock(){
         boxes.push({type:'box', item:it, sold:false});
       }
     }
-    G.market = {run:G.rec.runs, boxes};
+    const runes = [];
+    const rc = rnd(2,3);
+    for(let i=0;i<rc;i++) runes.push({rune: makeRune(Math.max(12, Math.floor(G.rec.deep*0.9))), sold:false});
+    G.market = {run:G.rec.runs, boxes, runes};
     save();
   }
+  if(!G.market.runes) G.market.runes = [];
   return G.market;
 }
 
@@ -133,9 +137,16 @@ function openMarket(){
         <span class="is">${slotName(it.slot)}｜詞綴未知｜${price}🪙</span></div>`;
     }
   });
-  html += `</div>
-    <button class="btn small" style="margin-top:10px" onclick="rerollMarket()">🎲 換一批貨（80🪙）</button>
-    <p style="color:var(--dim);font-size:12px;margin-top:10px">🪙 ${G.gold}｜傳說之盒保底一條傳說詞綴，但也可能是詛咒品——攤主概不負責。</p>
+  html += '</div>';
+  html += '<div class="section-title">🔯 符文攤（用 💎 購買）</div><div class="item-list">';
+  (m.runes||[]).forEach((s,i)=>{
+    if(s.sold){ html += `<div class="item-row" style="opacity:.4"><span class="in">已售出</span></div>`; return; }
+    const rn = s.rune, a = rn.affixes[0], price = runeGemPrice(rn);
+    html += `<div class="item-row ${RARITIES[rn.rar].b}" onclick="buyRune(${i})"><span class="in ${RARITIES[rn.rar].cls}">${rn.icon} ${rn.name}</span><span class="is">${AFFIXES[a.k].fmt(a.v)}｜💎${price}</span></div>`;
+  });
+  html += '</div>';
+  html += `<button class="btn small" style="margin-top:10px" onclick="rerollMarket()">🎲 換一批貨（80🪙）</button>
+    <p style="color:var(--dim);font-size:12px;margin-top:10px">🪙 ${G.gold}　💎 ${G.gems||0}｜符文放進「角色→符文槽」鑲入即被動生效。</p>
     <button class="btn" style="margin-top:6px" onclick="closeSheet()">離開</button>`;
   openSheet(html);
 }
@@ -189,7 +200,19 @@ function buyBox(i){
       <button class="btn" onclick="closeSheet()">離開</button></div>`);
 }
 
+function runeGemPrice(rn){ return 2 + rn.rar*2; }
+function buyRune(i){
+  const s = G.market && G.market.runes && G.market.runes[i];
+  if(!s || s.sold) return;
+  const price = runeGemPrice(s.rune);
+  if((G.gems||0) < price){ toast('💎 不夠'); return; }
+  G.gems -= price; s.sold = true;
+  if(!G.runeBag) G.runeBag = [];
+  G.runeBag.push(s.rune);
+  save(); openMarket(); toast('入手 '+s.rune.name);
+}
 var stashFilter = 'all';
+var stashRarity = 'all', sellMode = false, sellSel = new Set();
 
 let gearTab = 'own';   // 倉庫分頁：own 個人 / shared 共用
 function openGear(){ renderGear(); showScreen('s-gear'); }
@@ -269,7 +292,7 @@ function renderGear(){
     return;
   }
   const fr = document.createElement('div');
-  fr.className = 'row'; fr.style.cssText = 'gap:6px;margin-bottom:8px';
+  fr.className = 'row'; fr.style.cssText = 'gap:6px;margin-bottom:6px';
   for(const [f, label] of [['all','全部'],['w','武器'],['a','護甲'],['t','飾品']]){
     const b = document.createElement('button');
     b.className = 'btn small' + (stashFilter===f?' primary':''); b.style.flex = '1';
@@ -278,27 +301,61 @@ function renderGear(){
     fr.appendChild(b);
   }
   sl.appendChild(fr);
-  if(gearTab==='own'){
-    const junk = G.stash.filter(i=>i.rar<=1);
-    if(junk.length>=2){
-      const v = junk.reduce((s,i)=>s+6+i.rar*10+Math.floor(i.base/2),0);
-      const bd = document.createElement('button');
-      bd.className='btn small'; bd.style.marginBottom='6px';
-      bd.textContent = `一鍵分解 普通+精良 ×${junk.length}（+${v}🪙）`;
-      bd.onclick = ()=>{ G.stash = G.stash.filter(i=>i.rar>1); G.gold += v; save(); renderGear(); toast(`分解 ${junk.length} 件，得 ${v} 碎銀`); };
-      sl.appendChild(bd);
-    }
+  const rr = document.createElement('div');
+  rr.className = 'row'; rr.style.cssText = 'gap:6px;margin-bottom:8px';
+  for(const [f, label] of [['all','全'],['0','普'],['1','精良'],['2','稀有'],['3','傳說']]){
+    const b = document.createElement('button');
+    b.className = 'btn small' + (stashRarity===f?' primary':''); b.style.flex = '1';
+    b.textContent = label; b.onclick = ()=>{ stashRarity = f; renderGear(); };
+    rr.appendChild(b);
   }
+  sl.appendChild(rr);
+  if(gearTab==='own'){
+    const sm = document.createElement('button');
+    sm.className = 'btn small' + (sellMode?' primary':''); sm.style.cssText = 'width:100%;margin-bottom:6px';
+    sm.textContent = sellMode ? '✓ 批次販售中——點裝備勾選' : '🏷️ 批次販售（多選）';
+    sm.onclick = ()=>{ sellMode = !sellMode; sellSel.clear(); renderGear(); };
+    sl.appendChild(sm);
+    if(!sellMode){
+      const junk = G.stash.filter(i=>i.rar<=1);
+      if(junk.length>=2){
+        const v = junk.reduce((s,i)=>s+6+i.rar*10+Math.floor(i.base/2),0);
+        const bd = document.createElement('button');
+        bd.className='btn small'; bd.style.marginBottom='6px';
+        bd.textContent = `一鍵分解 普通+精良 ×${junk.length}（+${v}🪙）`;
+        bd.onclick = ()=>{ G.stash = G.stash.filter(i=>i.rar>1); G.gold += v; save(); renderGear(); toast(`分解 ${junk.length} 件，得 ${v} 碎銀`); };
+        sl.appendChild(bd);
+      }
+    }
+  } else { sellMode = false; }   // 共用分頁不販售
   const slotOrder = {w:0, a:1, t:2};
   const sorted = stash
-    .filter(i=>stashFilter==='all' || i.slot===stashFilter)
+    .filter(i=>(stashFilter==='all' || i.slot===stashFilter) && (stashRarity==='all' || i.rar===+stashRarity))
     .sort((a,b)=>(slotOrder[a.slot]-slotOrder[b.slot]) || (b.rar-a.rar) || (eqStat(b)-eqStat(a)));
+  const selling = sellMode && gearTab==='own';
   for(const it of sorted){
     const d = document.createElement('div'); d.className = `item-row ${RARITIES[it.rar].b}`;
-    d.innerHTML = `<span class="in ${RARITIES[it.rar].cls}">${it.name}${it.up?'+'+it.up:''}</span>
+    const checked = sellSel.has(it.id);
+    d.innerHTML = `<span class="in ${RARITIES[it.rar].cls}">${selling?(checked?'☑ ':'☐ '):''}${it.name}${it.up?'+'+it.up:''}</span>
       <span class="is">${slotName(it.slot)}｜${itemStatLine(it)}</span>`;
-    d.onclick = ()=>openItemSheet(it, fromKind);
+    d.onclick = selling
+      ? ()=>{ if(sellSel.has(it.id)) sellSel.delete(it.id); else sellSel.add(it.id); renderGear(); }
+      : ()=>openItemSheet(it, fromKind);
     sl.appendChild(d);
+  }
+  if(selling){
+    const p2 = document.createElement('button'); p2.className='btn small'; p2.style.cssText='width:100%;margin-top:8px';
+    p2.textContent = '＋全選 普通+精良（依目前篩選）';
+    p2.onclick = ()=>{ for(const i of sorted) if(i.rar<=1) sellSel.add(i.id); renderGear(); };
+    sl.appendChild(p2);
+    const sel = G.stash.filter(i=>sellSel.has(i.id));
+    if(sel.length){
+      const val = sel.reduce((s,i)=>s+6+i.rar*10+Math.floor(i.base/2),0);
+      const sb = document.createElement('button'); sb.className='btn primary'; sb.style.cssText='width:100%;margin-top:6px';
+      sb.textContent = `販售選取 ${sel.length} 件（+${val}🪙）`;
+      sb.onclick = ()=>{ G.stash = G.stash.filter(i=>!sellSel.has(i.id)); G.gold += val; sellSel.clear(); save(); renderGear(); toast(`販售 ${sel.length} 件，得 ${val} 碎銀`); };
+      sl.appendChild(sb);
+    }
   }
 }
 
@@ -399,10 +456,10 @@ function reforgeItem(slot){ const it = G.equip[slot]; if(!it) return; reforgeSlo
 function toggleReforgeLock(i){ const p = reforgeLocks.indexOf(i); if(p>=0) reforgeLocks.splice(p,1); else reforgeLocks.push(i); renderReforgeLock(); }
 function renderReforgeLock(){
   const it = G.equip[reforgeSlot]; if(!it) return;
-  const cost = reforgeCost(it);
+  const cost = Math.round(reforgeCost(it) * (1 + reforgeLocks.length*0.5));   // 每鎖一條 +50%
   const normals = it.affixes.filter(a=>!AFFIXES[a.k].leg && !AFFIXES[a.k].curse);
   const fixed = it.affixes.filter(a=>AFFIXES[a.k].leg || AFFIXES[a.k].curse);
-  let html = `<h3>重鑄・${it.name}</h3><p class="base">鎖定想保留的詞綴（🔒），其餘重鑄；數量隨機、可能變多。傳說與詛咒自動保留。</p>`;
+  let html = `<h3>重鑄・${it.name}</h3><p class="base">鎖定想保留的詞綴（🔒），其餘重鑄；數量隨機、可能變多。傳說與詛咒自動保留。<span style="color:var(--gold)">每鎖一條費用 +50%</span>。</p>`;
   html += fixed.map(a=>`<div class="affix ${AFFIXES[a.k].leg?'leg':'curse'}">${AFFIXES[a.k].leg?'✸':'☠'} ${AFFIXES[a.k].n}：${AFFIXES[a.k].fmt(a.v)}　<span style="color:var(--dim)">保留</span></div>`).join('');
   html += '<div class="item-list" style="margin-top:6px">';
   normals.forEach((a,i)=>{ const locked = reforgeLocks.includes(i);
@@ -413,7 +470,7 @@ function renderReforgeLock(){
 }
 function doReforge(){
   const slot = reforgeSlot, it = G.equip[slot]; if(!it) return;
-  const cost = reforgeCost(it); if(G.gold < cost){ toast('碎銀不夠'); return; }
+  const cost = Math.round(reforgeCost(it) * (1 + reforgeLocks.length*0.5)); if(G.gold < cost){ toast('碎銀不夠'); return; }
   G.gold -= cost; it.rf = (it.rf||0) + 1;
   const legs = it.affixes.filter(a=>AFFIXES[a.k].leg);
   const curses = it.affixes.filter(a=>AFFIXES[a.k].curse);

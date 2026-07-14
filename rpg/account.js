@@ -26,6 +26,7 @@ function migrateChar(c){
   if(!c.bounties) c.bounties = [];
   if(!c.runes) c.runes = [null,null,null];
   if(!c.runeBag) c.runeBag = [];
+  if(c.gems===undefined) c.gems = 0;
 }
 
 function accLoad(){

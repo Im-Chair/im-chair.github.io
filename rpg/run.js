@@ -1042,7 +1042,8 @@ function claimBounty(b){
     }
     it.banked=true; G.stash.push(it);
   }
-  toast('委託完成！' + rewardText(r)); save();
+  const gg = rnd(1,3); G.gems = (G.gems||0) + gg;   // 每筆委託額外給 1~3 💎
+  toast('委託完成！' + rewardText(r) + '　＋💎'+gg); save();
 }
 function bountyProgress(kind){
   if(!R || !G.bounties) return;

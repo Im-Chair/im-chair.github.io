@@ -96,6 +96,7 @@ h1.title{
 .hot:active{background:rgba(216,168,76,.20);}
 .hot-badge{position:absolute;top:-6px;right:2px;background:var(--red);color:#fff;font-size:12px;border-radius:9px;padding:0 6px;min-width:18px;text-align:center;line-height:18px;}
 .ov-gold{position:absolute;left:10px;top:10px;padding:5px 13px;background:linear-gradient(#2a1f10,#170f06);border:1px solid #7a5a2a;border-radius:22px;display:flex;align-items:center;gap:6px;color:#f0d896;font-size:15px;font-weight:600;}
+.ov-gem{position:absolute;right:10px;top:10px;padding:5px 13px;background:linear-gradient(#101a2a,#0a1018);border:1px solid #2a4a7a;border-radius:22px;display:flex;align-items:center;gap:6px;color:#8fd0ff;font-size:15px;font-weight:600;}
 .ov-hero{position:absolute;left:10px;top:52px;padding:7px 13px;background:linear-gradient(#241a10,#140d06);border:1px solid #6a4a1e;border-radius:14px;display:flex;align-items:center;gap:9px;cursor:pointer;}
 .ov-hero-ic{font-size:28px;line-height:1;}
 .ov-hero-tx{display:flex;flex-direction:column;line-height:1.25;}

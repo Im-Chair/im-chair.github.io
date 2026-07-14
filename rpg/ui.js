@@ -64,6 +64,7 @@ function renderCamp(){
   const c = CLASSES[G.cls];
   const set = (id,v)=>{ const e=$(id); if(e) e.textContent = v; };
   set('camp-gold', G.gold);
+  set('camp-gem', G.gems||0);
   set('camp-cls-ic', c.icon);
   set('camp-cls', c.name);
   set('camp-cert', '認證 '+certText(G.rec.cert));

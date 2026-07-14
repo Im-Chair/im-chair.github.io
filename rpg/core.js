@@ -47,7 +47,7 @@ const $ = id=>document.getElementById(id);
 
 function newSave(){ return {v3:1, cls:null, gold:0, stash:[], equip:{w:null,a:null,t:null},
   rec:{deep:0,cert:null,runs:0,boss:0}, mats:{iron:0,steel:0}, codex:{}, cyc:{unlocked:0},
-  orig:{deep:0,cp:0,done:false}, cycData:{}, bounties:[], runes:[null,null,null], runeBag:[], run:null, uid:1}; }
+  orig:{deep:0,cp:0,done:false}, cycData:{}, bounties:[], runes:[null,null,null], runeBag:[], gems:0, run:null, uid:1}; }
 
 function certScore(cert){ // 認證難度分數：輪迴階級碾壓層數（輪迴I-1 > 本源-50）
   if(!cert) return -1;
