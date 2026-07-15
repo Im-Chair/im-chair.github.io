@@ -32,7 +32,7 @@ function openDivePicker(){
     html += `<p class="base" style="margin-top:8px">五十層的旅程，五域五王。最深 ${G.orig.deep} 層${G.orig.done?'——你已走到底過':''}。不產出精煉材料。</p>`;
   } else {
     const c = cd(pendingMode);
-    html += `<p class="base" style="margin-top:8px">深淵重演，敵人 ×${cycMult(pendingMode).toFixed(1)}，掉落更兇，材料只在這裡。本輪最深 ${c.deep} 層。</p>`;
+    html += `<p class="base" style="margin-top:8px">深淵重演，敵人 ×${cycMult(pendingMode).toFixed(1)}，掉落更兇，精煉材料只在輪迴出土。${c.deep>0?`本輪最深 ${c.deep} 層。`:'你還沒踏進本輪。'}</p>`;
     if(pendingMode === cu && !(certScore(G.rec.cert) >= cu*1000 + CYC_NEXT))
       html += `<p style="color:var(--dim);font-size:12px">本輪逃離並認證 ${CYC_NEXT} 層，解鎖下一重輪迴。</p>`;
   }
@@ -103,10 +103,18 @@ function rarityBonusText(f){ return `稀有掉落權重 +${Math.round(f*2.2)}%`;
 function enterFloor(){
   if(R.cycIntro){
     R.cycIntro = false;
-    G.mats.iron = (G.mats.iron||0) + 1;
-    showEventScreen('🔄','輪迴・'+'I'.repeat(Math.min(R.cycle,3))+(R.cycle>3?'+'+(R.cycle-3):''),
-      '深淵重演了自己——但這次它沒打算裝睡。\n\n敵人強度 ×'+cycMult(R.cycle).toFixed(1)+'，掉落遠勝本源。沉鐵與心鋼只在這裡出土——你的精煉上限，現在才真正打得開。\n\n（守繩人塞給你一塊沉鐵當見面禮）',
-      [{n:'下去吧', f:()=>{ R.doors=null; if(R.floor===1){ startBattle(makeEnemy(1,0)); } else enterFloor(); }, primary:true}]);
+    const roman = 'I'.repeat(Math.min(R.cycle,3))+(R.cycle>3?'+'+(R.cycle-3):'');
+    const go = [{n:'下去吧', f:()=>{ R.doors=null; if(R.floor===1){ startBattle(makeEnemy(1,0)); } else enterFloor(); }, primary:true}];
+    if(R.cycle === 1){
+      G.mats.iron = (G.mats.iron||0) + 1;
+      showEventScreen('🔄','輪迴・'+roman,
+        '深淵重演了自己——但這次它沒打算裝睡。\n\n敵人強度 ×'+cycMult(R.cycle).toFixed(1)+'，掉落遠勝本源。沉鐵與心鋼只在輪迴出土——你的精煉上限，現在才真正打得開。\n\n（守繩人塞給你一塊沉鐵當見面禮）',
+        go);
+    } else {
+      showEventScreen('🔄','輪迴・'+roman,
+        '你早就走過這條路。深淵又重演了一次，這回敵人 ×'+cycMult(R.cycle).toFixed(1)+'，掉落與精煉材料都更兇更厚。\n\n這次沒有見面禮——你的行囊早已沉甸甸的。',
+        go);
+    }
     return;
   }
   // 第一層直接戰鬥，讓玩家先進入狀況
@@ -1080,9 +1088,12 @@ function openBounties(){
   for(const b of offers){ const i = G.bounties.indexOf(b);
     html += `<div class="item-row" onclick="acceptBounty(${i})"><span class="in">📌 ${bountyText(b)}</span><span class="is">${rewardText(b.reward)} ＋💎${b.gems||'1~3'}　<span style="color:var(--gold)">接下 ›</span></span></div>`;
   }
-  html += '</div><button class="btn" style="margin-top:12px" onclick="closeSheet()">關閉</button>';
+  html += '</div>';
+  if(offers.length) html += '<button class="btn" style="margin-top:10px" onclick="refreshBounties()">🔄 一鍵刷新可接委託</button>';
+  html += '<button class="btn" style="margin-top:8px" onclick="closeSheet()">關閉</button>';
   openSheet(html);
 }
+function refreshBounties(){ G.bounties = G.bounties.filter(b=>b.state!=='offer'); ensureBounties(); save(); openBounties(); }
 
 function backToCamp(){ renderCamp(); showScreen('s-camp'); }
 

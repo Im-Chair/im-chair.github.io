@@ -101,7 +101,9 @@ function marketStock(){
     }
     const runes = [];
     const rc = rnd(2,3);
-    for(let i=0;i<rc;i++) runes.push({rune: makeRune(Math.max(12, Math.floor(G.rec.deep*0.9))), sold:false});
+    const cc = G.rec.cert ? G.rec.cert.cycle : 0;
+    const cf = G.rec.cert ? G.rec.cert.floor : Math.max(12, G.rec.deep);
+    for(let i=0;i<rc;i++) runes.push({rune: makeRune(cf, cc), sold:false});
     G.market = {run:G.rec.runs, boxes, runes};
     save();
   }
@@ -233,10 +235,21 @@ function equipFromShared(id){
   G.equip[it.slot] = it; closeSheet(); renderGear(); save(); toast('已裝備 '+it.name);
 }
 /* ===== 符文（放進符文槽即被動生效） ===== */
-function makeRune(floor){
+function runeMaxRar(cycle, floor){   // 本源只普通；輪迴I≥30精良、≥70稀有；II≥30稀有、≥70傳說；III≥30傳說
+  if(cycle<=0) return 0;
+  const base = Math.min(cycle-1, 2);
+  let m = base;
+  if(floor>=30) m = base+1;
+  if(floor>=70) m = base+2;
+  return Math.min(3, m);
+}
+function makeRune(floor, cycle){
+  const maxR = runeMaxRar(cycle||0, floor);
+  const w = []; for(let r=0;r<=maxR;r++) w.push(Math.pow(0.45, r));   // 越高階越稀有
+  const tot = w.reduce((a,b)=>a+b,0); let x = Math.random()*tot, ri = 0;
+  for(let r=0;r<=maxR;r++){ x -= w[r]; if(x<0){ ri = r; break; } }
   const pool = Object.keys(AFFIXES).filter(k=>!AFFIXES[k].leg && !AFFIXES[k].curse);
   const k = pick(pool);
-  const ri = Math.min(3, Math.floor(Math.random()*(floor>40?4:floor>20?3:2)));   // 越深越可能高階
   const v = rollAffixVal(k, ri, floor);
   return {id:uid++, isRune:true, rar:ri, name:'符文·'+AFFIXES[k].n, icon:'🔯', affixes:[{k,v}]};
 }
@@ -260,6 +273,52 @@ function socketRune(id){
   save(); openRunes();
 }
 function unsocketRune(i){ if(!G.runes[i]) return; G.runeBag.push(G.runes[i]); G.runes[i]=null; save(); openRunes(); }
+function runeSellVal(rn){ return 8 + rn.rar*16; }
+function renderRuneStash(sl){
+  const runes = G.runeBag || [];
+  if(!runes.length){ sl.insertAdjacentHTML('beforeend', '<p style="color:var(--dim);font-size:13px">還沒有符文。戰鬥掉落或黑市購買，鑲進「角色 → 符文槽」即被動生效。</p>'); return; }
+  const rr = document.createElement('div'); rr.className='row'; rr.style.cssText='gap:6px;margin-bottom:8px';
+  for(const [f,label] of [['all','全'],['0','普'],['1','精良'],['2','稀有'],['3','傳說']]){
+    const b=document.createElement('button'); b.className='btn small'+(stashRarity===f?' primary':''); b.style.flex='1';
+    b.textContent=label; b.onclick=()=>{ stashRarity=f; renderGear(); }; rr.appendChild(b);
+  }
+  sl.appendChild(rr);
+  const sm=document.createElement('button'); sm.className='btn small'+(sellMode?' primary':''); sm.style.cssText='width:100%;margin-bottom:6px';
+  sm.textContent=sellMode?'✓ 批次販售中——點符文勾選':'🏷️ 批次販售（多選）';
+  sm.onclick=()=>{ sellMode=!sellMode; sellSel.clear(); renderGear(); }; sl.appendChild(sm);
+  const sorted = runes.filter(r=>stashRarity==='all'||r.rar===+stashRarity)
+    .sort((a,b)=>(b.rar-a.rar) || (a.affixes[0].k<b.affixes[0].k?-1:a.affixes[0].k>b.affixes[0].k?1:0));
+  for(const rn of sorted){ const a=rn.affixes[0]; const checked=sellSel.has(rn.id);
+    const d=document.createElement('div'); d.className=`item-row ${RARITIES[rn.rar].b}`;
+    d.innerHTML=`<span class="in ${RARITIES[rn.rar].cls}">${sellMode?(checked?'☑ ':'☐ '):''}${rn.icon} ${rn.name}</span><span class="is">${RARITIES[rn.rar].n}｜${AFFIXES[a.k].fmt(a.v)}</span>`;
+    d.onclick = sellMode ? ()=>{ if(sellSel.has(rn.id)) sellSel.delete(rn.id); else sellSel.add(rn.id); renderGear(); } : ()=>openRuneSheet(rn.id);
+    sl.appendChild(d);
+  }
+  if(sellMode){
+    const p2=document.createElement('button'); p2.className='btn small'; p2.style.cssText='width:100%;margin-top:8px';
+    p2.textContent=sellSel.size?'全部取消':'全選（依目前篩選）';
+    p2.onclick=()=>{ if(sellSel.size) sellSel.clear(); else for(const r of sorted) sellSel.add(r.id); renderGear(); }; sl.appendChild(p2);
+    const sel=runes.filter(r=>sellSel.has(r.id));
+    if(sel.length){
+      const val=sel.reduce((s,r)=>s+runeSellVal(r),0);
+      const sb=document.createElement('button'); sb.className='btn primary'; sb.style.cssText='width:100%;margin-top:6px';
+      sb.textContent=`販售選取 ${sel.length} 個（+${val}🪙）`;
+      sb.onclick=()=>{ G.runeBag=runes.filter(r=>!sellSel.has(r.id)); G.gold+=val; sellSel.clear(); save(); renderGear(); toast(`販售 ${sel.length} 符文，得 ${val} 碎銀`); }; sl.appendChild(sb);
+    }
+  }
+}
+function openRuneSheet(id){
+  const rn = (G.runeBag||[]).find(r=>r.id===id); if(!rn) return;
+  const a=rn.affixes[0], r=RARITIES[rn.rar], val=runeSellVal(rn);
+  openSheet(`<h3 class="${r.cls}">${rn.icon} ${rn.name}</h3><div class="base">${r.n}符文｜${AFFIXES[a.k].fmt(a.v)}</div>
+    <div class="row" style="margin-top:16px"><button class="btn primary" onclick="socketRune(${rn.id})">鑲入符文槽</button><button class="btn danger" onclick="sellRune(${rn.id})">分解 +${val}🪙</button></div>
+    <button class="btn" style="margin-top:8px" onclick="openGear()">關閉</button>`);
+}
+function sellRune(id){
+  const i=G.runeBag.findIndex(r=>r.id===id); if(i<0) return;
+  const val=runeSellVal(G.runeBag[i]);
+  G.runeBag.splice(i,1); G.gold+=val; closeSheet(); renderGear(); save(); toast(`分解得 ${val} 碎銀`);
+}
 
 function renderGear(){
   $('gear-gold').textContent = '🪙 ' + G.gold;
@@ -277,7 +336,7 @@ function renderGear(){
   // 個人／共用 分頁
   const tabRow = document.createElement('div');
   tabRow.className = 'row'; tabRow.style.cssText = 'gap:6px;margin-bottom:8px';
-  for(const [t, label, arr] of [['own','個人倉庫',G.stash],['shared','共用倉庫',ACC.sharedStash]]){
+  for(const [t, label, arr] of [['own','個人倉庫',G.stash],['shared','共用倉庫',ACC.sharedStash],['runes','符文',G.runeBag||[]]]){
     const b = document.createElement('button');
     b.className = 'btn small' + (gearTab===t?' primary':''); b.style.flex = '1';
     b.textContent = `${label} ${arr.length}`;
@@ -285,6 +344,7 @@ function renderGear(){
     tabRow.appendChild(b);
   }
   sl.appendChild(tabRow);
+  if(gearTab==='runes'){ renderRuneStash(sl); return; }
   const stash = gearTab==='shared' ? ACC.sharedStash : G.stash;
   const fromKind = gearTab==='shared' ? 'shared' : 'stash';
   if(!stash.length){
@@ -316,17 +376,6 @@ function renderGear(){
     sm.textContent = sellMode ? '✓ 批次販售中——點裝備勾選' : '🏷️ 批次販售（多選）';
     sm.onclick = ()=>{ sellMode = !sellMode; sellSel.clear(); renderGear(); };
     sl.appendChild(sm);
-    if(!sellMode){
-      const junk = G.stash.filter(i=>i.rar<=1);
-      if(junk.length>=2){
-        const v = junk.reduce((s,i)=>s+6+i.rar*10+Math.floor(i.base/2),0);
-        const bd = document.createElement('button');
-        bd.className='btn small'; bd.style.marginBottom='6px';
-        bd.textContent = `一鍵分解 普通+精良 ×${junk.length}（+${v}🪙）`;
-        bd.onclick = ()=>{ G.stash = G.stash.filter(i=>i.rar>1); G.gold += v; save(); renderGear(); toast(`分解 ${junk.length} 件，得 ${v} 碎銀`); };
-        sl.appendChild(bd);
-      }
-    }
   } else { sellMode = false; }   // 共用分頁不販售
   const slotOrder = {w:0, a:1, t:2};
   const sorted = stash
@@ -345,8 +394,8 @@ function renderGear(){
   }
   if(selling){
     const p2 = document.createElement('button'); p2.className='btn small'; p2.style.cssText='width:100%;margin-top:8px';
-    p2.textContent = '＋全選 普通+精良（依目前篩選）';
-    p2.onclick = ()=>{ for(const i of sorted) if(i.rar<=1) sellSel.add(i.id); renderGear(); };
+    p2.textContent = sellSel.size ? '全部取消' : '全選（依目前篩選）';
+    p2.onclick = ()=>{ if(sellSel.size) sellSel.clear(); else for(const i of sorted) sellSel.add(i.id); renderGear(); };
     sl.appendChild(p2);
     const sel = G.stash.filter(i=>sellSel.has(i.id));
     if(sel.length){
@@ -422,11 +471,12 @@ function openSmith(){ renderSmith(); showScreen('s-smith'); }
 
 function smithCost(it){ return Math.round(30 * Math.pow(it.up+1, 1.5)); }
 
-function smithTier(up){ // 下一級(up+1)的需求與成功率
+function smithTier(up){ // 下一級(up+1)：材料、數量、素質增益、成功率（+1~6 保證，之後每級 -10%）
   const next = up + 1;
-  if(next <= 6) return {mat:null, rate:100};
-  if(next <= 9) return {mat:'iron', rate:[90,80,70][next-7]};
-  return {mat:'steel', rate:[80,70,60][next-10]};
+  const rate = next <= 6 ? 1 : Math.max(0.1, 1 - (next - 6) * 0.1);
+  if(next <= 6) return {mat:null, qty:0, gain:1, rate};
+  if(next <= 9) return {mat:'iron', qty:[2,4,8][next-7], gain:2, rate};
+  return {mat:'steel', qty:[2,4,8][next-10], gain:3, rate};
 }
 
 function tryUpgrade(sl){
@@ -435,16 +485,17 @@ function tryUpgrade(sl){
   if(it.up >= cap){ toast('已達此稀有度的精煉上限'); return; }
   const cost = smithCost(it), tier = smithTier(it.up);
   if(G.gold < cost){ toast('碎銀不夠'); return; }
-  if(tier.mat && (G.mats[tier.mat]||0) < 1){ toast('缺少材料：'+MATS[tier.mat].n); return; }
+  if(tier.mat && (G.mats[tier.mat]||0) < tier.qty){ toast(`缺少材料：${MATS[tier.mat].n} ×${tier.qty}`); return; }
   G.gold -= cost;
-  if(tier.mat) G.mats[tier.mat]--;
-  if(Math.random()*100 < tier.rate){
+  if(tier.mat) G.mats[tier.mat] -= tier.qty;
+  if(Math.random() < tier.rate){
     it.up++;
-    toast(`精煉成功：${it.name} +${it.up}`);
+    save(); renderSmith();
+    toast(`精煉成功：${it.name} +${it.up}（${sl==='w'?'攻擊':'防禦'} +${tier.gain}）`);
   } else {
-    toast('精煉失敗——材料在鐵砧上碎成了灰。（等級未降）');
+    save(); renderSmith();
+    toast(`精煉失敗——碎銀與材料化為灰燼（等級未降）`);
   }
-  save(); renderSmith();
 }
 
 function reforgeCost(it){ return Math.round((60 + it.rar*40) * Math.pow(1.5, it.rf||0)); }
@@ -522,17 +573,18 @@ function renderSmith(){
   for(const sl of ['w','a']){
     const it = G.equip[sl]; if(!it) continue; any = true;
     const cost = smithCost(it);
-    const gain = sl==='w' ? '攻擊 +2' : '防禦 +2';
     const cap = RARITIES[it.rar].upCap;
     const tier = smithTier(it.up);
+    const gain = (sl==='w'?'攻擊':'防禦') + ' +' + tier.gain;
     const d = document.createElement('div'); d.className = `item-row ${RARITIES[it.rar].b}`;
     if(it.up >= cap){
       d.innerHTML = `<span class="in ${RARITIES[it.rar].cls}">${it.name}+${it.up}</span>
         <span class="is">已達${RARITIES[it.rar].n}上限 +${cap}</span>`;
     } else {
-      const matTxt = tier.mat ? `+${MATS[tier.mat].i}${MATS[tier.mat].n}×1` : '';
+      const matTxt = tier.mat ? `＋${MATS[tier.mat].i}${MATS[tier.mat].n}×${tier.qty}` : '';
+      const rateTxt = tier.rate < 1 ? `｜成功 ${Math.round(tier.rate*100)}%` : '';
       d.innerHTML = `<span class="in ${RARITIES[it.rar].cls}">${it.name}${it.up?'+'+it.up:''}</span>
-        <span class="is">⚒️ ${gain}｜${cost}🪙${matTxt}｜${tier.rate}%</span>`;
+        <span class="is">⚒️ ${gain}｜${cost}🪙${matTxt}${rateTxt}</span>`;
       d.onclick = ()=>tryUpgrade(sl);
     }
     list.appendChild(d);
@@ -548,6 +600,6 @@ function renderSmith(){
   if(G.rec.deep < 10) list.insertAdjacentHTML('beforeend',
     '<p style="color:var(--dim);font-size:12px;margin-top:8px">🔒 最深抵達 10 層後，鐵匠會學會「重鑄詞綴」。</p>');
   list.insertAdjacentHTML('afterbegin', `<div style="text-align:right;color:var(--gold);font-size:14px">🪙 ${G.gold}　<span style="color:var(--dim)">${MATS.iron.i}${MATS.iron.n}×${G.mats.iron}　${MATS.steel.i}${MATS.steel.n}×${G.mats.steel}</span></div>
-    <p style="color:var(--dim);font-size:12px">精煉上限：普通+3／精良+6／稀有+9／傳說+12｜+7起需${MATS.iron.n}（沉沒王國）｜+10起需${MATS.steel.n}（血肉迴廊）｜失敗不降級</p>`);
+    <p style="color:var(--dim);font-size:12px">上限：普通+3／精良+6／稀有+9／傳說+12｜+1~6只需碎銀·素質+1｜+7~9需${MATS.iron.n} 2/4/8·素質+2｜+10~12需${MATS.steel.n} 2/4/8·素質+3</p>`);
 }
 

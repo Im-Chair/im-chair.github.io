@@ -780,7 +780,7 @@ function winBattle(){
   if(drops.length) bountyProgress('loot');
   bountyProgress('streakkill');
   if(B.noHit) bountyProgress('flawless');
-  if(Math.random() < (B.boss?0.22:0.05)){ if(!G.runeBag) G.runeBag=[]; const rn = makeRune(R.floor); G.runeBag.push(rn); toast('🔯 拾獲符文：'+rn.name); }   // 符文掉落
+  if(Math.random() < (B.boss?0.22:0.05)){ if(!G.runeBag) G.runeBag=[]; const rn = makeRune(R.floor, R.cycle); G.runeBag.push(rn); toast('🔯 拾獲符文：'+rn.name); }   // 符文掉落
   setTimeout(()=>{
     showLoot(drops, gold, B.boss?'👑':'⚔️', isFinal?'你打穿了深淵的心臟':(B.boss?'首領倒下了':'戰鬥勝利'),
       `獲得 ${gold} 碎銀` + (potionDrop? `，撿到 ${POTIONS[potionDrop].i}${POTIONS[potionDrop].n}`:'') + (potionOverflow? `，藥水袋滿——折成 ${potionOverflow} 碎銀`:'') + (matDrop? `，拾獲 ${MATS[matDrop].i}${MATS[matDrop].n} ×1`:''), mendHeal? `（急救回復 ${mendHeal} 血）`:'');

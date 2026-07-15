@@ -123,7 +123,8 @@ function rateFromStat(v){ // 素質→率 分段換算：前100÷8、100-200÷16
 function defRate(){ return Math.min(RATE_CAP, (CLASSES[G.cls].baseRates.def||0) + rateFromStat(statTotal('vit')) + sumAffix('defr')); }
 function dodgeRate(){ return hasCurse('heavy2') ? 0 : Math.min(RATE_CAP, (CLASSES[G.cls].baseRates.dodge||0) + rateFromStat(statTotal('agi')) + sumAffix('agile')); }
 function critRate(){ return Math.min(RATE_CAP, (CLASSES[G.cls].baseRates.crit||0) + rateFromStat(statTotal('spi')) + sumAffix('crit')); }
-function eqStat(it){ return it ? it.base + it.up*2 : 0; }   // 裝備有效攻防：每強化等級 +2
+function upBonus(up){ let b=0; for(let l=1;l<=(up||0);l++) b += l<=6?1:l<=9?2:3; return b; }   // 精煉增益：+1~6每級+1、+7~9+2、+10~12+3
+function eqStat(it){ return it ? it.base + upBonus(it.up) : 0; }
 function playerDef(){ // 防禦力（點數）：全職通用底＋護甲面板
   const a = G.equip.a;
   return BASE_DEF + eqStat(a);
