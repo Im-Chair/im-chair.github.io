@@ -203,7 +203,7 @@ function buyBox(i){
       <button class="btn" onclick="closeSheet()">離開</button></div>`);
 }
 
-function runeGemPrice(rn){ return (rn.rar+1)*10; }   // 普10／精良20／稀有30／傳說40
+function runeGemPrice(rn){ return (rn.rar+1)*20; }   // 普20／精良40／稀有60／傳說80（鑽石梯度保留，消耗加倍）
 function buyRune(i){
   const s = G.market && G.market.runes && G.market.runes[i];
   if(!s || s.sold) return;
