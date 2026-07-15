@@ -27,6 +27,7 @@ function makeItem(floor, bonus){
   const ri = rollRarity(floor, bonus||0), rar = RARITIES[ri];
   const slot = pick(['w','w','a','a','t']);
   const it = {id:uid++, slot, rar:ri, up:0, banked:false, affixes:[]};
+  it.pf = floor; it.pc = (R && R.cycle>0) ? R.cycle : 0;     // 出身樓層/輪迴（重鑄依此還原強度）
   const cycB = 1 + ((R && R.cycle>0) ? cycVal(R.cycle) : 0); // 輪迴基礎值加成（武攻/護防跟上敵人倍率）
   if(slot==='w'){
     it.wtype = pick(['dagger','sword','axe','staff']);
@@ -257,12 +258,12 @@ function openRunes(){
   if(!G.runes) G.runes=[null,null,null]; if(!G.runeBag) G.runeBag=[];
   let html='<h3>符文</h3><p class="base">符文鑲進符文槽即被動生效，不佔裝備、跨探索永久保留。</p><div class="section-title">符文槽 '+G.runes.filter(Boolean).length+'/3</div><div class="item-list">';
   G.runes.forEach((rn,i)=>{ if(rn){ const a=rn.affixes[0];
-    html+=`<div class="item-row ${RARITIES[rn.rar].b}" onclick="unsocketRune(${i})"><span class="in ${RARITIES[rn.rar].cls}">${rn.icon} ${rn.name}</span><span class="is">${AFFIXES[a.k].fmt(a.v)}　<span style="color:var(--red)">取下</span></span></div>`;
+    html+=`<div class="item-row ${RARITIES[rn.rar].b}" onclick="unsocketRune(${i})"><div style="width:100%"><div class="${RARITIES[rn.rar].cls}" style="font-weight:600">${rn.icon} ${rn.name}<span style="float:right;color:var(--red);font-weight:400">取下</span></div><div style="color:var(--dim);font-size:12px;line-height:1.35;margin-top:3px">${AFFIXES[a.k].fmt(a.v)}</div></div></div>`;
   } else html+=`<div class="item-row" style="opacity:.6"><span class="in" style="color:var(--dim)">◇ 空符文槽</span></div>`; });
   html+='</div><div class="section-title">持有符文</div><div class="item-list">';
   if(!G.runeBag.length) html+='<p style="color:var(--dim);font-size:13px">還沒有符文。深淵裡打得到。</p>';
   for(const rn of G.runeBag){ const a=rn.affixes[0];
-    html+=`<div class="item-row ${RARITIES[rn.rar].b}" onclick="socketRune(${rn.id})"><span class="in ${RARITIES[rn.rar].cls}">${rn.icon} ${rn.name}</span><span class="is">${AFFIXES[a.k].fmt(a.v)}　<span style="color:var(--gold)">鑲入</span></span></div>`; }
+    html+=`<div class="item-row ${RARITIES[rn.rar].b}" onclick="socketRune(${rn.id})"><div style="width:100%"><div class="${RARITIES[rn.rar].cls}" style="font-weight:600">${rn.icon} ${rn.name}<span style="float:right;color:var(--gold);font-weight:400">鑲入</span></div><div style="color:var(--dim);font-size:12px;line-height:1.35;margin-top:3px">${AFFIXES[a.k].fmt(a.v)}</div></div></div>`; }
   html+='</div><button class="btn" style="margin-top:12px" onclick="closeSheet()">關閉</button>';
   openSheet(html);
 }
@@ -290,7 +291,7 @@ function renderRuneStash(sl){
     .sort((a,b)=>(b.rar-a.rar) || (a.affixes[0].k<b.affixes[0].k?-1:a.affixes[0].k>b.affixes[0].k?1:0));
   for(const rn of sorted){ const a=rn.affixes[0]; const checked=sellSel.has(rn.id);
     const d=document.createElement('div'); d.className=`item-row ${RARITIES[rn.rar].b}`;
-    d.innerHTML=`<span class="in ${RARITIES[rn.rar].cls}">${sellMode?(checked?'☑ ':'☐ '):''}${rn.icon} ${rn.name}</span><span class="is">${RARITIES[rn.rar].n}｜${AFFIXES[a.k].fmt(a.v)}</span>`;
+    d.innerHTML=`<div style="width:100%"><div class="${RARITIES[rn.rar].cls}" style="font-weight:600">${sellMode?(checked?'☑ ':'☐ '):''}${rn.icon} ${rn.name}<span style="float:right;color:var(--dim);font-weight:400;font-size:11px">${RARITIES[rn.rar].n}</span></div><div style="color:var(--dim);font-size:12px;line-height:1.35;margin-top:3px">${AFFIXES[a.k].fmt(a.v)}</div></div>`;
     d.onclick = sellMode ? ()=>{ if(sellSel.has(rn.id)) sellSel.delete(rn.id); else sellSel.add(rn.id); renderGear(); } : ()=>openRuneSheet(rn.id);
     sl.appendChild(d);
   }
@@ -519,10 +520,24 @@ function renderReforgeLock(){
   html += `<div class="row" style="margin-top:16px"><button class="btn primary" onclick="doReforge()">重鑄（${cost}🪙）</button><button class="btn" onclick="closeSheet()">取消</button></div>`;
   openSheet(html);
 }
+function reforgeCtx(it){   // 重鑄用的強度情境：新裝備讀出身；舊裝備由現有素質反推有效樓層，避免縮水
+  if(it.pf != null) return {floor: it.pf, cyc: it.pc||0};
+  let eff = G.rec.deep || 10;
+  for(const a of it.affixes){
+    const A = AFFIXES[a.k]; if(!A || !A.stat) continue;
+    const key = AFFIX_BAND[a.k];
+    const bd = (ROLL_BANDS[key] && ROLL_BANDS[key][it.rar]) || [A.min, A.max];
+    const mid = (bd[0]+bd[1])/2;
+    const f = (a.v - mid) / 0.3;                 // 反推：v ≈ 帶中值 + 樓層×0.3
+    if(f > eff) eff = f;
+  }
+  return {floor: Math.round(eff), cyc: 0};
+}
 function doReforge(){
   const slot = reforgeSlot, it = G.equip[slot]; if(!it) return;
   const cost = Math.round(reforgeCost(it) * (1 + reforgeLocks.length*0.5)); if(G.gold < cost){ toast('碎銀不夠'); return; }
   G.gold -= cost; it.rf = (it.rf||0) + 1;
+  const ctx = reforgeCtx(it);
   const legs = it.affixes.filter(a=>AFFIXES[a.k].leg);
   const curses = it.affixes.filter(a=>AFFIXES[a.k].curse);
   const normals = it.affixes.filter(a=>!AFFIXES[a.k].leg && !AFFIXES[a.k].curse);
@@ -535,7 +550,8 @@ function doReforge(){
   const rolled = [];
   for(let i=0;i<toRoll && pool.length;i++){
     const k = pool.splice(Math.floor(Math.random()*pool.length),1)[0];
-    let v = rollAffixVal(k, it.rar, G.rec.deep);
+    let v = rollAffixVal(k, it.rar, ctx.floor);
+    if(ctx.cyc>0 && (AFFIXES[k].stat || AFFIX_BAND[k]==='hp' || AFFIX_BAND[k]==='mp')) v = Math.round(v*(1+cycVal(ctx.cyc)));
     if(it.cursed) v = Math.round(v*1.4);
     rolled.push({k, v});
   }
