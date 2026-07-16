@@ -145,7 +145,7 @@ function openMarket(){
   (m.runes||[]).forEach((s,i)=>{
     if(s.sold){ html += `<div class="item-row" style="opacity:.4"><span class="in">已售出</span></div>`; return; }
     const rn = s.rune, a = rn.affixes[0], price = runeGemPrice(rn);
-    html += `<div class="item-row ${RARITIES[rn.rar].b}" onclick="buyRune(${i})"><span class="in ${RARITIES[rn.rar].cls}">${rn.icon} ${rn.name}</span><span class="is">${AFFIXES[a.k].fmt(a.v)}｜💎${price}</span></div>`;
+    html += `<div class="item-row ${RARITIES[rn.rar].b}" onclick="buyRune(${i})"><span class="in ${RARITIES[rn.rar].cls}">${rn.icon} ${rn.name}</span><span class="is">${AFFIXES[a.k].fmt(a.v)}</span><span class="ip">💎${price}</span></div>`;
   });
   html += '</div>';
   html += `<button class="btn small" style="margin-top:10px" onclick="rerollMarket()">🎲 換一批貨（80🪙）</button>
