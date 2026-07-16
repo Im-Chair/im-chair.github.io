@@ -115,8 +115,8 @@ h1.title{
   display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--line);
   border-radius:10px;background:var(--panel);cursor:pointer;
 }
-.item-row .in{font-size:14px;}
-.item-row .is{font-size:12px;color:var(--dim);margin-left:auto;white-space:nowrap;}
+.item-row .in{font-size:14px;white-space:nowrap;}
+.item-row .is{font-size:12px;color:var(--dim);margin-left:auto;text-align:right;min-width:0;line-height:1.4;}
 .r-white{color:var(--white-r);} .r-blue{color:var(--blue);} .r-gold{color:var(--gold);} .r-orange{color:var(--orange);}
 .b-white{border-color:#3a3f4d;} .b-blue{border-color:#2c4d6e;} .b-gold{border-color:#6e5a26;} .b-orange{border-color:#7a4622;}
 .tag-new{font-size:10px;color:var(--bg);background:var(--gold);border-radius:4px;padding:1px 5px;margin-left:6px;}
