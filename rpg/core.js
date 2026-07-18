@@ -63,9 +63,27 @@ function certText(cert){ // 認證成就顯示文字
   const roman = 'I'.repeat(Math.min(cert.cycle,3)) + (cert.cycle>3?'+'+(cert.cycle-3):'');
   return '輪迴'+roman+' '+cert.floor;
 }
-function realmFor(floor){ return REALMS.find(z=>floor>=z.from && floor<=z.to); }
+function realmFor(floor){ return REALMS[realmIdx(floor)]; }   // 依 realmIdx 取域（過 50 層後 5 域循環，規則跟著繞回）
 
 function healMult(){ const z = R? realmFor(R.floor):null; return (z && z.rule==='heal75')? 0.75 : 1; }
+
+/* 異常狀態 (§8)：毒/燃分段傷害＋職業專精上限 */
+function dotPct(kind, layers){   // 該回合傷害佔目標最大生命的比例（前10層各1.5%；尾段 毒0.5%/燃1%）
+  const head = Math.min(layers, 10) * DOT.base;
+  const tail = Math.max(0, layers - 10) * (kind==='poison' ? DOT.poisonTail : DOT.burnTail);
+  return head + tail;
+}
+function dotCap(kind, onEnemy){   // 層數上限：對敵人吃職業專精（盜賊毒20/法師燃15），對自己（敵人下的）維持10
+  if(!onEnemy) return DOT.baseCap;
+  if(kind==='poison') return (G && G.cls==='assassin') ? DOT.poisonSpecCap : DOT.baseCap;
+  if(kind==='burn')   return (G && G.cls==='white')    ? DOT.burnSpecCap   : DOT.baseCap;
+  return DOT.baseCap;
+}
+
+function blessMult(){   // 數值型祝福隨深度/輪迴縮放（見 data.js BLESS_SCALE_KEYS）；率型/吸血維持固定
+  const f = R ? R.floor : 1, c = R ? (R.cycle||0) : 0;
+  return 1 + (f-1)*0.05 + cycVal(c)*0.5;   // 每層 +5%、每重輪迴再加 cycVal×0.5（起點值，可調）
+}
 
 function save(){ if(G) G.run = R; accSave();   // 寫回帳號（G 就是當前角色，已在 ACC 內）
   const cg = document.getElementById('camp-gold'); if(cg && G) cg.textContent = G.gold;
@@ -80,7 +98,7 @@ function load(){ try{
   if(R && Array.isArray(R.potions)){ R.pots = {}; for(const k of R.potions) R.pots[k] = Math.min(3,(R.pots[k]||0)+1); delete R.potions; }
   if(R && !R.pots) R.pots = {};
   return true;
-}catch(e){} G = null; R = null; return false; }
+}catch(e){ console.warn('[abyss] 讀檔失敗，將以空存檔開始：', e); } G = null; R = null; return false; }
 
 function showScreen(id){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('show'));
@@ -100,17 +118,25 @@ function sumAffix(key){
     const it = G.equip[s]; if(!it) continue;
     for(const a of it.affixes) if(a.k===key && !AFFIXES[a.k].curse) v += a.v;
   }
-  if(G.runes) for(const rn of G.runes){ if(rn) for(const a of rn.affixes) if(a.k===key && !AFFIXES[a.k].curse) v += a.v; } // 符文被動
-  if(R && R.bless) for(const b of R.bless) if(b.k===key) v += b.v;
+  if(G.runes) for(const rn of G.runes){ if(rn) for(const a of rn.affixes) if(a.k===key && !AFFIXES[a.k].curse && !a.mul) v += a.v; } // 符文被動（乘法型 mul 另由 runeMul 計）
+  if(R && R.bless) for(const b of R.bless) if(b.k===key) v += (BLESS_SCALE_KEYS[b.k] ? Math.round(b.v * blessMult()) : b.v);
   if(R && R.quench && R.quench.battles>0 && R.quench.k===key) v += R.quench.v;
   return v;
 }
 
-function statTotal(key){ // 五素質彙總（出廠 baseStats ＋ 裝備詞綴）
-  const base = (G.cls && CLASSES[G.cls].baseStats) ? (CLASSES[G.cls].baseStats[key]||0) : 0;
-  return base + sumAffix(key);
+function runeMul(key){ // 素質/上限型符文（mul）：回傳總乘率 1 + Σ%/100
+  let p = 0;
+  if(G.runes) for(const rn of G.runes){ if(rn) for(const a of rn.affixes) if(a.mul && a.k===key) p += a.v; }
+  return 1 + p/100;
 }
-function rateFromStat(v){ // 素質→率 分段換算：前100÷8、100-200÷16、200+÷32
+function runeFmt(a){ // 符文詞綴顯示：乘法型顯示 +X%，其餘沿用原 fmt
+  return a.mul ? `${AFFIXES[a.k].n} +${a.v}%` : AFFIXES[a.k].fmt(a.v);
+}
+function statTotal(key){ // 五素質彙總（出廠 baseStats ＋ 裝備詞綴 ＋ 素質符文乘法）
+  const base = (G.cls && CLASSES[G.cls].baseStats) ? (CLASSES[G.cls].baseStats[key]||0) : 0;
+  return Math.round((base + sumAffix(key)) * runeMul(key));
+}
+function rateFromStat(v){ // 素質→率 換算（見 data.js 的 STAT_DIV：近線性，每 ~3.5 素質換 1% 率）
   let r = 0, used = 0;
   for(const [cap, div] of STAT_DIV){
     const seg = Math.min(v, cap) - used;
@@ -130,14 +156,14 @@ function playerDef(){ // 防禦力（點數）：全職通用底＋護甲面板
   return BASE_DEF + eqStat(a);
 }
 function playerMaxHp(){
-  let hp = BASE_HP + statTotal('vit')*2 + sumAffix('hp');
+  let hp = Math.round((BASE_HP + statTotal('vit')*2 + sumAffix('hp')) * runeMul('hp'));
   if(sumAffix('fury')) hp = Math.round(hp*0.7);
   if(R && R.hpCut) hp = Math.round(hp * (1 - R.hpCut)); // 殘卷血契 (§10)
   return Math.max(1, hp);
 }
 function playerMaxMana(){
-  if(CLASSES[G.cls].mainStat !== 'int') return sumAffix('mp'); // 物攻職業無基礎法力（除非裝備給）
-  return Math.round(BASE_MANA + statTotal('spi')*2 + sumAffix('mp'));
+  if(CLASSES[G.cls].mainStat !== 'int') return Math.round(sumAffix('mp') * runeMul('mp')); // 物攻職業無基礎法力（除非裝備給）
+  return Math.round((BASE_MANA + statTotal('spi')*2 + sumAffix('mp')) * runeMul('mp'));
 }
 function manaRegenPct(){ return Math.min(MREGEN_CAP, 25 + sumAffix('mregen')); }
 function weaponType(){ const w = G.equip.w; return WEAPON_TYPES[(w && w.wtype) || 'sword']; }
@@ -170,12 +196,12 @@ function cd(c){ if(!G.cycData[c]) G.cycData[c] = {deep:0, cp:0}; return G.cycDat
 
 function cycMult(c){ if(c<=0) return 1; return c<=3 ? CYC_MULT[c-1] : CYC_MULT[2]*Math.pow(2.86, c-3); } // 等比×2.86/重 (§9)
 
-function cycVal(c){ if(c<=0) return 0; return c<=3 ? CYC_VAL[c-1] : (1+CYC_VAL[2])*Math.pow(1.7, c-3) - 1; } // 裝備價值×1.7/重
+function cycVal(c){ if(c<=0) return 0; return c<=3 ? CYC_VAL[c-1] : (1+CYC_VAL[2])*Math.pow(2.3, c-3) - 1; } // 裝備價值：輪迴無限段 ×2.3/重（貼近怪物 ×2.86，落差不再暴走）
 
 function scaleMult(floor){
   const base = 1 + (floor-1)*0.08 + Math.max(0, floor-50)*0.04;
   return base * cycMult((R&&R.cycle)||0);
 }
 
-function realmIdx(floor){ return Math.min(4, Math.floor((Math.min(floor,50)-1)/10)); }
+function realmIdx(floor){ return (Math.ceil(floor/10) - 1) % 5; }   // 每 10 層一域；過 50 層循環回域 0（1-10→0…41-50→4、51-60→0…）
 

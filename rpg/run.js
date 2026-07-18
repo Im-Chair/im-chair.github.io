@@ -32,7 +32,7 @@ function openDivePicker(){
     html += `<p class="base" style="margin-top:8px">五十層的旅程，五域五王。最深 ${G.orig.deep} 層${G.orig.done?'——你已走到底過':''}。不產出精煉材料。</p>`;
   } else {
     const c = cd(pendingMode);
-    html += `<p class="base" style="margin-top:8px">深淵重演，敵人 ×${cycMult(pendingMode).toFixed(1)}，掉落更兇，精煉材料只在輪迴出土。${c.deep>0?`本輪最深 ${c.deep} 層。`:'你還沒踏進本輪。'}</p>`;
+    html += `<p class="base" style="margin-top:8px">深淵重演，敵人 ×${cycMult(pendingMode).toFixed(1)}，掉落更兇，精煉材料只在輪迴出土——第 30 層前掉沉鐵、之後掉心鋼。${c.deep>0?`本輪最深 ${c.deep} 層。`:'你還沒踏進本輪。'}</p>`;
     if(pendingMode === cu && !(certScore(G.rec.cert) >= cu*1000 + CYC_NEXT))
       html += `<p style="color:var(--dim);font-size:12px">本輪逃離並認證 ${CYC_NEXT} 層，解鎖下一重輪迴。</p>`;
   }

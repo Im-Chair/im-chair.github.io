@@ -89,8 +89,20 @@ function exportSave(){
   openSheet(`<h3>匯出存檔</h3>
     <p class="base">全選複製下面這串，貼到備忘錄保存：</p>
     <textarea id="sv-out" readonly style="width:100%;height:120px;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px;font-size:11px">${code}</textarea>
-    <button class="btn primary" style="margin-top:8px" onclick="const t=document.getElementById('sv-out');t.select();t.setSelectionRange(0,999999);document.execCommand('copy');toast('已複製')">全選並複製</button>
+    <button class="btn primary" style="margin-top:8px" onclick="copySave()">全選並複製</button>
     <button class="btn" style="margin-top:8px" onclick="closeSheet()">關閉</button>`);
+}
+
+function copySave(){
+  const t = document.getElementById('sv-out'); if(!t) return;
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(t.value).then(()=>toast('已複製')).catch(()=>fallbackCopy(t));
+  } else fallbackCopy(t);
+}
+function fallbackCopy(t){   // 舊瀏覽器 / 非安全內容的退路
+  t.select(); t.setSelectionRange(0,999999);
+  try{ document.execCommand('copy'); toast('已複製'); }
+  catch(e){ toast('複製失敗，請手動選取'); }
 }
 
 function importSaveUI(){
@@ -162,7 +174,7 @@ function openRunStats(){
   // 功能與傳說
   const extra = [
     ['vamp','🩸 吸血', v=>Math.min(VAMP_CAP,v)+'%'+(v>VAMP_CAP?'（上限'+VAMP_CAP+'）':'')],
-    ['thorns','🌵 荊棘', v=>'反彈 '+v], ['mend','💊 急救', v=>'戰後回 '+v+'%'],
+    ['thorns','🌵 荊棘', v=>'反彈受到傷害 '+v+'%'], ['mend','💊 急救', v=>'戰後回 '+v+'%'],
     ['dotdrain','🩸 蝕取', v=>'毒燃回血 '+v+'%'],
     ['ptouch','☠️ 淬毒', v=>'攻擊附 '+v+' 層'], ['btouch','🔥 淬焰', v=>'攻擊附 '+v+' 層'],
     ['bpyre','🔥 烈焰', v=>'燃傷 +'+v+'%'], ['ppyre','☠️ 劇毒', v=>'毒傷 +'+v+'%'],
@@ -200,7 +212,7 @@ function openRunStats(){
   if(R && R.bless.length){
     html += '<div class="section-title">本次祝福</div>';
     const bn = {str:'力量',crit:'銳利',vamp:'血契',plate:'守勢',hp:'堅韌'};
-    html += R.bless.map(b=>`<div class="affix">✦ ${bn[b.k]||b.k} +${b.v}</div>`).join('');
+    html += R.bless.map(b=>`<div class="affix">✦ ${bn[b.k]||b.k} +${BLESS_SCALE_KEYS[b.k] ? Math.round(b.v*blessMult()) : b.v}</div>`).join('');
   }
   if(R && R.bag.length){
     html += `<div class="section-title">行囊（${R.bag.length} 件・未保管）</div><div class="item-list">`;

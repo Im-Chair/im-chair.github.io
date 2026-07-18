@@ -179,8 +179,8 @@ function startPlayerTurn(first){
     const mm = playerMaxMana();
     R.mana = Math.min(mm, (R.mana||0) + Math.round(mm * manaRegenPct()/100));
   }
-  if(B.st.poison){ const d = Math.ceil(playerMaxHp() * DOT.poisonPct * B.st.poison); damagePlayer(d, '中毒');
-    log(`中毒發作，你受到 ${d} 點傷害（${B.st.poison} 層）。`,'dmg'); floatDmg('player-zone','-'+d,''); B.st.poison -= 1; if(B.st.poison<=0) delete B.st.poison;
+  if(B.st.poison){ const d = Math.ceil(playerMaxHp() * dotPct('poison', B.st.poison)); damagePlayer(d, '中毒');
+    log(`中毒發作，你受到 ${d} 點傷害（${B.st.poison} 層）。`,'dmg'); floatDmg('player-zone','-'+d,''); B.st.poison = Math.floor(B.st.poison/2); if(B.st.poison<=0) delete B.st.poison;
     if(R.hp<=0){ playerDie(); return; } }
   if(B.st.stunImm){ B.st.stunImm--; if(!B.st.stunImm) delete B.st.stunImm; }
   if(B.st.stun){ B.st.stun--;
@@ -288,7 +288,7 @@ function skillDesc(sid){
   const parts = [];
   if(sk.mult){
     let mult = sk.mult;
-    if(sk.poisonAmp && B && tgt()) mult = sk.mult * (1 + sk.poisonAmp * (tgt().st.poison||0));
+    if(sk.poisonAmp && B && tgt()) mult = sk.mult * (1 + sk.poisonAmp * Math.min(GARROTE_AMP_CAP, tgt().st.poison||0));
     if(sk.debuffAmp && B && tgt() && !sk._solo){
       const kinds = ['weak','vuln','poison','burn'].filter(k=>tgt().st[k]).length;
       mult = sk.mult * (1 + sk.debuffAmp * Math.min(4,kinds));
@@ -312,8 +312,8 @@ function skillDesc(sid){
 }
 
 const STATUS_INFO = {
-  poison:'☠️ 中毒：每回合失去（層數 × 最大生命 1.2%），每回合層數 −1。無視防禦與格擋。',
-  burn:'🔥 燃燒：每回合失去（層數 × 最大生命 2%），每回合層數減半。無視防禦與格擋。',
+  poison:'☠️ 中毒：每回合失去（前10層各1.5%、之後各0.5% 最大生命），每回合層數減半。無視防禦與格擋。',
+  burn:'🔥 燃燒：每回合失去（前10層各1.5%、之後各1% 最大生命），每回合層數減半。無視防禦與格擋。',
   weak:'💤 虛弱：造成的傷害 ×0.75。',
   vuln:'🎯 易傷：受到的傷害 ×1.5。',
   stun:'💫 暈眩：跳過整個回合。結束後獲得 2 回合暈眩抵抗。',
@@ -450,7 +450,7 @@ function castSkill(sk){
         if(!aliveEs().length) break;
         if(tgt().hp <= 0) ensureTarget();
         let mult = sk.mult;
-        if(sk.poisonAmp) mult = sk.mult * (1 + sk.poisonAmp * Math.min(DOT.stackCap, tgt().st.poison||0));
+        if(sk.poisonAmp) mult = sk.mult * (1 + sk.poisonAmp * Math.min(GARROTE_AMP_CAP, tgt().st.poison||0));
         dealToEnemy(mult, sk, sk);
       }
     }
@@ -464,7 +464,7 @@ function applyStatus(target, ap, name){
     if(k==='stun' && target.stunImm){ log('暈眩被抵抗了！','sys'); continue; }
     if(k==='poison' && target._immP){ log('☠️🚫 毒免——毒層無法施加。','sys'); continue; }
     if(k==='burn' && target._immB){ log('🔥🚫 燃免——燃層無法施加。','sys'); continue; }
-    const cap = (k==='poison'||k==='burn') ? DOT.stackCap : 99;
+    const cap = (k==='poison'||k==='burn') ? dotCap(k, target !== B.st) : 99;   // 對敵吃職業專精、對己維持 base
     target[k] = Math.min(cap, (target[k]||0) + v);
   }
   const names = {poison:'中毒',burn:'燃燒',weak:'虛弱',vuln:'易傷',stun:'暈眩',wound:'重傷'};
@@ -492,7 +492,7 @@ function dealToEnemy(mult, sk, f){
     d = Math.round(d*cm); crit = true;
     if(B.nextCrit>0) B.nextCrit--;
     if(sumAffix('spark') && B.sparkN < 1){ B.energy = Math.min(B.maxEnergy, B.energy+1); B.sparkN++; log('燧心：爆擊回復 1 行動點。','sys'); } }
-  /* 蝕魂：攻擊轉中毒，每擊 2 層，受 10 層上限結構性封頂 */
+  /* 蝕魂：攻擊轉中毒，每擊 2 層，受毒層上限（20）結構性封頂 */
   if(sumAffix('vform') && !(f && f.poisonAmp)){
     applyStatus(e.st, {poison:2});
     floatDmg(zone, '☠2', crit?'crit':'');
@@ -545,7 +545,7 @@ function dealToEnemy(mult, sk, f){
   }
   if(f && f.apply) applyStatus(e.st, f.apply);
   if(f && f.poisonProc && e.st.poison && e.hp > 0){
-    const pd = Math.ceil(e.maxhp * DOT.poisonPct * e.st.poison * (sumAffix('vform')?1.5:1) * (1 + sumAffix('ppyre')/100));
+    const pd = Math.ceil(e.maxhp * dotPct('poison', e.st.poison) * (sumAffix('vform')?1.5:1) * (1 + sumAffix('ppyre')/100));
     e.hp -= pd; floatDmg(zone, '-'+pd, '');
     log(`催毒——${e.n} 的毒立即發作 ${pd} 傷害。`,'dmg');
   }
@@ -594,7 +594,7 @@ function tickBurn(who, zone, name){
     const isEnemy = who.maxhp !== undefined;
     const maxhp = isEnemy ? who.maxhp : playerMaxHp();
     const pyre = isEnemy ? (1 + sumAffix('bpyre')/100) : 1;   // 烈焰：對敵燃傷加成
-    const d = Math.ceil(maxhp * DOT.burnPct * who.st.burn * pyre);
+    const d = Math.ceil(maxhp * dotPct('burn', who.st.burn) * pyre);
     if(isEnemy){
       who.hp -= d;
       if(chemOn('burnvamp')){ const h = healPlayer(Math.ceil(d*0.3)); // 焚血
@@ -622,15 +622,16 @@ function enemyTurn(){
       if(e.hp<=0) continue;
       if(B.turn >= _ra) e.st.rage = B.turn - (_ra-1);
       if(e.st.poison){ const vf = sumAffix('vform') ? 1.5 : 1; // 蝕魂：中毒傷害 +50%
-        const d = Math.ceil(e.maxhp * DOT.poisonPct * e.st.poison * vf * (1 + sumAffix('ppyre')/100)); e.hp -= d;
+        const d = Math.ceil(e.maxhp * dotPct('poison', e.st.poison) * vf * (1 + sumAffix('ppyre')/100)); e.hp -= d;
         log(`${e.n} 中毒受到 ${d} 傷害（${e.st.poison} 層）。`,'dmg'); floatDmg('ez-'+B.es.indexOf(e),'-'+d,'');
         if(sumAffix('symbio')){ const h = healPlayer(Math.ceil(d*0.5));
           if(h>0){ log(`腐生：回復 ${h} 生命。`,'heal'); } }
         if(chemOn('poisonvamp')){ const h = healPlayer(Math.ceil(d*0.3)); // 毒吸
           if(h>0){ log(`毒吸：回復 ${h} 生命。`,'heal'); } }
-        if(sumAffix('dotdrain')){ const h = healPlayer(Math.ceil(d*sumAffix('dotdrain')/100)); // 蝕取
+        const dd = sumAffix('dotdrain') + (G.cls==='assassin' ? ASSASSIN_POISON_LEECH : 0); // 蝕取詞綴 ＋ 盜賊內建毒吸
+        if(dd){ const h = healPlayer(Math.ceil(d*dd/100));
           if(h>0){ log(`蝕取：回復 ${h} 生命。`,'heal'); } }
-        e.st.poison -= 1; if(e.st.poison<=0) delete e.st.poison;
+        e.st.poison = Math.floor(e.st.poison/2); if(e.st.poison<=0) delete e.st.poison;
         if(e.hp<=0){ log(e.n+' 被毒殺了。','sys'); onEnemySlain(e); continue; } }
       if(e.shell && !e.boss) e.block = Math.max(e.block, e.shell); // 重甲外殼恢復（王的殼只給一次，破了就破了）
       if(e.st.stunImm){ e.st.stunImm--; if(!e.st.stunImm) delete e.st.stunImm; }
@@ -657,7 +658,7 @@ function enemyTurn(){
             if(Math.random()*100 < dodgeRate()){
               log('你閃過了'+e.n+'的攻擊。','sys'); floatDmg('player-zone','閃避','blocked');
               const wt = sumAffix('thorns');
-              if(wt && chemOn('windthorn')){ e.hp -= wt*2; log(`風棘——閃身反刺 ${wt*2} 傷害。`,'dmg'); }
+              if(wt && chemOn('windthorn') && d>0){ const rf = Math.ceil(d*wt/100*2); e.hp -= rf; log(`風棘——閃身反刺 ${rf} 傷害。`,'dmg'); }
               continue; }
             // 防禦結算：(敵傷 − 防禦力/10) × (1 − 防禦率) → 格擋最後吸收
             d = Math.max(1, Math.round((d - playerDef()/10) * (1 - defRate()/100)));
@@ -682,7 +683,7 @@ function enemyTurn(){
             else floatDmg('player-zone','格擋','blocked');
             log(`${e.n} ${mv.nm||'攻擊'}造成 ${d} 傷害${absorbed?`（${absorbed} 被格擋）`:''}。`,'dmg');
             const th = sumAffix('thorns');
-            if(th && ['a','h','m','v'].includes(mv.t)){ e.hp -= th; log(`荊棘反彈 ${th} 傷害。`,'dmg'); }
+            if(th && d>0 && ['a','h','m','v'].includes(mv.t)){ const rf = Math.ceil(d*th/100); e.hp -= rf; log(`荊棘反彈 ${rf} 傷害。`,'dmg'); }
             if(mv.t==='v' && d>0){ const h = Math.min(Math.round(d*0.5), e.maxhp - e.hp); if(h>0){ e.hp += h; log(`${e.n} 吸取了 ${h} 生命。`,'heal'); } }
             if(e.evamp && d>0 && mv.t!=='v'){ const h = Math.min(Math.round(d*e.evamp), e.maxhp - e.hp); if(h>0){ e.hp += h; log(`${e.n} 汲取了 ${h} 生命。`,'heal'); } }
             if(mv.t==='s' && d>0){ const steal = Math.min(R.gold, 10 + R.floor*2); R.gold -= steal; if(steal) log(`${e.n} 偷走了 ${steal} 碎銀！`,'sys'); }

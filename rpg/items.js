@@ -145,7 +145,7 @@ function openMarket(){
   (m.runes||[]).forEach((s,i)=>{
     if(s.sold){ html += `<div class="item-row" style="opacity:.4"><span class="in">已售出</span></div>`; return; }
     const rn = s.rune, a = rn.affixes[0], price = runeGemPrice(rn);
-    html += `<div class="item-row ${RARITIES[rn.rar].b}" onclick="buyRune(${i})"><span class="in ${RARITIES[rn.rar].cls}">${rn.icon} ${rn.name}</span><span class="is">${AFFIXES[a.k].fmt(a.v)}</span><span class="ip">💎${price}</span></div>`;
+    html += `<div class="item-row ${RARITIES[rn.rar].b}" onclick="buyRune(${i})"><span class="in ${RARITIES[rn.rar].cls}">${rn.icon} ${rn.name}</span><span class="is">${runeFmt(a)}</span><span class="ip">💎${price}</span></div>`;
   });
   html += '</div>';
   html += `<button class="btn small" style="margin-top:10px" onclick="rerollMarket()">🎲 換一批貨（80🪙）</button>
@@ -249,21 +249,23 @@ function makeRune(floor, cycle){
   const w = []; for(let r=0;r<=maxR;r++) w.push(Math.pow(0.45, r));   // 越高階越稀有
   const tot = w.reduce((a,b)=>a+b,0); let x = Math.random()*tot, ri = 0;
   for(let r=0;r<=maxR;r++){ x -= w[r]; if(x<0){ ri = r; break; } }
-  const pool = Object.keys(AFFIXES).filter(k=>!AFFIXES[k].leg && !AFFIXES[k].curse);
-  const k = pick(pool);
-  const v = rollAffixVal(k, ri, floor);
-  return {id:uid++, isRune:true, rar:ri, name:'符文·'+AFFIXES[k].n, icon:'🔯', affixes:[{k,v}]};
+  const k = pick(Object.keys(RUNE_AFFIX));
+  const cat = RUNE_AFFIX[k];
+  const [lo,hi] = RUNE_BAND[cat.band][ri];
+  const affix = {k, v: rnd(lo,hi)};   // 符文值純由稀有度決定，不吃樓層/輪迴
+  if(cat.mul) affix.mul = true;        // 素質/上限型：乘法套用
+  return {id:uid++, isRune:true, rar:ri, name:'符文·'+AFFIXES[k].n, icon:'🔯', affixes:[affix]};
 }
 function openRunes(){
   if(!G.runes) G.runes=[null,null,null]; if(!G.runeBag) G.runeBag=[];
   let html='<h3>符文</h3><p class="base">符文鑲進符文槽即被動生效，不佔裝備、跨探索永久保留。</p><div class="section-title">符文槽 '+G.runes.filter(Boolean).length+'/3</div><div class="item-list">';
   G.runes.forEach((rn,i)=>{ if(rn){ const a=rn.affixes[0];
-    html+=`<div class="item-row ${RARITIES[rn.rar].b}" onclick="unsocketRune(${i})"><div style="width:100%"><div class="${RARITIES[rn.rar].cls}" style="font-weight:600">${rn.icon} ${rn.name}<span style="float:right;color:var(--red);font-weight:400">取下</span></div><div style="color:var(--dim);font-size:12px;line-height:1.35;margin-top:3px">${AFFIXES[a.k].fmt(a.v)}</div></div></div>`;
+    html+=`<div class="item-row ${RARITIES[rn.rar].b}" onclick="unsocketRune(${i})"><div style="width:100%"><div class="${RARITIES[rn.rar].cls}" style="font-weight:600">${rn.icon} ${rn.name}<span style="float:right;color:var(--red);font-weight:400">取下</span></div><div style="color:var(--dim);font-size:12px;line-height:1.35;margin-top:3px">${runeFmt(a)}</div></div></div>`;
   } else html+=`<div class="item-row" style="opacity:.6"><span class="in" style="color:var(--dim)">◇ 空符文槽</span></div>`; });
   html+='</div><div class="section-title">持有符文</div><div class="item-list">';
   if(!G.runeBag.length) html+='<p style="color:var(--dim);font-size:13px">還沒有符文。深淵裡打得到。</p>';
   for(const rn of G.runeBag){ const a=rn.affixes[0];
-    html+=`<div class="item-row ${RARITIES[rn.rar].b}" onclick="socketRune(${rn.id})"><div style="width:100%"><div class="${RARITIES[rn.rar].cls}" style="font-weight:600">${rn.icon} ${rn.name}<span style="float:right;color:var(--gold);font-weight:400">鑲入</span></div><div style="color:var(--dim);font-size:12px;line-height:1.35;margin-top:3px">${AFFIXES[a.k].fmt(a.v)}</div></div></div>`; }
+    html+=`<div class="item-row ${RARITIES[rn.rar].b}" onclick="socketRune(${rn.id})"><div style="width:100%"><div class="${RARITIES[rn.rar].cls}" style="font-weight:600">${rn.icon} ${rn.name}<span style="float:right;color:var(--gold);font-weight:400">鑲入</span></div><div style="color:var(--dim);font-size:12px;line-height:1.35;margin-top:3px">${runeFmt(a)}</div></div></div>`; }
   html+='</div><button class="btn" style="margin-top:12px" onclick="closeSheet()">關閉</button>';
   openSheet(html);
 }
@@ -291,7 +293,7 @@ function renderRuneStash(sl){
     .sort((a,b)=>(b.rar-a.rar) || (a.affixes[0].k<b.affixes[0].k?-1:a.affixes[0].k>b.affixes[0].k?1:0));
   for(const rn of sorted){ const a=rn.affixes[0]; const checked=sellSel.has(rn.id);
     const d=document.createElement('div'); d.className=`item-row ${RARITIES[rn.rar].b}`;
-    d.innerHTML=`<div style="width:100%"><div class="${RARITIES[rn.rar].cls}" style="font-weight:600">${sellMode?(checked?'☑ ':'☐ '):''}${rn.icon} ${rn.name}<span style="float:right;color:var(--dim);font-weight:400;font-size:11px">${RARITIES[rn.rar].n}</span></div><div style="color:var(--dim);font-size:12px;line-height:1.35;margin-top:3px">${AFFIXES[a.k].fmt(a.v)}</div></div>`;
+    d.innerHTML=`<div style="width:100%"><div class="${RARITIES[rn.rar].cls}" style="font-weight:600">${sellMode?(checked?'☑ ':'☐ '):''}${rn.icon} ${rn.name}<span style="float:right;color:var(--dim);font-weight:400;font-size:11px">${RARITIES[rn.rar].n}</span></div><div style="color:var(--dim);font-size:12px;line-height:1.35;margin-top:3px">${runeFmt(a)}</div></div>`;
     d.onclick = sellMode ? ()=>{ if(sellSel.has(rn.id)) sellSel.delete(rn.id); else sellSel.add(rn.id); renderGear(); } : ()=>openRuneSheet(rn.id);
     sl.appendChild(d);
   }
@@ -311,7 +313,7 @@ function renderRuneStash(sl){
 function openRuneSheet(id){
   const rn = (G.runeBag||[]).find(r=>r.id===id); if(!rn) return;
   const a=rn.affixes[0], r=RARITIES[rn.rar], val=runeSellVal(rn);
-  openSheet(`<h3 class="${r.cls}">${rn.icon} ${rn.name}</h3><div class="base">${r.n}符文｜${AFFIXES[a.k].fmt(a.v)}</div>
+  openSheet(`<h3 class="${r.cls}">${rn.icon} ${rn.name}</h3><div class="base">${r.n}符文｜${runeFmt(a)}</div>
     <div class="row" style="margin-top:16px"><button class="btn primary" onclick="socketRune(${rn.id})">鑲入符文槽</button><button class="btn danger" onclick="sellRune(${rn.id})">分解 +${val}🪙</button></div>
     <button class="btn" style="margin-top:8px" onclick="openGear()">關閉</button>`);
 }
