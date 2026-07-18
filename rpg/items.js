@@ -1,15 +1,16 @@
 'use strict';
 // ============ items.js — 裝備：生成/詞綴/裝備介面/鐵匠(精煉+重鑄)/深淵黑市 ============
 
-function rollAffixVal(k, ri, floor){
+function rollAffixVal(k, ri, floor, cyc){
   const A = AFFIXES[k];
   if(A.min === A.max && !AFFIX_BAND[k]) return A.min;
   const band = ROLL_BANDS[AFFIX_BAND[k]] || [[A.min,A.max],[A.min,A.max],[A.min,A.max],[A.min,A.max]];
   const [lo, hi] = band[ri];
   let v = rnd(lo, hi);
   if(A.stat) v += Math.round(floor * 0.3);           // 素質吃樓層 +0.3/層
-  if(R && R.cycle > 0 && (A.stat || AFFIX_BAND[k]==='hp' || AFFIX_BAND[k]==='mp'))
-    v = Math.round(v * (1 + cycVal(R.cycle)));       // 輪迴裝備價值
+  const cc = (cyc != null) ? cyc : ((R && R.cycle > 0) ? R.cycle : 0);   // 明確輪迴優先（營地生裝備用），否則讀當前 run
+  if(cc > 0 && (A.stat || AFFIX_BAND[k]==='hp' || AFFIX_BAND[k]==='mp'))
+    v = Math.round(v * (1 + cycVal(cc)));            // 輪迴裝備價值
   return Math.max(1, v);
 }
 
@@ -23,12 +24,13 @@ function rollRarity(floor, bonus){ // bonus: 0一般 1精英 2首領
   if((r-=w)<0) return 0; if((r-=b)<0) return 1; if((r-=g)<0) return 2; return 3;
 }
 
-function makeItem(floor, bonus){
+function makeItem(floor, bonus, cyc){
   const ri = rollRarity(floor, bonus||0), rar = RARITIES[ri];
   const slot = pick(['w','w','a','a','t']);
   const it = {id:uid++, slot, rar:ri, up:0, banked:false, affixes:[]};
-  it.pf = floor; it.pc = (R && R.cycle>0) ? R.cycle : 0;     // 出身樓層/輪迴（重鑄依此還原強度）
-  const cycB = 1 + ((R && R.cycle>0) ? cycVal(R.cycle) : 0); // 輪迴基礎值加成（武攻/護防跟上敵人倍率）
+  const cc = (cyc != null) ? cyc : ((R && R.cycle>0) ? R.cycle : 0);   // 明確輪迴優先（營地生裝備用），否則讀當前 run
+  it.pf = floor; it.pc = cc;                                 // 出身樓層/輪迴（重鑄依此還原強度）
+  const cycB = 1 + (cc>0 ? cycVal(cc) : 0);                  // 輪迴基礎值加成（武攻/護防跟上敵人倍率）
   if(slot==='w'){
     it.wtype = pick(['dagger','sword','axe','staff']);
     it.base = Math.round(CURVE.wpnBase(floor) * CURVE.rarMult[ri] * cycB);
@@ -42,7 +44,7 @@ function makeItem(floor, bonus){
   const chosen = [];
   for(let i=0;i<n && pool.length;i++){
     const k = pool.splice(Math.floor(Math.random()*pool.length),1)[0];
-    chosen.push({k, v:rollAffixVal(k, ri, floor)});
+    chosen.push({k, v:rollAffixVal(k, ri, floor, cc)});
   }
   it.affixes = chosen;
   if(ri===3){
@@ -78,8 +80,9 @@ function marketStock(){
     const boxes = [];
     const n = rnd(2,4);
     const mk = (bonusRar)=>{
-      let it = makeItem(Math.max(12, Math.floor(G.rec.deep*0.8)), 2), tries = 0;
-      while(it.rar !== bonusRar && tries++ < 40) it = makeItem(Math.max(12, Math.floor(G.rec.deep*0.8)), 2);
+      const g = certGearCtx();                         // 綁認證的樓層＋輪迴，讓黑市裝備吃真實輪迴倍率
+      let it = makeItem(g.floor, 2, g.cyc), tries = 0;
+      while(it.rar !== bonusRar && tries++ < 40) it = makeItem(g.floor, 2, g.cyc);
       if(it.rar !== bonusRar){ it.rar = bonusRar;
         if(bonusRar===3 && !it.affixes.some(a=>AFFIXES[a.k].leg)){
           const lp = LEG_KEYS.filter(k=>AFFIXES[k].slots.includes(it.slot));
@@ -577,12 +580,14 @@ function applyReforge(){
   const it = G.equip[pendingReforge.slot];
   if(it) it.affixes = pendingReforge.affixes;
   pendingReforge = null;
-  save(); closeSheet(); renderSmith(); toast('新詞綴已上身');
+  save(); renderSmith(); toast('新詞綴已上身');
+  reforgeItem(reforgeSlot);   // 直接回到重鑄介面（同一件），不必回鐵匠重點
 }
 
 function cancelReforge(){
   pendingReforge = null;
-  closeSheet(); renderSmith(); toast('保留了原本的詞綴');
+  renderSmith(); toast('保留了原本的詞綴');
+  reforgeItem(reforgeSlot);   // 保留原本後，仍回到重鑄介面可再鑄
 }
 
 function renderSmith(){

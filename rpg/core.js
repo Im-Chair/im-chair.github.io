@@ -57,6 +57,15 @@ function recordCert(cycle, floor){ // 只保留最難的認證成就
   const cand = {cycle, floor};
   if(certScore(cand) > certScore(G.rec.cert)) G.rec.cert = cand;
 }
+function certifyDepth(cycle, floor){ // 唯一入口：只在「逃脫」或「通關」呼叫——認證＋解鎖該深度傳送點一起做
+  recordCert(cycle, floor);
+  if(cycle === 0) G.orig.cp = Math.max(G.orig.cp, Math.min(floor, 41)); // 本源傳送點上限 41
+  else { const c = cd(cycle); c.cp = Math.max(c.cp, floor); }           // 輪迴無傳送上限（樓層本身封 100）
+}
+function certGearCtx(){ // 營地生裝備的唯一難度來源：直接綁認證的「樓層＋輪迴」（無認證則回退最深樓層）
+  const c = G.rec.cert;
+  return c ? {floor: c.floor, cyc: c.cycle} : {floor: Math.max(12, G.rec.deep||10), cyc: 0};
+}
 function certText(cert){ // 認證成就顯示文字
   if(!cert) return '—';
   if(cert.cycle === 0) return '本源 '+cert.floor+(cert.floor>=50?'✓':'');

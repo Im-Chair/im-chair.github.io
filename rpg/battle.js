@@ -769,12 +769,12 @@ function winBattle(){
   }
   const isFinal = B.es.some(e=>e.final);
   if(isFinal){ G.rec.clear = (G.rec.clear||0) + 1; }
-  // 傳送點不再靠「打贏首領」解鎖——改為只有活著逃脫才記錄（見 retreat()）。
+  // 傳送點/認證只在「逃脫」或「通關」解鎖（見 certifyDepth）——打贏中途首領後死掉不算數。
   if(R.cycle === 0 && R.floor === 50 && B.boss){ R.origDone = true; G.orig.done = true; }
   // 過關＝走到底打贏＝活著的證明，認證深度比照逃脫寫入（分本源/輪迴）
   // 免逃離認證唯一例外：本源打穿第50層（走到底＝活著的證明）；輪迴無此例外，只能靠逃離
   if(R.cycle === 0 && R.floor === 50 && isFinal){
-    recordCert(0, 50);
+    certifyDepth(0, 50);   // 通關本源＝認證 50 ＋解鎖傳送點（唯一的免逃脫例外）
   }
   bountyProgress('kill');
   if(B.boss) bountyProgress('boss');
