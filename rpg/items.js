@@ -118,7 +118,9 @@ function marketStock(){
 function boxPrice(b){
   if(b.type==='mat') return 100 + G.rec.deep*2;
   const base = b.item.rar===3 ? 480 + G.rec.deep*6 : 140 + G.rec.deep*2;
-  return b.type==='open' ? Math.round(base*1.3) : base;
+  const cyc = (G.rec.cert && G.rec.cert.cycle) || 0;
+  const priced = Math.round(base * Math.pow(1.5, cyc));   // 高輪迴 = 前一輪迴價格 ×1.5（裝備變強，價格跟上）
+  return b.type==='open' ? Math.round(priced*1.3) : priced;
 }
 
 function openMarket(){

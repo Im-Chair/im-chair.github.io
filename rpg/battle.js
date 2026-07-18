@@ -172,6 +172,8 @@ function floatDmg(zone, txt, cls){
 function startPlayerTurn(first){
   if(B.over) return;
   if(!first){ B.energy = B.maxEnergy; if(!sumAffix('wall')) B.block = 0; }
+  const pl = sumAffix('plate');   // 守勢祝福：每回合開場獲得 (plate% × 最大生命) 的格擋
+  if(pl){ const blk = Math.round(playerMaxHp()*pl/100); B.block += blk; if(blk) log(`守勢：獲得 ${blk} 格擋。`,'sys'); }
   B.sparkN = 0;
   const rg = sumAffix('regen');
   if(rg && !first){ const h = healPlayer(Math.ceil(playerMaxHp()*0.06)); if(h>0) log(`血甲：回復 ${h} 生命。`,'heal'); }
