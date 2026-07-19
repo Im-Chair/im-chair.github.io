@@ -125,7 +125,7 @@ function intentText(e){
 function startBattle(enemies, opt){
   if(!Array.isArray(enemies)) enemies = [enemies];
   R.phase='battle';
-  const agiBonus = statTotal('agi') >= 100 ? 2 : statTotal('agi') >= 40 ? 1 : 0; // 敏捷追加行動點（點）
+  const agiBonus = statTotal('agi') > 200 ? 2 : statTotal('agi') > 100 ? 1 : 0; // 敏捷追加行動點：101–200 → +1、>200 → +2
   const _wpts = weaponType().pts || 3;                                            // 武器每回合行動點
   B = {es:enemies, ti:0, energy:_wpts+agiBonus, maxEnergy:_wpts+agiBonus, block:0, shield:0, st:{}, turn:1, nextCrit:0,
        over:false, sparkN:0, rageWarned:false, charge:null, noHit:true,
@@ -172,8 +172,8 @@ function floatDmg(zone, txt, cls){
 function startPlayerTurn(first){
   if(B.over) return;
   if(!first){ B.energy = B.maxEnergy; if(!sumAffix('wall')) B.block = 0; }
-  const pl = sumAffix('plate');   // 守勢祝福：每回合開場獲得 (plate% × 最大生命) 的格擋
-  if(pl){ const blk = Math.round(playerMaxHp()*pl/100); B.block += blk; if(blk) log(`守勢：獲得 ${blk} 格擋。`,'sys'); }
+  if(first){ const pl = sumAffix('plate');   // 守勢祝福：每「場」戰鬥開始一次，獲得 (plate% × 最大生命) 的格擋
+    if(pl){ const blk = Math.round(playerMaxHp()*pl/100); B.block += blk; if(blk) log(`守勢：獲得 ${blk} 格擋。`,'sys'); } }
   B.sparkN = 0; B.osTurn = 0;   // 溢血成盾每回合上限重置
   const rg = sumAffix('regen');
   if(rg && !first){ const h = healPlayer(Math.ceil(playerMaxHp()*0.06)); if(h>0) log(`血甲：回復 ${h} 生命。`,'heal'); }
@@ -363,13 +363,13 @@ function healPlayer(amount){
   if(real > 0) R.hp += real;
   return real;
 }
-function leechHeal(want){   // 吸血/毒吸類回血：先回血,溢出時(有「溢血成盾」)轉護盾——每回合上限 20% 最大生命
+function leechHeal(want){   // 吸血/毒吸類回血：先回血,溢出時(有「溢血成盾」)轉「格擋」——每回合上限 10% 最大生命
   const real = healPlayer(want);
   const over = want - real;
   if(over > 0 && chemOn('overshield')){
-    const cap = Math.round(playerMaxHp()*0.2);
+    const cap = Math.round(playerMaxHp()*0.1);
     const add = Math.min(over, cap - (B.osTurn||0));   // 每回合上限(startPlayerTurn 重置)
-    if(add > 0){ B.shield += add; B.osTurn = (B.osTurn||0) + add; log(`溢血成盾：+${add} 護盾。`,'sys'); }
+    if(add > 0){ B.block += add; B.osTurn = (B.osTurn||0) + add; log(`溢血成盾：+${add} 格擋。`,'sys'); }
   }
   return real;
 }

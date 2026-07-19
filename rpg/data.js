@@ -217,7 +217,7 @@ const CHEMISTRY = [
   {id:'pcrit',     n:'毒爆',     i:'\u2620\ufe0f\ud83c\udfaf', need:['ptouch','crit'],  d:'爆擊時，淬毒之刃的層數加倍施加'},
   {id:'burnvamp',  n:'焚血',     i:'\ud83d\udd25\ud83e\ude78', need:['btouch','vamp'],  d:'敵人燃燒跳傷時，你回復其 30%'},
   {id:'windthorn', n:'風棘',     i:'\ud83d\udca8\ud83c\udf35', need:['agile','thorns'], d:'成功閃避時，反彈該擊 荊棘%×2 的傷害'},
-  {id:'overshield',n:'溢血成盾', i:'\ud83e\ude78\ud83d\udd37', need:['vamp','hp'],      d:'吸血溢出時轉為護盾（每場上限 20% 生命上限）'},
+  {id:'overshield',n:'溢血成盾', i:'\ud83e\ude78\ud83d\udd37', need:['vamp','hp'],      d:'吸血/毒吸溢出時轉為格擋（每回合上限 10% 生命上限）'},
   {id:'corrode',   n:'腐燃',     i:'\u2620\ufe0f\ud83d\udd25', need:['ptouch','btouch'],d:'對同時中毒與燃燒的目標，傷害 +20%'},
   {id:'poisonvamp',n:'毒吸',     i:'☠️🩸', need:['ptouch','vamp'],  d:'敵人中毒跳傷時，你回復其 30%'},
 ];
@@ -353,7 +353,7 @@ const BLESSINGS = [
   {k:'str', v:2, n:'力量的祝福：所有傷害 +2'},
   {k:'crit', v:10, n:'銳利的祝福：爆擊率 +10%'},
   {k:'vamp', v:12, n:'血契的祝福：攻擊吸血 12%'},
-  {k:'plate', v:20, n:'守勢的祝福：每回合開場獲得 20% 最大生命的格擋'},
+  {k:'plate', v:10, n:'守勢的祝福：每場戰鬥開始獲得 10% 最大生命的格擋'},
   {k:'hp', v:15, n:'堅韌的祝福：生命上限 +15'},
 ];
 // 這些祝福為「死值」會被深層輾過，隨深度/輪迴縮放（見 blessMult）；crit=率有上限、vamp=已隨傷害縮放，故維持固定
