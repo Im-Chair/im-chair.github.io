@@ -81,7 +81,7 @@ function startRun(startFloor, cycle){
   closeSheet();
   if(G.bounties) for(const b of G.bounties) delete b.met;   // 開新一趟：清掉上趟殘留的達成標記
   startFloor = startFloor || 1;
-  R = {floor:startFloor, hp:playerMaxHp(), mana:playerMaxMana(), gold:0, bag:[], pots:{heal:1}, skillUps:{},
+  R = {floor:startFloor, startFloor:startFloor, hp:playerMaxHp(), mana:playerMaxMana(), gold:0, bag:[], pots:{heal:1}, skillUps:{},
        bless:[], equipBackup:JSON.parse(JSON.stringify(G.equip)),
        doors:null, phase:'doors', kills:0};
   R.cycle = cycle || 0;
@@ -1088,7 +1088,7 @@ function bountyProgress(kind){
   for(const b of G.bounties){
     if(b.state !== 'active' || b.mode !== R.cycle || b.type !== kind) continue;
     let ok;
-    if(kind==='reach') ok = R.floor >= b.floor;
+    if(kind==='reach') ok = R.floor >= b.floor && b.floor > R.startFloor;   // 必須真的「下潛到」X（比起點更深）；傳送到 X 以下不算
     else if(kind==='streakkill') ok = R.kills >= b.target;
     else if(kind==='flawless' || kind==='dotkill') ok = R.floor >= b.floor;  // 特殊條件已由呼叫端確認
     else ok = R.floor === b.floor;                                            // kill/loot/boss
