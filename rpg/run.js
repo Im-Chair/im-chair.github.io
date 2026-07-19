@@ -251,13 +251,27 @@ function enterDoor(d){
   else if(d.t==='event'){ R.pendingEv = d.ev || null; runEvent(); }
 }
 
-function cycleComplete(){   // 輪迴盡頭（第100層）——強制帶著戰利品送回，記錄認證
-  const n = R.bag.length, g = R.gold, deep = R.floor, kills = R.kills;
+function bankRun(deep){   // ★唯一的「成功回營」入口(逃脫/通關)：把這趟下潛所得全部保存。死亡不會呼叫到這裡＝什麼都不留。
+  // 戰利品 + 金錢
   for(const it of R.bag){ it.banked = true; G.stash.push(it); }
   for(const s of ['w','a','t']) if(G.equip[s]) G.equip[s].banked = true;
-  G.gold += g;
-  certifyDepth(R.cycle, deep);   // 通關輪迴盡頭：認證＋解鎖傳送點（集中處理）
-  finalizeBounties();            // 活著回營：本趟達成的委託轉為可回報
+  G.gold += R.gold;
+  // 符文 / 材料 / 圖鑑（下潛期間只是 pending 在 R 裡，回營才入帳）
+  if(R.runesPending){ if(!G.runeBag) G.runeBag=[]; for(const rn of R.runesPending) G.runeBag.push(rn); }
+  if(R.matsPending) for(const k in R.matsPending) G.mats[k] = (G.mats[k]||0) + R.matsPending[k];
+  if(R.codexPending) for(const k in R.codexPending) G.codex[k] = (G.codex[k]||0) + R.codexPending[k];
+  // 最深紀錄（黑市/藥水/鐵匠解鎖都吃這個 → 也要成功回營才算）
+  if(deep > G.rec.deep) G.rec.deep = deep;
+  if(R.cycle === 0){ const d = Math.min(50, deep); if(d > G.orig.deep) G.orig.deep = d; }
+  else { const c = cd(R.cycle); if(deep > c.deep) c.deep = deep; }
+  // 認證/傳送 + 懸賞回報
+  certifyDepth(R.cycle, deep);
+  finalizeBounties();
+}
+
+function cycleComplete(){   // 輪迴盡頭（第100層）——通關＝成功回營
+  const n = R.bag.length, g = R.gold, deep = R.floor, kills = R.kills;
+  bankRun(deep);
   R = null; B = null; save();
   $('res-icon').textContent = '🏁';
   $('res-title').textContent = '輪迴盡頭';
@@ -275,9 +289,7 @@ function nextFloor(){
   const before = realmFor(R.floor);
   R.floor++;
   bountyProgress('reach');
-  if(R.floor > G.rec.deep) G.rec.deep = R.floor;
-  if(R.cycle === 0){ if(R.floor > G.orig.deep) G.orig.deep = Math.min(50, R.floor); }
-  else { const c = cd(R.cycle); if(R.floor > c.deep) c.deep = R.floor; }
+  // 最深紀錄改由 bankRun 在「成功回營」時更新（死亡＝不記錄）
   save();
   const now = realmFor(R.floor);
   if(now !== before){
@@ -687,7 +699,6 @@ const EVENTS = {
         else {
           const d = Math.max(4, Math.round(playerMaxHp()*0.07));
           R.hp = Math.max(1, R.hp - d); R.floor++;
-          if(R.floor > G.rec.deep) G.rec.deep = R.floor;
           showEventScreen('🚪','門後','你踏進去，腳下沒有地板。\n\n摔到了更深的地方——直接抵達下一層，失去 '+d+' 點生命。',
             [{n:'爬起來', f:()=>nextFloor()}]);
         }
@@ -941,16 +952,8 @@ function tryDropRope(chance, srcLabel){ // 逃脫之繩掉落：單趟唯一
 
 function retreat(){
   if(!R.hasRope){ toast('沒有逃脫之繩'); return; }
-  const n = R.bag.length, g = R.gold;
-  // 保管一切
-  for(const it of R.bag){ it.banked = true; G.stash.push(it); }
-  for(const s of ['w','a','t']) if(G.equip[s]) G.equip[s].banked = true;
-  G.gold += g;
-  const deep = R.floor;
-  const kills = R.kills;
-  // 逃脫＝活著的證明：認證＋解鎖傳送點，集中由 certifyDepth 處理（只留最難成就 / 本源傳送上限 41）
-  certifyDepth(R.cycle, deep);
-  finalizeBounties();   // 活著回營：本趟達成的委託轉為可回報
+  const n = R.bag.length, g = R.gold, deep = R.floor, kills = R.kills;
+  bankRun(deep);   // 逃脫成功回營：保存這趟一切（戰利品/金錢/符文/材料/圖鑑/認證/懸賞）
   R = null; B = null; save();
   $('res-icon').textContent = '🪢';
   $('res-title').textContent = '平安歸來';
@@ -1089,7 +1092,7 @@ function bountyProgress(kind){
     else if(kind==='streakkill') ok = R.kills >= b.target;
     else if(kind==='flawless' || kind==='dotkill') ok = R.floor >= b.floor;  // 特殊條件已由呼叫端確認
     else ok = R.floor === b.floor;                                            // kill/loot/boss
-    if(ok && b.state==='active' && !b.met){ b.met = true; toast('🎯 委託條件達成——活著回營才能回報'); }   // 先標記,活著回營(逃脫/通關)才轉可回報
+    if(ok && b.state==='active' && !b.met){ b.met = true; toast('🎯 委託條件達成'); }   // 先標記,活著回營(逃脫/通關)才轉可回報
   }
 }
 function finalizeBounties(){   // 只有活著回營（逃脫/通關）才把「達成」轉為可回報；死掉的達成作廢

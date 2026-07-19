@@ -174,7 +174,7 @@ function startPlayerTurn(first){
   if(!first){ B.energy = B.maxEnergy; if(!sumAffix('wall')) B.block = 0; }
   const pl = sumAffix('plate');   // 守勢祝福：每回合開場獲得 (plate% × 最大生命) 的格擋
   if(pl){ const blk = Math.round(playerMaxHp()*pl/100); B.block += blk; if(blk) log(`守勢：獲得 ${blk} 格擋。`,'sys'); }
-  B.sparkN = 0;
+  B.sparkN = 0; B.osTurn = 0;   // 溢血成盾每回合上限重置
   const rg = sumAffix('regen');
   if(rg && !first){ const h = healPlayer(Math.ceil(playerMaxHp()*0.06)); if(h>0) log(`血甲：回復 ${h} 生命。`,'heal'); }
   if(playerMaxMana() > 0 && !first){
@@ -363,6 +363,16 @@ function healPlayer(amount){
   if(real > 0) R.hp += real;
   return real;
 }
+function leechHeal(want){   // 吸血/毒吸類回血：先回血,溢出時(有「溢血成盾」)轉護盾——每回合上限 20% 最大生命
+  const real = healPlayer(want);
+  const over = want - real;
+  if(over > 0 && chemOn('overshield')){
+    const cap = Math.round(playerMaxHp()*0.2);
+    const add = Math.min(over, cap - (B.osTurn||0));   // 每回合上限(startPlayerTurn 重置)
+    if(add > 0){ B.shield += add; B.osTurn = (B.osTurn||0) + add; log(`溢血成盾：+${add} 護盾。`,'sys'); }
+  }
+  return real;
+}
 
 function weaponFit(sk){   // 職業/武器不匹配時的武器攻擊力折算
   const classMagic = CLASSES[G.cls].mainStat === 'int';
@@ -525,15 +535,8 @@ function dealToEnemy(mult, sk, f){
     const vamp = Math.min(VAMP_CAP, sumAffix('vamp')) + (f && f.drain? f.drain*100:0);
     if(vamp>0){
       const want = Math.max(1, Math.round(d*vamp/100));
-      const real = healPlayer(want);
+      const real = leechHeal(want);
       if(real>0) log(`吸血回復 ${real}${B.st.wound?'（重傷減半）':''}。`,'heal');
-      const over = want - real;
-      if(over>0 && chemOn('overshield')){ // 溢血成盾
-        const cap = Math.round(playerMaxHp()*0.2);
-        const add = Math.min(over, cap - (B.chemShield||0));
-        if(add>0){ B.shield += add; B.chemShield = (B.chemShield||0) + add;
-          log(`溢血成盾：+${add} 護盾。`,'sys'); }
-      }
     }
     if(f && f.manaGain && playerMaxMana()>0){
       const g = Math.round(playerMaxMana()*f.manaGain);
@@ -599,9 +602,9 @@ function tickBurn(who, zone, name){
     const d = Math.ceil(maxhp * dotPct('burn', who.st.burn) * pyre);
     if(isEnemy){
       who.hp -= d;
-      if(chemOn('burnvamp')){ const h = healPlayer(Math.ceil(d*0.3)); // 焚血
+      if(chemOn('burnvamp')){ const h = leechHeal(Math.ceil(d*0.3)); // 焚血
         if(h>0) log(`焚血：回復 ${h} 生命。`,'heal'); }
-      if(sumAffix('dotdrain')){ const h = healPlayer(Math.ceil(d*sumAffix('dotdrain')/100)); // 蝕取
+      if(sumAffix('dotdrain')){ const h = leechHeal(Math.ceil(d*sumAffix('dotdrain')/100)); // 蝕取
         if(h>0) log(`蝕取：回復 ${h} 生命。`,'heal'); }
     } else { damagePlayer(d, '燃燒'); }
     log(`${name} 被燃燒灼傷 ${d}（${who.st.burn} 層）。`,'dmg');
@@ -626,12 +629,12 @@ function enemyTurn(){
       if(e.st.poison){ const vf = sumAffix('vform') ? 1.5 : 1; // 蝕魂：中毒傷害 +50%
         const d = Math.ceil(e.maxhp * dotPct('poison', e.st.poison) * vf * (1 + sumAffix('ppyre')/100)); e.hp -= d;
         log(`${e.n} 中毒受到 ${d} 傷害（${e.st.poison} 層）。`,'dmg'); floatDmg('ez-'+B.es.indexOf(e),'-'+d,'');
-        if(sumAffix('symbio')){ const h = healPlayer(Math.ceil(d*0.5));
+        if(sumAffix('symbio')){ const h = leechHeal(Math.ceil(d*0.5));
           if(h>0){ log(`腐生：回復 ${h} 生命。`,'heal'); } }
-        if(chemOn('poisonvamp')){ const h = healPlayer(Math.ceil(d*0.3)); // 毒吸
+        if(chemOn('poisonvamp')){ const h = leechHeal(Math.ceil(d*0.3)); // 毒吸
           if(h>0){ log(`毒吸：回復 ${h} 生命。`,'heal'); } }
         const dd = sumAffix('dotdrain') + (G.cls==='assassin' ? ASSASSIN_POISON_LEECH : 0); // 蝕取詞綴 ＋ 盜賊內建毒吸
-        if(dd){ const h = healPlayer(Math.ceil(d*dd/100));
+        if(dd){ const h = leechHeal(Math.ceil(d*dd/100));
           if(h>0){ log(`蝕取：回復 ${h} 生命。`,'heal'); } }
         e.st.poison = Math.floor(e.st.poison/2); if(e.st.poison<=0) delete e.st.poison;
         if(e.hp<=0){ log(e.n+' 被毒殺了。','sys'); onEnemySlain(e); continue; } }
@@ -723,8 +726,9 @@ function winBattle(){
   let firstKillBonus = 0;
   for(const e of B.es){
     const key = e.key || 'unknown';
-    if(!G.codex[key]){ G.codex[key] = 0; firstKillBonus += 30; }
-    G.codex[key]++;
+    R.codexPending = R.codexPending || {};
+    if(!G.codex[key] && !R.codexPending[key]) firstKillBonus += 30;   // 首殺獎勵（本趟或永久已知都不再給）
+    R.codexPending[key] = (R.codexPending[key]||0) + 1;                // 回營才併入 G.codex
   }
   if(firstKillBonus){ R.gold += firstKillBonus; toast('圖鑑首錄 +'+firstKillBonus+'🪙'); }
   const mend = sumAffix('mend');
@@ -760,7 +764,7 @@ function winBattle(){
     const chance = (0.16 + (B.elite?0.10:0) + (B.boss?0.20:0)) * (1 + (R.cycle-1)*0.35);
     if(Math.random() < chance){
       matDrop = R.floor <= 30 ? 'iron' : 'steel';
-      G.mats[matDrop] = (G.mats[matDrop]||0) + 1;
+      R.matsPending = R.matsPending || {}; R.matsPending[matDrop] = (R.matsPending[matDrop]||0) + 1;   // 回營才入帳
     }
   }
   let potionDrop = null, potionOverflow = 0;
@@ -775,15 +779,13 @@ function winBattle(){
   if(R.cycle === 0 && R.floor === 50 && B.boss){ R.origDone = true; G.orig.done = true; }
   // 過關＝走到底打贏＝活著的證明，認證深度比照逃脫寫入（分本源/輪迴）
   // 免逃離認證唯一例外：本源打穿第50層（走到底＝活著的證明）；輪迴無此例外，只能靠逃離
-  if(R.cycle === 0 && R.floor === 50 && isFinal){
-    certifyDepth(0, 50);   // 通關本源＝認證 50 ＋解鎖傳送點（唯一的免逃脫例外）
-  }
+  // 本源通關的認證/傳送/懸賞/戰利品改由 afterLoot → bankRun(50) 統一處理（成功回營才算）
   bountyProgress('kill');
   if(B.boss) bountyProgress('boss');
   if(drops.length) bountyProgress('loot');
   bountyProgress('streakkill');
   if(B.noHit) bountyProgress('flawless');
-  if(Math.random() < (B.boss?0.22:0.05)){ if(!G.runeBag) G.runeBag=[]; const rn = makeRune(R.floor, R.cycle); G.runeBag.push(rn); toast('🔯 拾獲符文：'+rn.name); }   // 符文掉落
+  if(Math.random() < (B.boss?0.22:0.05)){ const rn = makeRune(R.floor, R.cycle); R.runesPending = R.runesPending||[]; R.runesPending.push(rn); toast('🔯 拾獲符文：'+rn.name); }   // 符文掉落（回營才入手）
   setTimeout(()=>{
     showLoot(drops, gold, B.boss?'👑':'⚔️', isFinal?'你打穿了深淵的心臟':(B.boss?'首領倒下了':'戰鬥勝利'),
       `獲得 ${gold} 碎銀` + (potionDrop? `，撿到 ${POTIONS[potionDrop].i}${POTIONS[potionDrop].n}`:'') + (potionOverflow? `，藥水袋滿——折成 ${potionOverflow} 碎銀`:'') + (matDrop? `，拾獲 ${MATS[matDrop].i}${MATS[matDrop].n} ×1`:''), mendHeal? `（急救回復 ${mendHeal} 血）`:'');
@@ -831,11 +833,8 @@ function equipFromBag(id, ret){
 
 function afterLoot(){
   if(R.origDone){
-    // 本源完結：自動保管一切
-    for(const it of R.bag){ it.banked = true; G.stash.push(it); }
-    for(const sl of ['w','a','t']) if(G.equip[sl]) G.equip[sl].banked = true;
-    G.gold += R.gold;
     const kills = R.kills;
+    bankRun(50);   // 通關本源＝成功回營：保存這趟一切（含認證/懸賞，集中處理）
     R = null; B = null; save();
     $('res-icon').textContent = '🌅';
     $('res-title').textContent = '本源・完結';
