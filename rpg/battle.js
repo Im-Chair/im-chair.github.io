@@ -174,7 +174,8 @@ function startPlayerTurn(first){
   if(!first){ B.energy = B.maxEnergy; if(!sumAffix('wall')) B.block = 0; }
   if(first){ const pl = sumAffix('plate');   // 守勢祝福：每「場」戰鬥開始一次，獲得 (plate% × 最大生命) 的格擋
     if(pl){ const blk = Math.round(playerMaxHp()*pl/100); B.block += blk; if(blk) log(`守勢：獲得 ${blk} 格擋。`,'sys'); } }
-  B.sparkN = 0; B.osTurn = 0;   // 溢血成盾每回合上限重置
+  B.sparkN = 0; B.osTurn = 0; B.leechTurn = 0; B._leechFull = false;   // B閥：溢血成盾/吸取額度每回合重置
+  for(const e of B.es) e._dotUsed = null;                              // A閥：敵方毒燃承傷額度重置（週期＝玩家回合起手）
   const rg = sumAffix('regen');
   if(rg && !first){ const h = healPlayer(Math.ceil(playerMaxHp()*0.06)); if(h>0) log(`血甲：回復 ${h} 生命。`,'heal'); }
   if(playerMaxMana() > 0 && !first){
@@ -225,7 +226,7 @@ function renderBattle(){
       <div><span class="intent"><span class="ii">${ii}</span>${dead?it:'下一步：'+it}</span></div>
       <div class="hpbar"><div class="fill" style="width:${Math.max(0,e.hp/e.maxhp*100)}%"></div>
         <div class="txt">${Math.max(0,e.hp)} / ${e.maxhp}${e.block?`（🛡${e.block}）`:''}</div></div>
-      <div class="status-row">${statusHtml(e.st, 0)}</div>
+      <div class="status-row">${statusHtml(e.st, 0, e)}</div>
     </div>`;
   });
   html += '</div>';
@@ -237,8 +238,10 @@ function renderBattle(){
   const bb = $('p-block');
   if(B.block>0){ bb.style.display='inline-block'; bb.textContent = '🛡 '+B.block; } else bb.style.display='none';
   const en = $('p-energy');
+  const hasLeech = G.cls==='assassin' || G.cls==='dark' || sumAffix('vamp')>0 || sumAffix('dotdrain')>0 || sumAffix('symbio')>0 || chemOn('poisonvamp') || chemOn('burnvamp');   // B閥額度只對有吸取來源的 build 顯示
   en.innerHTML = `<span style="color:var(--gold);font-size:13px">◆ ${fmtPts(B.energy)}/${fmtPts(B.maxEnergy)} 行動</span>` +
     (playerMaxMana()>0? `<span style="color:#7fb3e8;font-size:13px">　🔮 ${R.mana||0}/${playerMaxMana()}</span>` : '') +
+    (hasLeech? `<span style="color:#e8a0a0;font-size:13px">　🩸 ${Math.max(0, leechCap()-(B.leechTurn||0))}/${leechCap()}</span>` : '') +
     (B.shield>0? `<span style="color:#9fd8ff;font-size:13px">　🔷 ${B.shield}</span>` : '');
   const grid = $('skill-grid'); grid.innerHTML='';
   for(const sid of CLASSES[G.cls].skills){
@@ -314,8 +317,8 @@ function skillDesc(sid){
 }
 
 const STATUS_INFO = {
-  poison:'☠️ 中毒：每回合失去（前10層各1.5%、之後各0.5% 最大生命），每回合層數減半。無視防禦與格擋。',
-  burn:'🔥 燃燒：每回合失去（前10層各1.5%、之後各1% 最大生命），每回合層數減半。無視防禦與格擋。',
+  poison:'☠️ 中毒：每回合失去（前10層各1.5%、之後各0.5% 最大生命），每回合層數減半。無視防禦與格擋。首領與精英每回合承受的中毒跳傷有上限（精英/小王 8%、域主/最終王 5% 生命上限）——灰字層數為本回合超出上限的部分，仍會餵絞殺與腐燃、並延長受頂的回合數。',
+  burn:'🔥 燃燒：每回合失去（前10層各1.5%、之後各1% 最大生命），每回合層數減半。無視防禦與格擋。首領與精英每回合承受的燃燒跳傷有上限（精英/小王 8%、域主/最終王 5% 生命上限）——灰字層數為本回合超出上限的部分。',
   weak:'💤 虛弱：造成的傷害 ×0.75。',
   vuln:'🎯 易傷：受到的傷害 ×1.5。',
   stun:'💫 暈眩：跳過整個回合。結束後獲得 2 回合暈眩抵抗。',
@@ -332,10 +335,21 @@ function explainStatus(k){
   if(STATUS_INFO[k]) openSheet(`<h3>狀態說明</h3><p class="base">${STATUS_INFO[k]}</p>
     <button class="btn" onclick="closeSheet()">關閉</button>`);
 }
-function statusHtml(st, block){
+function statusHtml(st, block, e){   // e＝敵人時，毒/燃顯示 A閥灰字（超出本回合跳傷上限的層數）
   const M = {poison:['☠️ 中毒','bad'],burn:['🔥 燃燒','bad'],weak:['💤 虛弱','bad'],vuln:['🎯 易傷','bad'],stun:['💫 暈眩','bad'],stunImm:['🛡💫 暈眩抵抗','blk'],wound:['🩹 重傷','bad'],rage:['😡 狂怒','bad']};
   let h = '';
-  for(const [k,v] of Object.entries(st)) if(v>0 && M[k]) h += `<span class="st ${M[k][1]}" onclick="explainStatus('${k}')">${M[k][0]} ${v}</span>`;
+  for(const [k,v] of Object.entries(st)){
+    if(!(v>0 && M[k])) continue;
+    let inner = String(v);
+    if(e && (k==='poison'||k==='burn')){
+      const rate = dotCapRate(e);
+      if(rate !== Infinity){
+        let L = 0; while(L < v && dotPct(k, L+1) <= rate) L++;   // 閥內有效層數
+        if(L < v) inner = `${L}<span style="opacity:.45">+${v-L}</span>`;
+      }
+    }
+    h += `<span class="st ${M[k][1]}" onclick="explainStatus('${k}')">${M[k][0]} ${inner}</span>`;
+  }
   if(block>0) h += `<span class="st blk" onclick="explainStatus('block')">🛡 ${block}</span>`;
   return h;
 }
@@ -363,15 +377,36 @@ function healPlayer(amount){
   if(real > 0) R.hp += real;
   return real;
 }
-function leechHeal(want){   // 吸血/毒吸類回血：先回血,溢出時(有「溢血成盾」)轉「格擋」——每回合上限 10% 最大生命
-  const real = healPlayer(want);
-  const over = want - real;
+function leechCap(){ return Math.round(playerMaxHp() * (G.cls==='assassin' ? 0.20 : 0.15)); }   // B閥：每回合吸取回復合計上限（盜賊 20%／其他 15% 生命上限）
+function leechHeal(want){   // 吸取類回血唯一入口（B閥）：套修正 → 額度內回血 → 溢出（有「溢血成盾」）轉格擋
+  let h = Math.floor(want * healMult());              // 域修正（血肉迴廊 heal75）先套
+  if(B && B.st.wound) h = Math.floor(h/2);            // 重傷減半
+  const quota = Math.max(0, leechCap() - (B.leechTurn||0));
+  const real = Math.min(h, quota, playerMaxHp() - R.hp);   // 先判額度；以實際回復量計，滿血不耗額度
+  if(real > 0){ R.hp += real; B.leechTurn = (B.leechTurn||0) + real; }
+  if(h > 0 && quota <= 0 && !B._leechFull){ B._leechFull = true; floatDmg('player-zone','吸取滿','blocked'); log('本回合吸取回復已達上限。','sys'); }
+  const over = h - Math.max(0, real);
   if(over > 0 && chemOn('overshield')){
     const cap = Math.round(playerMaxHp()*0.1);
-    const add = Math.min(over, cap - (B.osTurn||0));   // 每回合上限(startPlayerTurn 重置)
+    const add = Math.min(over, cap - (B.osTurn||0));   // 格擋轉換額度：每回合 10% 生命上限，獨立於回復額度
     if(add > 0){ B.block += add; B.osTurn = (B.osTurn||0) + add; log(`溢血成盾：+${add} 格擋。`,'sys'); }
   }
   return real;
+}
+
+/* A閥：玩家施加的毒/燃，對精英與首領的每回合每種承傷上限（佔該敵生命上限）。雜魚（含王隨從）無上限 */
+function dotCapRate(e){
+  if(!e.boss) return e.elite ? 0.08 : Infinity;      // 域限/一般精英 8%
+  return (e.final || e.phaseTags) ? 0.05 : 0.08;     // 域主/最終王 5%、小王 8%
+}
+function dotHitEnemy(e, kind, raw){   // 敵方 DOT 跳傷唯一入口：額度內結算（含催毒），超額部分不造成傷害。禁止在別處另寫閥
+  const rate = dotCapRate(e);
+  if(rate === Infinity) return raw;
+  if(!e._dotUsed) e._dotUsed = {};
+  const cap = Math.round(e.maxhp * rate);
+  const d = Math.max(0, Math.min(raw, cap - (e._dotUsed[kind]||0)));
+  e._dotUsed[kind] = (e._dotUsed[kind]||0) + d;
+  return d;
 }
 
 function weaponFit(sk){   // 職業/武器不匹配時的武器攻擊力折算
@@ -550,7 +585,7 @@ function dealToEnemy(mult, sk, f){
   }
   if(f && f.apply) applyStatus(e.st, f.apply);
   if(f && f.poisonProc && e.st.poison && e.hp > 0){
-    const pd = Math.ceil(e.maxhp * dotPct('poison', e.st.poison) * (sumAffix('vform')?1.5:1) * (1 + sumAffix('ppyre')/100));
+    const pd = dotHitEnemy(e, 'poison', Math.ceil(e.maxhp * dotPct('poison', e.st.poison) * (sumAffix('vform')?1.5:1) * (1 + sumAffix('ppyre')/100)));   // 催毒計入同回合額度
     e.hp -= pd; floatDmg(zone, '-'+pd, '');
     log(`催毒——${e.n} 的毒立即發作 ${pd} 傷害。`,'dmg');
   }
@@ -599,8 +634,9 @@ function tickBurn(who, zone, name){
     const isEnemy = who.maxhp !== undefined;
     const maxhp = isEnemy ? who.maxhp : playerMaxHp();
     const pyre = isEnemy ? (1 + sumAffix('bpyre')/100) : 1;   // 烈焰：對敵燃傷加成
-    const d = Math.ceil(maxhp * dotPct('burn', who.st.burn) * pyre);
+    let d = Math.ceil(maxhp * dotPct('burn', who.st.burn) * pyre);
     if(isEnemy){
+      d = dotHitEnemy(who, 'burn', d);
       who.hp -= d;
       if(chemOn('burnvamp')){ const h = leechHeal(Math.ceil(d*0.3)); // 焚血
         if(h>0) log(`焚血：回復 ${h} 生命。`,'heal'); }
@@ -627,7 +663,7 @@ function enemyTurn(){
       if(e.hp<=0) continue;
       if(B.turn >= _ra) e.st.rage = B.turn - (_ra-1);
       if(e.st.poison){ const vf = sumAffix('vform') ? 1.5 : 1; // 蝕魂：中毒傷害 +50%
-        const d = Math.ceil(e.maxhp * dotPct('poison', e.st.poison) * vf * (1 + sumAffix('ppyre')/100)); e.hp -= d;
+        const d = dotHitEnemy(e, 'poison', Math.ceil(e.maxhp * dotPct('poison', e.st.poison) * vf * (1 + sumAffix('ppyre')/100))); e.hp -= d;
         log(`${e.n} 中毒受到 ${d} 傷害（${e.st.poison} 層）。`,'dmg'); floatDmg('ez-'+B.es.indexOf(e),'-'+d,'');
         if(sumAffix('symbio')){ const h = leechHeal(Math.ceil(d*0.5));
           if(h>0){ log(`腐生：回復 ${h} 生命。`,'heal'); } }
