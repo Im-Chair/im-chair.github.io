@@ -7,10 +7,10 @@ function rollAffixVal(k, ri, floor, cyc){
   const band = ROLL_BANDS[AFFIX_BAND[k]] || [[A.min,A.max],[A.min,A.max],[A.min,A.max],[A.min,A.max]];
   const [lo, hi] = band[ri];
   let v = rnd(lo, hi);
-  if(A.stat) v += Math.round(floor * 0.3);           // 素質吃樓層 +0.3/層
   const cc = (cyc != null) ? cyc : ((R && R.cycle > 0) ? R.cycle : 0);   // 明確輪迴優先（營地生裝備用），否則讀當前 run
-  if(cc > 0 && (A.stat || AFFIX_BAND[k]==='hp' || AFFIX_BAND[k]==='mp'))
-    v = Math.round(v * (1 + cycVal(cc)));            // 輪迴裝備價值
+  if(A.stat) v += Math.round(floor * 0.3 * cycK(cc));  // 素質吃樓層 +0.3/層；輪迴只放大樓層項，骰值常數不吃（與基礎值同軸成長）
+  else if(cc > 0 && (AFFIX_BAND[k]==='hp' || AFFIX_BAND[k]==='mp'))
+    v = Math.round(v * cycK(cc));                      // hp/mp 無樓層項，維持整值縮放
   return Math.max(1, v);
 }
 
@@ -30,13 +30,13 @@ function makeItem(floor, bonus, cyc){
   const it = {id:uid++, slot, rar:ri, up:0, banked:false, affixes:[]};
   const cc = (cyc != null) ? cyc : ((R && R.cycle>0) ? R.cycle : 0);   // 明確輪迴優先（營地生裝備用），否則讀當前 run
   it.pf = floor; it.pc = cc;                                 // 出身樓層/輪迴（重鑄依此還原強度）
-  const cycB = 1 + (cc>0 ? cycVal(cc) : 0);                  // 輪迴基礎值加成（武攻/護防跟上敵人倍率）
+  const cf = floor * cycK(cc);                               // 輪迴等效樓層：基礎值只放大樓層項（6+0.9·f·K），常數不吃
   if(slot==='w'){
     it.wtype = pick(['dagger','sword','axe','staff']);
-    it.base = Math.round(CURVE.wpnBase(floor) * CURVE.rarMult[ri] * cycB);
+    it.base = Math.round(CURVE.wpnBase(cf) * CURVE.rarMult[ri]);
     it.name = pick(WEAPON_NAMES[it.wtype]);
   }
-  else if(slot==='a'){ it.base = Math.round(CURVE.armBase(floor) * CURVE.rarMult[ri] * cycB); it.name = pick(ARMOR_NAMES); }
+  else if(slot==='a'){ it.base = Math.round(CURVE.armBase(cf) * CURVE.rarMult[ri]); it.name = pick(ARMOR_NAMES); }
   else { it.base = 0; it.name = pick(TRINKET_NAMES); }
   it.name = pick(PREFIX[rar.id]) + it.name;
   const n = rnd(rar.afx[0], rar.afx[1]);
@@ -557,8 +557,7 @@ function doReforge(){
   const rolled = [];
   for(let i=0;i<toRoll && pool.length;i++){
     const k = pool.splice(Math.floor(Math.random()*pool.length),1)[0];
-    let v = rollAffixVal(k, it.rar, ctx.floor);
-    if(ctx.cyc>0 && (AFFIXES[k].stat || AFFIX_BAND[k]==='hp' || AFFIX_BAND[k]==='mp')) v = Math.round(v*(1+cycVal(ctx.cyc)));
+    let v = rollAffixVal(k, it.rar, ctx.floor, ctx.cyc);   // 輪迴縮放已統一在 rollAffixVal 內（樓層項 ×cycK），不再外掛第二次
     if(it.cursed) v = Math.round(v*1.4);
     rolled.push({k, v});
   }
