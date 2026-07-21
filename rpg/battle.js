@@ -317,8 +317,8 @@ function skillDesc(sid){
 }
 
 const STATUS_INFO = {
-  poison:'☠️ 中毒：每回合失去（前10層各1.5%、之後各0.5% 最大生命），每回合層數減半。無視防禦與格擋。首領與精英每回合承受的中毒跳傷有上限（精英/小王 8%、域主/最終王 5% 生命上限）——灰字層數為本回合超出上限的部分，仍會餵絞殺與腐燃、並延長受頂的回合數。',
-  burn:'🔥 燃燒：每回合失去（前10層各1.5%、之後各1% 最大生命），每回合層數減半。無視防禦與格擋。首領與精英每回合承受的燃燒跳傷有上限（精英/小王 8%、域主/最終王 5% 生命上限）——灰字層數為本回合超出上限的部分。',
+  poison:'☠️ 中毒：每回合失去（前10層各1.5%、之後各0.5% 最大生命），每回合層數減半。無視防禦與格擋。首領與精英每回合承受的中毒跳傷有上限（精英/小王 8%、域主/最終王 5% 生命上限）——灰字層數為本回合超出上限的部分，仍會餵絞殺與腐燃、並延長受頂的回合數。「劇毒」與「蝕魂」會**同步抬高這個上限**，對首領仍然全額有效。',
+  burn:'🔥 燃燒：每回合失去（前10層各1.5%、之後各1% 最大生命），每回合層數減半。無視防禦與格擋。首領與精英每回合承受的燃燒跳傷有上限（精英/小王 8%、域主/最終王 5% 生命上限）——灰字層數為本回合超出上限的部分。「烈焰」會**同步抬高這個上限**，對首領仍然全額有效。',
   weak:'💤 虛弱：造成的傷害 ×0.75。',
   vuln:'🎯 易傷：受到的傷害 ×1.5。',
   stun:'💫 暈眩：跳過整個回合。結束後獲得 2 回合暈眩抵抗。',
@@ -399,11 +399,16 @@ function dotCapRate(e){
   if(!e.boss) return e.elite ? 0.08 : Infinity;      // 域限/一般精英 8%
   return (e.final || e.phaseTags) ? 0.05 : 0.08;     // 域主/最終王 5%、小王 8%
 }
+function dotAmp(kind){   // 毒/燃跳傷加成（劇毒/烈焰詞綴、蝕魂）——閥與 raw 吃同一組倍率，加成對首領才不會變死詞條
+  return kind==='poison'
+    ? (sumAffix('vform') ? 1.5 : 1) * (1 + sumAffix('ppyre')/100)
+    : (1 + sumAffix('bpyre')/100);
+}
 function dotHitEnemy(e, kind, raw){   // 敵方 DOT 跳傷唯一入口：額度內結算（含催毒），超額部分不造成傷害。禁止在別處另寫閥
   const rate = dotCapRate(e);
   if(rate === Infinity) return raw;
   if(!e._dotUsed) e._dotUsed = {};
-  const cap = Math.round(e.maxhp * rate);
+  const cap = Math.round(e.maxhp * rate * dotAmp(kind));   // A案：閥吃加成——劇毒/烈焰/蝕魂抬高首領承傷天花板
   const d = Math.max(0, Math.min(raw, cap - (e._dotUsed[kind]||0)));
   e._dotUsed[kind] = (e._dotUsed[kind]||0) + d;
   return d;
