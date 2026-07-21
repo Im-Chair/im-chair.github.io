@@ -174,8 +174,8 @@ function startPlayerTurn(first){
   if(!first){ B.energy = B.maxEnergy; if(!sumAffix('wall')) B.block = 0; }
   if(first){ const pl = sumAffix('plate');   // 守勢祝福：每「場」戰鬥開始一次，獲得 (plate% × 最大生命) 的格擋
     if(pl){ const blk = Math.round(playerMaxHp()*pl/100); B.block += blk; if(blk) log(`守勢：獲得 ${blk} 格擋。`,'sys'); } }
-  B.sparkN = 0; B.osTurn = 0; B.leechTurn = 0; B._leechFull = false;   // B閥：溢血成盾/吸取額度每回合重置
-  for(const e of B.es) e._dotUsed = null;                              // A閥：敵方毒燃承傷額度重置（週期＝玩家回合起手）
+  B.sparkN = 0; B.osTurn = 0;                    // 溢血成盾每回合上限重置
+  for(const e of B.es) e._dotUsed = null;        // A閥：敵方毒燃承傷額度重置（週期＝玩家回合起手）
   const rg = sumAffix('regen');
   if(rg && !first){ const h = healPlayer(Math.ceil(playerMaxHp()*0.06)); if(h>0) log(`血甲：回復 ${h} 生命。`,'heal'); }
   if(playerMaxMana() > 0 && !first){
@@ -238,10 +238,8 @@ function renderBattle(){
   const bb = $('p-block');
   if(B.block>0){ bb.style.display='inline-block'; bb.textContent = '🛡 '+B.block; } else bb.style.display='none';
   const en = $('p-energy');
-  const hasLeech = G.cls==='assassin' || G.cls==='dark' || sumAffix('vamp')>0 || sumAffix('dotdrain')>0 || sumAffix('symbio')>0 || chemOn('poisonvamp') || chemOn('burnvamp');   // B閥額度只對有吸取來源的 build 顯示
   en.innerHTML = `<span style="color:var(--gold);font-size:13px">◆ ${fmtPts(B.energy)}/${fmtPts(B.maxEnergy)} 行動</span>` +
     (playerMaxMana()>0? `<span style="color:#7fb3e8;font-size:13px">　🔮 ${R.mana||0}/${playerMaxMana()}</span>` : '') +
-    (hasLeech? `<span style="color:#e8a0a0;font-size:13px">　🩸 ${Math.max(0, leechCap()-(B.leechTurn||0))}/${leechCap()}</span>` : '') +
     (B.shield>0? `<span style="color:#9fd8ff;font-size:13px">　🔷 ${B.shield}</span>` : '');
   const grid = $('skill-grid'); grid.innerHTML='';
   for(const sid of CLASSES[G.cls].skills){
@@ -377,18 +375,15 @@ function healPlayer(amount){
   if(real > 0) R.hp += real;
   return real;
 }
-function leechCap(){ return Math.round(playerMaxHp() * (G.cls==='assassin' ? 0.20 : 0.15)); }   // B閥：每回合吸取回復合計上限（盜賊 20%／其他 15% 生命上限）
-function leechHeal(want){   // 吸取類回血唯一入口（B閥）：套修正 → 額度內回血 → 溢出（有「溢血成盾」）轉格擋
-  let h = Math.floor(want * healMult());              // 域修正（血肉迴廊 heal75）先套
-  if(B && B.st.wound) h = Math.floor(h/2);            // 重傷減半
-  const quota = Math.max(0, leechCap() - (B.leechTurn||0));
-  const real = Math.min(h, quota, playerMaxHp() - R.hp);   // 先判額度；以實際回復量計，滿血不耗額度
-  if(real > 0){ R.hp += real; B.leechTurn = (B.leechTurn||0) + real; }
-  if(h > 0 && quota <= 0 && !B._leechFull){ B._leechFull = true; floatDmg('player-zone','吸取滿','blocked'); log('本回合吸取回復已達上限。','sys'); }
-  const over = h - Math.max(0, real);
+/* 吸取類回血唯一入口。節流只有一道：吸血詞綴自身的彙總上限 VAMP_CAP（在 dealToEnemy 取用處）。
+   不再另設「每回合回復額度」——生存唯一能隨敵人成長的手段就是按比例回血，再加第二道閥等於刪掉盜賊。
+   高輪迴的過剩續航改由「血量/減傷的輪迴縮放」處理（見設計筆記 C 段），不在這裡貼膠布。 */
+function leechHeal(want){   // 先回血，溢出時（有「溢血成盾」）轉格擋——每回合上限 10% 最大生命
+  const real = healPlayer(want);
+  const over = want - real;
   if(over > 0 && chemOn('overshield')){
     const cap = Math.round(playerMaxHp()*0.1);
-    const add = Math.min(over, cap - (B.osTurn||0));   // 格擋轉換額度：每回合 10% 生命上限，獨立於回復額度
+    const add = Math.min(over, cap - (B.osTurn||0));   // 每回合上限(startPlayerTurn 重置)
     if(add > 0){ B.block += add; B.osTurn = (B.osTurn||0) + add; log(`溢血成盾：+${add} 格擋。`,'sys'); }
   }
   return real;
