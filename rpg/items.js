@@ -92,7 +92,7 @@ function marketStock(){
     };
     for(let i=0;i<n;i++){
       const roll = Math.random();
-      if(roll < 0.12 && cyclesUnlocked() > 0){
+      if(roll < 0.12 && cyclesUnlocked() >= 2){   // 材料要到「輪迴II 已出現」才進黑市（本源通關只開輪迴I，不該刷到沉鐵/心鋼）
         const mk2 = Math.random()<0.5?'iron':'steel';
         boxes.push({type:'mat', mat:mk2, qty:rnd(2,3), sold:false});
       } else if(roll < 0.27){
@@ -116,8 +116,8 @@ function marketStock(){
 }
 
 function boxPrice(b){
-  if(b.type==='mat') return 100 + G.rec.deep*2;
-  const base = b.item.rar===3 ? 480 + G.rec.deep*6 : 140 + G.rec.deep*2;
+  if(b.type==='mat') return (100 + G.rec.deep*2) * 5;   // 材料調漲 5 倍（沉鐵/心鋼原本過於便宜）
+  const base = (b.item.rar===3 ? 480 + G.rec.deep*6 : 140 + G.rec.deep*2) * 2;   // 裝備調漲 2 倍
   const cyc = (G.rec.cert && G.rec.cert.cycle) || 0;
   const priced = Math.round(base * Math.pow(1.5, cyc));   // 高輪迴 = 前一輪迴價格 ×1.5（裝備變強，價格跟上）
   return b.type==='open' ? Math.round(priced*1.3) : priced;

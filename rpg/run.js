@@ -1,6 +1,20 @@
 'use strict';
 // ============ run.js — 探索：下潛選單/門/樓層推進/全部事件/商人/撤退與死亡 ============
 
+/* 祝福授予唯一入口：同種祝福上限 2 次。全部滿了回哨兵物件（不入帳，n 即「施歪了」訊息，
+   現有 '...'+b.n 的顯示不用改；b.k=null 讓 if(b.k==='hp') 這類分支自然跳過）。
+   pk/pv：指定 key 的硬編祝福（如烹食 hp:8）用，未指定則隨機挑「未滿」的一種。 */
+const BLESS_MAX = 2;
+function blessCount(k){ return R.bless.filter(b=>b.k===k).length; }
+function grantBless(pk, pv){
+  let cand = null;
+  if(pk){ if(blessCount(pk) < BLESS_MAX){ const src = BLESSINGS.find(b=>b.k===pk); cand = {k:pk, v:(pv!=null?pv:(src?src.v:0)), n:src?src.n:'祝福'}; } }
+  if(!cand){ const avail = BLESSINGS.filter(b=>blessCount(b.k) < BLESS_MAX); if(avail.length) cand = pick(avail); }
+  if(!cand) return {k:null, v:0, full:true, n:'神父被你身上的祝福聖光閃瞎，祝福施歪了，你沒有得到祝福'};
+  R.bless.push({k:cand.k, v:cand.v});
+  return cand;
+}
+
 function startOptions(mode){
   // 回傳 [{floor, fee}]；傳送點以「成功逃脫的最深層」解鎖，每 10 層一階（1,11,21,31,41…）
   const opts = [{floor:1, fee:0}];
@@ -154,13 +168,13 @@ function pickUpStay(sid, branch){
 function doorPool(){
   const f = R.floor;
   const pool = [];
-  pool.push({t:'fight', i:'⚔️', n:'戰鬥', d:'普通的敵人', w:42});
-  if(f>=3) pool.push({t:'elite', i:'😈', n:'精英', d:'更強，掉落更好', w:16});
+  pool.push({t:'fight', i:'⚔️', n:'戰鬥', d:'普通的敵人', w:50});
+  if(f>=3) pool.push({t:'elite', i:'😈', n:'精英', d:'更強，掉落更好', w:30});
   const pev = rollEvent();
   const hint = Math.random()<0.5 ? '你察覺到：'+(EV_HINTS[pev]||'說不上來的氣息') : '誰知道呢';
-  pool.push({t:'event', i:'❓', n:'未知', d:hint, ev:pev, w:22});
-  pool.push({t:'rest', i:'🕯️', n:'營火', d:'回復 30% 生命', w:12});
-  pool.push({t:'chest', i:'📦', n:'寶箱', d:'看起來沒上鎖', w:8});
+  pool.push({t:'event', i:'❓', n:'未知', d:hint, ev:pev, w:10});   // 事件調降至 10（原 22，太頻繁）
+  pool.push({t:'rest', i:'🕯️', n:'營火', d:'回復 30% 生命', w:5});
+  pool.push({t:'chest', i:'📦', n:'寶箱', d:'看起來沒上鎖', w:5});
   return pool;
 }
 
@@ -321,7 +335,7 @@ function fireExtra(){
     const pk = Object.keys(R.pots)[0];
     return {n:`🍲 烹食（熬掉一瓶${POTIONS[pk].n}，生命上限 +8）`, f:()=>{
       R.pots[pk]--; if(!R.pots[pk]) delete R.pots[pk];
-      R.bless.push({k:'hp', v:8});
+      if(blessCount('hp') < BLESS_MAX) R.bless.push({k:'hp', v:8});   // 上限2；滿了仍給回血
       R.hp = Math.min(playerMaxHp(), R.hp + 8);
       showEventScreen('🕯️','烹食','你把藥水倒進鍋裡，加了些說不上來的東西。味道意外地好。\n\n生命上限 +8（本次探索有效）。',
         [{n:'繼續前進', f:()=>nextFloor(), primary:true}]);
@@ -341,7 +355,7 @@ function fireExtra(){
   }
   return {n:'🔥 撥弄火堆（誰知道會怎樣）', f:()=>{
     if(Math.random()<0.5){
-      const b = pick(BLESSINGS); R.bless.push({k:b.k, v:b.v});
+      const b = grantBless();
       showEventScreen('🕯️','撥火','火星飛起來的形狀像個古老的符文。\n\n'+b.n+'（本次探索有效）',
         [{n:'繼續前進', f:()=>nextFloor(), primary:true}]);
     } else {
@@ -499,7 +513,7 @@ function treasureRoll(bonus, icon, title){
         [{n:'收下，繼續前進', f:()=>nextFloor(), primary:true}]);
     }
   } else {
-    const b = pick(BLESSINGS); R.bless.push({k:b.k, v:b.v});
+    const b = grantBless();
     if(b.k==='hp') R.hp = Math.min(playerMaxHp(), R.hp);
     showEventScreen(icon, title, '你摸到的不是東西，是一段殘留的祝福。\n\n'+b.n+'（本次探索有效）',
       [{n:'繼續前進', f:()=>nextFloor(), primary:true}]);
@@ -511,9 +525,13 @@ const EVENTS = {
     const cost = Math.max(4, Math.round(R.hp*0.15));
     showEventScreen('⛩️','無名神龕','石龕裡供著一尊看不清面目的神像。香爐是冷的，但你總覺得有東西在等你開口。',
       [{n:`獻上鮮血（失去 ${cost} 血，獲得隨機祝福）`, f:()=>{
+        const b = grantBless();
+        if(b.full){   // 全滿：不收血、不給祝福，直接顯示施歪了
+          showEventScreen('⛩️','無名神龕','神像的眼窩亮了一瞬又暗了。\n\n'+b.n,
+            [{n:'繼續前進', f:()=>nextFloor(), primary:true}]);
+          return;
+        }
         R.hp = Math.max(1, R.hp - cost);
-        const b = pick(BLESSINGS);
-        R.bless.push({k:b.k, v:b.v});
         if(b.k==='hp') R.hp = Math.min(playerMaxHp(), R.hp + b.v);
         showEventScreen('⛩️','無名神龕','神像的眼窩亮了一瞬。\n\n'+b.n+'（本次探索有效）',
           [{n:'繼續前進', f:()=>nextFloor(), primary:true}]);
@@ -564,7 +582,7 @@ const EVENTS = {
         const roll = Math.random();
         if(roll<0.5){ const g = 60+R.floor*8; R.gold+=g;
           showEventScreen('🥫','罐頭開了','一隻不屬於任何年代的蟬爬出來，鳴叫一聲，化成了一把碎銀。\n\n獲得 '+g+' 碎銀。',[{n:'收下',f:()=>nextFloor(),primary:true}]);
-        } else if(roll<0.85){ const b = pick(BLESSINGS); R.bless.push({k:b.k,v:b.v});
+        } else if(roll<0.85){ const b = grantBless();
           showEventScreen('🥫','罐頭開了','蟬鳴了三聲。你夢見了自己的童年，醒來時覺得渾身是勁。\n\n'+b.n,[{n:'繼續前進',f:()=>nextFloor(),primary:true}]);
         } else { const dmg = Math.round(playerMaxHp()*0.2); R.hp=Math.max(1,R.hp-dmg);
           showEventScreen('🥫','罐頭開了','蟬沒有鳴。沉默像瘟疫一樣撲了你一臉。\n\n失去 '+dmg+' 點生命。',[{n:'…走了',f:()=>nextFloor()}]);
@@ -612,7 +630,7 @@ const EVENTS = {
       }},
       {n:'替他闔上眼，不動遺物', f:()=>{
         if(Math.random() < 0.35){
-          const b = pick(BLESSINGS); R.bless.push({k:b.k, v:b.v});
+          const b = grantBless();
           showEventScreen('🧟','前人','你替他闔上眼。起身時，覺得肩膀被誰輕輕拍了一下。\n\n'+b.n+'（本次探索有效）',
             [{n:'繼續前進', f:()=>nextFloor(), primary:true}]);
         } else showEventScreen('🧟','前人','你替他闔上眼，繼續前進。深淵沒有給你任何回報——體面本來就不是拿來換東西的。',
@@ -724,7 +742,7 @@ const EVENTS = {
     showEventScreen('🔥','先人的火堆','一堆還溫著的營火，主人不見了。灰裡好像埋著什麼。',
       [{n:'撥開灰燼', f:()=>{
         const r = Math.random();
-        if(r<0.45){ const b = pick(BLESSINGS); R.bless.push({k:b.k,v:b.v});
+        if(r<0.45){ const b = grantBless();
           showEventScreen('🔥','灰燼','灰裡埋著一枚刻符的石子，還帶著火的餘溫。\n\n'+b.n+'（本次探索有效）',
             [{n:'繼續前進', f:()=>nextFloor(), primary:true}]); }
         else if(r<0.75){ const e = makeEnemy(R.floor,0);
@@ -757,7 +775,7 @@ const EVENTS = {
         if(R.gold < cost){ toast('碎銀不夠'); return; }
         R.gold -= cost;
         const r = Math.random();
-        if(r<0.5){ const b = pick(BLESSINGS); R.bless.push({k:b.k,v:b.v});
+        if(r<0.5){ const b = grantBless();
           showEventScreen('🪙','許願池','水面泛起一圈不屬於物理的漣漪。\n\n'+b.n+'（本次探索有效）',
             [{n:'繼續前進', f:()=>nextFloor(), primary:true}]); }
         else if(r<0.8){ const g = cost*2; R.gold += g;
@@ -787,7 +805,7 @@ const EVENTS = {
     showEventScreen('🩸','裸露的血管','一根手臂粗的血管從牆裡垂下來，破口處滴著溫熱的血。喝的人聽說會變強。也聽說會變別的。',
       [{n:'喝一口', f:()=>{
         const r = Math.random();
-        if(r<0.5){ R.bless.push({k:'str',v:3}); const h = Math.min(Math.round(playerMaxHp()*0.2), playerMaxHp()-R.hp); R.hp += h;
+        if(r<0.5){ if(blessCount('str') < BLESS_MAX) R.bless.push({k:'str',v:3}); const h = Math.min(Math.round(playerMaxHp()*0.2), playerMaxHp()-R.hp); R.hp += h;
           showEventScreen('🩸','血管','深淵的血在你血管裡燒。力量 +3（本次探索），回復 '+h+' 點生命。',
             [{n:'繼續前進', f:()=>nextFloor(), primary:true}]); }
         else { R.pendingStatus = {wound:3};
@@ -829,7 +847,7 @@ const EVENTS = {
     showEventScreen('⛲','血泉','一眼泉，湧的是血——溫的、乾淨的、和你心跳同頻的血。',
       [{n:'喝下', f:()=>{
         const r = Math.random();
-        if(r<0.6){ R.bless.push({k:'hp',v:12}); const h = Math.min(Math.round(playerMaxHp()*0.35), playerMaxHp()-R.hp); R.hp += h;
+        if(r<0.6){ if(blessCount('hp') < BLESS_MAX) R.bless.push({k:'hp',v:12}); const h = Math.min(Math.round(playerMaxHp()*0.35), playerMaxHp()-R.hp); R.hp += h;
           showEventScreen('⛲','血泉','它認得你——你一路流的血，有一部分匯到了這裡。\n\n生命上限 +12（本次探索），回復 '+h+' 點生命。',
             [{n:'繼續前進', f:()=>nextFloor(), primary:true}]); }
         else { R.pendingStatus = {wound:2, weak:2};
@@ -888,7 +906,7 @@ const EVENTS = {
             [{n:'⚔️ 迎戰', f:()=>startBattle(e), primary:true}]); }
       }},
       {n:'讓他站著', f:()=>{
-        if(Math.random()<0.4){ const b = pick(BLESSINGS); R.bless.push({k:b.k,v:b.v});
+        if(Math.random()<0.4){ const b = grantBless();
           showEventScreen('🗿','鈣化的英雄','你朝他點了點頭。轉身時，你發誓看到他也點了。\n\n'+b.n+'（本次探索有效）',
             [{n:'繼續前進', f:()=>nextFloor(), primary:true}]); }
         else walkAway('🗿','鈣化的英雄');
@@ -911,7 +929,7 @@ function buyMerchant(idx){
   if(!st || st.sold) return;
   if(R.gold < st.price){ toast('碎銀不夠'); return; }
   if(st.kind==='gear'){ R.bag.push(st.it); toast('入手 '+st.it.name); }
-  else if(st.kind==='oil'){ const b = pick(BLESSINGS); R.bless.push({k:b.k,v:b.v}); toast(b.n); }
+  else if(st.kind==='oil'){ const b = grantBless(); toast(b.n); }
   else if(st.kind==='quench'){ R.quench = {k:'ptouch', v:3, battles:3}; toast('刀刃泛起烏青色'); }
   else if(st.kind==='mat'){ G.mats[st.mat]++; toast('入手 '+MATS[st.mat].n); }
   else if(st.kind==='rope'){ R.hasRope = true; R.ropeSeen = true; toast('🪢 入手逃脫之繩'); }
