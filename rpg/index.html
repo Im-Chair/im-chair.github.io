@@ -7,7 +7,7 @@
 <meta name="theme-color" content="#0b0d12">
 <title>貪婪深淵</title>
 <!-- 版本號集中管理：只改這一個 RPG_VER，即同步 CSS／所有 script／標題顯示的版號（破快取用） -->
-<script>window.RPG_VER='372';document.write('<link rel="stylesheet" href="style.css?v='+RPG_VER+'">');</script>
+<script>window.RPG_VER='373';document.write('<link rel="stylesheet" href="style.css?v='+RPG_VER+'">');</script>
 </head>
 <body>
 <div id="app">
@@ -92,6 +92,7 @@
   </div>
   <div class="door-grid" id="door-grid"></div>
   <button class="btn retreat-btn" id="retreat-btn" onclick="retreat()" style="display:none">🪢 使用逃脫之繩——活著離開，記錄這趟深度</button>
+  <button class="btn retreat-btn" id="retreat-gold-btn" onclick="retreatByGold()" style="display:none">💰 花費 9 成碎銀逃脫——活著離開，記錄這趟深度</button>
   <div class="rope-hint" id="rope-hint"></div>
   <div style="height:8px"></div>
   <button class="btn" style="font-size:14px" onclick="openRunStats()">🧍 角色檢視 <span id="bag-hint" style="color:var(--dim);font-size:12px"></span></button>

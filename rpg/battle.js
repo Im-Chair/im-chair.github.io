@@ -771,7 +771,7 @@ function winBattle(){
   let mendHeal = 0;
   if(mend){ mendHeal = Math.min(Math.round(playerMaxHp()*mend/100), playerMaxHp()-R.hp); if(mendHeal>0) R.hp += mendHeal; }
   if(R.quench && R.quench.battles>0){ R.quench.battles--; }
-  let gold = Math.round((8 + R.floor*2.4 + rnd(0,6)) * (B.boss?4 : B.elite?2 : 1) * (B.duo?1.6:1) * (1 + (R.cycle||0)*0.2));
+  let gold = Math.round((8 + R.floor*2.4 + rnd(0,6)) * (B.boss?4 : B.elite?2 : 1) * (B.duo?1.6:1) * (1 + (R.cycle||0)*0.2) * 0.5);   // 戰鬥碎銀減半（原掉太多）
   gold = Math.round(gold * (1 + sumAffix('greed')/100));
   R.gold += gold;
   const drops = [];
@@ -791,15 +791,16 @@ function winBattle(){
     drops.push(it3); R.bag.push(it3);
   }
   if(B.boss){
-    let ropeCh = Math.min(0.9, ROPE_DROP.boss + Math.max(0, R.floor-5) * ROPE_BOSS_RAMP); // 採深遞增
-    if(R.floor >= ROPE_PITY) ropeCh = 1;   // 保底：25 層起首領必給
+    let ropeCh = Math.min(1, 0.20 + 0.05*Math.floor(R.floor/5));   // 首領繩掉率：20% 起、每 5 層 +5%（約 80 層達 100%）
+    if(R.cycle === 0 && R.floor >= ROPE_PITY) ropeCh = 1;          // 保底只留本源：25 層起首領必給（輪迴 I–III／無限已無保底）
     tryDropRope(ropeCh, '首領');
   }
   let matDrop = null;
   if(R.cycle > 0 && R.floor >= 11){
     const chance = (0.16 + (B.elite?0.10:0) + (B.boss?0.20:0)) * (1 + (R.cycle-1)*0.35);
     if(Math.random() < chance){
-      matDrop = R.floor <= 30 ? 'iron' : 'steel';
+      const pSteel = Math.min(0.9, Math.max(0.1, (R.floor-11)/89));   // 深度加權：11層 ~10% 心鋼、100層 ~90%；無 30 層硬線
+      matDrop = Math.random() < pSteel ? 'steel' : 'iron';
       R.matsPending = R.matsPending || {}; R.matsPending[matDrop] = (R.matsPending[matDrop]||0) + 1;   // 回營才入帳
     }
   }
@@ -807,7 +808,8 @@ function winBattle(){
   if(Math.random() < (B.boss?0.8:0.22)){
     const k = pick(potionPool());
     if(potAdd(k)) potionDrop = k;
-    else { potionOverflow = 12 + Math.round(R.floor*0.8); R.gold += potionOverflow; }
+    // 藥水袋已無上限，potAdd 恆為 true → 以下溢出折現為死 code，先槓掉保留（未來若恢復袋上限再啟用）
+    // else { potionOverflow = 12 + Math.round(R.floor*0.8); R.gold += potionOverflow; }
   }
   const isFinal = B.es.some(e=>e.final);
   if(isFinal){ G.rec.clear = (G.rec.clear||0) + 1; }
@@ -821,7 +823,10 @@ function winBattle(){
   if(drops.length) bountyProgress('loot');
   bountyProgress('streakkill');
   if(B.noHit) bountyProgress('flawless');
-  if(Math.random() < (B.boss?0.22:0.05)){ const rn = makeRune(R.floor, R.cycle); R.runesPending = R.runesPending||[]; R.runesPending.push(rn); toast('🔯 拾獲符文：'+rn.name); }   // 符文掉落（回營才入手）
+  let runeCh = (B.boss?0.22:0.05);
+  if(R.cycle >= 4 && R.floor > 100) runeCh += Math.floor((R.floor-100)/50) * 0.01;   // 無限 100 層後每 50 層 +1% 符文掉率
+  if(Math.random() < runeCh){ const rn = makeRune(R.floor, R.cycle);
+    if(rn){ R.runesPending = R.runesPending||[]; R.runesPending.push(rn); toast('🔯 拾獲符文：'+rn.name); } }   // 未達里程碑 makeRune 回 null＝不掉（回營才入手）
   setTimeout(()=>{
     showLoot(drops, gold, B.boss?'👑':'⚔️', isFinal?'你打穿了深淵的心臟':(B.boss?'首領倒下了':'戰鬥勝利'),
       `獲得 ${gold} 碎銀` + (potionDrop? `，撿到 ${POTIONS[potionDrop].i}${POTIONS[potionDrop].n}`:'') + (potionOverflow? `，藥水袋滿——折成 ${potionOverflow} 碎銀`:'') + (matDrop? `，拾獲 ${MATS[matDrop].i}${MATS[matDrop].n} ×1`:''), mendHeal? `（急救回復 ${mendHeal} 血）`:'');

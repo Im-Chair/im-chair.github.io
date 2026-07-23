@@ -195,8 +195,10 @@ function showDoors(){
   $('d-hp').textContent = `❤️ ${R.hp}/${playerMaxHp()}`;
   const rb = document.getElementById('retreat-btn');
   if(rb) rb.style.display = R.hasRope ? '' : 'none';
+  const rgb = document.getElementById('retreat-gold-btn');
+  if(rgb) rgb.style.display = (!R.hasRope && R.gold > 0 && R.floor > 1) ? '' : 'none';   // 無繩時可花 9 成碎銀逃脫
   const rh = document.getElementById('rope-hint');
-  if(rh) rh.textContent = R.hasRope ? '' : `🪢 逃脫之繩：首領掉率隨深度提升（第 ${ROPE_PITY} 層起必給）／寶箱 5%／商人 8%｜單趟限一條`;
+  if(rh) rh.textContent = R.hasRope ? '' : `🪢 逃脫之繩：首領 20%起每5層+5%${R.cycle===0?`（本源第 ${ROPE_PITY} 層起必給）`:''}／寶箱 5%／商人 8%｜或花 9 成碎銀逃脫`;
   $('d-bonus').textContent = rarityBonusText(f);
   const grid = $('door-grid'); grid.innerHTML = '';
   if(R.forceDoor){
@@ -972,12 +974,27 @@ function tryDropRope(chance, srcLabel){ // 逃脫之繩掉落：單趟唯一
 
 function retreat(){
   if(!R.hasRope){ toast('沒有逃脫之繩'); return; }
+  retreatFlow('🪢', `你在第 ${R.floor} 層拉了繩子。貪婪是美德，活著兌現它更是。`);
+}
+function retreatByGold(){
+  if(R.gold <= 0){ toast('沒有碎銀可付'); return; }
+  const cost = Math.ceil(R.gold*0.9);
+  openSheet(`<h3>花錢買一條命</h3><p class="base">沒有繩子，也能用錢開路——扣掉手上 9 成碎銀（${cost}🪙，剩 ${R.gold-cost}），活著離開並記錄這趟深度。</p>
+    <div class="row" style="margin-top:16px"><button class="btn primary" onclick="doRetreatByGold()">花 ${cost}🪙 逃脫</button><button class="btn" onclick="closeSheet()">再想想</button></div>`);
+}
+function doRetreatByGold(){
+  if(R.gold <= 0){ toast('沒有碎銀可付'); return; }
+  const cost = Math.ceil(R.gold*0.9);
+  R.gold -= cost; closeSheet();
+  retreatFlow('💰', `你在第 ${R.floor} 層撒錢開路——${cost} 碎銀換一條命。深淵收了買路財，放你走。`);
+}
+function retreatFlow(icon, sub){   // 逃脫結算（繩子/花錢共用）
   const n = R.bag.length, g = R.gold, deep = R.floor, kills = R.kills;
   bankRun(deep);   // 逃脫成功回營：保存這趟一切（戰利品/金錢/符文/材料/圖鑑/認證/懸賞）
   R = null; B = null; save();
-  $('res-icon').textContent = '🪢';
+  $('res-icon').textContent = icon;
   $('res-title').textContent = '平安歸來';
-  $('res-sub').textContent = `你在第 ${deep} 層拉了繩子。貪婪是美德，活著兌現它更是。`;
+  $('res-sub').textContent = sub;
   $('res-body').innerHTML = `<div class="stat-grid">
     <div class="stat-box"><div class="v">${deep}</div><div class="k">抵達深度</div></div>
     <div class="stat-box"><div class="v">${kills}</div><div class="k">擊殺</div></div>

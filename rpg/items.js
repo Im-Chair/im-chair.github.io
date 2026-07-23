@@ -15,13 +15,19 @@ function rollAffixVal(k, ri, floor, cyc){
 }
 
 function rollRarity(floor, bonus){ // bonus: 0一般 1精英 2首領
+  // 錨點制(§掉落)：白80→40、橙5→20 隨深度(prog=輪迴+樓層/100，本源50→prog0.5、輪迴III100→prog4)線性；
+  // 加成:精英 白×0.7橙×1.5、首領 白×0.5橙×2；藍/金填剩餘(越深金越多)。雜魚主掉白(高基礎填補)、橙靠首領與輪迴。
   const cyc = (R&&R.cycle)||0;
-  let w = Math.max(46 - floor*3 - bonus*18 - cyc*12, 2);
-  let b = Math.max(32 + bonus*4 - cyc*6, 6);
-  let g = 13 + floor*1.1 + bonus*10 + cyc*8;
-  let o = 2.5 + floor*0.8 + bonus*7 + cyc*6;
-  const total = w+b+g+o; let r = Math.random()*total;
-  if((r-=w)<0) return 0; if((r-=b)<0) return 1; if((r-=g)<0) return 2; return 3;
+  const p = cyc + floor/100;
+  let W = 80 - (80-40)*(p-0.5)/3.5;
+  let O = 5  + (20-5 )*(p-0.5)/3.5;
+  const bW = [1,0.7,0.5][bonus] || 1, bO = [1,1.5,2][bonus] || 1;
+  W = Math.max(2, W*bW); O = Math.max(1, O*bO);
+  const rem = Math.max(0, 100 - W - O);
+  const gFrac = Math.min(0.8, Math.max(0.4, 0.5 + 0.15*(p-0.5)/3.5));
+  const g = rem*gFrac, b = rem*(1-gFrac);
+  const total = W+b+g+O; let r = Math.random()*total;
+  if((r-=W)<0) return 0; if((r-=b)<0) return 1; if((r-=g)<0) return 2; return 3;
 }
 
 function makeItem(floor, bonus, cyc){
@@ -109,7 +115,8 @@ function marketStock(){
     const rc = rnd(2,3);
     const cc = G.rec.cert ? G.rec.cert.cycle : 0;
     const cf = G.rec.cert ? G.rec.cert.floor : Math.max(12, G.rec.deep);
-    for(let i=0;i<rc;i++) runes.push({rune: makeRune(cf, cc), sold:false});
+    if(runeMaxRar(cc, cf) >= 0)   // 符文里程碑未達（本源/輪迴I 50 前）＝黑市不賣符文
+      for(let i=0;i<rc;i++){ const rn = makeRune(cf, cc); if(rn) runes.push({rune: rn, sold:false}); }
     G.market = {run:G.rec.runs, boxes, runes};
     save();
   }
@@ -243,16 +250,16 @@ function equipFromShared(id){
   G.equip[it.slot] = it; closeSheet(); renderGear(); save(); toast('已裝備 '+it.name);
 }
 /* ===== 符文（放進符文槽即被動生效） ===== */
-function runeMaxRar(cycle, floor){   // 本源只普通；輪迴I≥30精良、≥70稀有；II≥30稀有、≥70傳說；III≥30傳說
-  if(cycle<=0) return 0;
-  const base = Math.min(cycle-1, 2);
-  let m = base;
-  if(floor>=30) m = base+1;
-  if(floor>=70) m = base+2;
-  return Math.min(3, m);
+function runeMaxRar(cycle, floor){   // 符文里程碑：本源不掉；輪迴I50→普通、II50→精良、III50→稀有、III100→傳說；無限→傳說。回 -1＝不解鎖
+  if(cycle>=4) return 3;
+  if(cycle<=0) return -1;                        // 本源不掉符文
+  if(cycle===1) return floor>=50 ? 0 : -1;       // 輪迴I 50 起：普通
+  if(cycle===2) return floor>=50 ? 1 : 0;        // 輪迴II 50 起：精良（<50 仍普通）
+  return floor>=100 ? 3 : (floor>=50 ? 2 : 1);   // 輪迴III：<50精良、≥50稀有、100傳說
 }
 function makeRune(floor, cycle){
   const maxR = runeMaxRar(cycle||0, floor);
+  if(maxR < 0) return null;   // 未達符文解鎖里程碑（本源/輪迴I 50 層前）
   const w = []; for(let r=0;r<=maxR;r++) w.push(Math.pow(0.45, r));   // 越高階越稀有
   const tot = w.reduce((a,b)=>a+b,0); let x = Math.random()*tot, ri = 0;
   for(let r=0;r<=maxR;r++){ x -= w[r]; if(x<0){ ri = r; break; } }
