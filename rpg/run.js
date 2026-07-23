@@ -71,7 +71,9 @@ function openDivePicker(){
   } else {
     const cp = cd(pendingMode).cp;
     const ds = cp>=11 ? Math.floor((cp-1)/10)*10+1 : 1;
-    nextCp = '活著逃脫到第 '+(ds===1?11:ds+10)+' 層並拉繩，解鎖傳送至該層';
+    const capped = pendingMode < 4;                       // 輪迴 I–III 封 100，最深傳送階 91；無限(≥4)不封頂
+    const nxt = (!capped || ds < 91) ? (ds===1?11:ds+10) : 0;
+    if(nxt) nextCp = '活著逃脫到第 '+nxt+' 層並拉繩，解鎖傳送至該層';
   }
   if(nextCp) html += `<p style="color:var(--dim);font-size:12px;margin-top:8px">🔒 ${nextCp}。</p>`;
   if(cu === 0) html += '<p style="color:var(--dim);font-size:12px">🔒 打穿本源 50 層通關，解鎖輪迴。</p>';

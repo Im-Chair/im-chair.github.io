@@ -187,16 +187,17 @@ const LORD_BOSSES = [
 
 /* 武器四柱 (§3)：行動點費用第3批上線，本批先落地 係數/類型/對盾 */
 const WEAPON_TYPES = {
-  dagger:{n:'匕首', i:'🗡️', pts:4, coef:0.6, blockMod:1.5, magic:false},                 // 連擊·多觸發
+  dagger:{n:'匕首', i:'🗡️', pts:4, coef:0.8, blockMod:1.2, magic:false},                 // 連擊·多觸發（係數0.8/對盾1.2：每回合權重3.2，略補其穿盾弱勢）
   sword: {n:'劍',   i:'⚔️', pts:3, coef:1.0, blockMod:1.0, magic:false, critRate:8},      // 均衡·普攻爆擊率+8%
   axe:   {n:'斧',   i:'🪓', pts:2, coef:1.5, blockMod:0.5, magic:false},   // 破防·對格擋只被吸收 50%（100盾→門檻50）
   staff: {n:'杖',   i:'🪄', pts:3, coef:1.0, blockMod:0.5, magic:true,  spellAmp:0.15},   // 法術·法術傷害+15%
 };
 /* 供需曲線 (§13)：全部可調 */
 const CURVE = {
-  wpnBase: f => 6 + f*0.9,          // 武器攻擊力
+  wpnBase: f => 6 + f*0.6,          // 武器攻擊力（樓層係數 0.9→0.6：傷害重心從「武器基礎值」移向素質詞綴+精煉）
   armBase: f => 3 + f*0.5,          // 護甲防禦力
-  rarMult: [0.8, 1.0, 1.2, 1.4],    // 白藍金橙
+  rarMult: [0.8, 1.0, 1.2, 1.4],    // 白藍金橙（舊制單值，保留給既有存檔/相容；新裝改用下方 rarMultBand 每件 roll）
+  rarMultBand: [[1.3,1.7],[1.05,1.3],[0.9,1.1],[0.8,1.0]],  // 稀有度反轉+區間：白高基礎低詞綴、橙低基礎滿詞綴，每件隨機一值——高roll白裝可勝低roll橙裝的基礎值
   mobHP:   f => f<=10 ? f*23 : 70 + f*16,     // 雜魚血量目標（1-10層俯衝、10層起接 §13 對表）
   mobDMG:  f => f<=10 ? f*1.8 : 3 + f*1.5,    // 雜魚單發目標
   eliteHP: 1.5, miniHP: 2.2, lordHP: 2.6, finalHP: 2.9,  // 相對雜魚（精英壓到域主之下）

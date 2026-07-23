@@ -30,13 +30,15 @@ function makeItem(floor, bonus, cyc){
   const it = {id:uid++, slot, rar:ri, up:0, banked:false, affixes:[]};
   const cc = (cyc != null) ? cyc : ((R && R.cycle>0) ? R.cycle : 0);   // 明確輪迴優先（營地生裝備用），否則讀當前 run
   it.pf = floor; it.pc = cc;                                 // 出身樓層/輪迴（重鑄依此還原強度）
-  const cf = floor * cycK(cc);                               // 輪迴等效樓層：基礎值只放大樓層項（6+0.9·f·K），常數不吃
+  const cf = floor * cycK(cc);                               // 輪迴等效樓層：基礎值只放大樓層項（6+0.6·f·K），常數不吃
+  const rb = CURVE.rarMultBand[ri];                          // 稀有度倍率每件隨機（反轉：稀有度越高倍率越低、詞綴越多）
+  const rm = rb[0] + Math.random()*(rb[1]-rb[0]);
   if(slot==='w'){
     it.wtype = pick(['dagger','sword','axe','staff']);
-    it.base = Math.round(CURVE.wpnBase(cf) * CURVE.rarMult[ri]);
+    it.base = Math.round(CURVE.wpnBase(cf) * rm);
     it.name = pick(WEAPON_NAMES[it.wtype]);
   }
-  else if(slot==='a'){ it.base = Math.round(CURVE.armBase(cf) * CURVE.rarMult[ri]); it.name = pick(ARMOR_NAMES); }
+  else if(slot==='a'){ it.base = Math.round(CURVE.armBase(cf) * rm); it.name = pick(ARMOR_NAMES); }
   else { it.base = 0; it.name = pick(TRINKET_NAMES); }
   it.name = pick(PREFIX[rar.id]) + it.name;
   const n = rnd(rar.afx[0], rar.afx[1]);
