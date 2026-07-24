@@ -646,9 +646,8 @@ const EVENTS = {
       [{n:'伸手進去', f:()=>{
         const r = Math.random();
         if(r < 0.08){
-          const it = makeItem(R.floor, 2); it.rar = 3;
+          const it = makeItem(R.floor, 2, undefined, 3);   // forceRar=3：傳說詞綴正確生成，不再假稀有度
           it.name = pick(PREFIX.orange) + it.name.replace(/^(破舊的|素面的|無名的|精良的|工匠的|磨亮的|符文|低語的|深淵紋|王殞|噬光|無面|母巢)/,'');
-          it.affixes = it.affixes.length>=3? it.affixes : it.affixes.concat([{k:'str',v:3}]);
           R.bag.push(it);
           showLoot([it], 0, '✨', '裂縫深處', '你的指尖碰到了它——它也在等你。');
         }
@@ -1106,11 +1105,7 @@ function claimBounty(b){
   else if(r.kind==='mat') G.mats[r.mat] = (G.mats[r.mat]||0) + r.amt;
   else {   // gear / legendary
     const f = b.floor || (R && R.floor) || 10;   // 回報可能在營地(R 為 null)
-    let it = makeItem(f, 2, b.mode||0);           // 獎勵裝備吃該委託的輪迴
-    if(r.kind==='legendary'){
-      let tries=0; while(it.rar<3 && tries++<30) it = makeItem(f, 2, b.mode||0);
-      if(it.rar<3){ it.rar=3; const lp = LEG_KEYS.filter(k=>AFFIXES[k].slots.includes(it.slot)); if(lp.length) it.affixes.unshift({k:pick(lp), v:1}); }
-    }
+    const it = makeItem(f, 2, b.mode||0, r.kind==='legendary' ? 3 : null);   // 傳說獎勵用 forceRar=3，詞綴正確生成
     it.banked=true; G.stash.push(it);
   }
   const gg = b.gems || rnd(1,3); G.gems = (G.gems||0) + gg;   // 委託額外給 💎

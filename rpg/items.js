@@ -30,8 +30,8 @@ function rollRarity(floor, bonus){ // bonus: 0一般 1精英 2首領
   if((r-=W)<0) return 0; if((r-=b)<0) return 1; if((r-=g)<0) return 2; return 3;
 }
 
-function makeItem(floor, bonus, cyc){
-  const ri = rollRarity(floor, bonus||0), rar = RARITIES[ri];
+function makeItem(floor, bonus, cyc, forceRar){
+  const ri = (forceRar != null) ? forceRar : rollRarity(floor, bonus||0), rar = RARITIES[ri];   // forceRar：指定稀有度（在骰詞綴前決定，詞綴才會依該稀有度正確生成）
   const slot = pick(['w','w','a','a','t']);
   const it = {id:uid++, slot, rar:ri, up:0, banked:false, affixes:[]};
   const cc = (cyc != null) ? cyc : ((R && R.cycle>0) ? R.cycle : 0);   // 明確輪迴優先（營地生裝備用），否則讀當前 run
@@ -89,14 +89,7 @@ function marketStock(){
     const n = rnd(2,4);
     const mk = (bonusRar)=>{
       const g = certGearCtx();                         // 綁認證的樓層＋輪迴，讓黑市裝備吃真實輪迴倍率
-      let it = makeItem(g.floor, 2, g.cyc), tries = 0;
-      while(it.rar !== bonusRar && tries++ < 40) it = makeItem(g.floor, 2, g.cyc);
-      if(it.rar !== bonusRar){ it.rar = bonusRar;
-        if(bonusRar===3 && !it.affixes.some(a=>AFFIXES[a.k].leg)){
-          const lp = LEG_KEYS.filter(k=>AFFIXES[k].slots.includes(it.slot));
-          if(lp.length) it.affixes.unshift({k:pick(lp), v:1});
-        } }
-      return it;
+      return makeItem(g.floor, 2, g.cyc, bonusRar);    // forceRar：直接生成指定稀有度，詞綴依該稀有度正確 roll（不再 force-set 造成假稀有度）
     };
     for(let i=0;i<n;i++){
       const roll = Math.random();

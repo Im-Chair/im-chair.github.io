@@ -778,16 +778,12 @@ function winBattle(){
   const dropChance = (B.boss||B.elite||B.duo)?1 : 0.55;
   if(Math.random() < dropChance){
     const bonus = B.boss?2 : (B.elite||B.duo)?1 : 0;
-    let it = makeItem(R.floor, bonus);
-    if(B.boss && it.rar < 2){ it = makeItem(R.floor, 2); it.rar = Math.max(2, it.rar); }
+    const it = makeItem(R.floor, bonus);   // 首領不再 force 成金：依新分佈（首領白×0.5橙×2），詞綴永遠對得上稀有度
     drops.push(it); R.bag.push(it);
   }
   if((B.boss || B.duo) && Math.random()<0.5){ const it2 = makeItem(R.floor, 1); drops.push(it2); R.bag.push(it2); }
   if(B.es.some(e=>e.final)){
-    let it3 = makeItem(R.floor, 2); let tries = 0;
-    while(it3.rar < 3 && tries++ < 30) it3 = makeItem(R.floor, 2);
-    if(it3.rar < 3){ it3.rar = 3; const lp = LEG_KEYS.filter(k=>AFFIXES[k].slots.includes(it3.slot));
-      if(lp.length) it3.affixes.unshift({k:pick(lp), v:1}); }
+    const it3 = makeItem(R.floor, 2, undefined, 3);   // 最終王必掉傳說（forceRar=3 自動含傳說詞綴）
     drops.push(it3); R.bag.push(it3);
   }
   if(B.boss){
