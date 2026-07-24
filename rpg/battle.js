@@ -783,7 +783,7 @@ function winBattle(){
   }
   if((B.boss || B.duo) && Math.random()<0.5){ const it2 = makeItem(R.floor, 1); drops.push(it2); R.bag.push(it2); }
   if(B.es.some(e=>e.final)){
-    const it3 = makeItem(R.floor, 2, undefined, 3);   // 最終王必掉傳說（forceRar=3 自動含傳說詞綴）
+    const it3 = makeItem(R.floor, 2);   // 最終王額外一件：依首領分佈（橙率高但不保底傳說）
     drops.push(it3); R.bag.push(it3);
   }
   if(B.boss){

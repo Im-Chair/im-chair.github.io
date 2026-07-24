@@ -47,7 +47,8 @@ function makeItem(floor, bonus, cyc, forceRar){
   else if(slot==='a'){ it.base = Math.round(CURVE.armBase(cf) * rm); it.name = pick(ARMOR_NAMES); }
   else { it.base = 0; it.name = pick(TRINKET_NAMES); }
   it.name = pick(PREFIX[rar.id]) + it.name;
-  const n = rnd(rar.afx[0], rar.afx[1]);
+  let n = rnd(rar.afx[0], rar.afx[1]);
+  if(slot==='t') n = Math.max(1, n);   // 飾品 base=0，至少 1 條詞綴才有功能（白飾品 0 條＝廢物）
   const pool = Object.keys(AFFIXES).filter(k=>AFFIXES[k].slots.includes(slot) && !AFFIXES[k].leg && !AFFIXES[k].curse);
   const chosen = [];
   for(let i=0;i<n && pool.length;i++){

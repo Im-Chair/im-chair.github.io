@@ -167,17 +167,17 @@ function pickUpStay(sid, branch){
     [{n:'出發', f:()=>nextFloorSame(), primary:true}]);
 }
 
-function doorPool(){
+function doorPair(){   // 門一定是「戰鬥」＋另一扇（菁英80/事件10/營火5/寶箱5；3層前無菁英）
   const f = R.floor;
-  const pool = [];
-  pool.push({t:'fight', i:'⚔️', n:'戰鬥', d:'普通的敵人', w:50});
-  if(f>=3) pool.push({t:'elite', i:'😈', n:'精英', d:'更強，掉落更好', w:30});
+  const d1 = {t:'fight', i:'⚔️', n:'戰鬥', d:'普通的敵人'};
   const pev = rollEvent();
   const hint = Math.random()<0.5 ? '你察覺到：'+(EV_HINTS[pev]||'說不上來的氣息') : '誰知道呢';
-  pool.push({t:'event', i:'❓', n:'未知', d:hint, ev:pev, w:10});   // 事件調降至 10（原 22，太頻繁）
-  pool.push({t:'rest', i:'🕯️', n:'營火', d:'回復 30% 生命', w:5});
-  pool.push({t:'chest', i:'📦', n:'寶箱', d:'看起來沒上鎖', w:5});
-  return pool;
+  const pool2 = [];
+  if(f>=3) pool2.push({t:'elite', i:'😈', n:'精英', d:'更強，掉落更好', w:80});
+  pool2.push({t:'event', i:'❓', n:'未知', d:hint, ev:pev, w:10});
+  pool2.push({t:'rest', i:'🕯️', n:'營火', d:'回復 30% 生命', w:5});
+  pool2.push({t:'chest', i:'📦', n:'寶箱', d:'看起來沒上鎖', w:5});
+  return [d1, weightedPick(pool2)];
 }
 
 function weightedPick(pool){
@@ -214,11 +214,7 @@ function showDoors(){
     grid.style.gridTemplateColumns = '1fr';
   } else {
     if(!R.doors){
-      const pool = doorPool();
-      const d1 = weightedPick(pool);
-      let d2 = weightedPick(pool); let guard = 0;
-      while(d2.t===d1.t && guard++<12) d2 = weightedPick(pool);
-      R.doors = [d1,d2];
+      R.doors = doorPair();
     }
     grid.style.gridTemplateColumns = '1fr 1fr';
   }
