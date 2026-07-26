@@ -170,11 +170,10 @@ function playerMaxHp(){
   if(R && R.hpCut) hp = Math.round(hp * (1 - R.hpCut)); // 殘卷血契 (§10)
   return Math.max(1, hp);
 }
-function playerMaxMana(){
-  if(CLASSES[G.cls].mainStat !== 'int') return Math.round(sumAffix('mp') * runeMul('mp')); // 物攻職業無基礎法力（除非裝備給）
+function playerMaxMana(){   // 全職業統一：所有人都有魔力（魔符系統的前提），差別在精神高低
   return Math.round((BASE_MANA + statTotal('spi')*2 + sumAffix('mp')) * runeMul('mp'));
 }
-function manaRegenPct(){ return Math.min(MREGEN_CAP, 25 + sumAffix('mregen')); }
+function manaRegenPct(){ return Math.min(MREGEN_CAP, 25 + statTotal('spi')/10 + sumAffix('mregen')); }   // 精神同時提升回魔速度（成本改%制後，回魔率＝施法頻率）
 function weaponType(){ const w = G.equip.w; return WEAPON_TYPES[(w && w.wtype) || 'sword']; }
 function mainStat(){ return statTotal(CLASSES[G.cls].mainStat); }
 function playerAtk(){ // 顯示用：武器攻擊＋主素質

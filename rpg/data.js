@@ -45,62 +45,65 @@ const SKILLS = {
      費用 = 武器行動點 × costW（fixed 招式固定費用，不經武器）
      傷害 = (武器攻擊＋主素質) × 武器係數 × mult
      magic 招式吃法力、以法術判定對盾（繞一半；pierce=完全無視格擋） */
+  /* 魔力成本為「最大魔力的百分比」(manaPct)，前後期皆成立；法術傷害另計入「消耗魔力×MANA_DMG_K」 */
   /* —— 🛡️ 劍士 —— */
   slash:  {n:'揮擊',   slot:'普', costW:1, mult:1.0, d:'基礎攻擊'},
-  guard:  {n:'壁壘',   slot:'輔', fixed:1, blockCoef:0.5, d:'獲得格擋（10＋體力×0.5）'},
-  sunder: {n:'破甲斬', slot:'中', costW:2, mult:1.6, apply:{vuln:2}, d:'重擊並附加易傷'},
-  execute:{n:'處決',   slot:'大', costW:3, mult:2.5, execLine:0.3, d:'斬殺一擊，低血敵人加倍'},
+  guard:  {n:'壁壘',   slot:'輔', fixed:1, blockCoef:0.5, hpCoef:0.05, d:'獲得格擋（生命×0.05＋體力×0.5）'},
+  sunder: {n:'破甲斬', slot:'中', costW:2, mult:2.0, apply:{vuln:2}, d:'重擊並附加易傷'},
+  execute:{n:'處決',   slot:'大', costW:3, mult:4.0, execLine:0.3, execMult:5.5, d:'斬殺一擊，低血敵人倍率提升'},
   /* —— 🗡️ 盜賊 —— */
   stab:   {n:'刺擊',   slot:'普', costW:1, mult:1.0, d:'基礎攻擊'},
   venom:  {n:'淬毒',   slot:'輔', fixed:1, applyOnly:{poison:3}, d:'對目標上毒'},
-  shadow: {n:'連環刃', slot:'中', costW:2, mult:0.6, hits:3, d:'三段攻擊，各自觸發爆擊與附加效果'},
-  garrote:{n:'絞殺',   slot:'大', costW:3, mult:2.0, poisonAmp:0.15, d:'依目標毒層加成的收割一擊（只讀不耗）'},
+  shadow: {n:'連環刃', slot:'中', costW:2, mult:0.7, hits:3, d:'三段攻擊，各自觸發爆擊與附加效果'},
+  garrote:{n:'絞殺',   slot:'大', costW:3, mult:3.5, poisonAmp:0.10, d:'依目標毒層加成的收割一擊（只讀不耗）'},
   /* —— 🔮 法師 —— */
   smite:  {n:'敲擊',   slot:'普', costW:1, mult:1.0, d:'物理保底攻擊'},
-  shield: {n:'屏障',   slot:'輔', fixed:1, mana:15, shieldCoef:1.2, d:'獲得護盾（10＋智力×1.2，可疊加）'},
-  fireball:{n:'火球',  slot:'中', costW:2, mana:20, mult:1.6, magic:true, apply:{burn:2}, d:'法術轟擊並點燃'},
-  oblivion:{n:'湮滅',  slot:'大', costW:3, mana:40, mult:2.8, magic:true, pierce:true, d:'無視格擋的毀滅法術'},
+  shield: {n:'屏障',   slot:'輔', fixed:1, manaPct:15, shieldCoef:1.2, manaCoef:0.2, d:'獲得護盾（魔力×0.2＋智力×1.2，可疊加）'},
+  fireball:{n:'火球',  slot:'中', costW:2, manaPct:20, mult:2.0, magic:true, apply:{burn:2}, d:'法術轟擊並點燃'},
+  oblivion:{n:'湮滅',  slot:'大', costW:3, manaPct:40, mult:4.5, magic:true, pierce:true, d:'無視格擋的毀滅法術'},
   /* —— 🕯️ 制魔師 —— */
   wstrike:{n:'杖擊',   slot:'普', costW:1, mult:1.0, d:'物理保底攻擊'},
-  hex:    {n:'蝕咒',   slot:'輔', fixed:1, mana:10, applyOnly:{weak:2,vuln:2}, d:'對目標同時施加虛弱與易傷'},
-  siphon: {n:'汲取',   slot:'中', costW:2, mana:20, mult:1.4, magic:true, drain:0.5, d:'法術吸取，傷害半數轉為回血'},
-  calam:  {n:'災厄',   slot:'大', costW:3, mana:35, mult:1.2, magic:true, aoe:true, debuffAmp:0.3,
+  hex:    {n:'蝕咒',   slot:'輔', fixed:1, manaPct:10, applyOnly:{weak:2,vuln:2}, d:'對目標同時施加虛弱與易傷'},
+  siphon: {n:'汲取',   slot:'中', costW:2, manaPct:20, mult:1.8, magic:true, drain:0.5, d:'法術吸取，傷害半數轉為回血'},
+  calam:  {n:'災厄',   slot:'大', costW:3, manaPct:35, mult:3.5, magic:true, aoe:true, debuffAmp:0.5,
            d:'全體法術，目標每種負面狀態加傷；單體時強化並鋪滿負面'},
 };
+const MANA_DMG_K = 0.5;     // 法術傷害的「消耗魔力」係數：魔力投資轉戰力（見 calcPlayerDmg）
+const CALAM_SOLO_MULT = 2.6; // 災厄單體模式倍率（原寫死在 battle.js）
 /* 精進三十二分支 (§10)：純參數變形、比例制、只讀不耗 */
 const SKILL_UPS = {
   slash:  {a:{n:'重手', d:'倍率 1.0→1.3', mod:s=>{s.mult=1.3;}},
-           b:{n:'輕靈', d:'費用 ×0.5、倍率 ×0.7', mod:s=>{s.costMul=0.5; s.mult=+(s.mult*0.7).toFixed(2);}}},
+           b:{n:'輕靈', d:'倍率 →0.8、30% 機率附易傷 1 層', mod:s=>{s.mult=0.8; s.vulnChance=0.3;}}},
   guard:  {a:{n:'厚壁', d:'體力係數 0.5→0.9', mod:s=>{s.blockCoef=0.9;}},
-           b:{n:'尖壁', d:'格擋存在期間，受擊反彈格擋值 30%', mod:s=>{s.spike=0.3;}}},
-  sunder: {a:{n:'撕裂', d:'易傷 2→4 層', mod:s=>{s.apply={vuln:4};}},
-           b:{n:'碎盾', d:'額外移除目標全部格擋（倍率 1.6→1.3）', mod:s=>{s.mult=1.3; s.shatter=true;}}},
+           b:{n:'尖壁', d:'體力係數 →0.3，受擊反彈格擋值 30%', mod:s=>{s.blockCoef=0.3; s.spike=0.3;}}},
+  sunder: {a:{n:'撕裂', d:'倍率 2.0→2.4', mod:s=>{s.mult=2.4;}},
+           b:{n:'碎盾', d:'倍率 →1.7、易傷 →3 層，額外移除目標全部格擋', mod:s=>{s.mult=1.7; s.apply={vuln:3}; s.shatter=true;}}},
   execute:{a:{n:'梟首', d:'斬殺線 30%→45%', mod:s=>{s.execLine=0.45;}},
-           b:{n:'血償', d:'擊殺時回復 15% 生命', mod:s=>{s.killHeal=0.15;}}},
+           b:{n:'血償', d:'斬殺倍率 5.5→5.0，擊殺時回復 15% 生命', mod:s=>{s.execMult=5.0; s.killHeal=0.15;}}},
   stab:   {a:{n:'淬鋒', d:'此招爆擊傷害 +50%', mod:s=>{s.critBonus=0.5;}},
-           b:{n:'毒鋒', d:'命中附毒 1 層', mod:s=>{s.apply=Object.assign({},s.apply,{poison:1});}}},
+           b:{n:'毒鋒', d:'倍率 →0.8、命中附毒 1 層', mod:s=>{s.mult=0.8; s.apply=Object.assign({},s.apply,{poison:1});}}},
   venom:  {a:{n:'濃毒', d:'3→5 層', mod:s=>{s.applyOnly={poison:5};}},
            b:{n:'潑毒', d:'改為全體各上毒 2 層', mod:s=>{s.applyOnly={poison:2}; s.aoe=true;}}},
-  shadow: {a:{n:'亂舞', d:'3 段→5 段、各 0.6→0.45', mod:s=>{s.hits=5; s.mult=0.45;}},
-           b:{n:'重段', d:'3 段各 0.6→0.85', mod:s=>{s.mult=0.85;}}},
-  garrote:{a:{n:'深絞', d:'每層毒 0.15→0.20（封頂 +100%）', mod:s=>{s.poisonAmp=0.20;}},
-           b:{n:'催毒', d:'命中後目標毒立即額外跳一次（不動層數）', mod:s=>{s.poisonProc=true;}}},
+  shadow: {a:{n:'亂舞', d:'3 段→5 段、各 0.7→0.4', mod:s=>{s.hits=5; s.mult=0.4;}},
+           b:{n:'重段', d:'3 段各 0.7→0.8', mod:s=>{s.mult=0.8;}}},
+  garrote:{a:{n:'深絞', d:'每層毒 +10%→+15%（封頂 20 層）', mod:s=>{s.poisonAmp=0.15;}},
+           b:{n:'催毒', d:'倍率 →3.0，命中後目標毒立即額外跳一次（不受首領承傷閥限制）', mod:s=>{s.mult=3.0; s.poisonProc=true;}}},
   smite:  {a:{n:'重敲', d:'倍率 1.0→1.3', mod:s=>{s.mult=1.3;}},
-           b:{n:'引流', d:'命中回復 5% 法力', mod:s=>{s.manaGain=0.05;}}},
+           b:{n:'引流', d:'倍率 →0.8、命中回復 5% 法力', mod:s=>{s.mult=0.8; s.manaGain=0.05;}}},
   shield: {a:{n:'堅壁', d:'智力係數 1.2→1.8', mod:s=>{s.shieldCoef=1.8;}},
-           b:{n:'反射膜', d:'護盾存在期間受擊反彈 10% 傷害', mod:s=>{s.reflect=0.10;}}},
-  fireball:{a:{n:'燎原', d:'燃 2→4 層', mod:s=>{s.apply={burn:4};}},
-           b:{n:'速唱', d:'費用 ×0.75、法力 −25%', mod:s=>{s.costMul=0.75; s.manaMul=0.75;}}},
-  oblivion:{a:{n:'過載', d:'倍率 2.8→3.5、法力 +40%', mod:s=>{s.mult=3.5; s.manaMul=1.4;}},
-           b:{n:'餘燼', d:'倍率 →2.0、附燃 5 層', mod:s=>{s.mult=2.0; s.apply={burn:5};}}},
+           b:{n:'反射膜', d:'智力係數 →1.0，受擊反彈 10% 傷害', mod:s=>{s.shieldCoef=1.0; s.reflect=0.10;}}},
+  fireball:{a:{n:'焚燒', d:'倍率 2.0→2.4', mod:s=>{s.mult=2.4;}},
+           b:{n:'燎原', d:'倍率 →1.7、燃 2→4 層', mod:s=>{s.mult=1.7; s.apply={burn:4};}}},
+  oblivion:{a:{n:'過載', d:'倍率 4.5→5.5、魔力 +50%', mod:s=>{s.mult=5.5; s.manaMul=1.5;}},
+           b:{n:'餘燼', d:'倍率 →3.0、附燃 4 層', mod:s=>{s.mult=3.0; s.apply={burn:4};}}},
   wstrike:{a:{n:'重擊', d:'倍率 1.0→1.3', mod:s=>{s.mult=1.3;}},
-           b:{n:'蝕擊', d:'命中 30% 機率附虛弱 1 層', mod:s=>{s.weakChance=0.3;}}},
+           b:{n:'蝕擊', d:'倍率 →0.8、30% 機率附虛弱 1 層', mod:s=>{s.mult=0.8; s.weakChance=0.3;}}},
   hex:    {a:{n:'深蝕', d:'虛弱易傷各 2→3', mod:s=>{s.applyOnly={weak:3,vuln:3};}},
-           b:{n:'廣蝕', d:'改為全體各 2 層', mod:s=>{s.aoe=true;}}},
-  siphon: {a:{n:'貪飲', d:'回血 50%→80%', mod:s=>{s.drain=0.8;}},
-           b:{n:'裂魂', d:'倍率 1.4→1.8、回血 →25%', mod:s=>{s.mult=1.8; s.drain=0.25;}}},
-  calam:  {a:{n:'絕望', d:'每種負面 0.3→0.4（封頂 +160%）', mod:s=>{s.debuffAmp=0.4;}},
-           b:{n:'輪迴咒', d:'擊殺時目標身上的負面轉移至隨機存活敵人', mod:s=>{s.transferCurse=true;}}},
+           b:{n:'廣蝕', d:'改為全體各 1 層', mod:s=>{s.applyOnly={weak:1,vuln:1}; s.aoe=true;}}},
+  siphon: {a:{n:'裂魂', d:'倍率 1.8→2.1', mod:s=>{s.mult=2.1;}},
+           b:{n:'貪飲', d:'倍率 →1.5、回血 50%→80%', mod:s=>{s.mult=1.5; s.drain=0.8;}}},
+  calam:  {a:{n:'絕望', d:'每種負面 +50%→+80%、魔力 →55%', mod:s=>{s.debuffAmp=0.8; s.manaPct=55;}},
+           b:{n:'輪迴咒', d:'倍率 →3.0、每種負面 →+40%、命中附加所有負面、魔力 →70%', mod:s=>{s.mult=3.0; s.debuffAmp=0.4; s.manaPct=70; s.applyAll=true;}}},
 };
 const ENEMIES = {
   /* 淺穴 1-10 */
@@ -211,7 +214,7 @@ const DOT = {
   burnTail: 0.01,     // 燃 11–15 層每層 1%(僅燃專精職·法師)
   baseCap: 10, poisonSpecCap: 20, burnSpecCap: 15,
 };
-const GARROTE_AMP_CAP = 5;   // 絞殺 poisonAmp 的有效上限維持 5,不隨毒層上升暴漲
+const GARROTE_AMP_CAP = 20;   // 絞殺 poisonAmp 的有效毒層上限(加法制:每層 +0.10 倍率,滿 20 層 3.5→5.5)
 const ASSASSIN_POISON_LEECH = 25;   // 盜賊職業內建毒吸:敵人中毒跳傷時回其 25% 生命(生存手段,與蝕取詞綴疊加)。起點值可調
 /* 詞綴化學反應 (§批4)：兩詞綴齊備自動啟動的隱藏協同——配方可調 */
 const CHEMISTRY = [

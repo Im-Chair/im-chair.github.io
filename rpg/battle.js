@@ -283,7 +283,7 @@ function skillCostU(sk){ // 行動點：普攻1／中2／大3（輔招吃 fixed�
   if(sk.fixed) return sk.fixed * (sk.costMul||1);
   return Math.max(0.5, sk.costW * (sk.costMul||1));
 }
-function skillManaC(sk){ return Math.round((sk.mana||0) * (sk.manaMul||1)); }
+function skillManaC(sk){ return Math.round(playerMaxMana() * (sk.manaPct||0)/100 * (sk.manaMul||1)); }   // 魔力成本＝最大魔力的%（前後期皆成立）
 function fmtPts(p){ return p % 1 === 0 ? String(p) : p.toFixed(1); }
 function skillDesc(sid){
   const sk = SK(sid);
@@ -291,16 +291,16 @@ function skillDesc(sid){
   const parts = [];
   if(sk.mult){
     let mult = sk.mult;
-    if(sk.poisonAmp && B && tgt()) mult = sk.mult * (1 + sk.poisonAmp * Math.min(GARROTE_AMP_CAP, tgt().st.poison||0));
+    if(sk.poisonAmp && B && tgt()) mult = sk.mult + sk.poisonAmp * Math.min(GARROTE_AMP_CAP, tgt().st.poison||0);
     if(sk.debuffAmp && B && tgt() && !sk._solo){
       const kinds = ['weak','vuln','poison','burn'].filter(k=>tgt().st[k]).length;
-      mult = sk.mult * (1 + sk.debuffAmp * Math.min(4,kinds));
+      mult = sk.mult + sk.debuffAmp * Math.min(4,kinds);
     }
     const d = calcPlayerDmg(mult, sk);
     parts.push(`${sk.hits?sk.hits+'段各 ':''}${d}${vulnMark} 傷${sk.aoe&&sk.mult?'（全體）':''}`);
   }
-  if(sk.blockCoef !== undefined) parts.push(`格擋 ${10 + Math.round(statTotal('vit')*sk.blockCoef)}`);
-  if(sk.shieldCoef !== undefined) parts.push(`護盾 ${10 + Math.round(statTotal('int')*sk.shieldCoef)}`);
+  if(sk.blockCoef !== undefined) parts.push(`格擋 ${Math.round(playerMaxHp()*(sk.hpCoef||0) + statTotal('vit')*sk.blockCoef)}`);
+  if(sk.shieldCoef !== undefined) parts.push(`護盾 ${Math.round(playerMaxMana()*(sk.manaCoef||0) + statTotal('int')*sk.shieldCoef)}`);
   if(sk.applyOnly){
     const nm = {poison:'毒',burn:'燃',weak:'虛弱',vuln:'易傷'};
     parts.push(Object.entries(sk.applyOnly).map(([k,v])=>`${nm[k]}${v}層`).join('+') + (sk.aoe?'（全體）':''));
@@ -310,7 +310,7 @@ function skillDesc(sid){
     parts.push('附'+Object.entries(sk.apply).map(([k,v])=>`${nm[k]}${v}`).join('、'));
   }
   if(sk.drain) parts.push(`${Math.round(sk.drain*100)}%回血`);
-  if(sk.execLine) parts.push(`<${Math.round(sk.execLine*100)}%血 ×1.5`);
+  if(sk.execLine) parts.push(`<${Math.round(sk.execLine*100)}%血 ×${sk.execMult||(sk.mult*1.5).toFixed(1)}`);
   return parts.join('｜') || sk.d;
 }
 
@@ -421,7 +421,8 @@ function calcPlayerDmg(mult, sk){
   // 唯一公式 (§6)：(武器攻擊×合手 ＋ 主素質) × 武器係數 × 招式倍率
   const w = G.equip.w;
   const wAtk = Math.round((w ? eqStat(w) : 3) * weaponFit(sk));
-  let d = (wAtk + mainStat()) * weaponType().coef * mult;
+  const manaPart = (sk && sk.magic) ? skillManaC(sk) * MANA_DMG_K : 0;   // 法術：消耗魔力轉戰力，讓魔力投資有回報
+  let d = (wAtk + mainStat() + manaPart) * weaponType().coef * mult;
   if(sumAffix('fury')) d = Math.round(d*1.4);
   if(B && B.potRage) d = Math.round(d*1.5);
   if(B && B.st.weak) d = Math.round(d*0.75);
@@ -455,12 +456,12 @@ function useSkill(sid){
 function castSkill(sk){
   /* 輔助類 */
   if(sk.blockCoef !== undefined){
-    const v = 10 + Math.round(statTotal('vit') * sk.blockCoef);
+    const v = Math.round(playerMaxHp()*(sk.hpCoef||0) + statTotal('vit') * sk.blockCoef);   // 格擋：生命×hpCoef ＋ 體力×blockCoef（血量項讓格擋隨深度縮放）
     B.block += v; B.spike = sk.spike || 0;
     log(`${sk.n}：獲得 ${v} 格擋。`);
   }
   if(sk.shieldCoef !== undefined){
-    const v = 10 + Math.round(statTotal('int') * sk.shieldCoef);
+    const v = Math.round(playerMaxMana()*(sk.manaCoef||0) + statTotal('int') * sk.shieldCoef);   // 護盾：魔力×manaCoef ＋ 智力×shieldCoef
     B.shield += v; B.reflect = Math.max(B.reflect||0, sk.reflect||0);
     log(`${sk.n}：獲得 ${v} 護盾。`,'sys');
   }
@@ -474,8 +475,8 @@ function castSkill(sk){
       // 災厄：多體逐個結算；單體切強化模式
       const targets = aliveEs();
       if(targets.length === 1 && sk.debuffAmp){
-        const solo = Object.assign({}, sk, {mult:1.8, _solo:true});
-        dealToEnemy(1.8, solo, solo);
+        const solo = Object.assign({}, sk, {mult:CALAM_SOLO_MULT, _solo:true});
+        dealToEnemy(CALAM_SOLO_MULT, solo, solo);
         if(aliveEs().length) applyStatus(tgt().st, {weak:2, vuln:2, poison:2}, sk.n+'・鋪滿');
       } else {
         const ti0 = B.ti;
@@ -485,7 +486,7 @@ function castSkill(sk){
           let mult = sk.mult;
           if(sk.debuffAmp){
             const kinds = ['weak','vuln','poison','burn'].filter(k=>e.st[k]).length;
-            mult = sk.mult * (1 + sk.debuffAmp * Math.min(4, kinds));
+            mult = sk.mult + sk.debuffAmp * Math.min(4, kinds);
           }
           dealToEnemy(mult, sk, sk);
         }
@@ -497,7 +498,7 @@ function castSkill(sk){
         if(!aliveEs().length) break;
         if(tgt().hp <= 0) ensureTarget();
         let mult = sk.mult;
-        if(sk.poisonAmp) mult = sk.mult * (1 + sk.poisonAmp * Math.min(GARROTE_AMP_CAP, tgt().st.poison||0));
+        if(sk.poisonAmp) mult = sk.mult + sk.poisonAmp * Math.min(GARROTE_AMP_CAP, tgt().st.poison||0);
         dealToEnemy(mult, sk, sk);
       }
     }
@@ -528,7 +529,7 @@ function dealToEnemy(mult, sk, f){
   }
   let d = calcPlayerDmg(mult, f);
   if(sumAffix('exem') && e.hp <= e.maxhp*0.3) d = Math.round(d*1.5);
-  if(f && f.execLine && e.hp <= e.maxhp*f.execLine) d = Math.round(d*1.5);
+  if(f && f.execLine && e.hp <= e.maxhp*f.execLine) d = Math.round(d * ((f.execMult||f.mult*1.5)/f.mult));   // 斬殺區：倍率換成 execMult
   if(chemOn('corrode') && e.st.poison && e.st.burn) d = Math.round(d*1.2); // 腐燃
   if(e.naked) d = Math.round(d*1.15); // 裸皮
   if(f && f.magic && weaponType().spellAmp) d = Math.round(d * (1 + weaponType().spellAmp)); // 杖·法術增傷
@@ -578,6 +579,8 @@ function dealToEnemy(mult, sk, f){
       R.mana = Math.min(playerMaxMana(), (R.mana||0)+g);
     }
     if(f && f.weakChance && Math.random() < f.weakChance) applyStatus(e.st, {weak:1}, sk.n);
+    if(f && f.vulnChance && Math.random() < f.vulnChance) applyStatus(e.st, {vuln:1}, sk.n);
+    if(f && f.applyAll) applyStatus(e.st, {weak:1,vuln:1,poison:1,burn:1}, sk.n);   // 輪迴咒：命中附加所有負面（本次不吃自身加成，下次起才滿）
     let pt = sumAffix('ptouch');
     if(pt && crit && chemOn('pcrit')) pt *= 2; // 毒爆
     if(pt) applyStatus(e.st, {poison:pt});
@@ -585,7 +588,7 @@ function dealToEnemy(mult, sk, f){
   }
   if(f && f.apply) applyStatus(e.st, f.apply);
   if(f && f.poisonProc && e.st.poison && e.hp > 0){
-    const pd = dotHitEnemy(e, 'poison', Math.ceil(e.maxhp * dotPct('poison', e.st.poison) * (sumAffix('vform')?1.5:1) * (1 + sumAffix('ppyre')/100)));   // 催毒計入同回合額度
+    const pd = Math.ceil(e.maxhp * dotPct('poison', e.st.poison) * (sumAffix('vform')?1.5:1) * (1 + sumAffix('ppyre')/100));   // 催毒：不計入首領承傷閥額度（否則對王邊際為 0）
     e.hp -= pd; floatDmg(zone, '-'+pd, '');
     log(`催毒——${e.n} 的毒立即發作 ${pd} 傷害。`,'dmg');
   }

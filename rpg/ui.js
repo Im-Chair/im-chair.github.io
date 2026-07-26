@@ -159,7 +159,7 @@ function openRunStats(){
   const cMagic = CLASSES[G.cls].mainStat==='int', misW = cMagic !== !!wt.magic;
   rows.push([`${wt.i} ${wVal+msVal}`, `攻擊力（武器${wVal}＋${msName}${msVal}）${misW?(cMagic?'｜⚠不合手·普攻武器×0.5、法術×0':'｜⚠不合手·武器攻擊×0'):(wt.magic?'｜普攻物理·法術對盾減半':'')}`]);
   rows.push([`${R? R.hp : playerMaxHp()}/${playerMaxHp()}`, '❤️ 生命']);
-  if(playerMaxMana()>0) rows.push([`${R? (R.mana||0) : playerMaxMana()}/${playerMaxMana()}`, '🔮 法力（回 '+manaRegenPct()+'%/回合）']);
+  if(playerMaxMana()>0) rows.push([`${R? (R.mana||0) : playerMaxMana()}/${playerMaxMana()}`, '🔮 法力（回 '+Math.round(manaRegenPct())+'%/回合）']);
   rows.push([playerDef(), '🛡 防禦力（減 '+(playerDef()/10).toFixed(1)+' 點）']);
   const mkRate = (fn, statKey, label) => {
     const total = fn(), fromStat = rateFromStat(statTotal(statKey));
