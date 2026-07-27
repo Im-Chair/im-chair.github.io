@@ -193,7 +193,13 @@ const WEAPON_TYPES = {
   sword: {n:'劍',   i:'⚔️', pts:3, coef:1.0, blockMod:1.0, magic:false, critRate:8},      // 均衡·普攻爆擊率+8%
   axe:   {n:'斧',   i:'🪓', pts:2, coef:1.5, blockMod:0.5, magic:false},   // 破防·對格擋只被吸收 50%（100盾→門檻50）
   staff: {n:'杖',   i:'🪄', pts:3, coef:1.0, blockMod:0.5, magic:true,  spellAmp:0.15},   // 法術·法術傷害+15%
+  /* 法系第二條軸＝魔力（物攻三把全長在「行動點×係數」同一條軸上，法系不該再切一次） */
+  tome:  {n:'魔典', i:'📕', pts:4, coef:0.8, blockMod:1.2, magic:true, manaCut:0.25},     // 連發·法術魔力成本−25%（權重4×0.8=3.2＝匕首級，所以同樣付 blockMod 1.2 的代價）
+  bell:  {n:'咒鈴', i:'🔔', pts:3, coef:1.0, blockMod:0.5, magic:true, apCost:40},        // 每回合限一次：燒 40% 最大魔力換 1 行動點
 };
+/* 武器分類：物攻職拿魔攻武器 weaponFit=0（純垃圾），所以掉落要偏向該職業用得到的那組 */
+const WPN_PHYS  = ['dagger','sword','axe'];
+const WPN_MAGIC = ['staff','tome','bell'];
 /* 供需曲線 (§13)：全部可調 */
 const CURVE = {
   wpnBase: f => 6 + f*0.6,          // 武器攻擊力（樓層係數 0.9→0.6：傷害重心從「武器基礎值」移向素質詞綴+精煉）
@@ -320,6 +326,8 @@ const WEAPON_NAMES = {
   sword: ['短劍','彎刀','刺劍','雙刃','長劍','闊劍'],
   axe:   ['手斧','戰錘','巨斧','裂顱者','碎骨錘','斬馬斧'],
   staff: ['法杖','骨杖','燭杖','咒杖','引雷杖','牧杖'],
+  tome:  ['殘頁','皮面書','禱詞集','血字抄本','無名之書','蟲蛀典籍'],
+  bell:  ['手鈴','招魂鈴','銅鐸','喪鐘','靈擺','啞鈴鐺'],
 };
 
 const ARMOR_NAMES  = ['皮甲','鎖甲','法袍','胸甲','斗篷','鱗甲'];

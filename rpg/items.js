@@ -14,10 +14,10 @@ function rollAffixVal(k, ri, floor, cyc){
   return Math.max(1, v);
 }
 
-function rollRarity(floor, bonus){ // bonus: 0一般 1精英 2首領
+function rollRarity(floor, bonus, cycArg){ // bonus: 0一般 1精英 2首領；cycArg：營地生裝備要明確指定（R 為 null 會被當 cycle 0）
   // 錨點制(§掉落)：白80→40、橙5→20 隨深度(prog=輪迴+樓層/100，本源50→prog0.5、輪迴III100→prog4)線性；
   // 加成:精英 白×0.7橙×1.5、首領 白×0.5橙×2；藍/金填剩餘(越深金越多)。雜魚主掉白(高基礎填補)、橙靠首領與輪迴。
-  const cyc = (R&&R.cycle)||0;
+  const cyc = (cycArg != null) ? cycArg : ((R&&R.cycle)||0);
   const p = cyc + floor/100;
   let W = 80 - (80-40)*(p-0.5)/3.5;
   let O = 5  + (20-5 )*(p-0.5)/3.5;
@@ -30,6 +30,16 @@ function rollRarity(floor, bonus){ // bonus: 0一般 1精英 2首領
   if((r-=W)<0) return 0; if((r-=b)<0) return 1; if((r-=g)<0) return 2; return 3;
 }
 
+/* 武器類型抽選：偏向該職業用得到的那組（物攻職拿魔攻武器 weaponFit=0＝純垃圾，掉一堆等於製造摩擦）。
+   註：這不是為了新武器才加的偏權——舊制 4 選 1 均分時，施法職有 3/4 機率掉到物攻武器（重罰），
+   反而是受害最深的一方。偏權後兩邊都改善。留 25% 給另一組，維持「其他武器存在」的質感與變賣價值。 */
+function pickWeaponType(){
+  const magicCls = !!(G && G.cls && CLASSES[G.cls].mainStat === 'int');
+  const own   = magicCls ? WPN_MAGIC : WPN_PHYS;
+  const other = magicCls ? WPN_PHYS  : WPN_MAGIC;
+  return pick(Math.random() < 0.75 ? own : other);
+}
+
 function makeItem(floor, bonus, cyc, forceRar){
   const ri = (forceRar != null) ? forceRar : rollRarity(floor, bonus||0), rar = RARITIES[ri];   // forceRar：指定稀有度（在骰詞綴前決定，詞綴才會依該稀有度正確生成）
   const slot = pick(['w','w','a','a','t']);
@@ -40,7 +50,7 @@ function makeItem(floor, bonus, cyc, forceRar){
   const rb = CURVE.rarMultBand[ri];                          // 稀有度倍率每件隨機（反轉：稀有度越高倍率越低、詞綴越多）
   const rm = rb[0] + Math.random()*(rb[1]-rb[0]);
   if(slot==='w'){
-    it.wtype = pick(['dagger','sword','axe','staff']);
+    it.wtype = pickWeaponType();
     it.base = Math.round(CURVE.wpnBase(cf) * rm);
     it.name = pick(WEAPON_NAMES[it.wtype]);
   }
@@ -73,7 +83,7 @@ function makeItem(floor, bonus, cyc, forceRar){
 function itemStatLine(it){
   if(it.slot==='w'){
     const wt = WEAPON_TYPES[it.wtype||'sword'];
-    const perk = {dagger:'連擊', sword:'爆擊', axe:'破防', staff:'法術'}[it.wtype||'sword'] || '';
+    const perk = {dagger:'連擊', sword:'爆擊', axe:'破防', staff:'法術', tome:'省魔', bell:'換點'}[it.wtype||'sword'] || '';
     return `${wt.i}${wt.n}｜攻擊 ${eqStat(it)}（${wt.magic?'魔攻':'物攻'}）｜${wt.pts}行動·${perk}`;
   }
   if(it.slot==='a') return `防禦 ${eqStat(it)}`;
@@ -84,52 +94,72 @@ function slotName(s){ return s==='w'?'武器':s==='a'?'護甲':'飾品'; }
 
 /* 彙總玩家所有詞綴 */
 
+/* 黑市改「每個已認證輪迴一個分頁」（見 certPool）。
+   分頁不是「有取捨的選擇」，而是一道價格階梯——它真正的價值是：你剛踏進輪迴III，
+   還是買得到符合實際實力的輪迴II 貨，而不是被降級成輪迴III 第1層的垃圾。 */
 function marketStock(){
-  if(!G.market || G.market.run !== G.rec.runs){
-    const boxes = [];
-    const n = rnd(2,4);
-    const mk = (bonusRar)=>{
-      const g = certGearCtx();                         // 綁認證的樓層＋輪迴，讓黑市裝備吃真實輪迴倍率
-      return makeItem(g.floor, 2, g.cyc, bonusRar);    // forceRar：直接生成指定稀有度，詞綴依該稀有度正確 roll（不再 force-set 造成假稀有度）
-    };
-    for(let i=0;i<n;i++){
-      const roll = Math.random();
-      if(roll < 0.12 && cyclesUnlocked() >= 2){   // 材料要到「輪迴II 已出現」才進黑市（本源通關只開輪迴I，不該刷到沉鐵/心鋼）
-        const mk2 = Math.random()<0.5?'iron':'steel';
-        boxes.push({type:'mat', mat:mk2, qty:rnd(2,3), sold:false});
-      } else if(roll < 0.27){
-        const it = mk(Math.random()<0.35?3:2);
-        boxes.push({type:'open', item:it, sold:false});
-      } else {
-        const it = mk(Math.random()<0.32?3:2);
-        boxes.push({type:'box', item:it, sold:false});
+  if(!G.market || G.market.run !== G.rec.runs || !G.market.tabs){
+    const pool = certPool();
+    const tabs = pool.map((ctx, ti)=>{
+      const lo = Math.max(1, ctx.floor - 10);
+      const boxes = [];
+      for(let i=0;i<rnd(2,3);i++){                       // 分頁後每頁縮到 2–3 件，否則貨量爆炸
+        const fl = rnd(lo, ctx.floor);
+        // 稀有度：以該樓層的自然掉落分佈為底、整體推高一階（沿用首領權重 白×0.5 橙×2）。
+        // 四種稀有度都上架——稀有度倍率反轉後白裝基礎值最高，只賣稀有/傳說等於只賣基礎值最低的貨。
+        const it = makeItem(fl, 0, ctx.cyc, rollRarity(fl, 2, ctx.cyc));
+        boxes.push({type: Math.random()<0.35?'open':'box', item:it, sold:false});
       }
-    }
-    const runes = [];
-    const rc = rnd(2,3);
-    const cc = G.rec.cert ? G.rec.cert.cycle : 0;
-    const cf = G.rec.cert ? G.rec.cert.floor : Math.max(12, G.rec.deep);
-    if(runeMaxRar(cc, cf) >= 0)   // 符文里程碑未達（本源/輪迴I 50 前）＝黑市不賣符文
-      for(let i=0;i<rc;i++){ const rn = makeRune(cf, cc); if(rn) runes.push({rune: rn, sold:false}); }
-    G.market = {run:G.rec.runs, boxes, runes};
+      const runes = [];
+      if(runeMaxRar(ctx.cyc, ctx.floor) >= 0)            // 符文里程碑由該分頁自己的輪迴/樓層決定，不用另寫規則
+        for(let i=0;i<rnd(1,2);i++){ const rn = makeRune(ctx.floor, ctx.cyc); if(rn) runes.push({rune:rn, sold:false}); }
+      // 材料只掛在最強分頁（材料不分輪迴，每頁都出現沒有意義）
+      if(ti===0 && cyclesUnlocked() >= 2 && Math.random() < 0.5)
+        boxes.push({type:'mat', mat: Math.random()<0.5?'iron':'steel', qty:rnd(2,3), sold:false});
+      return {cyc:ctx.cyc, floor:ctx.floor, eq:ctx.eq, boxes, runes};
+    });
+    G.market = {run:G.rec.runs, tabs, ti:0};
     save();
   }
-  if(!G.market.runes) G.market.runes = [];
+  if(G.market.ti == null || G.market.ti >= G.market.tabs.length) G.market.ti = 0;
   return G.market;
 }
+function marketTab(){ const m = marketStock(); return m.tabs[m.ti]; }
 
+/* 定價兩條原則：
+   1. 吃「這件裝備自己的出身」(it.pf/it.pc)，不是玩家的最高認證——分頁後用玩家認證必錯
+      （本源分頁的貨會被按輪迴III 的倍率收錢）。
+   2. 價格主體看「等效樓層」= pf × cycK(pc)，也就是這件裝備的實際強度。
+      碎銀是累積的存量，強度是當下的值，兩者不該互相牽制——多刷幾趟累積碎銀來買貴裝備本來就是設計意圖，
+      所以價格要跟著強度走，不要因為「單場收入成長比較慢」就把曲線壓平。
+   稀有度改四檔、且只加溢價(每階 +35%)而非主導：稀有度倍率反轉後白裝基礎值最高，
+   不該賣得像垃圾（原本是「橙 480+ / 其餘 140+」約 3.4 倍的斷崖）。*/
 function boxPrice(b){
   if(b.type==='mat') return (100 + G.rec.deep*2) * 5;   // 材料調漲 5 倍（沉鐵/心鋼原本過於便宜）
-  const base = (b.item.rar===3 ? 480 + G.rec.deep*6 : 140 + G.rec.deep*2) * 2;   // 裝備調漲 2 倍
-  const cyc = (G.rec.cert && G.rec.cert.cycle) || 0;
-  const priced = Math.round(base * Math.pow(1.5, cyc));   // 高輪迴 = 前一輪迴價格 ×1.5（裝備變強，價格跟上）
-  return b.type==='open' ? Math.round(priced*1.3) : priced;
+  const it = b.item, pf = it.pf || G.rec.deep || 10;
+  const eq = pf * cycK(it.pc || 0);                     // 等效樓層＝跨輪迴比較強度的唯一正確基準
+  const base = (80 + eq*8) * Math.pow(1.35, it.rar);    // 係數對齊舊制：本源50 的白裝仍是 480🪙
+  return Math.round(base * (b.type==='open' ? 1.3 : 1));
 }
 
+function marketTabName(t){
+  if(t.cyc === 0) return '本源';
+  if(t.cyc >= 4) return '無限';
+  return '輪迴' + 'I'.repeat(t.cyc);
+}
+function switchMarketTab(i){ const m = marketStock(); m.ti = i; save(); openMarket(); }
+
 function openMarket(){
-  const m = marketStock();
-  let html = `<h3>深淵黑市</h3><p class="base">燭火後面的攤主沒有露臉。今晚的貨——有封著的，有拆過的，看你信不信自己的手氣。</p><div class="item-list" style="margin-top:8px">`;
-  m.boxes.forEach((b, i)=>{
+  const m = marketStock(), t = m.tabs[m.ti];
+  let html = `<h3>深淵黑市</h3><p class="base">燭火後面的攤主沒有露臉。今晚的貨——有封著的，有拆過的，看你信不信自己的手氣。</p>`;
+  if(m.tabs.length > 1){   // 只有一個已認證輪迴時不必顯示分頁
+    html += `<div class="mkt-tabs">` + m.tabs.map((tb,i)=>
+      `<button class="mkt-tab${i===m.ti?' on':''}" onclick="switchMarketTab(${i})">${marketTabName(tb)} ${tb.floor}</button>`
+    ).join('') + `</div>`;
+  }
+  html += `<p style="color:var(--dim);font-size:12px;margin:6px 0 0">貨源：${marketTabName(t)} 第 ${Math.max(1,t.floor-10)}–${t.floor} 層｜價格依貨物出身計算</p>`;
+  html += `<div class="item-list" style="margin-top:8px">`;
+  t.boxes.forEach((b, i)=>{
     if(b.sold){ html += `<div class="item-row" style="opacity:.4"><span class="in">已售出</span></div>`; return; }
     const price = boxPrice(b);
     if(b.type==='mat'){
@@ -149,13 +179,15 @@ function openMarket(){
     }
   });
   html += '</div>';
-  html += '<div class="section-title">🔯 符文攤（用 💎 購買）</div><div class="item-list">';
-  (m.runes||[]).forEach((s,i)=>{
-    if(s.sold){ html += `<div class="item-row" style="opacity:.4"><span class="in">已售出</span></div>`; return; }
-    const rn = s.rune, a = rn.affixes[0], price = runeGemPrice(rn);
-    html += `<div class="item-row ${RARITIES[rn.rar].b}" onclick="buyRune(${i})"><span class="in ${RARITIES[rn.rar].cls}">${rn.icon} ${rn.name}</span><span class="is">${runeFmt(a)}</span><span class="ip">💎${price}</span></div>`;
-  });
-  html += '</div>';
+  if((t.runes||[]).length){
+    html += '<div class="section-title">🔯 符文攤（用 💎 購買）</div><div class="item-list">';
+    t.runes.forEach((s,i)=>{
+      if(s.sold){ html += `<div class="item-row" style="opacity:.4"><span class="in">已售出</span></div>`; return; }
+      const rn = s.rune, a = rn.affixes[0], price = runeGemPrice(rn);
+      html += `<div class="item-row ${RARITIES[rn.rar].b}" onclick="buyRune(${i})"><span class="in ${RARITIES[rn.rar].cls}">${rn.icon} ${rn.name}</span><span class="is">${runeFmt(a)}</span><span class="ip">💎${price}</span></div>`;
+    });
+    html += '</div>';
+  }
   html += `<button class="btn small" style="margin-top:10px" onclick="rerollMarket()">🎲 換一批貨（80🪙）</button>
     <p style="color:var(--dim);font-size:12px;margin-top:10px">🪙 ${G.gold}　💎 ${G.gems||0}｜符文放進「角色→符文槽」鑲入即被動生效。</p>
     <button class="btn" style="margin-top:6px" onclick="closeSheet()">離開</button>`;
@@ -163,7 +195,7 @@ function openMarket(){
 }
 
 function peekOpen(i){
-  const b = G.market.boxes[i];
+  const b = marketTab().boxes[i];
   if(!b || b.sold) return;
   const it = b.item, r = RARITIES[it.rar], price = boxPrice(b);
   openSheet(`<h3>拆封品</h3>
@@ -185,8 +217,7 @@ function rerollMarket(){
 }
 
 function buyBox(i){
-  const m = G.market;
-  const b = m.boxes[i];
+  const b = marketTab().boxes[i];
   if(!b || b.sold) return;
   const price = boxPrice(b);
   if(G.gold < price){ toast('碎銀不夠'); return; }
@@ -213,7 +244,7 @@ function buyBox(i){
 
 function runeGemPrice(rn){ return (rn.rar+1)*20; }   // 普20／精良40／稀有60／傳說80（鑽石梯度保留，消耗加倍）
 function buyRune(i){
-  const s = G.market && G.market.runes && G.market.runes[i];
+  const t = marketTab(); const s = t && t.runes && t.runes[i];
   if(!s || s.sold) return;
   const price = runeGemPrice(s.rune);
   if((G.gems||0) < price){ toast('💎 不夠'); return; }

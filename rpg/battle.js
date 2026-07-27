@@ -178,6 +178,7 @@ function floatDmg(zone, txt, cls){
 function startPlayerTurn(first){
   if(B.over) return;
   if(!first){ B.energy = B.maxEnergy; if(!sumAffix('wall')) B.block = 0; }
+  B.rung = 0;   // 咒鈴：換點額度每回合重置
   if(first){ const pl = sumAffix('plate');   // 守勢祝福：每「場」戰鬥開始一次，獲得 (plate% × 最大生命) 的格擋
     if(pl){ const blk = Math.round(playerMaxHp()*pl/100); B.block += blk; if(blk) log(`守勢：獲得 ${blk} 格擋。`,'sys'); } }
   B.sparkN = 0; B.osTurn = 0;                    // 溢血成盾每回合上限重置
@@ -244,9 +245,17 @@ function renderBattle(){
   const bb = $('p-block');
   if(B.block>0){ bb.style.display='inline-block'; bb.textContent = '🛡 '+B.block; } else bb.style.display='none';
   const en = $('p-energy');
+  const _wt = weaponType();
+  let bellHtml = '';
+  if(_wt.apCost){   // 咒鈴：常駐按鈕，不足或用過就灰掉——機制要看得見才存在
+    const bc = Math.round(playerMaxMana() * _wt.apCost/100);
+    const off = B.rung || (R.mana||0) < bc || B.over;
+    bellHtml = `<button class="bell-btn${off?' off':''}" onclick="event.stopPropagation();ringBell()"`
+      + `${off?' disabled':''} title="燃燒 ${bc} 魔力換 1 行動點（每回合一次）">🔔+1◆ <b>${bc}</b></button>`;
+  }
   en.innerHTML = `<span style="color:var(--gold);font-size:13px">◆ ${fmtPts(B.energy)}/${fmtPts(B.maxEnergy)} 行動</span>` +
     (playerMaxMana()>0? `<span style="color:#7fb3e8;font-size:13px">　🔮 ${R.mana||0}/${playerMaxMana()}</span>` : '') +
-    (B.shield>0? `<span style="color:#9fd8ff;font-size:13px">　🔷 ${B.shield}</span>` : '');
+    (B.shield>0? `<span style="color:#9fd8ff;font-size:13px">　🔷 ${B.shield}</span>` : '') + bellHtml;
   const grid = $('skill-grid'); grid.innerHTML='';
   for(const sid of CLASSES[G.cls].skills){
     const sk = SK(sid);
@@ -289,7 +298,22 @@ function skillCostU(sk){ // 行動點：普攻1／中2／大3（輔招吃 fixed�
   if(sk.fixed) return sk.fixed * (sk.costMul||1);
   return Math.max(0.5, sk.costW * (sk.costMul||1));
 }
-function skillManaC(sk){ return Math.round(playerMaxMana() * (sk.manaPct||0)/100 * (sk.manaMul||1)); }   // 魔力成本＝最大魔力的%（前後期皆成立）
+// 魔力成本＝最大魔力的%（前後期皆成立）；魔典 manaCut 折扣在此唯一入口套用，
+// 折扣會自動流進 calcPlayerDmg 的「消耗魔力×MANA_DMG_K」項 → 省魔的同時傷害也小幅下修，不必另外配平。
+function skillManaC(sk){ return Math.round(playerMaxMana() * (sk.manaPct||0)/100 * (sk.manaMul||1) * (1 - (weaponType().manaCut||0))); }
+
+/* 咒鈴：每回合限一次，燒 apCost% 最大魔力換 1 行動點。
+   成本 40% 必須高於基礎回魔 25%，否則只放物理普攻（不耗魔）的施法職會被回魔完全補上＝白拿永久第 4 點。 */
+function ringBell(){
+  const w = weaponType();
+  if(!B || B.over || !w.apCost) return;
+  if(B.rung) return toast('本回合已經搖過鈴了');
+  const cost = Math.round(playerMaxMana() * w.apCost/100);
+  if((R.mana||0) < cost) return toast(`魔力不足（需要 ${cost}）`);
+  R.mana -= cost; B.rung = 1; B.energy += 1;
+  log(`搖響${w.n}：燃燒 ${cost} 魔力，換得 1 行動點。`,'sys');
+  renderBattle(); save();
+}
 function fmtPts(p){ return p % 1 === 0 ? String(p) : p.toFixed(1); }
 function skillDesc(sid){
   const sk = SK(sid);

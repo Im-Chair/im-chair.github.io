@@ -49,6 +49,8 @@ function newSave(){ return {v3:1, cls:null, gold:0, stash:[], equip:{w:null,a:nu
   rec:{deep:0,cert:null,runs:0,boss:0}, mats:{iron:0,steel:0}, codex:{}, cyc:{unlocked:0},
   orig:{deep:0,cp:0,done:false}, cycData:{}, bounties:[], runes:[null,null,null], runeBag:[], gems:0, run:null, uid:1}; }
 
+// ⚠️ 僅供「最高成就徽章」排序與顯示，勿再用於任何難度判定（黑市/懸賞/解鎖請用 certPool() 與 cd(n).cp）。
+// 理由：cycle*1000+floor 讓輪迴階級碾壓樓層，輪迴III 第1層會蓋掉輪迴II 100。
 function certScore(cert){ // 認證難度分數：輪迴階級碾壓層數（輪迴I-1 > 本源-50）
   if(!cert) return -1;
   return cert.cycle * 1000 + cert.floor;
@@ -65,6 +67,25 @@ function certifyDepth(cycle, floor){ // 唯一入口：只在「逃脫」或「�
 function certGearCtx(){ // 營地生裝備的唯一難度來源：直接綁認證的「樓層＋輪迴」（無認證則回退最深樓層）
   const c = G.rec.cert;
   return c ? {floor: c.floor, cyc: c.cycle} : {floor: Math.max(12, G.rec.deep||10), cyc: 0};
+}
+/* 每個輪迴各自的認證深度（資料本來就分開存在 G.orig.cp / G.cycData[c].cp，不必動存檔結構）。
+   G.rec.cert 只留給「最高成就徽章」顯示；黑市與懸賞一律改讀這裡——
+   否則踏進輪迴III 逃脫第1層就會蓋掉輪迴II 100，營地整個崩掉（certScore 用 cycle*1000+floor 編碼，階級碾壓樓層）。
+   eq = 等效樓層 = floor × cycK(cycle)，這是跨輪迴比較強度的唯一正確基準。 */
+function certPool(){
+  const out = [];
+  if(G.orig && G.orig.cp > 0) out.push({cyc:0, floor:G.orig.cp});
+  for(const k of Object.keys(G.cycData||{})){
+    const c = +k, d = G.cycData[k];
+    if(c > 0 && d && d.cp > 0) out.push({cyc:c, floor:d.cp});
+  }
+  for(const e of out) e.eq = e.floor * cycK(e.cyc);
+  out.sort((a,b)=>b.eq-a.eq);
+  if(!out.length){ const g = certGearCtx(); out.push({cyc:g.cyc, floor:g.floor, eq:g.floor*cycK(g.cyc)}); }
+  // 自動隱藏過期分頁：等效樓層低於最強者 25% 的不再顯示，免得累積出三頁沒人看的垃圾。
+  // 25% 而非 40%：低分頁的價值是「便宜」，錢不夠時仍是真選項；卡太緊會讓分頁在最常見的情境下整個消失。
+  const top = out[0].eq;
+  return out.filter(e=>e.eq >= top*0.25);
 }
 function certText(cert){ // 認證成就顯示文字
   if(!cert) return '—';
@@ -195,10 +216,11 @@ function cyclesUnlocked(){
   // 開輪迴 I：必須打穿本源 50 通關；開輪迴 II+：前一輪「認證深度」≥ CYC_NEXT（逃離才算）
   const legacy = G.cyc && G.cyc.unlocked > 0;
   if(!G.orig.done && !legacy) return 0;
+  // 改讀「該輪迴自己的認證深度」，不再依賴 certScore 的 cycle*1000+floor 編碼
   let n = 1;
-  while(n < 3 && certScore(G.rec.cert) >= n*1000 + CYC_NEXT) n++;   // 輪迴 I→II→III：逃離認證 50 解鎖下一階
-  if(n === 3 && certScore(G.rec.cert) >= 3*1000 + 100) n = 4;        // 無限(cycle 4)：打穿輪迴III 100 才解鎖
-  return n;                                                          // 封頂 4：無限是終極模式，不再增生
+  while(n < 3 && cd(n).cp >= CYC_NEXT) n++;   // 輪迴 I→II→III：逃離認證 50 解鎖下一階
+  if(n === 3 && cd(3).cp >= 100) n = 4;        // 無限(cycle 4)：打穿輪迴III 100 才解鎖
+  return n;                                    // 封頂 4：無限是終極模式，不再增生
 }
 
 function cd(c){ if(!G.cycData[c]) G.cycData[c] = {deep:0, cp:0}; return G.cycData[c]; }

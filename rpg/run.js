@@ -48,9 +48,10 @@ function openDivePicker(){
   } else {
     const c = cd(pendingMode);
     html += `<p class="base" style="margin-top:8px">深淵重演，敵人 ×${cycMult(pendingMode).toFixed(1)}，掉落更兇，精煉材料只在輪迴出土——第 30 層前掉沉鐵、之後掉心鋼。${c.deep>0?`本輪最深 ${c.deep} 層。`:'你還沒踏進本輪。'}</p>`;
-    if(pendingMode === cu && cu < 3 && !(certScore(G.rec.cert) >= cu*1000 + CYC_NEXT))
+    // 解鎖提示同樣改讀該輪迴自己的認證深度（與 cyclesUnlocked 同一套判準，不再用 certScore 編碼）
+    if(pendingMode === cu && cu < 3 && !(c.cp >= CYC_NEXT))
       html += `<p style="color:var(--dim);font-size:12px">本輪逃離並認證 ${CYC_NEXT} 層，解鎖下一重輪迴。</p>`;
-    else if(pendingMode === cu && cu === 3 && !(certScore(G.rec.cert) >= 3*1000 + 100))
+    else if(pendingMode === cu && cu === 3 && !(c.cp >= 100))
       html += `<p style="color:var(--dim);font-size:12px">打穿本輪第 100 層，解鎖無限模式。</p>`;
   }
   // 起點列
@@ -1038,12 +1039,14 @@ function bountyMode(){   // 依認證階級加權：越接近目前在玩的階�
 }
 // 類型難度（易→難）：抵達 < 累積殺敵 < 取裝備＝毒燃斬殺＝殺樓層王 <<< 無傷
 const BOUNTY_TYPE_DIFF = {reach:1, streakkill:1.3, loot:1.7, dotkill:1.7, boss:1.7, flawless:3};
-function genBounty(band){
-  const mode = (G.rec.cert && G.rec.cert.cycle) || 0;   // 綁定玩家的認證階級，難度才連貫
-  const cert = G.rec.cert;
+function genBounty(band, ctx){
+  // ctx 由 ensureBounties 指定「這條委託屬於哪個輪迴」（見 certPool）。
+  // 原本讀 G.rec.cert.cycle 這一筆，踏進新輪迴後舊輪迴的高樓層委託就再也接不到。
+  const c0 = ctx || certPool()[0];
+  const mode = c0.cyc;
   const cap = mode===0 ? Math.min(50, Math.max(10, G.orig.cp+9)) : (mode>=4 ? Math.max(20, cd(mode).cp+14) : Math.min(100, Math.max(20, cd(mode).cp+14)));   // I–III 封100；無限不封頂
   const lo  = mode===0 ? 5 : 11;
-  const cf  = cert ? Math.max(lo, Math.min(cap, cert.floor)) : Math.max(lo, Math.min(cap, Math.floor(G.rec.deep||10)));
+  const cf  = Math.max(lo, Math.min(cap, c0.floor));
   const type = pick(['reach','streakkill','loot','dotkill','boss','flawless']);
   // 依難度帶取樓層：above 高於評定(+5~+15)、at 評定(-5~+5)、below 低於評定(-15~-5)
   let floor;
@@ -1075,10 +1078,15 @@ function ensureBounties(){
   for(const b of G.bounties) if(b.state===undefined) b.state = b.done ? 'done' : 'offer'; // 舊檔轉新制
   if(!G.bountyV2){ G.bounties = G.bounties.filter(b=>b.state==='active'); G.bountyV2 = 1; } // 一次性：舊 offer 依新進度重生
   if(G.bountyV3 !== 1){ G.bounties = G.bounties.filter(b=>b.state!=='offer'); G.bountyV3 = 1; } // 一次性：改用難度帶重生 offer
+  if(G.bountyV4 !== 1){ G.bounties = G.bounties.filter(b=>b.state!=='offer'); G.bountyV4 = 1; } // 一次性：改用跨輪迴配額重生 offer
   G.bounties = G.bounties.filter(b=>b.state!=='done');
-  const bands = ['above','at','at','below'];   // 評定以上×1、評定×2、評定以下×1
+  // 4 格配額：最強輪迴 3 格（挑戰1／評定2）+ 其他已認證輪迴隨機一個，出 1 格好刷的。
+  // 跨輪迴的委託要回去那個輪迴下潛才能完成——這是特性不是 bug，給舊輪迴一個回訪理由（獎勵已吃 cycMult，自然給得少）。
+  const pool = certPool();
+  const slots = [['above', pool[0]], ['at', pool[0]], ['at', pool[0]],
+                 ['below', pool.length>1 ? pick(pool.slice(1)) : pool[0]]];
   let offers = G.bounties.filter(b=>b.state==='offer').length;
-  while(offers < 4){ G.bounties.push(genBounty(bands[offers])); offers++; }
+  while(offers < 4){ const [band, ctx] = slots[offers]; G.bounties.push(genBounty(band, ctx)); offers++; }
 }
 function bountyText(b){
   const m = romanCyc(b.mode); let t;

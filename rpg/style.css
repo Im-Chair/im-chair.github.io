@@ -197,6 +197,17 @@ h1.title{
 .e-block.poisoned .enemy-icon>img{filter:grayscale(1) sepia(1) hue-rotate(228deg) saturate(3.4) brightness(1.06);}
 .e-block.burning  .enemy-icon>img{filter:grayscale(1) sepia(1) hue-rotate(-18deg) saturate(3.6) brightness(1.1);}
 .e-block.poisoned.burning .enemy-icon>img{filter:grayscale(1) sepia(1) hue-rotate(285deg) saturate(3.2) brightness(1.08);}
+/* 黑市分頁：每個已認證輪迴一頁（見 certPool） */
+.mkt-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;}
+.mkt-tab{flex:1 1 auto;padding:6px 10px;font:inherit;font-size:12px;white-space:nowrap;
+  color:var(--dim);background:var(--panel);border:1px solid var(--line);border-radius:8px;cursor:pointer;}
+.mkt-tab.on{color:var(--gold);border-color:var(--gold);background:var(--panel2);}
+/* 咒鈴：魔力換行動點的按鈕（常駐可見，不足/用過灰掉） */
+.bell-btn{margin-left:8px;padding:2px 8px;font:inherit;font-size:12px;line-height:1.5;
+  color:#ffd98a;background:#2a1f10;border:1px solid #6b5327;border-radius:12px;cursor:pointer;vertical-align:middle;}
+.bell-btn b{color:#7fb3e8;font-weight:400;}
+.bell-btn:active{background:#3d2d16;}
+.bell-btn.off{opacity:.35;cursor:default;}
 .enemy-name{font-size:16px;letter-spacing:2px;margin-top:2px;}
 .enemy-name .elite{color:var(--orange);} .enemy-name .boss{color:var(--red);}
 .intent{
