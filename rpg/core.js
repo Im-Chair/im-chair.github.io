@@ -72,12 +72,20 @@ function certGearCtx(){ // 營地生裝備的唯一難度來源：直接綁認�
    G.rec.cert 只留給「最高成就徽章」顯示；黑市與懸賞一律改讀這裡——
    否則踏進輪迴III 逃脫第1層就會蓋掉輪迴II 100，營地整個崩掉（certScore 用 cycle*1000+floor 編碼，階級碾壓樓層）。
    eq = 等效樓層 = floor × cycK(cycle)，這是跨輪迴比較強度的唯一正確基準。 */
+/* 該輪迴的「認證深度」＝成功回營過的最深樓層。
+   ⚠️ 不可以用 cp（傳送點）代替:本源的 cp 被刻意封在 41(不讓你傳送過 50 層首領),
+      拿 cp 當認證會讓打穿本源 50 的玩家只買得到 31–41 層的貨。cycle 1+ 兩者才碰巧相等。
+   deep 與 cp 同樣只在 bankRun(逃脫/通關) 推進,規則一致;取 max 是為了相容任何 cp>deep 的舊檔。 */
+function certDepthOf(cyc){
+  if(cyc === 0) return Math.max(G.orig.deep||0, G.orig.cp||0);
+  const c = cd(cyc); return Math.max(c.deep||0, c.cp||0);
+}
 function certPool(){
   const out = [];
-  if(G.orig && G.orig.cp > 0) out.push({cyc:0, floor:G.orig.cp});
+  if(G.orig && certDepthOf(0) > 0) out.push({cyc:0, floor:certDepthOf(0)});
   for(const k of Object.keys(G.cycData||{})){
-    const c = +k, d = G.cycData[k];
-    if(c > 0 && d && d.cp > 0) out.push({cyc:c, floor:d.cp});
+    const c = +k;
+    if(c > 0 && certDepthOf(c) > 0) out.push({cyc:c, floor:certDepthOf(c)});
   }
   for(const e of out) e.eq = e.floor * cycK(e.cyc);
   out.sort((a,b)=>b.eq-a.eq);
@@ -218,8 +226,8 @@ function cyclesUnlocked(){
   if(!G.orig.done && !legacy) return 0;
   // 改讀「該輪迴自己的認證深度」，不再依賴 certScore 的 cycle*1000+floor 編碼
   let n = 1;
-  while(n < 3 && cd(n).cp >= CYC_NEXT) n++;   // 輪迴 I→II→III：逃離認證 50 解鎖下一階
-  if(n === 3 && cd(3).cp >= 100) n = 4;        // 無限(cycle 4)：打穿輪迴III 100 才解鎖
+  while(n < 3 && certDepthOf(n) >= CYC_NEXT) n++;   // 輪迴 I→II→III：逃離認證 50 解鎖下一階
+  if(n === 3 && certDepthOf(3) >= 100) n = 4;        // 無限(cycle 4)：打穿輪迴III 100 才解鎖
   return n;                                    // 封頂 4：無限是終極模式，不再增生
 }
 
