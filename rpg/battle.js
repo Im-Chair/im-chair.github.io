@@ -43,7 +43,7 @@ function makeEnemy(floor, elite){
   const hp = Math.round(CURVE.mobHP(floor) * (t.hp/REALM_HP_MEAN[t.realm]) * (elite?CURVE.eliteHP:1) * cm);
   // 一般怪傷害：域內身分保留（打手打得比域均重）
   const mult = CURVE.mobDMG(floor) * (elite?1.15:1) * cm / REALM_DMG_MEAN[t.realm];
-  const e = {key, n:t.n, i:t.i, svg:t.svg, hp, maxhp:hp,
+  const e = {key, n:t.n, i:t.i, svg:t.svg, img:t.img, hp, maxhp:hp,
     pat:t.pat, pi:0, block:0, st:{}, mult, elite:elite?1:0, boss:false};
   if(t.tag) applyTag(e, t.tag);
   return elite ? applyCycPrefix(e) : ((R&&R.cycle>=2) ? applyCycPrefix(e) : e);
@@ -67,11 +67,17 @@ function makeRealmElite(floor){
   const cm = cycMult((R&&R.cycle)||0);
   const em = 100; // 域限精英基準體重
   const hp = Math.round(CURVE.mobHP(floor) * CURVE.eliteHP * (t.hp/em) * cm);
-  const e = {key:t.key, n:t.n, i:t.i, svg:t.svg, hp, maxhp:hp,
+  const e = {key:t.key, n:t.n, i:t.i, svg:t.svg, img:t.img, hp, maxhp:hp,
     pat:t.pat, pi:0, block:0, st:{}, mult:CURVE.mobDMG(floor)*1.15*cm/patMean(t.pat), elite:1, boss:false};
   return applyCycPrefix(e);
 }
 function enemyMove(e){ return e.pat[e.pi % e.pat.length]; }
+
+/* 敵人圖示唯一入口：有點陣圖走 mon/<key>.webp，沒有就回落既有 SVG，再沒有就 emoji。
+   → 圖檔可一隻一隻補,不必等全部到齊;未配圖的首領自動維持原本 SVG。 */
+function enemyIcon(e){
+  return e.img ? `<img src="mon/${e.key}.webp?v=${window.RPG_VER}" alt="" draggable="false">` : (e.svg || e.i);
+}
 
 function bossFor(floor){
   if(floor % 50 === 0) return FINAL_BOSS;
@@ -83,7 +89,7 @@ function makeBoss(floor){
   const cm = cycMult((R&&R.cycle)||0);
   const mk = (b, hpMult, key, extra) => {
     const hp = Math.round(CURVE.mobHP(floor) * hpMult * cm);
-    return Object.assign({key, n:b.n, i:b.i, svg:b.svg, hp, maxhp:hp,
+    return Object.assign({key, n:b.n, i:b.i, svg:b.svg, img:b.img, hp, maxhp:hp,
       pat:b.pat, pi:0, block:0, st:{},
       mult: CURVE.mobDMG(floor) * CURVE.bossDMG * cm / patMean(b.pat),
       elite:2, boss:true, intro:b.intro}, extra||{});
@@ -221,7 +227,7 @@ function renderBattle(){
     const dead = e.hp<=0;
     const [ii,it] = dead? ['💀','已倒下'] : intentText(e);
     html += `<div class="e-block${(B.duo&&i===B.ti&&!dead)?' sel':''}${dead?' dead':''}${!dead&&e.st.poison?' poisoned':''}${!dead&&e.st.burn?' burning':''}" id="ez-${i}" onclick="selectTarget(${i})">
-      <div class="enemy-icon" id="eicon-${i}">${e.svg||e.i}</div>
+      <div class="enemy-icon" id="eicon-${i}">${enemyIcon(e)}</div>
       <div class="enemy-name">${e.boss?`<span class="boss">☠ ${e.n}</span>`: e.elite?`<span class="elite">${e.n}</span>`: e.n}${e.tag?` <span class="st" style="cursor:pointer" onclick="explainStatus('tag_${e.tag}')">${ENEMY_TAGS[e.tag].i}${ENEMY_TAGS[e.tag].n}</span>`:''}</div>
       <div><span class="intent"><span class="ii">${ii}</span>${dead?it:'下一步：'+it}</span></div>
       <div class="hpbar"><div class="fill" style="width:${Math.max(0,e.hp/e.maxhp*100)}%"></div>

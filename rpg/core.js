@@ -209,6 +209,9 @@ function cycK(c){ if(c<=0) return 1; return c<=3 ? CYC_K[c-1] : CYC_K[2]*Math.po
 
 function blessCyc(c){ if(c<=0) return 0; return c<=3 ? BLESS_CYC[c-1] : (1+BLESS_CYC[2])*Math.pow(2.3, c-3) - 1; } // 祝福縮放專用（凍結舊 cycVal 曲線）
 
+/* ⚠️ 死程式（保留不刪）：scaleMult 目前全域無人呼叫，怪物成長改由別處處理。
+   接上會讓怪物在線性成長之外再吃一層指數，直接打壞平衡；刪掉則失去這條曲線的紀錄。
+   決議：註記保留，不接上也不刪除。 */
 function scaleMult(floor){
   const base = 1 + (floor-1)*0.08 + Math.max(0, floor-50)*0.04;
   return base * cycMult((R&&R.cycle)||0);

@@ -175,9 +175,15 @@ h1.title{
 .e-wrap.duo .enemy-name{font-size:13px;}
 .e-wrap.duo .intent{font-size:12px;padding:2px 8px;}
 .e-block.dead{opacity:.3;filter:grayscale(1);}
-.enemy-icon{font-size:96px;line-height:1;height:96px;display:flex;align-items:center;justify-content:center;transition:transform .1s;filter:drop-shadow(0 6px 16px rgba(0,0,0,.6));}
+.enemy-icon{font-size:96px;line-height:1;height:96px;display:flex;align-items:center;justify-content:center;transition:transform .1s;filter:drop-shadow(0 6px 16px rgba(0,0,0,.6));position:relative;}
 .enemy-icon>svg{width:87px;height:87px;display:block;color:#cfc6b4;}
+.enemy-icon>img{width:87px;height:87px;object-fit:contain;display:block;-webkit-user-drag:none;user-select:none;}
+.e-wrap.duo .enemy-icon>img{width:63px;height:63px;}
+/* 選取回饋:改用光圈,SVG 與點陣圖通用（點陣圖吃不到 currentColor） */
 .e-block.sel .enemy-icon>svg{color:var(--gold);}
+.e-block.sel .enemy-icon::before{content:'';position:absolute;left:50%;top:50%;width:96px;height:96px;margin:-48px 0 0 -48px;
+  border:2px solid var(--gold);border-radius:50%;opacity:.85;box-shadow:0 0 10px var(--gold),inset 0 0 10px rgba(224,178,90,.35);pointer-events:none;}
+.e-wrap.duo .e-block.sel .enemy-icon::before{width:72px;height:72px;margin:-36px 0 0 -36px;}
 .enemy-icon.hit{animation:shake .3s;}
 @keyframes shake{0%{transform:translateX(0)}25%{transform:translateX(-7px)}50%{transform:translateX(6px)}75%{transform:translateX(-3px)}100%{transform:none}}
 /* 狀態染色：中毒染紫、燃燒染紅（emoji 與 SVG 皆適用） */
@@ -187,6 +193,10 @@ h1.title{
 .e-block.burning .enemy-icon>svg{color:#f0a86b;}
 .e-block.poisoned.burning .enemy-icon{filter:drop-shadow(0 6px 16px rgba(0,0,0,.6)) drop-shadow(0 0 6px #e0813f) drop-shadow(0 0 6px #9b6dd6);}
 .e-block.poisoned.burning .enemy-icon>svg{color:#e79ad0;}
+/* 點陣圖版染色:currentColor 無效,改用 filter 把整張圖染成單色調（外層光暈照舊） */
+.e-block.poisoned .enemy-icon>img{filter:grayscale(1) sepia(1) hue-rotate(228deg) saturate(3.4) brightness(1.06);}
+.e-block.burning  .enemy-icon>img{filter:grayscale(1) sepia(1) hue-rotate(-18deg) saturate(3.6) brightness(1.1);}
+.e-block.poisoned.burning .enemy-icon>img{filter:grayscale(1) sepia(1) hue-rotate(285deg) saturate(3.2) brightness(1.08);}
 .enemy-name{font-size:16px;letter-spacing:2px;margin-top:2px;}
 .enemy-name .elite{color:var(--orange);} .enemy-name .boss{color:var(--red);}
 .intent{
