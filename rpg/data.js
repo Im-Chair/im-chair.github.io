@@ -66,10 +66,9 @@ const SKILLS = {
   hex:    {n:'蝕咒',   slot:'輔', fixed:1, manaPct:10, applyOnly:{weak:2,vuln:2}, d:'對目標同時施加虛弱與易傷'},
   siphon: {n:'汲取',   slot:'中', costW:2, manaPct:20, mult:1.8, magic:true, drain:0.5, d:'法術吸取，傷害半數轉為回血'},
   calam:  {n:'災厄',   slot:'大', costW:3, manaPct:35, mult:3.5, magic:true, aoe:true, debuffAmp:0.5,
-           d:'全體法術，目標每種負面狀態加傷；單體時強化並鋪滿負面'},
+           d:'全體法術，目標每種負面狀態加傷'},
 };
 const MANA_DMG_K = 0.5;     // 法術傷害的「消耗魔力」係數：魔力投資轉戰力（見 calcPlayerDmg）
-const CALAM_SOLO_MULT = 2.6; // 災厄單體模式倍率（原寫死在 battle.js）
 /* 精進三十二分支 (§10)：純參數變形、比例制、只讀不耗 */
 const SKILL_UPS = {
   slash:  {a:{n:'重手', d:'倍率 1.0→1.3', mod:s=>{s.mult=1.3;}},

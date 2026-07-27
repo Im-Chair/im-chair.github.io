@@ -292,7 +292,7 @@ function skillDesc(sid){
   if(sk.mult){
     let mult = sk.mult;
     if(sk.poisonAmp && B && tgt()) mult = sk.mult + sk.poisonAmp * Math.min(GARROTE_AMP_CAP, tgt().st.poison||0);
-    if(sk.debuffAmp && B && tgt() && !sk._solo){
+    if(sk.debuffAmp && B && tgt()){
       const kinds = ['weak','vuln','poison','burn'].filter(k=>tgt().st[k]).length;
       mult = sk.mult + sk.debuffAmp * Math.min(4,kinds);
     }
@@ -472,13 +472,9 @@ function castSkill(sk){
   /* 攻擊類 */
   if(sk.mult){
     if(sk.aoe){
-      // 災厄：多體逐個結算；單體切強化模式
+      // 災厄：全體逐個結算（不再有單體強化模式，也不自帶鋪滿負面——附負面只有精進「輪迴咒」才有）
       const targets = aliveEs();
-      if(targets.length === 1 && sk.debuffAmp){
-        const solo = Object.assign({}, sk, {mult:CALAM_SOLO_MULT, _solo:true});
-        dealToEnemy(CALAM_SOLO_MULT, solo, solo);
-        if(aliveEs().length) applyStatus(tgt().st, {weak:2, vuln:2, poison:2}, sk.n+'・鋪滿');
-      } else {
+      {
         const ti0 = B.ti;
         for(const e of targets){
           if(e.hp <= 0) continue;
