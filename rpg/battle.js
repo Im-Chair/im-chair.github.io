@@ -871,7 +871,7 @@ function showLoot(items, gold, icon, title, sub, extra){
   for(const it of items){
     const r = RARITIES[it.rar];
     const d = document.createElement('div'); d.className = `loot-card ${r.b}`;
-    d.innerHTML = `<div class="${r.cls}" style="font-size:16px">${it.name} <span style="font-size:11px">${r.n}</span></div>
+    d.innerHTML = `<div class="lc-head">${itemIcon(it,'ic-lg')}<div class="${r.cls}" style="font-size:16px">${it.name} <span style="font-size:11px">${r.n}</span></div></div>
       <div style="font-size:13px;color:var(--dim);margin:4px 0">${slotName(it.slot)}｜${itemStatLine(it)}</div>
       ${affixHtml(it)}${compareHtml(it)}
       <button class="btn small primary" style="margin-top:10px" onclick="equipFromBag(${it.id});this.textContent='已裝上';this.disabled=true">立刻換上</button>`;

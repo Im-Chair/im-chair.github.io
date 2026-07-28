@@ -92,6 +92,19 @@ function itemStatLine(it){
 
 function slotName(s){ return s==='w'?'武器':s==='a'?'護甲':'飾品'; }
 
+/* 裝備圖示唯一入口（同 enemyIcon 的作法：有圖走圖、沒有回落 emoji，可一件一件補）。
+   cls 決定尺寸：ic-sm 列表用、ic-lg 戰利品卡／裝備欄用。 */
+function itemIconSlug(it){
+  if(!it) return null;
+  if(it.slot === 'w') return it.wtype || 'sword';
+  return ITEM_ICON[it.name] || null;
+}
+function itemIcon(it, cls){
+  const slug = itemIconSlug(it);
+  if(!slug) return `<span class="item-ic ${cls||'ic-sm'} ic-fb">${it && it.slot==='a'?'🛡️':'💍'}</span>`;
+  return `<img class="item-ic ${cls||'ic-sm'} r${it.rar}" src="eq/${slug}.webp?v=${window.RPG_VER}" alt="" draggable="false">`;
+}
+
 /* 彙總玩家所有詞綴 */
 
 /* 黑市改「每個已認證輪迴一個分頁」（見 certPool）。
@@ -168,9 +181,9 @@ function openMarket(){
         <span class="is">精煉材料｜${price}🪙</span></div>`;
     } else if(b.type==='open'){
       const it = b.item, r = RARITIES[it.rar];
-      html += `<div class="item-row ${r.b}" onclick="peekOpen(${i})">
-        <span class="in ${r.cls}">📭 ${it.name}</span>
-        <span class="is">拆封品・詞綴可見｜${price}🪙</span></div>`;
+      html += `<div class="item-row ${r.b}" onclick="peekOpen(${i})">${itemIcon(it)}<div class="ir-body">
+        <span class="in ${r.cls}">${it.name}</span>
+        <span class="is">📭 拆封品・詞綴可見｜${price}🪙</span></div></div>`;
     } else {
       const it = b.item, r = RARITIES[it.rar];
       html += `<div class="item-row ${r.b}" onclick="buyBox(${i})">
@@ -199,7 +212,7 @@ function peekOpen(i){
   if(!b || b.sold) return;
   const it = b.item, r = RARITIES[it.rar], price = boxPrice(b);
   openSheet(`<h3>拆封品</h3>
-    <div class="loot-card ${r.b}"><div class="${r.cls}" style="font-size:16px">${it.name} <span style="font-size:11px">${r.n}</span></div>
+    <div class="loot-card ${r.b}"><div class="lc-head">${itemIcon(it,'ic-lg')}<div class="${r.cls}" style="font-size:16px">${it.name} <span style="font-size:11px">${r.n}</span></div></div>
     <div style="font-size:13px;color:var(--dim);margin:4px 0">${slotName(it.slot)}｜${itemStatLine(it)}</div>
     ${affixHtml(it)}${compareHtml(it)}</div>
     <p class="base">拆過的貨，看得清楚，也貴三成。</p>
@@ -233,7 +246,7 @@ function buyBox(i){
   save();
   const it = b.item, r = RARITIES[it.rar];
   openSheet(`<h3>${b.type==='open'?'成交':'開盒'}</h3>
-    <div class="loot-card ${r.b}"><div class="${r.cls}" style="font-size:16px">${it.name} <span style="font-size:11px">${r.n}</span></div>
+    <div class="loot-card ${r.b}"><div class="lc-head">${itemIcon(it,'ic-lg')}<div class="${r.cls}" style="font-size:16px">${it.name} <span style="font-size:11px">${r.n}</span></div></div>
     <div style="font-size:13px;color:var(--dim);margin:4px 0">${slotName(it.slot)}｜${itemStatLine(it)}</div>
     ${affixHtml(it)}</div>
     <p class="base">${it.cursed?'攤主的方向傳來一聲很輕的笑。':'已存入倉庫。'}</p>
@@ -369,8 +382,8 @@ function renderGear(){
     const it = G.equip[s];
     const d = document.createElement('div'); d.className = 'slot';
     d.innerHTML = it
-      ? `<div class="sl">${slotName(s)}</div><div class="sn ${RARITIES[it.rar].cls}">${it.name}${it.up?'+'+it.up:''}</div><div style="font-size:11px;color:var(--dim)">${itemStatLine(it)}</div>`
-      : `<div class="sl">${slotName(s)}</div><div class="sn" style="color:var(--dim)">— 空 —</div>`;
+      ? `<div class="sl">${slotName(s)}</div>${itemIcon(it,'ic-lg')}<div class="sn ${RARITIES[it.rar].cls}">${it.name}${it.up?'+'+it.up:''}</div><div style="font-size:11px;color:var(--dim)">${itemStatLine(it)}</div>`
+      : `<div class="sl">${slotName(s)}</div><div class="ic-empty">—</div><div class="sn" style="color:var(--dim)">— 空 —</div>`;
     if(it) d.onclick = ()=>openItemSheet(it, 'equipped');
     er.appendChild(d);
   }
@@ -427,8 +440,9 @@ function renderGear(){
   for(const it of sorted){
     const d = document.createElement('div'); d.className = `item-row ${RARITIES[it.rar].b}`;
     const checked = sellSel.has(it.id);
-    d.innerHTML = `<span class="in ${RARITIES[it.rar].cls}">${selling?(checked?'☑ ':'☐ '):''}${it.name}${it.up?'+'+it.up:''}</span>
-      <span class="is">${slotName(it.slot)}｜${itemStatLine(it)}</span>`;
+    d.innerHTML = `${itemIcon(it)}<div class="ir-body">
+      <span class="in ${RARITIES[it.rar].cls}">${selling?(checked?'☑ ':'☐ '):''}${it.name}${it.up?'+'+it.up:''}</span>
+      <span class="is">${slotName(it.slot)}｜${itemStatLine(it)}</span></div>`;
     d.onclick = selling
       ? ()=>{ if(sellSel.has(it.id)) sellSel.delete(it.id); else sellSel.add(it.id); renderGear(); }
       : ()=>openItemSheet(it, fromKind);
