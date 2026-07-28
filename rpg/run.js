@@ -1088,20 +1088,20 @@ function ensureBounties(){
   let offers = G.bounties.filter(b=>b.state==='offer').length;
   while(offers < 4){ const [band, ctx] = slots[offers]; G.bounties.push(genBounty(band, ctx)); offers++; }
 }
-function bountyText(b){
-  const m = romanCyc(b.mode); let t;
+function bountyTier(b){ return romanCyc(b.mode); }
+function bountyDesc(b){
   switch(b.type){
-    case 'reach': t = `抵達第 ${b.floor} 層`; break;
-    case 'kill':  t = `在第 ${b.floor} 層擊殺敵人`; break;
-    case 'loot':  t = `在第 ${b.floor} 層取得裝備`; break;
-    case 'boss':  t = `擊殺第 ${b.floor} 層首領`; break;
-    case 'streakkill': t = `一趟累積擊殺 ${b.target} 隻`; break;
-    case 'flawless':   t = `第 ${b.floor} 層起·不受傷贏一場`; break;
-    case 'dotkill':    t = `第 ${b.floor} 層起·斬殺中毒或燃燒的敵人`; break;
-    default: t = '？';
+    case 'reach': return `抵達第 ${b.floor} 層`;
+    case 'kill':  return `在第 ${b.floor} 層擊殺敵人`;
+    case 'loot':  return `在第 ${b.floor} 層取得裝備`;
+    case 'boss':  return `擊殺第 ${b.floor} 層首領`;
+    case 'streakkill': return `一趟累積擊殺 ${b.target} 隻`;
+    case 'flawless':   return `第 ${b.floor} 層起·不受傷贏一場`;
+    case 'dotkill':    return `第 ${b.floor} 層起·斬殺中毒或燃燒的敵人`;
+    default: return '？';
   }
-  return `${m}・${t}`;
 }
+function bountyText(b){ return `${bountyTier(b)}・${bountyDesc(b)}`; }   // 保留相容；懸賞板改用 bountyTier/bountyDesc 分開渲染
 function rewardText(r){ if(r.kind==='gold') return `🪙 ${r.amt}`; if(r.kind==='mat') return `${MATS[r.mat].i}${MATS[r.mat].n} ×${r.amt}`; if(r.kind==='legendary') return `🌟 傳說裝備`; return `🎁 裝備`; }
 function claimBounty(b){
   if(b.state==='done') return; b.state = 'done'; const r = b.reward;
@@ -1152,18 +1152,18 @@ function openBounties(){
   html += `<div class="section-title">進行中 ${active.length}/${MAX_ACTIVE}</div>`;
   if(!active.length) html += '<p class="base" style="color:var(--dim)">還沒接委託，往下挑一個。</p>';
   for(const b of active){ const i = G.bounties.indexOf(b);
-    html += `<div class="item-row"><span class="in">🎯 ${bountyText(b)}</span><span class="is">${rewardText(b.reward)} ＋💎${b.gems||'1~3'}　<span style="color:var(--red);cursor:pointer" onclick="abandonBounty(${i})">放棄</span></span></div>`;
+    html += `<div class="item-row bounty-row"><div class="b-left"><span class="b-tier">🎯 ${bountyTier(b)}</span><span class="b-desc">${bountyDesc(b)}</span></div><span class="b-reward">${rewardText(b.reward)} ＋💎${b.gems||'1~3'}　<span style="color:var(--red);cursor:pointer" onclick="abandonBounty(${i})">放棄</span></span></div>`;
   }
   const ready = G.bounties.filter(b=>b.state==='ready');
   if(ready.length){
     html += `<div class="section-title">可回報 ${ready.length}</div>`;
     for(const b of ready){ const i = G.bounties.indexOf(b);
-      html += `<div class="item-row"><span class="in">✅ ${bountyText(b)}</span><span class="is">${rewardText(b.reward)} ＋💎${b.gems||'1~3'}　<span style="color:var(--gold);cursor:pointer" onclick="claimBountyUI(${i})">回報領獎 ›</span></span></div>`;
+      html += `<div class="item-row bounty-row"><div class="b-left"><span class="b-tier">✅ ${bountyTier(b)}</span><span class="b-desc">${bountyDesc(b)}</span></div><span class="b-reward">${rewardText(b.reward)} ＋💎${b.gems||'1~3'}　<span style="color:var(--gold);cursor:pointer" onclick="claimBountyUI(${i})">回報領獎 ›</span></span></div>`;
     }
   }
   html += '<div class="section-title">可接委託</div><div class="item-list">';
   for(const b of offers){ const i = G.bounties.indexOf(b);
-    html += `<div class="item-row" onclick="acceptBounty(${i})"><span class="in">📌 ${bountyText(b)}</span><span class="is">${rewardText(b.reward)} ＋💎${b.gems||'1~3'}　<span style="color:var(--gold)">接下 ›</span></span></div>`;
+    html += `<div class="item-row bounty-row" onclick="acceptBounty(${i})"><div class="b-left"><span class="b-tier">📌 ${bountyTier(b)}</span><span class="b-desc">${bountyDesc(b)}</span></div><span class="b-reward">${rewardText(b.reward)} ＋💎${b.gems||'1~3'}　<span style="color:var(--gold)">接下 ›</span></span></div>`;
   }
   html += '</div>';
   if(offers.length) html += '<button class="btn" style="margin-top:10px" onclick="refreshBounties()">🔄 一鍵刷新可接委託</button>';
