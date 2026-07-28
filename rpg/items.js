@@ -97,7 +97,10 @@ function slotName(s){ return s==='w'?'武器':s==='a'?'護甲':'飾品'; }
 function itemIconSlug(it){
   if(!it) return null;
   if(it.slot === 'w') return it.wtype || 'sword';
-  return ITEM_ICON[it.name] || null;
+  // ⚠️ 護甲/飾品的 it.name 前面接了前綴（PREFIX：「王殞」「精良的」…，傳說還可能再加「詛咒的」），
+  //    所以不能用整串去查表——要比對「字尾」。武器沒踩到是因為它查的是 wtype 不是名字。
+  for(const k in ITEM_ICON) if(it.name && it.name.endsWith(k)) return ITEM_ICON[k];
+  return null;
 }
 function itemIcon(it, cls){
   const slug = itemIconSlug(it);

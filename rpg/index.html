@@ -7,7 +7,7 @@
 <meta name="theme-color" content="#0b0d12">
 <title>貪婪深淵</title>
 <!-- 版本號集中管理：只改這一個 RPG_VER，即同步 CSS／所有 script／標題顯示的版號（破快取用） -->
-<script>window.RPG_VER='382';document.write('<link rel="stylesheet" href="style.css?v='+RPG_VER+'">');</script>
+<script>window.RPG_VER='384';document.write('<link rel="stylesheet" href="style.css?v='+RPG_VER+'">');</script>
 </head>
 <body>
 <div id="app">
@@ -52,6 +52,7 @@
     <div class="hot" data-fx=".199" data-fy=".412" data-fw=".24" data-fh=".12" onclick="openRunStats()"></div>
     <div class="hot" data-fx=".824" data-fy=".487" data-fw=".24" data-fh=".11" onclick="openSmith()"></div>
     <div class="hot" data-fx=".50" data-fy=".575" data-fw=".26" data-fh=".13" onclick="openDivePicker()"></div>
+    <!-- 圖鑑：暫時關閉（改建中）。熱區保留，openCodex 內以 CODEX_ENABLED 擋下並回 toast -->
     <div class="hot" data-fx=".324" data-fy=".693" data-fw=".22" data-fh=".11" onclick="openCodex()"></div>
     <div class="hot" data-fx=".815" data-fy=".824" data-fw=".24" data-fh=".12" onclick="if(G.rec.deep>=30)openMarket();else toast('深入 30 層後解鎖深淵黑市')"></div>
     <div class="hot" data-fx=".208" data-fy=".87" data-fw=".26" data-fh=".11" onclick="openSaveMgr()"></div>
