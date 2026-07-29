@@ -526,7 +526,10 @@ function salvageItem(id){
   G.stash.splice(i,1); G.gold += v; closeSheet(); renderGear(); save(); toast(`分解得 ${v} 碎銀`);
 }
 
-function openSmith(){ renderSmith(); showScreen('s-smith'); }
+function openSmith(){
+  const si = $('smith-ic'); if(si) si.innerHTML = uiIcon('smith','ev-img','⚒️');   // 鍛造大圖
+  renderSmith(); showScreen('s-smith');
+}
 
 function smithCost(it){ return Math.round(30 * Math.pow(it.up+1, 1.5)); }
 

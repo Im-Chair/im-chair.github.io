@@ -21,7 +21,7 @@ function renderClassSelect(){
   for(const [k,c] of Object.entries(CLASSES)){
     const d = document.createElement('div');
     d.className = 'class-card'; d.dataset.k = k;
-    d.innerHTML = `<div class="ci">${c.icon}</div><div class="cn">${c.name}</div>
+    d.innerHTML = `<div class="ci">${uiIcon(c.img,'ci-img',c.icon)}</div><div class="cn">${c.name}</div>
       <div class="cd">${c.desc}</div>
       <div style="font-size:11px;color:var(--dim)">${['str','int','vit','agi','spi'].filter(k=>c.baseStats[k]>0).map(k=>STATS[k].i+c.baseStats[k]).join('　')}</div>
       <div style="font-size:10px;color:var(--dim)">主素質：${STATS[c.mainStat].i}${STATS[c.mainStat].n}</div>`;
@@ -60,12 +60,13 @@ function layoutCamp(){   // 依實際畫面把熱區對準美圖（cover 縮放�
 window.addEventListener('resize', layoutCamp);
 function renderCamp(){
   if(!G || !G.cls) return;
+  preloadArt();          // 一進營地就在背景把圖抓好，之後進戰鬥/開倉庫才不會慢一拍
   ensureBounties();
   const c = CLASSES[G.cls];
   const set = (id,v)=>{ const e=$(id); if(e) e.textContent = v; };
   set('camp-gold', G.gold);
   set('camp-gem', G.gems||0);
-  set('camp-cls-ic', c.icon);
+  const ci = $('camp-cls-ic'); if(ci) ci.innerHTML = uiIcon(c.img,'ci-mini',c.icon);
   set('camp-cls', c.name);
   set('camp-cert', '認證 '+certText(G.rec.cert));
   const ba = (G.bounties||[]).filter(b=>b.state==='active').length;
@@ -131,21 +132,26 @@ function importSave(){
 }
 
 function openCodex(){
+  // 🔒 圖鑑暫時關閉（改建中）。關的只有「入口」——擊殺計數仍照常累積進 G.codex，
+  //    重新開放時歷史完整不會斷層。要開回來把 CODEX_ENABLED 改 true 即可，介面程式碼原封不動保留在下面。
+  if(!CODEX_ENABLED) return toast('圖鑑改建中——你殺過的東西還是有記著');
   let html = '<h3>深淵圖鑑</h3><p class="base">殺過的東西會留在紙上。首次收錄 +30🪙。</p>';
   const row = e => {
     const kills = G.codex[e.key];
+    const pic = kills && e.img ? monImg(e.key, 'cx-ic') : '';   // 未收錄的不洩漏長相
     return kills
-      ? `<div class="item-row"><span class="in">${e.i} ${e.boss?'<span class="r-orange">'+e.n+'</span>':e.n}</span><span class="is">擊殺 ×${kills}</span></div>`
+      ? `<div class="item-row">${pic}<div class="ir-body"><span class="in">${e.boss?'<span class="r-orange">'+e.n+'</span>':e.n}</span><span class="is">擊殺 ×${kills}</span></div></div>`
       : `<div class="item-row" style="opacity:.4"><span class="in">❓ ？？？</span><span class="is">未收錄</span></div>`;
   };
   REALMS.slice(0,5).forEach((z, ri)=>{
     html += `<div class="section-title">${z.i} ${z.n}</div><div class="item-list">`;
-    for(const [k,e] of Object.entries(ENEMIES)) if(e.realm===ri) html += row({key:k, n:e.n, i:e.i});
+    for(const [k,e] of Object.entries(ENEMIES)) if(e.realm===ri) html += row({key:k, n:e.n, i:e.i, img:e.img});
     const re = REALM_ELITES[ri];
-    html += row({key:re.key, n:re.n, i:re.i, boss:true});
-    html += row({key:MINI_BOSSES[ri].key, n:MINI_BOSSES[ri].n, i:MINI_BOSSES[ri].i, boss:true});
-    if(LORD_BOSSES[ri]) html += row({key:LORD_BOSSES[ri].key, n:LORD_BOSSES[ri].n, i:LORD_BOSSES[ri].i, boss:true});
-    else html += row({key:'final', n:FINAL_BOSS.n, i:FINAL_BOSS.i, boss:true});
+    html += row({key:re.key, n:re.n, i:re.i, img:re.img, boss:true});
+    const mb = MINI_BOSSES[ri];
+    html += row({key:mb.key, n:mb.n, i:mb.i, img:mb.img, boss:true});
+    if(LORD_BOSSES[ri]){ const lb = LORD_BOSSES[ri]; html += row({key:lb.key, n:lb.n, i:lb.i, img:lb.img, boss:true}); }
+    else html += row({key:'final', n:FINAL_BOSS.n, i:FINAL_BOSS.i, img:FINAL_BOSS.img, boss:true});
     html += '</div>';
   });
   html += '<button class="btn" style="margin-top:12px" onclick="closeSheet()">關閉</button>';

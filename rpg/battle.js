@@ -76,7 +76,20 @@ function enemyMove(e){ return e.pat[e.pi % e.pat.length]; }
 /* 敵人圖示唯一入口：有點陣圖走 mon/<key>.webp，沒有就回落既有 SVG，再沒有就 emoji。
    → 圖檔可一隻一隻補,不必等全部到齊;未配圖的首領自動維持原本 SVG。 */
 function enemyIcon(e){
-  return e.img ? `<img src="mon/${e.key}.webp?v=${window.RPG_VER}" alt="" draggable="false">` : (e.svg || e.i);
+  // frame:1 = 方形框圖（域限精英）。素材是連著背景畫的，去背會爛；
+  // 而且「帶框肖像 vs 漂浮 sprite」剛好給了精英一個看得見的層級，不必另外加標記。
+  // imgKey：借用別隻的圖但不動 key（key 要留給圖鑑統計）——寶箱怪借聖物匣的圖就是走這條。
+  if(e.img) return monImg(e.imgKey || e.key, e.frame?'ei-frame':'');
+  return e.svg || e.i;
+}
+/* 敵人圖（mon/*.webp）：給門卡、圖鑑等「不是敵人物件」的地方直接用 key 取圖 */
+function monImg(key, cls){
+  return `<img class="${cls||''}" src="mon/${key}.webp?v=${window.RPG_VER}" alt="" draggable="false">`;
+}
+/* 通用 UI 圖示（ui/*.webp）：職業、門、藥水、結算。沒有 slug 就回落原本的 emoji。 */
+function uiIcon(slug, cls, fb){
+  if(!slug) return fb || '';
+  return `<img class="ui-ic ${cls||''}" src="ui/${slug}.webp?v=${window.RPG_VER}" alt="" draggable="false">`;
 }
 
 function bossFor(floor){
@@ -795,7 +808,8 @@ function winBattle(){
     if(!G.codex[key] && !R.codexPending[key]) firstKillBonus += 30;   // 首殺獎勵（本趟或永久已知都不再給）
     R.codexPending[key] = (R.codexPending[key]||0) + 1;                // 回營才併入 G.codex
   }
-  if(firstKillBonus){ R.gold += firstKillBonus; toast('圖鑑首錄 +'+firstKillBonus+'🪙'); }
+  // 文案不提「圖鑑」——圖鑑入口關著時，提一個玩家點不進去的東西只會製造困惑
+  if(firstKillBonus){ R.gold += firstKillBonus; toast((CODEX_ENABLED?'圖鑑首錄':'首次擊殺')+' +'+firstKillBonus+'🪙'); }
   const mend = sumAffix('mend');
   let mendHeal = 0;
   if(mend){ mendHeal = Math.min(Math.round(playerMaxHp()*mend/100), playerMaxHp()-R.hp); if(mendHeal>0) R.hp += mendHeal; }
@@ -861,7 +875,11 @@ function winBattle(){
 
 function showLoot(items, gold, icon, title, sub, extra){
   R.phase='loot';
-  $('loot-icon').textContent = icon;
+  // icon 可能是 emoji、已組好的 <img>、或 EV_IMG 有對照的 emoji
+  const li = $('loot-icon'), ls = EV_IMG[icon];
+  if(/^</.test(icon)) li.innerHTML = icon;
+  else if(ls) li.innerHTML = uiIcon(ls,'ev-img');
+  else li.textContent = icon;
   $('loot-title').textContent = title;
   $('loot-sub').textContent = (sub||'') + (extra||'');
   const body = $('loot-body'); body.innerHTML = '';
@@ -945,7 +963,7 @@ function openBattlePotions(){
   let html = '<h3>道具</h3><div class="item-list" style="margin-top:10px">';
   for(const [k,n] of Object.entries(R.pots)){
     const p = POTIONS[k];
-    html += `<div class="item-row" onclick="usePotion('${k}',true)"><span>${p.i} ${p.n}${n>1?' ×'+n:''}</span><span class="is">${pdesc(k)}</span></div>`;
+    html += `<div class="item-row" onclick="usePotion('${k}',true)">${uiIcon(p.img,'pi-row',p.i)}<div class="ir-body"><span>${p.n}${n>1?' ×'+n:''}</span><span class="is">${pdesc(k)}</span></div></div>`;
   }
   html += '</div><button class="btn" style="margin-top:12px" onclick="closeSheet()">關閉</button>';
   openSheet(html);

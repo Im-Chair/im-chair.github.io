@@ -138,6 +138,37 @@ function load(){ try{
   return true;
 }catch(e){ console.warn('[abyss] 讀檔失敗，將以空存檔開始：', e); } G = null; R = null; return false; }
 
+/* ── 圖片預載 ──
+   問題：<img> 是渲染當下才建立的，瀏覽器到那一刻才開始下載 → 進戰鬥/開倉庫會看到圖慢一拍才出現。
+   解法：一進營地就在背景把所有圖抓進瀏覽器快取。三個資料夾加起來約 1.15 MB，
+        分批（每批 8 張）送出避免一次塞爆連線，並在 requestIdleCallback 裡跑，不跟開場渲染搶資源。
+   註：Service Worker 的預快取只保障「離線可用」，第一次線上遊玩仍要走網路，所以這層還是需要。 */
+const _preloaded = [];   // 持有 reference，避免被 GC 掉又要重抓
+let _preloadDone = false;
+function preloadArt(){
+  if(_preloadDone) return; _preloadDone = true;
+  const v = '?v=' + window.RPG_VER;
+  const urls = [];
+  for(const k in ENEMIES) if(ENEMIES[k].img) urls.push('mon/'+k+'.webp'+v);
+  for(const b of MINI_BOSSES.concat(LORD_BOSSES)) if(b.img) urls.push('mon/'+b.key+'.webp'+v);
+  if(FINAL_BOSS.img) urls.push('mon/final.webp'+v);
+  for(const e of REALM_ELITES) if(e.img) urls.push('mon/'+e.key+'.webp'+v);
+  for(const w in WEAPON_TYPES) urls.push('eq/'+w+'.webp'+v);
+  for(const s of new Set(Object.values(ITEM_ICON))) urls.push('eq/'+s+'.webp'+v);
+  for(const s of Object.values(DOOR_IMG)) urls.push('ui/'+s+'.webp'+v);
+  for(const k in POTIONS) if(POTIONS[k].img) urls.push('ui/'+POTIONS[k].img+'.webp'+v);
+  for(const s of Object.values(EV_IMG)) urls.push('ui/'+s+'.webp'+v);
+  urls.push('ui/res_death.webp'+v);
+  let i = 0;
+  const batch = ()=>{
+    for(let n=0; n<8 && i<urls.length; n++, i++){
+      const im = new Image(); im.decoding = 'async'; im.src = urls[i]; _preloaded.push(im);
+    }
+    if(i < urls.length) setTimeout(batch, 120);
+  };
+  (window.requestIdleCallback || (f=>setTimeout(f,300)))(batch);
+}
+
 function showScreen(id){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('show'));
   $(id).classList.add('show');

@@ -206,12 +206,13 @@ function showDoors(){
     const t = R.forceDoor; R.forceDoor = null;
     const map = {fight:['⚔️','戰鬥','逃不掉的'], elite:['😈','精英','逃不掉的'], boss:['☠️','首領','逃不掉的']};
     const m = map[t] || map.fight;
-    R.doors = [{t, i:m[0], n:m[1], d:m[2]}];
+    const fb = (t==='boss') ? bossFor(R.floor) : null;
+    R.doors = [{t, i:m[0], mimg:(fb && fb.img)? (fb.key||'final') : null, n:m[1], d:m[2]}];
     grid.style.gridTemplateColumns = '1fr';
   } else if(f % 5 === 0){
     // 首領層
     const b = bossFor(f);
-    R.doors = [{t:'boss', i:b.i, n:'首領・'+b.n, d:'必掉稀有以上'}];
+    R.doors = [{t:'boss', i:b.i, mimg:(b.img? (b.key||'final') : null), n:'首領・'+b.n, d:'必掉稀有以上'}];
     grid.style.gridTemplateColumns = '1fr';
   } else {
     if(!R.doors){
@@ -221,7 +222,9 @@ function showDoors(){
   }
   for(const d of R.doors){
     const el = document.createElement('div'); el.className = 'door';
-    el.innerHTML = `<div class="di">${d.i}</div><div class="dn">${d.n}</div><div class="dd">${d.d}</div>`;
+    const dimg = DOOR_IMG[d.t];
+    const pic = d.mimg ? monImg(d.mimg,'ui-ic di-img') : (dimg ? uiIcon(dimg,'di-img') : d.i);
+    el.innerHTML = `<div class="di">${pic}</div><div class="dn">${d.n}</div><div class="dd">${d.d}</div>`;
     el.onclick = ()=>enterDoor(d);
     grid.appendChild(el);
   }
@@ -236,7 +239,7 @@ function renderDoorPotions(){
   for(const [k,n] of Object.entries(R.pots||{})){
     const pt = POTIONS[k];
     const d = document.createElement('div'); d.className='potion';
-    d.innerHTML = `<span class="pi">${pt.i}</span>${pt.n}${n>1?' ×'+n:''}`;
+    d.innerHTML = `<span class="pi">${uiIcon(pt.img,'pi-img',pt.i)}</span>${pt.n}${n>1?' ×'+n:''}`;
     d.onclick = ()=>{
       if(!pt.any){ toast('只能在戰鬥中使用'); return; }
       usePotion(k, false);
@@ -394,7 +397,9 @@ function doChest(){
   if(Math.random() < 0.18){
     // 寶箱怪
     showEventScreen('📦','寶箱','你伸手掀開箱蓋——箱子也張開了嘴。',
-      [{n:'⚔️ 迎戰', f:()=>{ const e = makeEnemy(R.floor, 1); e.n='寶箱怪'; e.i='📦'; startBattle(e); }}]);
+      [{n:'⚔️ 迎戰', f:()=>{ const e = makeEnemy(R.floor, 1);
+        e.n='寶箱怪'; e.i='📦'; e.img=1; e.imgKey='reliq';   // 借聖物匣那張咬人的箱子；不改 key，圖鑑統計不受影響
+        startBattle(e); }}]);
   } else {
     const it = makeItem(R.floor, 1);
     R.bag.push(it);
@@ -406,7 +411,8 @@ function showEventScreen(icon,title,text,choices){
   R.phase='event';
   $('ev-floor').textContent = R.floor;
   $('ev-gold').textContent = R.gold;
-  $('ev-icon').textContent = icon;
+  const evs = EV_IMG[icon];
+  if(evs) $('ev-icon').innerHTML = uiIcon(evs,'ev-img'); else $('ev-icon').textContent = icon;
   $('ev-title').textContent = title;
   $('ev-text').textContent = text;
   const c = $('ev-choices'); c.innerHTML='';
@@ -1008,7 +1014,7 @@ function playerDie(){
   if(G.bounties) for(const b of G.bounties) delete b.met;   // 死了：本趟達成全作廢，不能回報
   R = null; B = null; save();
   setTimeout(()=>{
-    $('res-icon').textContent = '💀';
+    $('res-icon').innerHTML = uiIcon('res_death','res-img','💀');   // 死亡結算：用大圖，這是全遊戲最重的一刻
     $('res-title').textContent = '深淵收下了你';
     $('res-sub').textContent = '再貪一層，就這一層——每個死在這裡的人都這麼說過。';
     const lh = deathHit;
