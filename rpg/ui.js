@@ -60,7 +60,6 @@ function layoutCamp(){   // 依實際畫面把熱區對準美圖（cover 縮放�
 window.addEventListener('resize', layoutCamp);
 function renderCamp(){
   if(!G || !G.cls) return;
-  preloadArt();          // 一進營地就在背景把圖抓好，之後進戰鬥/開倉庫才不會慢一拍
   ensureBounties();
   const c = CLASSES[G.cls];
   const set = (id,v)=>{ const e=$(id); if(e) e.textContent = v; };
@@ -72,6 +71,7 @@ function renderCamp(){
   const ba = (G.bounties||[]).filter(b=>b.state==='active').length;
   const bb = $('bounty-badge'); if(bb){ bb.textContent = ba||''; bb.style.display = ba? '' : 'none'; }
   save();
+  preloadArt();   // 放最後：背景預載圖檔。它自己包了 try，但仍不放在任何必要流程前面
 }
 
 function openSaveMgr(){

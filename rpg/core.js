@@ -147,26 +147,35 @@ const _preloaded = [];   // 持有 reference，避免被 GC 掉又要重抓
 let _preloadDone = false;
 function preloadArt(){
   if(_preloadDone) return; _preloadDone = true;
-  const v = '?v=' + window.RPG_VER;
-  const urls = [];
-  for(const k in ENEMIES) if(ENEMIES[k].img) urls.push('mon/'+k+'.webp'+v);
-  for(const b of MINI_BOSSES.concat(LORD_BOSSES)) if(b.img) urls.push('mon/'+b.key+'.webp'+v);
-  if(FINAL_BOSS.img) urls.push('mon/final.webp'+v);
-  for(const e of REALM_ELITES) if(e.img) urls.push('mon/'+e.key+'.webp'+v);
-  for(const w in WEAPON_TYPES) urls.push('eq/'+w+'.webp'+v);
-  for(const s of new Set(Object.values(ITEM_ICON))) urls.push('eq/'+s+'.webp'+v);
-  for(const s of Object.values(DOOR_IMG)) urls.push('ui/'+s+'.webp'+v);
-  for(const k in POTIONS) if(POTIONS[k].img) urls.push('ui/'+POTIONS[k].img+'.webp'+v);
-  for(const s of Object.values(EV_IMG)) urls.push('ui/'+s+'.webp'+v);
-  urls.push('ui/res_death.webp'+v);
-  let i = 0;
-  const batch = ()=>{
-    for(let n=0; n<8 && i<urls.length; n++, i++){
-      const im = new Image(); im.decoding = 'async'; im.src = urls[i]; _preloaded.push(im);
-    }
-    if(i < urls.length) setTimeout(batch, 120);
-  };
-  (window.requestIdleCallback || (f=>setTimeout(f,300)))(batch);
+  // ⚠️ 整段包 try：預載只是最佳化，絕對不能因為它壞掉就擋住遊戲流程。
+  //    （踩過：這函式在 renderCamp 第一行丟例外 → confirmClass 的 showScreen('s-camp') 跑不到 → 卡在選職業）
+  try{
+    const v = '?v=' + window.RPG_VER;
+    const urls = [];
+    for(const k in ENEMIES) if(ENEMIES[k].img) urls.push('mon/'+k+'.webp'+v);
+    for(const b of MINI_BOSSES.concat(LORD_BOSSES)) if(b.img) urls.push('mon/'+b.key+'.webp'+v);
+    if(FINAL_BOSS.img) urls.push('mon/final.webp'+v);
+    for(const e of REALM_ELITES) if(e.img) urls.push('mon/'+e.key+'.webp'+v);
+    for(const w in WEAPON_TYPES) urls.push('eq/'+w+'.webp'+v);
+    for(const s of new Set(Object.values(ITEM_ICON))) urls.push('eq/'+s+'.webp'+v);
+    for(const s of new Set(Object.values(DOOR_IMG))) urls.push('ui/'+s+'.webp'+v);
+    for(const k in POTIONS) if(POTIONS[k].img) urls.push('ui/'+POTIONS[k].img+'.webp'+v);
+    for(const s of new Set(Object.values(EV_IMG))) urls.push('ui/'+s+'.webp'+v);
+    urls.push('ui/res_death.webp'+v, 'ui/smith.webp'+v);
+    let i = 0;
+    const batch = ()=>{
+      try{
+        for(let n=0; n<8 && i<urls.length; n++, i++){
+          const im = new Image(); im.decoding = 'async'; im.src = urls[i]; _preloaded.push(im);
+        }
+        if(i < urls.length) setTimeout(batch, 120);
+      }catch(e){ console.warn('[abyss] 預載中止：', e); }
+    };
+    // ⚠️ requestIdleCallback 一定要綁 window——把它從 window 取出來直接呼叫，
+    //    Chrome/Safari 會丟 "Illegal invocation"。
+    if(typeof window.requestIdleCallback === 'function') window.requestIdleCallback(batch);
+    else setTimeout(batch, 300);
+  }catch(e){ console.warn('[abyss] 預載略過：', e); }
 }
 
 function showScreen(id){
