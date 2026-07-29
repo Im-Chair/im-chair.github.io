@@ -21,7 +21,7 @@ function renderClassSelect(){
   for(const [k,c] of Object.entries(CLASSES)){
     const d = document.createElement('div');
     d.className = 'class-card'; d.dataset.k = k;
-    d.innerHTML = `<div class="ci">${uiIcon(c.img,'ci-img',c.icon)}</div><div class="cn">${c.name}</div>
+    d.innerHTML = `<div class="ci">${classIcon(k,'lg')}</div><div class="cn">${c.name}</div>
       <div class="cd">${c.desc}</div>
       <div style="font-size:11px;color:var(--dim)">${['str','int','vit','agi','spi'].filter(k=>c.baseStats[k]>0).map(k=>STATS[k].i+c.baseStats[k]).join('　')}</div>
       <div style="font-size:10px;color:var(--dim)">主素質：${STATS[c.mainStat].i}${STATS[c.mainStat].n}</div>`;
@@ -66,7 +66,7 @@ function renderCamp(){
   const set = (id,v)=>{ const e=$(id); if(e) e.textContent = v; };
   set('camp-gold', G.gold);
   set('camp-gem', G.gems||0);
-  const ci = $('camp-cls-ic'); if(ci) ci.innerHTML = uiIcon(c.img,'ci-mini',c.icon);
+  const ci = $('camp-cls-ic'); if(ci) ci.innerHTML = classIcon(G.cls,'sm');
   set('camp-cls', c.name);
   set('camp-cert', '認證 '+certText(G.rec.cert));
   const ba = (G.bounties||[]).filter(b=>b.state==='active').length;

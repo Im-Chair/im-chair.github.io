@@ -91,6 +91,18 @@ function uiIcon(slug, cls, fb){
   if(!slug) return fb || '';
   return `<img class="ui-ic ${cls||''}" src="ui/${slug}.webp?v=${window.RPG_VER}" alt="" draggable="false">`;
 }
+/* 職業圖示唯一入口——所有顯示職業的地方都走這裡：
+   選職業卡、營地角色列、角色切換清單、刪除確認、戰鬥名條、角色檢視。
+   size: 'lg' 大卡片 / 'sm' 行內（預設）。要換職業美術只改這一個函式。 */
+function classIcon(clsKey, size){
+  const c = CLASSES[clsKey]; if(!c) return '';
+  return uiIcon(c.img, 'ci-' + (size || 'sm'), c.icon);
+}
+/* 職業「圖示＋名稱」的行內組合，給清單類 UI 用（回傳 HTML，呼叫端要用 innerHTML） */
+function classLabel(clsKey){
+  const c = CLASSES[clsKey]; if(!c) return '（未創建）';
+  return `<span class="cls-tag">${classIcon(clsKey,'sm')}${c.name}</span>`;
+}
 
 function bossFor(floor){
   if(floor % 50 === 0) return FINAL_BOSS;
@@ -154,7 +166,7 @@ function startBattle(enemies, opt){
   if(_zrule==='drain1') B.energy = Math.max(1, B.energy-1);  // 沉沒王國：首回合行動點 −1
   if(R.pendingStatus){ B.st = Object.assign({}, R.pendingStatus); R.pendingStatus = null; }
   if(opt && opt.ambush){ B.energy = Math.max(1, B.energy-1); }
-  $('p-name').textContent = CLASSES[G.cls].icon+' '+CLASSES[G.cls].name;
+  $('p-name').innerHTML = classLabel(G.cls);
   $('log').innerHTML='';
   const e0 = enemies[0];
   if(e0.boss && e0.intro) log(e0.intro,'sys');

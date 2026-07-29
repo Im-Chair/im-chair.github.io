@@ -203,8 +203,10 @@ h1.title{
 /* ── 通用 UI 圖示（ui/*.webp）：職業／門／藥水／結算／標題 ── */
 .ui-ic{display:block;border-radius:8px;object-fit:cover;}
 .title-art{display:block;width:min(88%,340px);margin:0 auto;border-radius:12px;}
-.ci-img{width:76px;height:76px;margin:0 auto 4px;border:1px solid var(--line);}
-.ci-mini{width:26px;height:26px;border-radius:5px;display:inline-block;vertical-align:middle;}
+/* 職業圖示只有這兩個尺寸；全部由 classIcon()（battle.js）產生，不要在別處另寫 */
+.ci-lg{width:76px;height:76px;margin:0 auto 4px;border:1px solid var(--line);}
+.ci-sm{width:26px;height:26px;border-radius:5px;display:inline-block;vertical-align:middle;}
+.cls-tag{display:inline-flex;align-items:center;gap:6px;vertical-align:middle;}
 /* 門圖走「橫幅」而不是正方形：門卡本來就有 26px 上留白與頂部裝飾線，正方形會把卡片撐得太高 */
 .di-img{width:100%;height:92px;border:1px solid var(--line);margin-bottom:2px;}
 .pi-img{width:24px;height:24px;border-radius:5px;display:inline-block;vertical-align:middle;}
@@ -214,8 +216,8 @@ h1.title{
 .cx-ic{width:38px;height:38px;margin-right:9px;flex:0 0 auto;border-radius:6px;border:1px solid var(--line);object-fit:cover;}
 /* 門卡若放的是敵人去背圖，底色要墊一下，不然深色 sprite 貼在深色門上看不清 */
 .door .di>img.di-img{background:radial-gradient(ellipse at 50% 60%, #262032 0%, #16121d 70%);object-fit:contain;}
-/* 域限精英：方形框圖（素材連著背景畫，去背會爛）。帶框肖像 vs 漂浮 sprite＝看得見的層級 */
-.enemy-icon>img.ei-frame{border-radius:9px;border:1px solid #6b5a37;box-shadow:0 0 0 1px rgba(0,0,0,.6);}
+/* 域限精英：邊緣已在圖檔裡做軟性淡出（見交接筆記十五），不要再加硬框，
+   否則又變回「貼了一塊方形」的樣子。 */
 /* 裝備圖示（eq/*.webp）。素材本身是深色圖磚，直接當方塊用——去背會把柔邊畫壞，
    而深底本來就貼合遊戲配色。邊框吃稀有度色，讓稀有度在列表裡一眼可辨。 */
 .item-ic{border-radius:6px;object-fit:cover;flex:0 0 auto;display:block;

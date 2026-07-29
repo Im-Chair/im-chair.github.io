@@ -47,7 +47,7 @@ function accLoad(){
   G = ACC.chars.length ? ACC.chars[ACC.active] : null;
 }
 
-function charLabel(c){ return (c && c.cls) ? `${CLASSES[c.cls].icon} ${CLASSES[c.cls].name}` : '（未創建）'; }
+function charLabel(c){ return (c && c.cls) ? classLabel(c.cls) : '（未創建）'; }   // 圖示統一走 classIcon（battle.js）
 
 function openRoster(){
   let html = '<h3>角色</h3><p class="base">每個角色的職業、裝備、碎銀、認證、輪迴進度、個人倉庫都獨立；共用倉庫全帳號共享。</p><div class="item-list" style="margin-top:8px">';
