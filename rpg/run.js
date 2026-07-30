@@ -760,23 +760,23 @@ const EVENTS = {
       }},
       {n:'別動別人的火', f:()=>walkAway('🔥','先人的火堆')}]);
   },
-  wreck(){ // 沉沒王國
-    showEventScreen('⛵','擱淺的貨船','一艘商船卡在王國的街道中央——沉到這裡的船，貨艙朝著天。',
-      [{n:'撬開貨艙', f:()=>{
+  wreck(){ // 哥布林聚落（原「擱淺的貨船」，改域後改成翻覆的貨車）
+    showEventScreen('🛞','破裂的貨車','一輛翻覆的貨車橫在聚落主道上——車軸斷了，貨箱朝著天。哥布林顯然還沒搬完。',
+      [{n:'撬開貨箱', f:()=>{
         const r = Math.random();
-        if(r<0.45){ treasureRoll(1,'⛵','貨艙'); }
-        else if(r<0.75){ const e = makeEnemy(R.floor, R.floor>=13?1:0); e.n='貨艙裡的'+e.n.replace('精英・',''); 
-          showEventScreen('⛵','貨艙','貨早就被搬空了，搬貨的東西還住在裡面。',
+        if(r<0.45){ treasureRoll(1,'🛞','貨箱'); }
+        else if(r<0.75){ const e = makeEnemy(R.floor, R.floor>=13?1:0); e.n='貨箱裡的'+e.n.replace('精英・',''); 
+          showEventScreen('🛞','貨箱','貨早就被搬空了，搬貨的東西還住在裡面。',
             [{n:'⚔️ 迎戰', f:()=>startBattle(e,{ambush:true}), primary:true}]); }
         else { const g = 30 + R.floor*5; R.gold += g;
-          showEventScreen('⛵','貨艙','船長室的暗格裡藏著 '+g+' 碎銀。船長本人在椅子上，早就不需要錢了。',
+          showEventScreen('🛞','貨箱','車伕座下的暗格裡藏著 '+g+' 碎銀。車伕還坐在原位，早就不需要錢了。',
             [{n:'收下', f:()=>nextFloor(), primary:true}]); }
       }},
-      {n:'不上船', f:()=>walkAway('⛵','擱淺的貨船')}]);
+      {n:'不上船', f:()=>walkAway('🛞','破裂的貨車')}]);
   },
-  wishwell(){ // 沉沒王國
+  wishwell(){ // 哥布林聚落
     const cost = 20 + R.floor*3;
-    showEventScreen('🪙','許願池','王國廣場的許願池還在運作——池底鋪滿了願望，大多沒實現。',
+    showEventScreen('🪙','許願池','聚落中央有個積水的石坑，底下鋪滿了各族丟進去的銅板——願望大多沒實現，哥布林倒是撈得很勤。',
       [{n:`投入 ${cost} 碎銀許願`, f:()=>{
         if(R.gold < cost){ toast('碎銀不夠'); return; }
         R.gold -= cost;
@@ -792,35 +792,35 @@ const EVENTS = {
       }},
       {n:'不許願', f:()=>walkAway('🪙','許願池')}]);
   },
-  cyst(){ // 血肉迴廊
-    showEventScreen('🫧','搏動的囊腫','牆上鼓著一顆半透明的囊腫，隨著整條迴廊的心跳一起搏動。裡面有影子。',
+  cyst(){ // 無光通道（原「搏動的囊腫」，改域後改成樹囊）
+    showEventScreen('🪵','樹囊','黑暗裡摸到一段粗大的樹根，上頭鼓著一顆脹滿的樹囊。指尖貼上去，能感覺到裡面有東西在動。',
       [{n:'刺破它', f:()=>{
         const r = Math.random();
         if(r<0.4){ const it = makeItem(R.floor, 1); R.bag.push(it);
-          showLoot([it], 0, '🫧', '囊腫裡', '深淵消化不了的東西，都會被包起來。'); }
+          showLoot([it], 0, '🪵', '樹囊裡', '根不會消化東西，只會把它們包起來。'); }
         else if(r<0.75){ const d = Math.max(6, Math.round(playerMaxHp()*0.09)); R.hp = Math.max(1, R.hp-d); R.pendingStatus = {poison:4};
-          showEventScreen('🫧','囊腫裡','膿液噴了你一身。失去 '+d+' 點生命，毒素纏著你進入下一場戰鬥（中毒 4）。',
+          showEventScreen('🪵','樹囊裡','酸澀的樹液噴了你一身。失去 '+d+' 點生命，毒素纏著你進入下一場戰鬥（中毒 4）。',
             [{n:'擦掉，繼續前進', f:()=>nextFloor()}]); }
         else { const g = 35 + R.floor*4; R.gold += g;
-          showEventScreen('🫧','囊腫裡','裡面是一個被消化到只剩錢袋的冒險者。'+g+' 碎銀，還有點黏。',
+          showEventScreen('🪵','樹囊裡','裡面是一個不知被包了多久的冒險者，只剩下錢袋。'+g+' 碎銀，還有點黏。',
             [{n:'收下', f:()=>nextFloor(), primary:true}]); }
       }},
-      {n:'不碰', f:()=>walkAway('🫧','搏動的囊腫')}]);
+      {n:'不碰', f:()=>walkAway('🪵','樹囊')}]);
   },
-  vein(){ // 血肉迴廊
-    showEventScreen('🩸','裸露的血管','一根手臂粗的血管從牆裡垂下來，破口處滴著溫熱的血。喝的人聽說會變強。也聽說會變別的。',
+  vein(){ // 無光通道（原「裸露的血管」，改域後改成氣根）
+    showEventScreen('🌿','裸露的樹根','一條手臂粗的氣根從黑暗裡垂下來，斷口滲著溫熱的汁液。喝的人聽說會變強。也聽說會變別的。',
       [{n:'喝一口', f:()=>{
         const r = Math.random();
         if(r<0.5){ if(blessCount('str') < BLESS_MAX) R.bless.push({k:'str',v:3}); const h = Math.min(Math.round(playerMaxHp()*0.2), playerMaxHp()-R.hp); R.hp += h;
-          showEventScreen('🩸','血管','深淵的血在你血管裡燒。力量 +3（本次探索），回復 '+h+' 點生命。',
+          showEventScreen('🌿','樹根','樹汁在你血管裡燒。力量 +3（本次探索），回復 '+h+' 點生命。',
             [{n:'繼續前進', f:()=>nextFloor(), primary:true}]); }
         else { R.pendingStatus = {wound:3};
-          showEventScreen('🩸','血管','血是甜的——太甜了。你的傷口開始不肯癒合（下場戰鬥重傷 3）。',
+          showEventScreen('🌿','樹根','汁液是甜的——太甜了。你的傷口開始不肯癒合（下場戰鬥重傷 3）。',
             [{n:'……繼續前進', f:()=>nextFloor()}]); }
       }},
-      {n:'不喝', f:()=>walkAway('🩸','裸露的血管')}]);
+      {n:'不喝', f:()=>walkAway('🌿','裸露的樹根')}]);
   },
-  confess(){ // 無光教區
+  confess(){ // 舊都
     showEventScreen('🕳','懺悔室','一座黑木懺悔室立在路中央，簾子後面有呼吸聲。牌子上寫：「說出你的重量。」',
       [{n:'進去懺悔', f:()=>{
         const cursed = ['w','a','t'].some(sl=>G.equip[sl] && G.equip[sl].cursed);
@@ -839,7 +839,7 @@ const EVENTS = {
       }},
       {n:'我沒什麼好懺悔的', f:()=>walkAway('🕳','懺悔室')}]);
   },
-  candle(){ // 無光教區
+  candle(){ // 舊都
     showEventScreen('🕯','冷燭祭壇','祭壇上插滿了燒不起來的蠟燭。祭壇的說明只有一句：「借火者，還火。」',
       [{n:'用自己的體溫點燃（失去 10% 血）', f:()=>{
         const d = Math.max(4, Math.round(playerMaxHp()*0.1)); R.hp = Math.max(1, R.hp-d);
@@ -849,18 +849,18 @@ const EVENTS = {
       }},
       {n:'不還火', f:()=>walkAway('🕯','冷燭祭壇')}]);
   },
-  bloodspring(){ // 心室
-    showEventScreen('⛲','血泉','一眼泉，湧的是血——溫的、乾淨的、和你心跳同頻的血。',
-      [{n:'喝下', f:()=>{
+  bloodspring(){ // 熔獄（原「血泉」，改域後改成岩漿池）
+    showEventScreen('🌋','岩漿池','一池岩漿緩緩翻滾，熱得不像會傷人，倒像在呼吸——和你的心跳同一個頻率。',
+      [{n:'浸入手臂', f:()=>{
         const r = Math.random();
         if(r<0.6){ if(blessCount('hp') < BLESS_MAX) R.bless.push({k:'hp',v:12}); const h = Math.min(Math.round(playerMaxHp()*0.35), playerMaxHp()-R.hp); R.hp += h;
-          showEventScreen('⛲','血泉','它認得你——你一路流的血，有一部分匯到了這裡。\n\n生命上限 +12（本次探索），回復 '+h+' 點生命。',
+          showEventScreen('🌋','岩漿池','你把手浸進去。它認得你——你一路燒掉的東西，有一部分沉在這裡。\n\n肉身受了一次淬煉：生命上限 +12（本次探索），回復 '+h+' 點生命。',
             [{n:'繼續前進', f:()=>nextFloor(), primary:true}]); }
         else { R.pendingStatus = {wound:2, weak:2};
-          showEventScreen('⛲','血泉','血認得你，但不喜歡你。（下場戰鬥重傷 2、虛弱 2）',
+          showEventScreen('🌋','岩漿池','它認得你，但不喜歡你。（下場戰鬥重傷 2、虛弱 2）',
             [{n:'……繼續前進', f:()=>nextFloor()}]); }
       }},
-      {n:'不喝', f:()=>walkAway('⛲','血泉')}]);
+      {n:'不碰', f:()=>walkAway('🌋','岩漿池')}]);
   },
   scroll(){ // 📜 殘卷：技能精進唯一來源，每域至多一次
     const ri = realmIdx(R.floor);
@@ -901,8 +901,8 @@ const EVENTS = {
     showEventScreen('📜','殘卷','石臺上攤著一頁會呼吸的殘卷——上面是失傳的招式變體。\n\n它明碼標價：變強要流血。',
       choices);
   },
-  calcified(){ // 心室
-    showEventScreen('🗿','鈣化的英雄','一位冒險者站在走廊中央——站了太久，深淵把他變成了鈣。他手上的裝備看起來還能用。',
+  calcified(){ // 熔獄
+    showEventScreen('🗿','鈣化的英雄','一位冒險者站在路中央——站了太久，熱氣把他烤成了石。他手上的裝備看起來還能用。',
       [{n:'撬下他的裝備', f:()=>{
         const r = Math.random();
         if(r<0.5){ const it = makeItem(R.floor, 2); R.bag.push(it);
