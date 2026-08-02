@@ -181,31 +181,31 @@ function openMarket(){
     if(b.type==='mat'){
       html += `<div class="item-row" onclick="buyBox(${i})">
         <span class="in">${MATS[b.mat].i} ${MATS[b.mat].n} ×${b.qty}</span>
-        <span class="is">精煉材料｜${price}🪙</span></div>`;
+        <span class="is">精煉材料｜${price}<svg class="ic"><use href="#ic-gold"/></svg></span></div>`;
     } else if(b.type==='open'){
       const it = b.item, r = RARITIES[it.rar];
       html += `<div class="item-row ${r.b}" onclick="peekOpen(${i})">${itemIcon(it)}<div class="ir-body">
         <span class="in ${r.cls}">${it.name}</span>
-        <span class="is">📭 拆封品・詞綴可見｜${price}🪙</span></div></div>`;
+        <span class="is"><svg class="ic"><use href="#ic-open"/></svg> 拆封品・詞綴可見｜${price}<svg class="ic"><use href="#ic-gold"/></svg></span></div></div>`;
     } else {
       const it = b.item, r = RARITIES[it.rar];
       html += `<div class="item-row ${r.b}" onclick="buyBox(${i})">
-        <span class="in ${r.cls}">🎁 ${r.n}之盒</span>
-        <span class="is">${slotName(it.slot)}｜詞綴未知｜${price}🪙</span></div>`;
+        <span class="in ${r.cls}"><svg class="ic"><use href="#ic-chest"/></svg> ${r.n}之盒</span>
+        <span class="is">${slotName(it.slot)}｜詞綴未知｜${price}<svg class="ic"><use href="#ic-gold"/></svg></span></div>`;
     }
   });
   html += '</div>';
   if((t.runes||[]).length){
-    html += '<div class="section-title">🔯 符文攤（用 💎 購買）</div><div class="item-list">';
+    html += '<div class="section-title"><svg class="ic"><use href="#ic-star"/></svg> 符文攤（用 <svg class="ic"><use href="#ic-gem"/></svg> 購買）</div><div class="item-list">';
     t.runes.forEach((s,i)=>{
       if(s.sold){ html += `<div class="item-row" style="opacity:.4"><span class="in">已售出</span></div>`; return; }
       const rn = s.rune, a = rn.affixes[0], price = runeGemPrice(rn);
-      html += `<div class="item-row ${RARITIES[rn.rar].b}" onclick="buyRune(${i})"><span class="in ${RARITIES[rn.rar].cls}">${rn.icon} ${rn.name}</span><span class="is">${runeFmt(a)}</span><span class="ip">💎${price}</span></div>`;
+      html += `<div class="item-row ${RARITIES[rn.rar].b}" onclick="buyRune(${i})"><span class="in ${RARITIES[rn.rar].cls}">${rn.icon} ${rn.name}</span><span class="is">${runeFmt(a)}</span><span class="ip"><svg class="ic"><use href="#ic-gem"/></svg>${price}</span></div>`;
     });
     html += '</div>';
   }
-  html += `<button class="btn small" style="margin-top:10px" onclick="rerollMarket()">🎲 換一批貨（80🪙）</button>
-    <p style="color:var(--dim);font-size:12px;margin-top:10px">🪙 ${G.gold}　💎 ${G.gems||0}｜符文放進「角色→符文槽」鑲入即被動生效。</p>
+  html += `<button class="btn small" style="margin-top:10px" onclick="rerollMarket()"><svg class="ic"><use href="#ic-dice"/></svg> 換一批貨（80<svg class="ic"><use href="#ic-gold"/></svg>）</button>
+    <p style="color:var(--dim);font-size:12px;margin-top:10px"><svg class="ic"><use href="#ic-gold"/></svg> ${G.gold}　<svg class="ic"><use href="#ic-gem"/></svg> ${G.gems||0}｜符文放進「角色→符文槽」鑲入即被動生效。</p>
     <button class="btn" style="margin-top:6px" onclick="closeSheet()">離開</button>`;
   openSheet(html);
 }
@@ -220,7 +220,7 @@ function peekOpen(i){
     ${affixHtml(it)}${compareHtml(it)}</div>
     <p class="base">拆過的貨，看得清楚，也貴三成。</p>
     <div class="row" style="margin-top:10px">
-      <button class="btn primary" onclick="buyBox(${i})">買下 ${price}🪙</button>
+      <button class="btn primary" onclick="buyBox(${i})">買下 ${price}<svg class="ic"><use href="#ic-gold"/></svg></button>
       <button class="btn" onclick="openMarket()">再看看</button></div>`);
 }
 
@@ -263,7 +263,7 @@ function buyRune(i){
   const t = marketTab(); const s = t && t.runes && t.runes[i];
   if(!s || s.sold) return;
   const price = runeGemPrice(s.rune);
-  if((G.gems||0) < price){ toast('💎 不夠'); return; }
+  if((G.gems||0) < price){ toast('<svg class="ic"><use href="#ic-gem"/></svg> 不夠'); return; }
   G.gems -= price; s.sold = true;
   if(!G.runeBag) G.runeBag = [];
   G.runeBag.push(s.rune);
@@ -309,7 +309,7 @@ function makeRune(floor, cycle){
   const [lo,hi] = RUNE_BAND[cat.band][ri];
   const affix = {k, v: rnd(lo,hi)};   // 符文值純由稀有度決定，不吃樓層/輪迴
   if(cat.mul) affix.mul = true;        // 素質/上限型：乘法套用
-  return {id:uid++, isRune:true, rar:ri, name:'符文·'+AFFIXES[k].n, icon:'🔯', affixes:[affix]};
+  return {id:uid++, isRune:true, rar:ri, name:'符文·'+AFFIXES[k].n, icon:'<svg class="ic"><use href="#ic-star"/></svg>', affixes:[affix]};
 }
 function openRunes(){
   if(!G.runes) G.runes=[null,null,null]; if(!G.runeBag) G.runeBag=[];
@@ -360,7 +360,7 @@ function renderRuneStash(sl){
     if(sel.length){
       const val=sel.reduce((s,r)=>s+runeSellVal(r),0);
       const sb=document.createElement('button'); sb.className='btn primary'; sb.style.cssText='width:100%;margin-top:6px';
-      sb.textContent=`販售選取 ${sel.length} 個（+${val}🪙）`;
+      sb.innerHTML=`販售選取 ${sel.length} 個（+${val}<svg class="ic"><use href="#ic-gold"/></svg>）`;
       sb.onclick=()=>{ G.runeBag=runes.filter(r=>!sellSel.has(r.id)); G.gold+=val; sellSel.clear(); save(); renderGear(); toast(`販售 ${sel.length} 符文，得 ${val} 碎銀`); }; sl.appendChild(sb);
     }
   }
@@ -369,7 +369,7 @@ function openRuneSheet(id){
   const rn = (G.runeBag||[]).find(r=>r.id===id); if(!rn) return;
   const a=rn.affixes[0], r=RARITIES[rn.rar], val=runeSellVal(rn);
   openSheet(`<h3 class="${r.cls}">${rn.icon} ${rn.name}</h3><div class="base">${r.n}符文｜${runeFmt(a)}</div>
-    <div class="row" style="margin-top:16px"><button class="btn primary" onclick="socketRune(${rn.id})">鑲入符文槽</button><button class="btn danger" onclick="sellRune(${rn.id})">分解 +${val}🪙</button></div>
+    <div class="row" style="margin-top:16px"><button class="btn primary" onclick="socketRune(${rn.id})">鑲入符文槽</button><button class="btn danger" onclick="sellRune(${rn.id})">分解 +${val}<svg class="ic"><use href="#ic-gold"/></svg></button></div>
     <button class="btn" style="margin-top:8px" onclick="openGear()">關閉</button>`);
 }
 function sellRune(id){
@@ -379,7 +379,7 @@ function sellRune(id){
 }
 
 function renderGear(){
-  $('gear-gold').textContent = '🪙 ' + G.gold;
+  $('gear-gold').innerHTML = '<svg class="ic"><use href="#ic-gold"/></svg> ' + G.gold;
   const er = $('equip-row'); er.innerHTML = '';
   for(const s of ['w','a','t']){
     const it = G.equip[s];
@@ -460,7 +460,7 @@ function renderGear(){
     if(sel.length){
       const val = sel.reduce((s,i)=>s+6+i.rar*10+Math.floor(i.base/2),0);
       const sb = document.createElement('button'); sb.className='btn primary'; sb.style.cssText='width:100%;margin-top:6px';
-      sb.textContent = `販售選取 ${sel.length} 件（+${val}🪙）`;
+      sb.innerHTML = `販售選取 ${sel.length} 件（+${val}<svg class="ic"><use href="#ic-gold"/></svg>）`;
       sb.onclick = ()=>{ G.stash = G.stash.filter(i=>!sellSel.has(i.id)); G.gold += val; sellSel.clear(); save(); renderGear(); toast(`販售 ${sel.length} 件，得 ${val} 碎銀`); };
       sl.appendChild(sb);
     }
@@ -495,7 +495,7 @@ function openItemSheet(it, from){
   const backCall = from==='bag' ? 'openRunStats()' : 'closeSheet()';
   let btns = ''; let extra = '';
   if(from==='stash'){ btns = `<button class="btn primary" onclick="equipFromStash(${it.id})">裝備</button>
-    <button class="btn danger" onclick="salvageItem(${it.id})">分解 +${salvage}🪙</button>`;
+    <button class="btn danger" onclick="salvageItem(${it.id})">分解 +${salvage}<svg class="ic"><use href="#ic-gold"/></svg></button>`;
     extra = `<button class="btn" style="margin-top:8px" onclick="moveToShared(${it.id})">📦 存入共用倉庫</button>`; }
   else if(from==='shared'){ btns = `<button class="btn primary" onclick="equipFromShared(${it.id})">裝備</button>
     <button class="btn" onclick="sharedToOwn(${it.id})">↩ 取回個人</button>`; }
@@ -527,7 +527,7 @@ function salvageItem(id){
 }
 
 function openSmith(){
-  const si = $('smith-ic'); if(si) si.innerHTML = uiIcon('smith','ev-img','⚒️');   // 鍛造大圖
+  const si = $('smith-ic'); if(si) si.innerHTML = uiIcon('smith','ev-img','<svg class="ic big"><use href="#ic-anvil"/></svg>');   // 鍛造大圖
   renderSmith(); showScreen('s-smith');
 }
 
@@ -578,7 +578,7 @@ function renderReforgeLock(){
   normals.forEach((a,i)=>{ const locked = reforgeLocks.includes(i);
     html += `<div class="item-row" onclick="toggleReforgeLock(${i})"><span class="in">${locked?'🔒':'🔓'} ${AFFIXES[a.k].n}：${AFFIXES[a.k].fmt(a.v)}</span><span class="is">${locked?'<span style="color:var(--gold)">鎖定</span>':'重鑄'}</span></div>`; });
   html += '</div>';
-  html += `<div class="row" style="margin-top:16px"><button class="btn primary" onclick="doReforge()">重鑄（${cost}🪙）</button><button class="btn" onclick="closeSheet()">取消</button></div>`;
+  html += `<div class="row" style="margin-top:16px"><button class="btn primary" onclick="doReforge()">重鑄（${cost}<svg class="ic"><use href="#ic-gold"/></svg>）</button><button class="btn" onclick="closeSheet()">取消</button></div>`;
   openSheet(html);
 }
 function reforgeCtx(it){   // 重鑄用的強度情境：新裝備讀出身；舊裝備由現有素質反推有效樓層，避免縮水
@@ -662,14 +662,14 @@ function renderSmith(){
       const matTxt = tier.mat ? `＋${MATS[tier.mat].i}${MATS[tier.mat].n}×${tier.qty}` : '';
       const rateTxt = tier.rate < 1 ? `｜成功 ${Math.round(tier.rate*100)}%` : '';
       d.innerHTML = `<span class="in ${RARITIES[it.rar].cls}">${it.name}${it.up?'+'+it.up:''}</span>
-        <span class="is">⚒️ ${gain}｜${cost}🪙${matTxt}${rateTxt}</span>`;
+        <span class="is"><svg class="ic"><use href="#ic-anvil"/></svg> ${gain}｜${cost}<svg class="ic"><use href="#ic-gold"/></svg>${matTxt}${rateTxt}</span>`;
       d.onclick = ()=>tryUpgrade(sl);
     }
     list.appendChild(d);
     if(G.rec.deep >= 10 && it.affixes.filter(a=>!AFFIXES[a.k].leg && !AFFIXES[a.k].curse).length){
       const r = document.createElement('div'); r.className = `item-row ${RARITIES[it.rar].b}`;
       r.innerHTML = `<span class="in" style="color:var(--dim)">↳ 重鑄詞綴${it.rf?`（第 ${it.rf+1} 次）`:''}</span>
-        <span class="is">🎲 傳說/詛咒保留｜${reforgeCost(it)}🪙${it.rf?'（每次 ×1.5）':''}</span>`;
+        <span class="is"><svg class="ic"><use href="#ic-dice"/></svg> 傳說/詛咒保留｜${reforgeCost(it)}<svg class="ic"><use href="#ic-gold"/></svg>${it.rf?'（每次 ×1.5）':''}</span>`;
       r.onclick = ()=>reforgeItem(sl);
       list.appendChild(r);
     }
@@ -677,7 +677,7 @@ function renderSmith(){
   if(!any) list.innerHTML = '<p style="color:var(--dim);font-size:13px">身上沒有可強化的武器或護甲。</p>';
   if(G.rec.deep < 10) list.insertAdjacentHTML('beforeend',
     '<p style="color:var(--dim);font-size:12px;margin-top:8px">🔒 最深抵達 10 層後，鐵匠會學會「重鑄詞綴」。</p>');
-  list.insertAdjacentHTML('afterbegin', `<div style="text-align:right;color:var(--gold);font-size:14px">🪙 ${G.gold}　<span style="color:var(--dim)">${MATS.iron.i}${MATS.iron.n}×${G.mats.iron}　${MATS.steel.i}${MATS.steel.n}×${G.mats.steel}</span></div>
+  list.insertAdjacentHTML('afterbegin', `<div style="text-align:right;color:var(--gold);font-size:14px"><svg class="ic"><use href="#ic-gold"/></svg> ${G.gold}　<span style="color:var(--dim)">${MATS.iron.i}${MATS.iron.n}×${G.mats.iron}　${MATS.steel.i}${MATS.steel.n}×${G.mats.steel}</span></div>
     <p style="color:var(--dim);font-size:12px">上限：普通+3／精良+6／稀有+9／傳說+12｜+1~6只需碎銀·素質+1｜+7~9需${MATS.iron.n} 2/4/8·素質+2｜+10~12需${MATS.steel.n} 2/4/8·素質+3</p>`);
 }
 

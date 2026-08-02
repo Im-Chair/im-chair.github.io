@@ -141,16 +141,16 @@ function intentText(e){
   const v = mv.v ? Math.round(mv.v * e.mult * rageMul * (e.dmgMul||1) * weakMul) : 0;
   const wm = e.st.weak && mv.v ? '↓' : '';
   switch(mv.t){
-    case 'a': return ['🗡️', (mv.nm||'攻擊')+' '+v+wm];
-    case 'h': return ['💥', (mv.nm||'重擊')+' '+v+wm];
-    case 'm': return ['🌀', (mv.nm||'連擊')+' '+v+wm+'×'+mv.x];
-    case 'd': return ['🛡️', '防禦 '+v];
-    case 'c': return ['🌫️', mv.nm||'詛咒'];
-    case 'v': return ['🩸', (mv.nm||'吸血')+' '+v+wm];
-    case 's': return ['🪙', (mv.nm||'偷竊')+' '+v+wm];
-    case 'g': return ['⏳', mv.nm||'蓄力'];
+    case 'a': return ['<svg class="ic"><use href="#ic-sword"/></svg>', (mv.nm||'攻擊')+' '+v+wm];
+    case 'h': return ['<svg class="ic"><use href="#ic-crit"/></svg>', (mv.nm||'重擊')+' '+v+wm];
+    case 'm': return ['<svg class="ic"><use href="#ic-multi"/></svg>', (mv.nm||'連擊')+' '+v+wm+'×'+mv.x];
+    case 'd': return ['<svg class="ic"><use href="#ic-shield"/></svg>', '防禦 '+v];
+    case 'c': return ['<svg class="ic"><use href="#ic-curse"/></svg>', mv.nm||'詛咒'];
+    case 'v': return ['<svg class="ic"><use href="#ic-vamp"/></svg>', (mv.nm||'吸血')+' '+v+wm];
+    case 's': return ['<svg class="ic"><use href="#ic-gold"/></svg>', (mv.nm||'偷竊')+' '+v+wm];
+    case 'g': return ['<svg class="ic"><use href="#ic-time"/></svg>', mv.nm||'蓄力'];
   }
-  return ['❔','？'];
+  return ['<svg class="ic"><use href="#ic-unknown"/></svg>','？'];
 }
 
 function startBattle(enemies, opt){
@@ -251,7 +251,7 @@ function renderBattle(){
   let html = `<div class="e-wrap${B.duo?' duo':''}">`;
   B.es.forEach((e,i)=>{
     const dead = e.hp<=0;
-    const [ii,it] = dead? ['💀','已倒下'] : intentText(e);
+    const [ii,it] = dead? ['<svg class="ic"><use href="#ic-skull"/></svg>','已倒下'] : intentText(e);
     html += `<div class="e-block${(B.duo&&i===B.ti&&!dead)?' sel':''}${dead?' dead':''}${!dead&&e.st.poison?' poisoned':''}${!dead&&e.st.burn?' burning':''}" id="ez-${i}" onclick="selectTarget(${i})">
       <div class="enemy-icon" id="eicon-${i}">${enemyIcon(e)}</div>
       <div class="enemy-name">${e.boss?`<span class="boss">☠ ${e.n}</span>`: e.elite?`<span class="elite">${e.n}</span>`: e.n}${e.tag?` <span class="st" style="cursor:pointer" onclick="explainStatus('tag_${e.tag}')">${ENEMY_TAGS[e.tag].i}${ENEMY_TAGS[e.tag].n}</span>`:''}</div>
@@ -821,7 +821,7 @@ function winBattle(){
     R.codexPending[key] = (R.codexPending[key]||0) + 1;                // 回營才併入 G.codex
   }
   // 文案不提「圖鑑」——圖鑑入口關著時，提一個玩家點不進去的東西只會製造困惑
-  if(firstKillBonus){ R.gold += firstKillBonus; toast((CODEX_ENABLED?'圖鑑首錄':'首次擊殺')+' +'+firstKillBonus+'🪙'); }
+  if(firstKillBonus){ R.gold += firstKillBonus; toast((CODEX_ENABLED?'圖鑑首錄':'首次擊殺')+' +'+firstKillBonus+' <svg class="ic"><use href="#ic-gold"/></svg>'); }
   const mend = sumAffix('mend');
   let mendHeal = 0;
   if(mend){ mendHeal = Math.min(Math.round(playerMaxHp()*mend/100), playerMaxHp()-R.hp); if(mendHeal>0) R.hp += mendHeal; }
@@ -877,7 +877,7 @@ function winBattle(){
   let runeCh = (B.boss?0.22:0.05);
   if(R.cycle >= 4 && R.floor > 100) runeCh += Math.floor((R.floor-100)/50) * 0.01;   // 無限 100 層後每 50 層 +1% 符文掉率
   if(Math.random() < runeCh){ const rn = makeRune(R.floor, R.cycle);
-    if(rn){ R.runesPending = R.runesPending||[]; R.runesPending.push(rn); toast('🔯 拾獲符文：'+rn.name); } }   // 未達里程碑 makeRune 回 null＝不掉（回營才入手）
+    if(rn){ R.runesPending = R.runesPending||[]; R.runesPending.push(rn); toast('<svg class="ic"><use href="#ic-star"/></svg> 拾獲符文：'+rn.name); } }   // 未達里程碑 makeRune 回 null＝不掉（回營才入手）
   setTimeout(()=>{
     showLoot(drops, gold, B.boss?'👑':'⚔️', isFinal?'你打穿了深淵的心臟':(B.boss?'首領倒下了':'戰鬥勝利'),
       `獲得 ${gold} 碎銀` + (potionDrop? `，撿到 ${POTIONS[potionDrop].i}${POTIONS[potionDrop].n}`:'') + (potionOverflow? `，藥水袋滿——折成 ${potionOverflow} 碎銀`:'') + (matDrop? `，拾獲 ${MATS[matDrop].i}${MATS[matDrop].n} ×1`:''), mendHeal? `（急救回復 ${mendHeal} 血）`:'');

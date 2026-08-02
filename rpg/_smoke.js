@@ -1,6 +1,6 @@
 // 貪婪深淵 — 流程冒煙測試（無瀏覽器）。重點：模擬瀏覽器對未綁定 requestIdleCallback 丟 Illegal invocation。
 const fs=require('fs'), vm=require('vm'), path=require('path').dirname(require('fs').realpathSync(__filename))+'/';
-function el(id){ const e={id,_t:'',_h:'',style:{},classList:{add(){},remove(){},contains:()=>false},dataset:{},children:[],
+function el(id){ const e={id,_t:'',_h:'',style:{},classList:{add(){},remove(){},toggle(){},contains:()=>false},dataset:{},children:[],
   appendChild(c){this.children.push(c)}, insertAdjacentHTML(){}, remove(){},
   querySelectorAll:()=>[], querySelector:()=>el('stub'),
   addEventListener(){}, select(){}, setSelectionRange(){}, focus(){}, scrollTop:0, clientWidth:390, clientHeight:700};

@@ -47,14 +47,18 @@ function confirmClass(){
   save(); renderCamp(); showScreen('s-camp');
 }
 
-function layoutCamp(){   // 依實際畫面把熱區對準美圖（cover 縮放）
+/* 熱區對位（v393 重寫）
+   舊版在這裡算 cover 的縮放與裁切位移，圖寬高還寫死 1080×1747——那正是「同一組座標在不同手機
+   落在圖片不同位置」的成因（實測 iPhone SE 與 Pixel 7 之間差了圖寬 5.5%）。
+   現在 .camp-scene 是固定 2:3 + background-size:contain，容器比例＝圖片比例，
+   百分比直接就是圖片百分比。不需要圖片尺寸、不需要位移、所有裝置一致。
+   ⚠️ 換圖時若新圖不是 2:3，要同步改 style.css 的 aspect-ratio，否則這個保證就沒了。 */
+function layoutCamp(){
   const scene = document.querySelector('.camp-scene'); if(!scene) return;
-  const cw = scene.clientWidth, ch = scene.clientHeight; if(!cw || !ch) return;
-  const iw=1080, ih=1747, scale=Math.max(cw/iw, ch/ih), dw=iw*scale, dh=ih*scale, ox=(cw-dw)/2, oy=(ch-dh)/2;
   scene.querySelectorAll('.hot').forEach(h=>{
     const fx=+h.dataset.fx, fy=+h.dataset.fy, fw=+h.dataset.fw, fh=+h.dataset.fh;
-    h.style.left=(ox+fx*dw)+'px'; h.style.top=(oy+fy*dh)+'px';
-    h.style.width=(fw*dw)+'px'; h.style.height=(fh*dh)+'px';
+    h.style.left=(fx*100)+'%'; h.style.top=(fy*100)+'%';
+    h.style.width=(fw*100)+'%'; h.style.height=(fh*100)+'%';
   });
 }
 window.addEventListener('resize', layoutCamp);
@@ -70,6 +74,10 @@ function renderCamp(){
   set('camp-cert', '認證 '+certText(G.rec.cert));
   const ba = (G.bounties||[]).filter(b=>b.state==='active').length;
   const bb = $('bounty-badge'); if(bb){ bb.textContent = ba||''; bb.style.display = ba? '' : 'none'; }
+  // 黑市未解鎖＝那格沒點燈（6.6）。玩家直接讀成「還沒開」，不必先點下去才知道
+  // toggle(cls, force) 的第二參數在舊 WebView 不支援，用 add/remove 才安全
+  const hm = $('hot-market');
+  if(hm){ if(G.rec && G.rec.deep >= 30) hm.classList.remove('locked'); else hm.classList.add('locked'); }
   save();
   preloadArt();   // 放最後：背景預載圖檔。它自己包了 try，但仍不放在任何必要流程前面
 }
@@ -135,13 +143,13 @@ function openCodex(){
   // 🔒 圖鑑暫時關閉（改建中）。關的只有「入口」——擊殺計數仍照常累積進 G.codex，
   //    重新開放時歷史完整不會斷層。要開回來把 CODEX_ENABLED 改 true 即可，介面程式碼原封不動保留在下面。
   if(!CODEX_ENABLED) return toast('圖鑑改建中——你殺過的東西還是有記著');
-  let html = '<h3>深淵圖鑑</h3><p class="base">殺過的東西會留在紙上。首次收錄 +30🪙。</p>';
+  let html = '<h3>深淵圖鑑</h3><p class="base">殺過的東西會留在紙上。首次收錄 +30<svg class="ic"><use href="#ic-gold"/></svg>。</p>';
   const row = e => {
     const kills = G.codex[e.key];
     const pic = kills && e.img ? monImg(e.key, 'cx-ic') : '';   // 未收錄的不洩漏長相
     return kills
       ? `<div class="item-row">${pic}<div class="ir-body"><span class="in">${e.boss?'<span class="r-orange">'+e.n+'</span>':e.n}</span><span class="is">擊殺 ×${kills}</span></div></div>`
-      : `<div class="item-row" style="opacity:.4"><span class="in">❓ ？？？</span><span class="is">未收錄</span></div>`;
+      : `<div class="item-row" style="opacity:.4"><span class="in"><svg class="ic"><use href="#ic-unknown"/></svg> ？？？</span><span class="is">未收錄</span></div>`;
   };
   REALMS.slice(0,5).forEach((z, ri)=>{
     html += `<div class="section-title">${z.i} ${z.n}</div><div class="item-list">`;
@@ -173,7 +181,7 @@ function openRunStats(){
   };
   rows.push(mkRate(defRate, 'vit', '🛡 防禦率'));
   rows.push(mkRate(dodgeRate, 'agi', '💨 閃避率'));
-  rows.push(mkRate(critRate, 'spi', '🎯 爆擊率'));
+  rows.push(mkRate(critRate, 'spi', '<svg class="ic"><use href="#ic-crit"/></svg> 爆擊率'));
   // 五素質列
   const statRow = ['str','int','vit','agi','spi']
     .map(k=>`${STATS[k].i}${statTotal(k)}`).join('　');
@@ -184,7 +192,7 @@ function openRunStats(){
     ['dotdrain','🩸 蝕取', v=>'毒燃回血 '+v+'%'],
     ['ptouch','☠️ 淬毒', v=>'攻擊附 '+v+' 層'], ['btouch','🔥 淬焰', v=>'攻擊附 '+v+' 層'],
     ['bpyre','🔥 烈焰', v=>'燃傷 +'+v+'%'], ['ppyre','☠️ 劇毒', v=>'毒傷 +'+v+'%'],
-    ['greed','🪙 貪婪', v=>'+'+v+'%'],
+    ['greed','<svg class="ic"><use href="#ic-gold"/></svg> 貪婪', v=>'+'+v+'%'],
     ['vform','✸ 蝕魂', v=>'攻擊轉中毒'], ['wall','✸ 壁壘', v=>'格擋不消失'],
     ['fury','✸ 狂血', v=>'傷害+40% 血-30%'], ['spark','✸ 燧心', v=>'爆擊回行動'],
     ['symbio','✸ 腐生', v=>'毒傷回血50%'], ['exem','✸ 斬首', v=>'低血敵+50%'],
@@ -204,7 +212,7 @@ function openRunStats(){
       chemRows.push(`<div class="base" style="color:var(--gold)">${c.i}【${c.n}】${c.d}</div>`);
   }
   if(chemRows.length) html += '<div class="section-title">⚗️ 詞綴反應</div>' + chemRows.join('');
-  html += `<button class="btn" style="margin-top:10px" onclick="openRunes()">🔯 符文槽 ${(G.runes||[]).filter(Boolean).length}/3${(G.runeBag||[]).length?'　（持有 '+G.runeBag.length+'）':''}</button>`;
+  html += `<button class="btn" style="margin-top:10px" onclick="openRunes()"><svg class="ic"><use href="#ic-star"/></svg> 符文槽 ${(G.runes||[]).filter(Boolean).length}/3${(G.runeBag||[]).length?'　（持有 '+G.runeBag.length+'）':''}</button>`;
   html += '<div class="section-title">身上裝備</div>';
   for(const sk of ['w','a','t']){
     const it = G.equip[sk];
@@ -218,7 +226,7 @@ function openRunStats(){
   if(R && R.bless.length){
     html += '<div class="section-title">本次祝福</div>';
     const bn = {str:'力量',crit:'銳利',vamp:'血契',plate:'守勢',hp:'堅韌'};
-    html += R.bless.map(b=>`<div class="affix">✦ ${bn[b.k]||b.k} +${BLESS_SCALE_KEYS[b.k] ? Math.round(b.v*blessMult()) : b.v}</div>`).join('');
+    html += R.bless.map(b=>`<div class="affix"><svg class="ic"><use href="#ic-bless"/></svg> ${bn[b.k]||b.k} +${BLESS_SCALE_KEYS[b.k] ? Math.round(b.v*blessMult()) : b.v}</div>`).join('');
   }
   if(R && R.bag.length){
     html += `<div class="section-title">行囊（${R.bag.length} 件・未保管）</div><div class="item-list">`;

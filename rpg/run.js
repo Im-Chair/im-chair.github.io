@@ -60,7 +60,7 @@ function openDivePicker(){
     if(o.fee === 0){
       html += `<div class="item-row" onclick="tryStart(1)"><span class="in">🕳 從第 1 層</span><span class="is">免費</span></div>`;
     } else {
-      html += `<div class="item-row" onclick="tryStart(${o.floor})"><span class="in">🪢 傳送至第 ${o.floor} 層</span><span class="is">${o.fee}🪙｜補給:${o.floor*5}🪙+藥水</span></div>`;
+      html += `<div class="item-row" onclick="tryStart(${o.floor})"><span class="in"><svg class="ic"><use href="#ic-rope"/></svg> 傳送至第 ${o.floor} 層</span><span class="is">${o.fee}<svg class="ic"><use href="#ic-gold"/></svg>｜補給:${o.floor*5}<svg class="ic"><use href="#ic-gold"/></svg>+藥水</span></div>`;
     }
   }
   html += '</div>';
@@ -88,7 +88,7 @@ function tryStart(floor){
   const cycle = pendingMode==='orig' ? 0 : pendingMode;
   if(floor > 1){
     const fee = pendingMode==='orig' ? floor*10 : floor*12;
-    if(G.gold < fee){ toast('傳送費不夠（需 '+fee+'🪙）'); return; }
+    if(G.gold < fee){ toast('傳送費不夠（需 '+fee+' <svg class="ic"><use href="#ic-gold"/></svg>）'); return; }
     G.gold -= fee;
   }
   startRun(floor, cycle);
@@ -147,7 +147,7 @@ function enterFloor(){
       [{n:'🩹 在火邊休息（回復 '+heal+' 血）', f:()=>{
         R.hp = Math.min(playerMaxHp(), R.hp + heal); nextFloorSame();
       }, primary:true},
-      {n:'⚒️ 借火光精進一招', f:()=>{
+      {n:'<svg class="ic"><use href="#ic-anvil"/></svg> 借火光精進一招', f:()=>{
         showSkillUpScreen('🪢','繩降平台・精進','借著別人的火，練自己的刀。',
           (sid, branch)=>pickUpStay(sid, branch),
           [{n:'直接出發（不精進）', f:()=>nextFloorSame()}]);
@@ -199,7 +199,7 @@ function showDoors(){
   const rgb = document.getElementById('retreat-gold-btn');
   if(rgb) rgb.style.display = (!R.hasRope && R.gold > 0 && R.floor > 1) ? '' : 'none';   // 無繩時可花 9 成碎銀逃脫
   const rh = document.getElementById('rope-hint');
-  if(rh) rh.textContent = R.hasRope ? '' : `🪢 逃脫之繩：首領 20%起每5層+5%${R.cycle===0?`（本源第 ${ROPE_PITY} 層起必給）`:''}／寶箱 5%／商人 8%｜或花 9 成碎銀逃脫`;
+  if(rh) rh.innerHTML = R.hasRope ? '' : `<svg class="ic"><use href="#ic-rope"/></svg> 逃脫之繩：首領 20%起每5層+5%${R.cycle===0?`（本源第 ${ROPE_PITY} 層起必給）`:''}／寶箱 5%／商人 8%｜或花 9 成碎銀逃脫`;
   $('d-bonus').textContent = rarityBonusText(f);
   const grid = $('door-grid'); grid.innerHTML = '';
   if(R.forceDoor){
@@ -349,7 +349,7 @@ function fireExtra(){
     return {n:`🔧 拆裝（熔掉行囊裡的裝備換碎銀）`, f:()=>scrapFire()};
   }
   if(k==='quench'){
-    return {n:'🗡 淬火（武器附毒或附燃，持續 3 場戰鬥）', f:()=>{
+    return {n:'<svg class="ic"><use href="#ic-dagger"/></svg> 淬火（武器附毒或附燃，持續 3 場戰鬥）', f:()=>{
       showEventScreen('🕯️','淬火','把刀刃埋進火堆，接下來抹什麼？',
         [{n:'☠️ 抹毒（攻擊附 2 中毒）', f:()=>{ R.quench={k:'ptouch',v:2,battles:3};
           showEventScreen('🕯️','淬火','刀刃泛起烏青色。（持續 3 場戰鬥）',[{n:'出發',f:()=>nextFloor(),primary:true}]); }},
@@ -374,7 +374,7 @@ function scrapFire(){
   if(!R.bag.length){ nextFloor(); return; }
   const c = R.bag.slice(0,6).map(it=>{
     const v = 6 + it.rar*10 + Math.floor(it.base/2);
-    return {n:`熔掉 ${it.name}（+${v}🪙）`, f:()=>{
+    return {n:`熔掉 ${it.name}（+${v}<svg class="ic"><use href="#ic-gold"/></svg>）`, f:()=>{
       const i = R.bag.findIndex(x=>x.id===it.id);
       if(i>=0){ R.bag.splice(i,1); R.gold += v; }
       scrapFire();
@@ -418,7 +418,7 @@ function showEventScreen(icon,title,text,choices){
   const c = $('ev-choices'); c.innerHTML='';
   for(const ch of choices){
     const b = document.createElement('button'); b.className='btn'+(ch.primary?' primary':'');
-    b.textContent = ch.n; b.onclick = ch.f; c.appendChild(b);
+    b.innerHTML = ch.n; b.onclick = ch.f; c.appendChild(b);   // v393：改吃 HTML，選項標籤才能放 SVG 圖示
   }
   save(); showScreen('s-event');
 }
@@ -450,7 +450,7 @@ function showSkillUpScreen(icon, title, text, onPick, extraChoices){
   c.appendChild(grid);
   for(const ch of (extraChoices||[])){
     const b = document.createElement('button'); b.className='btn'+(ch.primary?' primary':'');
-    b.textContent = ch.n; b.onclick = ch.f; c.appendChild(b);
+    b.innerHTML = ch.n; b.onclick = ch.f; c.appendChild(b);   // v393：改吃 HTML，選項標籤才能放 SVG 圖示
   }
   save(); showScreen('s-event');
 }
@@ -922,12 +922,12 @@ const EVENTS = {
 
 function merchantLabel(st){
   if(st.sold) return '（已售出）';
-  if(st.kind==='gear'){ const r = RARITIES[st.it.rar]; return `${r.n}裝備｜${st.it.name}（${itemStatLine(st.it)}）— ${st.price}🪙`; }
-  if(st.kind==='oil') return `✦ 祝福油（隨機一項本次探索祝福）— ${st.price}🪙`;
-  if(st.kind==='quench') return `🗡 淬毒服務（攻擊附 3 中毒，3 場戰鬥）— ${st.price}🪙`;
-  if(st.kind==='mat') return `${MATS[st.mat].i} ${MATS[st.mat].n} ×1 — ${st.price}🪙`;
-  if(st.kind==='rope') return `🪢 逃脫之繩（活著離開，記錄這趟深度）— ${st.price}🪙`;
-  return `${POTIONS[st.k].i} ${POTIONS[st.k].n}（${pdesc(st.k)}）— ${st.price}🪙`;
+  if(st.kind==='gear'){ const r = RARITIES[st.it.rar]; return `${r.n}裝備｜${st.it.name}（${itemStatLine(st.it)}）— ${st.price}<svg class="ic"><use href="#ic-gold"/></svg>`; }
+  if(st.kind==='oil') return `<svg class="ic"><use href="#ic-bless"/></svg> 祝福油（隨機一項本次探索祝福）— ${st.price}<svg class="ic"><use href="#ic-gold"/></svg>`;
+  if(st.kind==='quench') return `<svg class="ic"><use href="#ic-dagger"/></svg> 淬毒服務（攻擊附 3 中毒，3 場戰鬥）— ${st.price}<svg class="ic"><use href="#ic-gold"/></svg>`;
+  if(st.kind==='mat') return `${MATS[st.mat].i} ${MATS[st.mat].n} ×1 — ${st.price}<svg class="ic"><use href="#ic-gold"/></svg>`;
+  if(st.kind==='rope') return `<svg class="ic"><use href="#ic-rope"/></svg> 逃脫之繩（活著離開，記錄這趟深度）— ${st.price}<svg class="ic"><use href="#ic-gold"/></svg>`;
+  return `${POTIONS[st.k].i} ${POTIONS[st.k].n}（${pdesc(st.k)}）— ${st.price}<svg class="ic"><use href="#ic-gold"/></svg>`;
 }
 
 function buyMerchant(idx){
@@ -938,7 +938,7 @@ function buyMerchant(idx){
   else if(st.kind==='oil'){ const b = grantBless(); toast(b.n); }
   else if(st.kind==='quench'){ R.quench = {k:'ptouch', v:3, battles:3}; toast('刀刃泛起烏青色'); }
   else if(st.kind==='mat'){ G.mats[st.mat]++; toast('入手 '+MATS[st.mat].n); }
-  else if(st.kind==='rope'){ R.hasRope = true; R.ropeSeen = true; toast('🪢 入手逃脫之繩'); }
+  else if(st.kind==='rope'){ R.hasRope = true; R.ropeSeen = true; toast('<svg class="ic"><use href="#ic-rope"/></svg> 入手逃脫之繩'); }
   else { if(!potAdd(st.k)){ toast('背不下了'); return; } toast('買到了'); }
   R.gold -= st.price;
   st.sold = true;
@@ -951,10 +951,10 @@ function viewMerchantGear(idx){   // 商人裝備:先跟身上比較再決定買
   const it = st.it, r = RARITIES[it.rar];
   const afford = R.gold >= st.price && !st.sold;
   openSheet(`<h3 class="${r.cls}">${it.name}${it.up?' +'+it.up:''}</h3>
-    <div class="base">${r.n}${slotName(it.slot)}｜${itemStatLine(it)}　<span style="color:var(--gold)">${st.price}🪙</span></div>
+    <div class="base">${r.n}${slotName(it.slot)}｜${itemStatLine(it)}　<span style="color:var(--gold)">${st.price}<svg class="ic"><use href="#ic-gold"/></svg></span></div>
     ${affixHtml(it)}${compareHtml(it)}
     <div class="row" style="margin-top:16px">
-      <button class="btn primary" ${afford?'':'disabled'} onclick="buyMerchant(${idx});closeSheet()">購買（${st.price}🪙）</button>
+      <button class="btn primary" ${afford?'':'disabled'} onclick="buyMerchant(${idx});closeSheet()">購買（${st.price}<svg class="ic"><use href="#ic-gold"/></svg>）</button>
       <button class="btn" onclick="closeSheet()">返回</button></div>
     ${st.sold?'<p class="base" style="color:var(--dim)">已售出</p>':(R.gold<st.price?'<p class="base" style="color:var(--red)">碎銀不夠</p>':'')}`);
 }
@@ -968,7 +968,7 @@ function tryDropRope(chance, srcLabel){ // 逃脫之繩掉落：單趟唯一
   if(R.hasRope || R.ropeSeen) return false;   // 已有繩、或這趟已給過就不再給
   if(Math.random() < chance){
     R.hasRope = true; R.ropeSeen = true;
-    toast('🪢 獲得逃脫之繩！');
+    toast('<svg class="ic"><use href="#ic-rope"/></svg> 獲得逃脫之繩！');
     return true;
   }
   return false;
@@ -976,25 +976,25 @@ function tryDropRope(chance, srcLabel){ // 逃脫之繩掉落：單趟唯一
 
 function retreat(){
   if(!R.hasRope){ toast('沒有逃脫之繩'); return; }
-  retreatFlow('🪢', `你在第 ${R.floor} 層拉了繩子。貪婪是美德，活著兌現它更是。`);
+  retreatFlow('<svg class="ic big"><use href="#ic-rope"/></svg>', `你在第 ${R.floor} 層拉了繩子。貪婪是美德，活著兌現它更是。`);
 }
 function retreatByGold(){
   if(R.gold <= 0){ toast('沒有碎銀可付'); return; }
   const cost = Math.ceil(R.gold*0.9);
-  openSheet(`<h3>花錢買一條命</h3><p class="base">沒有繩子，也能用錢開路——扣掉手上 9 成碎銀（${cost}🪙，剩 ${R.gold-cost}），活著離開並記錄這趟深度。</p>
-    <div class="row" style="margin-top:16px"><button class="btn primary" onclick="doRetreatByGold()">花 ${cost}🪙 逃脫</button><button class="btn" onclick="closeSheet()">再想想</button></div>`);
+  openSheet(`<h3>花錢買一條命</h3><p class="base">沒有繩子，也能用錢開路——扣掉手上 9 成碎銀（${cost}<svg class="ic"><use href="#ic-gold"/></svg>，剩 ${R.gold-cost}），活著離開並記錄這趟深度。</p>
+    <div class="row" style="margin-top:16px"><button class="btn primary" onclick="doRetreatByGold()">花 ${cost}<svg class="ic"><use href="#ic-gold"/></svg> 逃脫</button><button class="btn" onclick="closeSheet()">再想想</button></div>`);
 }
 function doRetreatByGold(){
   if(R.gold <= 0){ toast('沒有碎銀可付'); return; }
   const cost = Math.ceil(R.gold*0.9);
   R.gold -= cost; closeSheet();
-  retreatFlow('💰', `你在第 ${R.floor} 層撒錢開路——${cost} 碎銀換一條命。深淵收了買路財，放你走。`);
+  retreatFlow('<svg class="ic big"><use href="#ic-gold"/></svg>', `你在第 ${R.floor} 層撒錢開路——${cost} 碎銀換一條命。深淵收了買路財，放你走。`);
 }
 function retreatFlow(icon, sub){   // 逃脫結算（繩子/花錢共用）
   const n = R.bag.length, g = R.gold, deep = R.floor, kills = R.kills;
   bankRun(deep);   // 逃脫成功回營：保存這趟一切（戰利品/金錢/符文/材料/圖鑑/認證/懸賞）
   R = null; B = null; save();
-  $('res-icon').textContent = icon;
+  $('res-icon').innerHTML = icon;
   $('res-title').textContent = '平安歸來';
   $('res-sub').textContent = sub;
   $('res-body').innerHTML = `<div class="stat-grid">
@@ -1014,7 +1014,7 @@ function playerDie(){
   if(G.bounties) for(const b of G.bounties) delete b.met;   // 死了：本趟達成全作廢，不能回報
   R = null; B = null; save();
   setTimeout(()=>{
-    $('res-icon').innerHTML = uiIcon('res_death','res-img','💀');   // 死亡結算：用大圖，這是全遊戲最重的一刻
+    $('res-icon').innerHTML = uiIcon('res_death','res-img','<svg class="ic big"><use href="#ic-skull"/></svg>');   // 死亡結算：用大圖，這是全遊戲最重的一刻
     $('res-title').textContent = '深淵收下了你';
     $('res-sub').textContent = '再貪一層，就這一層——每個死在這裡的人都這麼說過。';
     const lh = deathHit;
@@ -1108,7 +1108,7 @@ function bountyDesc(b){
   }
 }
 function bountyText(b){ return `${bountyTier(b)}・${bountyDesc(b)}`; }   // 保留相容；懸賞板改用 bountyTier/bountyDesc 分開渲染
-function rewardText(r){ if(r.kind==='gold') return `🪙 ${r.amt}`; if(r.kind==='mat') return `${MATS[r.mat].i}${MATS[r.mat].n} ×${r.amt}`; if(r.kind==='legendary') return `🌟 傳說裝備`; return `🎁 裝備`; }
+function rewardText(r){ if(r.kind==='gold') return `<svg class="ic"><use href="#ic-gold"/></svg> ${r.amt}`; if(r.kind==='mat') return `${MATS[r.mat].i}${MATS[r.mat].n} ×${r.amt}`; if(r.kind==='legendary') return `<svg class="ic"><use href="#ic-star"/></svg> 傳說裝備`; return `<svg class="ic"><use href="#ic-chest"/></svg> 裝備`; }
 function claimBounty(b){
   if(b.state==='done') return; b.state = 'done'; const r = b.reward;
   if(r.kind==='gold') G.gold += r.amt;
@@ -1119,7 +1119,7 @@ function claimBounty(b){
     it.banked=true; G.stash.push(it);
   }
   const gg = b.gems || rnd(1,3); G.gems = (G.gems||0) + gg;   // 委託額外給 💎
-  toast('委託完成！' + rewardText(r) + '　＋💎'+gg); save();
+  toast('委託完成！' + rewardText(r) + '　＋<svg class="ic"><use href="#ic-gem"/></svg>'+gg); save();
 }
 function claimBountyUI(i){   // 玩家手動點「回報領獎」
   const b = G.bounties[i]; if(!b || b.state!=='ready') return;
@@ -1134,7 +1134,7 @@ function bountyProgress(kind){
     else if(kind==='streakkill') ok = R.kills >= b.target;
     else if(kind==='flawless' || kind==='dotkill') ok = R.floor >= b.floor;  // 特殊條件已由呼叫端確認
     else ok = R.floor === b.floor;                                            // kill/loot/boss
-    if(ok && b.state==='active' && !b.met){ b.met = true; toast('🎯 委託條件達成'); }   // 先標記,活著回營(逃脫/通關)才轉可回報
+    if(ok && b.state==='active' && !b.met){ b.met = true; toast('<svg class="ic"><use href="#ic-time"/></svg> 委託條件達成'); }   // 先標記,活著回營(逃脫/通關)才轉可回報
   }
 }
 function finalizeBounties(){   // 只有活著回營（逃脫/通關）才把「達成」轉為可回報；死掉的達成作廢
@@ -1158,18 +1158,18 @@ function openBounties(){
   html += `<div class="section-title">進行中 ${active.length}/${MAX_ACTIVE}</div>`;
   if(!active.length) html += '<p class="base" style="color:var(--dim)">還沒接委託，往下挑一個。</p>';
   for(const b of active){ const i = G.bounties.indexOf(b);
-    html += `<div class="item-row bounty-row"><div class="b-left"><span class="b-tier">🎯 ${bountyTier(b)}</span><span class="b-desc">${bountyDesc(b)}</span></div><span class="b-reward">${rewardText(b.reward)} ＋💎${b.gems||'1~3'}　<span style="color:var(--red);cursor:pointer" onclick="abandonBounty(${i})">放棄</span></span></div>`;
+    html += `<div class="item-row bounty-row"><div class="b-left"><span class="b-tier"><svg class="ic"><use href="#ic-time"/></svg> ${bountyTier(b)}</span><span class="b-desc">${bountyDesc(b)}</span></div><span class="b-reward">${rewardText(b.reward)} ＋<svg class="ic"><use href="#ic-gem"/></svg>${b.gems||'1~3'}　<span style="color:var(--red);cursor:pointer" onclick="abandonBounty(${i})">放棄</span></span></div>`;
   }
   const ready = G.bounties.filter(b=>b.state==='ready');
   if(ready.length){
     html += `<div class="section-title">可回報 ${ready.length}</div>`;
     for(const b of ready){ const i = G.bounties.indexOf(b);
-      html += `<div class="item-row bounty-row"><div class="b-left"><span class="b-tier">✅ ${bountyTier(b)}</span><span class="b-desc">${bountyDesc(b)}</span></div><span class="b-reward">${rewardText(b.reward)} ＋💎${b.gems||'1~3'}　<span style="color:var(--gold);cursor:pointer" onclick="claimBountyUI(${i})">回報領獎 ›</span></span></div>`;
+      html += `<div class="item-row bounty-row"><div class="b-left"><span class="b-tier"><svg class="ic"><use href="#ic-check"/></svg> ${bountyTier(b)}</span><span class="b-desc">${bountyDesc(b)}</span></div><span class="b-reward">${rewardText(b.reward)} ＋<svg class="ic"><use href="#ic-gem"/></svg>${b.gems||'1~3'}　<span style="color:var(--gold);cursor:pointer" onclick="claimBountyUI(${i})">回報領獎 ›</span></span></div>`;
     }
   }
   html += '<div class="section-title">可接委託</div><div class="item-list">';
   for(const b of offers){ const i = G.bounties.indexOf(b);
-    html += `<div class="item-row bounty-row" onclick="acceptBounty(${i})"><div class="b-left"><span class="b-tier">📌 ${bountyTier(b)}</span><span class="b-desc">${bountyDesc(b)}</span></div><span class="b-reward">${rewardText(b.reward)} ＋💎${b.gems||'1~3'}　<span style="color:var(--gold)">接下 ›</span></span></div>`;
+    html += `<div class="item-row bounty-row" onclick="acceptBounty(${i})"><div class="b-left"><span class="b-tier"><svg class="ic"><use href="#ic-board"/></svg> ${bountyTier(b)}</span><span class="b-desc">${bountyDesc(b)}</span></div><span class="b-reward">${rewardText(b.reward)} ＋<svg class="ic"><use href="#ic-gem"/></svg>${b.gems||'1~3'}　<span style="color:var(--gold)">接下 ›</span></span></div>`;
   }
   html += '</div>';
   if(offers.length) html += '<button class="btn" style="margin-top:10px" onclick="refreshBounties()">🔄 一鍵刷新可接委託</button>';

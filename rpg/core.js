@@ -126,7 +126,7 @@ function blessMult(){   // 數值型祝福隨深度/輪迴縮放（見 data.js B
 function save(){ if(G) G.run = R; accSave();   // 寫回帳號（G 就是當前角色，已在 ACC 內）
   const cg = document.getElementById('camp-gold'); if(cg && G) cg.textContent = G.gold;
   const sc = document.getElementById('stash-count'); if(sc && G) sc.textContent = `倉庫 ${G.stash.length} 件`;
-  const gg = document.getElementById('gear-gold'); if(gg && G) gg.textContent = '🪙 ' + G.gold;
+  const gg = document.getElementById('gear-gold'); if(gg && G) gg.innerHTML = '<svg class="ic"><use href="#ic-gold"/></svg> ' + G.gold;
 }
 
 function load(){ try{
@@ -187,7 +187,7 @@ function showScreen(id){
 
 let toastT = null;
 
-function toast(msg){ const t=$('toast'); t.textContent=msg; t.classList.add('show');
+function toast(msg){ const t=$('toast'); t.innerHTML=msg;   // v393：改吃 HTML，讓 toast 也能放 SVG 圖示（呼叫點全是內部字串） t.classList.add('show');
   clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),1600); }
 
 function sumAffix(key){
