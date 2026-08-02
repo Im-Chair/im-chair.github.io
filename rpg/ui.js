@@ -53,12 +53,31 @@ function confirmClass(){
    現在 .camp-scene 是固定 2:3 + background-size:contain，容器比例＝圖片比例，
    百分比直接就是圖片百分比。不需要圖片尺寸、不需要位移、所有裝置一致。
    ⚠️ 換圖時若新圖不是 2:3，要同步改 style.css 的 aspect-ratio，否則這個保證就沒了。 */
+let campRatio = 2/3;   // camp2.webp 是 1024×1536。只需要「比例」，不需要絕對像素
+/* 開機時從實際圖檔讀回比例，換圖也不會和這裡的常數脫節（舊版把 1080×1747 寫死，換圖就錯）。
+   包 try 且不擋任何流程——非必要的東西不可以站在必要流程前面（v389 的教訓）。 */
+try{
+  if(typeof Image === 'function'){
+    const _ci = new Image();
+    _ci.onload = () => { if(_ci.naturalHeight){ campRatio = _ci.naturalWidth/_ci.naturalHeight; layoutCamp(); } };
+    _ci.src = 'camp2.webp?v=' + window.RPG_VER;
+  }
+}catch(e){}
+
 function layoutCamp(){
   const scene = document.querySelector('.camp-scene'); if(!scene) return;
+  const cw = scene.clientWidth, ch = scene.clientHeight; if(!cw || !ch) return;
+  // background-size:contain 的實際擺放，精確重算一次。
+  // 舊版用的是 cover（Math.max）——cover 會裁切，容器百分比就不等於圖片百分比，
+  // 那才是熱區在不同手機上漂移的真正成因（實測 iPhone SE 與 Pixel 7 差了圖寬 5.5%）。
+  // contain 不裁切，所以這個換算是精確的，與裝置比例無關。
+  const fit = cw/ch > campRatio;
+  const dh = fit ? ch : cw/campRatio, dw = fit ? ch*campRatio : cw;
+  const ox = (cw-dw)/2, oy = (ch-dh)/2;
   scene.querySelectorAll('.hot').forEach(h=>{
     const fx=+h.dataset.fx, fy=+h.dataset.fy, fw=+h.dataset.fw, fh=+h.dataset.fh;
-    h.style.left=(fx*100)+'%'; h.style.top=(fy*100)+'%';
-    h.style.width=(fw*100)+'%'; h.style.height=(fh*100)+'%';
+    h.style.left=(ox+fx*dw)+'px'; h.style.top=(oy+fy*dh)+'px';
+    h.style.width=(fw*dw)+'px';   h.style.height=(fh*dh)+'px';
   });
 }
 window.addEventListener('resize', layoutCamp);
@@ -78,6 +97,10 @@ function renderCamp(){
   // toggle(cls, force) 的第二參數在舊 WebView 不支援，用 add/remove 才安全
   const hm = $('hot-market');
   if(hm){ if(G.rec && G.rec.deep >= 30) hm.classList.remove('locked'); else hm.classList.add('locked'); }
+  // 圖鑑改建中也一樣壓暗。原本只有點下去才吐 toast，等於「看得見、點得到、但沒有回應」——
+  // 熱區的亮度本來就是「可不可點」的訊號，讓它自己說話
+  const hc = $('hot-codex');
+  if(hc){ if(CODEX_ENABLED) hc.classList.remove('locked'); else hc.classList.add('locked'); }
   save();
   preloadArt();   // 放最後：背景預載圖檔。它自己包了 try，但仍不放在任何必要流程前面
 }

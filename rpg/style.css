@@ -91,15 +91,20 @@ h1.title{
 .camp-save:active{opacity:.55;}
 .milestone{font-size:12px;color:var(--dim);text-align:center;margin-top:2px;}
 /* 營地美圖：背景圖＋透明熱區＋動態疊層 */
-#s-camp{padding:0;}
+/* 上緣補 safe-area：這個畫面把 .screen 的 16px padding 歸零了，不補的話瀏海機的頁首會頂到瀏海下 */
+#s-camp{padding:max(env(safe-area-inset-top,0px),4px) 0 calc(4px + var(--safe-b));}
 /* v393：固定 2:3 + contain。熱區百分比從此等於「圖片百分比」，所有裝置一致（6.2）
    max-width 用視窗高度反推，確保矮視窗不會撐出捲軸；margin:auto 讓它在 flex 欄置中 */
-.camp-scene{position:relative;width:100%;max-width:calc((100dvh - 24px) * 0.6667);aspect-ratio:2/3;margin:auto;flex:none;overflow:hidden;background:var(--bg);}
-/* 提亮只作用在底圖：生成圖平均明度 0.076，目標 0.22 */
-.camp-scene::before{content:"";position:absolute;inset:0;background:url("camp2.webp?v=393") center/contain no-repeat;filter:brightness(1.32) contrast(1.03);}
+.camp-scene{position:relative;width:100%;flex:1;min-height:0;overflow:hidden;background:var(--bg);}
+/* ⚠️ 不要在這裡加 brightness()。camp_v2_fixed 出廠就已 gamma 校正過，
+   實測平均明度 0.250（目標 0.22、舊 camp.webp 0.305）。再乘一次會推到 0.329＝過曝。
+   文件第七章那個 0.076 講的是「未校正的原始生成圖」，不是這張。 */
+.camp-scene::before{content:"";position:absolute;inset:0;background:url("camp2.webp?v=394") center/contain no-repeat;}
 /* 子層一律疊在底圖之上。全部已是 position:absolute，所以只給 z-index、不動 position */
 .camp-scene > *{z-index:1;}
-.ov-title{position:absolute;left:50%;top:6px;transform:translateX(-50%);font-family:"Songti TC","Noto Serif TC",serif;font-weight:700;font-size:23px;letter-spacing:6px;text-indent:6px;background:linear-gradient(180deg,#f0d896,#b8842e);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;text-shadow:0 0 18px rgba(216,168,76,.18);}
+.camp-top{flex:none;padding:6px 12px 8px;display:flex;flex-direction:column;}
+.ct-bar{display:flex;align-items:center;justify-content:space-between;}
+.ov-title{margin:10px 0 9px;text-align:center;font-family:"Songti TC","Noto Serif TC",serif;font-weight:700;font-size:clamp(30px,9vw,40px);letter-spacing:9px;text-indent:9px;background:linear-gradient(180deg,#f0d896,#b8842e);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;text-shadow:0 0 18px rgba(216,168,76,.18);}
 .hot{position:absolute;transform:translate(-50%,-50%);cursor:pointer;border-radius:16px;}
 .hot:active{background:rgba(216,168,76,.20);}
 /* 未解鎖＝那裡還沒點燈。依「每個功能點的光源就是可點訊號」規則（6.6）
@@ -114,9 +119,9 @@ h1.title{
 .ic-gem{color:var(--gem);}
 .ic-dim{color:var(--dim);}
 .hot-badge{position:absolute;top:-6px;right:2px;background:var(--red);color:#fff;font-size:12px;border-radius:9px;padding:0 6px;min-width:18px;text-align:center;line-height:18px;}
-.ov-gold{position:absolute;left:10px;top:10px;padding:5px 13px;background:linear-gradient(#2a1f10,#170f06);border:1px solid #7a5a2a;border-radius:22px;display:flex;align-items:center;gap:6px;color:#f0d896;font-size:15px;font-weight:600;}
-.ov-gem{position:absolute;right:10px;top:10px;padding:5px 13px;background:linear-gradient(#101a2a,#0a1018);border:1px solid #2a4a7a;border-radius:22px;display:flex;align-items:center;gap:6px;color:#8fd0ff;font-size:15px;font-weight:600;}
-.ov-hero{position:absolute;left:10px;top:52px;padding:7px 13px;background:linear-gradient(#241a10,#140d06);border:1px solid #6a4a1e;border-radius:14px;display:flex;align-items:center;gap:9px;cursor:pointer;}
+.ov-gold{padding:5px 13px;background:linear-gradient(#2a1f10,#170f06);border:1px solid #7a5a2a;border-radius:22px;display:flex;align-items:center;gap:6px;color:#f0d896;font-size:15px;font-weight:600;}
+.ov-gem{padding:5px 13px;background:linear-gradient(#101a2a,#0a1018);border:1px solid #2a4a7a;border-radius:22px;display:flex;align-items:center;gap:6px;color:#8fd0ff;font-size:15px;font-weight:600;}
+.ov-hero{align-self:flex-start;padding:7px 13px;background:linear-gradient(#241a10,#140d06);border:1px solid #6a4a1e;border-radius:14px;display:flex;align-items:center;gap:9px;cursor:pointer;}
 .ov-hero-ic{font-size:28px;line-height:1;}
 .ov-hero-tx{display:flex;flex-direction:column;line-height:1.25;}
 .ov-hero-cls{font-size:15px;color:#e6e1d3;}
