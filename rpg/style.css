@@ -1,0 +1,372 @@
+:root{
+  --bg:#080605; --panel:#15110c; --panel2:#221a13; --line:#4a3624;
+  --text:#e6e1d3; --dim:#8a7658; --gold:#d8a84c; --red:#d05252;
+  --green:#6fbf8f; --blue:#5a9bd4; --orange:#e0813f; --white-r:#b8bcc8;
+  --safe-b:max(env(safe-area-inset-bottom,0px), 32px);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;overflow:hidden;}
+body{
+  background:var(--bg); color:var(--text);
+  font-family:"PingFang TC","Noto Sans TC",-apple-system,sans-serif;
+  font-size:15px; line-height:1.5;
+  background-image:radial-gradient(ellipse 120% 60% at 50% -10%, #1a130c 0%, var(--bg) 60%);
+  user-select:none;-webkit-user-select:none;
+}
+#app{max-width:520px;margin:0 auto;height:100%;height:100dvh;display:flex;flex-direction:column;position:relative;}
+.screen{display:none;flex:1;flex-direction:column;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px 16px calc(30px + var(--safe-b));}
+.screen.show{display:flex;}
+h1.title{
+  font-family:"Songti TC","Noto Serif TC",serif; font-weight:700;
+  font-size:44px; letter-spacing:12px; text-indent:12px; text-align:center;
+  background:linear-gradient(180deg,#f0d896 20%,#b8842e 90%);
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+  text-shadow:0 0 40px rgba(216,168,76,.15);
+}
+.subtitle{text-align:center;color:var(--dim);letter-spacing:6px;text-indent:6px;font-size:13px;margin-top:6px;}
+.btn{
+  display:block;width:100%;padding:14px;border:1px solid var(--line);border-radius:10px;
+  background:var(--panel);color:var(--text);font-size:16px;font-family:inherit;
+  text-align:center;cursor:pointer;transition:transform .08s, background .15s;
+}
+.btn:active{transform:scale(.97);background:var(--panel2);}
+.btn.primary{border-color:#8a6a2a;background:linear-gradient(180deg,#2a2416,#1e1a10);color:var(--gold);letter-spacing:2px;}
+.btn.danger{border-color:#5a2a2a;color:var(--red);}
+.btn.small{padding:8px 12px;font-size:14px;width:auto;display:inline-block;}
+.btn:disabled{opacity:.35;pointer-events:none;}
+.row{display:flex;gap:10px;}
+.row .btn{flex:1;}
+.spacer{flex:1;}
+/* ---------- top bar ---------- */
+.topbar{display:flex;align-items:center;gap:10px;padding:4px 2px 12px;font-size:14px;color:var(--dim);}
+.topbar .depth{
+  font-family:"Songti TC",serif;font-size:15px;color:var(--gold);letter-spacing:2px;
+  border:1px solid #3a3220;border-radius:8px;padding:2px 10px;background:#17140c;
+}
+.topbar .gold-chip{margin-left:auto;color:var(--gold);}
+/* ---------- class select ---------- */
+.class-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px;}
+.class-card{
+  border:1px solid var(--line);border-radius:12px;background:var(--panel);
+  padding:14px 12px;text-align:center;cursor:pointer;transition:border-color .15s;
+}
+.class-card.selected{border-color:var(--gold);background:#1a1710;box-shadow:0 0 0 1px var(--gold) inset;}
+.class-card .ci{font-size:34px;}
+.class-card .cn{font-size:17px;margin-top:6px;letter-spacing:2px;}
+.class-card .cd{font-size:12px;color:var(--dim);margin-top:4px;min-height:3em;}
+/* ---------- camp ---------- */
+.camp-hero{
+  text-align:center;padding:22px 0 14px;
+}
+.camp-hero .flame{font-size:42px;animation:flick 2.2s ease-in-out infinite;}
+@keyframes flick{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.82;transform:scale(1.05)}}
+.menu-list{display:flex;flex-direction:column;gap:10px;margin-top:14px;}
+.menu-item{
+  display:flex;align-items:center;gap:12px;padding:14px;border:1px solid var(--line);
+  border-radius:12px;background:var(--panel);cursor:pointer;
+}
+.menu-item:active{background:var(--panel2);}
+.menu-item .mi{font-size:22px;width:30px;text-align:center;}
+.menu-item .mt{font-size:16px;letter-spacing:1px;}
+.menu-item .ms{font-size:12px;color:var(--dim);}
+.menu-item .arrow{margin-left:auto;color:var(--dim);}
+/* 營地地圖（圓弧據點） */
+.camp-map{position:relative;height:344px;margin:8px 0 2px;}
+.camp-pit{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:148px;height:148px;border-radius:50%;background:radial-gradient(circle at 50% 40%,#2a1e12 0%,var(--bg) 74%);box-shadow:0 0 34px rgba(216,168,76,.22),0 0 24px rgba(216,168,76,.14) inset;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;}
+.camp-pit:active{transform:translate(-50%,-50%) scale(.97);}
+.camp-pit .pit-i{font-size:50px;line-height:1;}
+.camp-pit .pit-t{font-size:21px;color:var(--gold);letter-spacing:5px;margin-top:2px;}
+.camp-pit .pit-s{font-size:11px;color:var(--dim);margin-top:3px;text-align:center;max-width:128px;line-height:1.3;}
+.camp-node{position:absolute;transform:translate(-50%,-50%);width:88px;text-align:center;cursor:pointer;}
+.camp-node:active{opacity:.55;}
+.camp-node .ni{font-size:38px;line-height:1;}
+.camp-node .nt{font-size:17px;color:var(--gold);margin-top:1px;letter-spacing:1px;}
+.camp-node .ns{font-size:11px;color:var(--dim);}
+.node-badge{position:absolute;top:-4px;right:12px;background:var(--red);color:#fff;font-size:12px;border-radius:9px;padding:0 6px;min-width:18px;}
+.n-tl{left:18%;top:18%;} .n-ml{left:11%;top:50%;} .n-bl{left:18%;top:82%;}
+.n-tr{left:82%;top:18%;} .n-mr{left:89%;top:50%;} .n-br{left:82%;top:82%;}
+.camp-save{text-align:center;color:var(--dim);font-size:17px;padding:10px;cursor:pointer;}
+.camp-save:active{opacity:.55;}
+.milestone{font-size:12px;color:var(--dim);text-align:center;margin-top:2px;}
+/* 營地美圖：背景圖＋透明熱區＋動態疊層 */
+#s-camp{padding:0;}
+/* v393b：頁首從「疊在圖上」改成獨立區塊；圖改固定比例 + contain，
+   熱區百分比從此在所有裝置一致，不再需要逐機手調 */
+.camp-top{padding:10px 12px 8px;flex:none;}
+.ct-bar{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.camp-scene{position:relative;width:100%;flex:none;aspect-ratio:2/3;overflow:hidden;
+  background:var(--bg) url("camp2.webp?v=398") center center/contain no-repeat;
+  filter:brightness(1.38) contrast(1.03);}
+.ov-title{font-family:"Songti TC","Noto Serif TC",serif;font-weight:700;font-size:23px;letter-spacing:6px;text-indent:6px;background:linear-gradient(180deg,#f0d896,#b8842e);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;text-shadow:0 0 18px rgba(216,168,76,.18);}
+.hot{position:absolute;transform:translate(-50%,-50%);cursor:pointer;border-radius:16px;}
+.hot:active{background:rgba(216,168,76,.20);}
+.hot-badge{position:absolute;top:-6px;right:2px;background:var(--red);color:#fff;font-size:12px;border-radius:9px;padding:0 6px;min-width:18px;text-align:center;line-height:18px;}
+.ov-gold{padding:5px 13px;background:linear-gradient(#2a1f10,#170f06);border:1px solid #7a5a2a;border-radius:22px;display:flex;align-items:center;gap:6px;color:#f0d896;font-size:15px;font-weight:600;}
+.ov-gem{padding:5px 13px;background:linear-gradient(#101a2a,#0a1018);border:1px solid #2a4a7a;border-radius:22px;display:flex;align-items:center;gap:6px;color:#7eb1c9;font-size:15px;font-weight:600;}
+.ov-hero{margin-top:8px;padding:7px 13px;background:linear-gradient(#241a10,#140d06);border:1px solid #6a4a1e;border-radius:14px;display:flex;align-items:center;gap:9px;cursor:pointer;}
+.ov-hero-ic{font-size:28px;line-height:1;display:flex;align-items:center;}
+.ov-hero-tx{display:flex;flex-direction:column;line-height:1.25;}
+.ov-hero-cls{font-size:15px;color:#e6e1d3;}
+.ov-hero-cert{font-size:12px;color:var(--gold);}
+/* ---------- gear ---------- */
+.slot-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0;}
+.slot{
+  border:1px dashed var(--line);border-radius:10px;padding:10px 8px;text-align:center;
+  background:var(--panel);min-height:74px;cursor:pointer;
+}
+.slot .sl{font-size:11px;color:var(--dim);}
+.slot .sn{font-size:13px;margin-top:4px;line-height:1.3;}
+.item-list{display:flex;flex-direction:column;gap:8px;margin-top:8px;}
+.item-row{
+  display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--line);
+  border-radius:10px;background:var(--panel);cursor:pointer;
+}
+.item-row .in{font-size:14px;white-space:nowrap;flex-shrink:0;}
+.item-row .is{font-size:12px;color:var(--dim);margin-left:auto;text-align:right;min-width:0;line-height:1.4;}
+.item-row .ip{font-size:12px;color:var(--dim);white-space:nowrap;flex-shrink:0;}
+/* 懸賞板專用：左上樓層／左下敘述／右中獎勵，避免長文字撐爆 .in（nowrap）造成格子大小不一 */
+.bounty-row .b-left{display:flex;flex-direction:column;gap:3px;flex:1;min-width:0;}
+.bounty-row .b-tier{font-size:12px;color:var(--dim);white-space:nowrap;}
+.bounty-row .b-desc{font-size:14px;line-height:1.35;white-space:normal;}
+.bounty-row .b-reward{font-size:12px;color:var(--dim);text-align:right;white-space:nowrap;flex-shrink:0;}
+.r-white{color:var(--white-r);} .r-blue{color:var(--blue);} .r-gold{color:var(--gold);} .r-orange{color:var(--orange);}
+.b-white{border-color:#3a3f4d;} .b-blue{border-color:#2c4d6e;} .b-gold{border-color:#6e5a26;} .b-orange{border-color:#7a4622;}
+.tag-new{font-size:10px;color:var(--bg);background:var(--gold);border-radius:4px;padding:1px 5px;margin-left:6px;}
+/* ---------- sheet ---------- */
+.sheet-mask{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;z-index:50;}
+.sheet-mask.show{display:flex;align-items:flex-end;justify-content:center;}
+.sheet{
+  width:100%;max-width:520px;background:var(--panel2);border-radius:18px 18px 0 0;
+  border:1px solid var(--line);border-bottom:none;padding:18px 18px calc(24px + var(--safe-b));
+  animation:up .18s ease-out;max-height:78vh;overflow-y:auto;
+}
+@keyframes up{from{transform:translateY(30px);opacity:0}to{transform:none;opacity:1}}
+.sheet h3{font-size:18px;letter-spacing:1px;}
+.affix{font-size:13px;color:var(--green);margin-top:2px;}
+.affix.leg{color:var(--orange);text-shadow:0 0 8px rgba(224,129,63,.3);}
+.affix.curse{color:var(--red);}
+.sheet .base{font-size:14px;color:var(--dim);margin:6px 0;}
+.cmp{font-size:12px;color:var(--dim);border-top:1px solid var(--line);margin-top:10px;padding-top:8px;}
+.cmp .up{color:var(--green);} .cmp .dn{color:var(--red);}
+/* ---------- doors / decision ---------- */
+.depth-gauge{
+  text-align:center;margin:8px 0 4px;font-family:"Songti TC",serif;
+}
+.depth-gauge .num{font-size:52px;color:var(--gold);letter-spacing:4px;}
+.depth-gauge .lbl{font-size:13px;color:var(--dim);letter-spacing:4px;}
+.depth-gauge .bonus{font-size:12px;color:var(--orange);margin-top:2px;}
+.door-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:18px 0;}
+.door{
+  border:1px solid #3a3145;border-radius:12px 12px 4px 4px;
+  background:linear-gradient(180deg,#1d1826 0%,#141019 100%);
+  padding:26px 10px 18px;text-align:center;cursor:pointer;position:relative;
+  box-shadow:inset 0 -10px 24px rgba(0,0,0,.5);
+  transition:transform .1s;
+}
+.door:active{transform:scale(.96);}
+.door::before{content:'';position:absolute;top:8px;left:50%;transform:translateX(-50%);
+  width:70%;height:3px;border-radius:3px;background:#2c2438;}
+.door .di{font-size:38px;filter:drop-shadow(0 0 10px rgba(216,168,76,.2));}
+.door .dn{margin-top:10px;font-size:15px;letter-spacing:2px;}
+.door .dd{font-size:11px;color:var(--dim);margin-top:3px;}
+.retreat-btn{
+  margin-top:6px;border:1px solid #2f4436;background:#101a14;color:var(--green);
+  letter-spacing:2px;
+}
+/* ---------- battle ---------- */
+#battle{padding-bottom:calc(12px + var(--safe-b));}
+.enemy-zone{padding:6px 0 4px;}
+.e-wrap{display:grid;gap:8px;grid-template-columns:1fr;}
+.e-wrap.duo{grid-template-columns:1fr 1fr;}
+.e-block{position:relative;text-align:center;border:1px solid transparent;border-radius:12px;padding:4px 2px;}
+.e-wrap.duo .e-block{cursor:pointer;}
+.e-wrap.duo .e-block.sel{border-color:var(--gold);background:rgba(216,168,76,.05);}
+.e-wrap.duo .enemy-icon{font-size:69px;height:69px;}
+.e-wrap.duo .enemy-icon>svg{width:63px;height:63px;}
+.e-wrap.duo .enemy-name{font-size:13px;}
+.e-wrap.duo .intent{font-size:12px;padding:2px 8px;}
+.e-block.dead{opacity:.3;filter:grayscale(1);}
+.enemy-icon{font-size:96px;line-height:1;height:96px;display:flex;align-items:center;justify-content:center;transition:transform .1s;filter:drop-shadow(0 6px 16px rgba(0,0,0,.6));position:relative;}
+.enemy-icon>svg{width:87px;height:87px;display:block;color:#cfc6b4;}
+.enemy-icon>img{width:87px;height:87px;object-fit:contain;display:block;-webkit-user-drag:none;user-select:none;}
+.e-wrap.duo .enemy-icon>img{width:63px;height:63px;}
+/* 選取回饋：雙怪時 .e-wrap.duo .e-block.sel 的外框（上方 177 行）就夠了，
+   不要再加圖示光圈——方框＋圓框同時出現只是噪音。SVG 仍保留染金，點陣圖靠外框。 */
+.e-block.sel .enemy-icon>svg{color:var(--gold);}
+.enemy-icon.hit{animation:shake .3s;}
+@keyframes shake{0%{transform:translateX(0)}25%{transform:translateX(-7px)}50%{transform:translateX(6px)}75%{transform:translateX(-3px)}100%{transform:none}}
+/* 狀態染色：中毒染紫、燃燒染紅（emoji 與 SVG 皆適用） */
+.e-block.poisoned .enemy-icon{filter:drop-shadow(0 6px 16px rgba(0,0,0,.6)) drop-shadow(0 0 7px #9b6dd6) drop-shadow(0 0 3px #7a3fb0);}
+.e-block.poisoned .enemy-icon>svg{color:#c39cf0;}
+.e-block.burning .enemy-icon{filter:drop-shadow(0 6px 16px rgba(0,0,0,.6)) drop-shadow(0 0 7px #e0813f) drop-shadow(0 0 3px #d05252);}
+.e-block.burning .enemy-icon>svg{color:#f0a86b;}
+.e-block.poisoned.burning .enemy-icon{filter:drop-shadow(0 6px 16px rgba(0,0,0,.6)) drop-shadow(0 0 6px #e0813f) drop-shadow(0 0 6px #9b6dd6);}
+.e-block.poisoned.burning .enemy-icon>svg{color:#e79ad0;}
+/* 點陣圖版染色:currentColor 無效,改用 filter 把整張圖染成單色調（外層光暈照舊） */
+.e-block.poisoned .enemy-icon>img{filter:grayscale(1) sepia(1) hue-rotate(228deg) saturate(3.4) brightness(1.06);}
+.e-block.burning  .enemy-icon>img{filter:grayscale(1) sepia(1) hue-rotate(-18deg) saturate(3.6) brightness(1.1);}
+.e-block.poisoned.burning .enemy-icon>img{filter:grayscale(1) sepia(1) hue-rotate(285deg) saturate(3.2) brightness(1.08);}
+/* ── 通用 UI 圖示（ui/*.webp）：職業／門／藥水／結算／標題 ── */
+.ui-ic{display:block;border-radius:8px;object-fit:cover;}
+.title-art{display:block;width:min(88%,340px);margin:0 auto;border-radius:12px;}
+/* 職業圖示只有這兩個尺寸；全部由 classIcon()（battle.js）產生，不要在別處另寫 */
+.ci-lg{width:76px;height:76px;margin:0 auto 4px;border:1px solid var(--line);}
+.ci-sm{width:26px;height:26px;border-radius:5px;display:inline-block;vertical-align:middle;}
+.cls-tag{display:inline-flex;align-items:center;gap:6px;vertical-align:middle;}
+/* 門圖走「橫幅」而不是正方形：門卡本來就有 26px 上留白與頂部裝飾線，正方形會把卡片撐得太高 */
+.di-img{width:100%;height:92px;border:1px solid var(--line);margin-bottom:2px;}
+.pi-img{width:24px;height:24px;border-radius:5px;display:inline-block;vertical-align:middle;}
+.pi-row{width:38px;height:38px;margin-right:9px;flex:0 0 auto;border:1px solid var(--line);}
+.res-img{width:min(70%,220px);margin:0 auto;border-radius:12px;}
+.ev-img{width:min(52%,150px);margin:0 auto;border-radius:10px;}
+.cx-ic{width:38px;height:38px;margin-right:9px;flex:0 0 auto;border-radius:6px;border:1px solid var(--line);object-fit:cover;}
+/* 門卡若放的是敵人去背圖，底色要墊一下，不然深色 sprite 貼在深色門上看不清 */
+.door .di>img.di-img{background:radial-gradient(ellipse at 50% 60%, #262032 0%, #16121d 70%);object-fit:contain;}
+/* 域限精英：邊緣已在圖檔裡做軟性淡出（見交接筆記十五），不要再加硬框，
+   否則又變回「貼了一塊方形」的樣子。 */
+/* 裝備圖示（eq/*.webp）。素材本身是深色圖磚，直接當方塊用——去背會把柔邊畫壞，
+   而深底本來就貼合遊戲配色。邊框吃稀有度色，讓稀有度在列表裡一眼可辨。 */
+.item-ic{border-radius:6px;object-fit:cover;flex:0 0 auto;display:block;
+  border:1px solid var(--line);background:#0e1017;-webkit-user-drag:none;}
+.item-ic.ic-sm{width:38px;height:38px;margin-right:9px;}
+.item-ic.ic-lg{width:56px;height:56px;}
+.item-ic.ic-fb{display:flex;align-items:center;justify-content:center;font-size:20px;}
+.item-ic.r0{border-color:#6d737f;} .item-ic.r1{border-color:#5b8fd6;}
+.item-ic.r2{border-color:#d6b44a;} .item-ic.r3{border-color:#d78a3c;}
+/* 有圖示的列：圖示 + 內容區，內容區自己再 flex，讓 .is 的 margin-left:auto 仍然靠右 */
+.ir-body{display:flex;align-items:center;gap:10px;flex:1;min-width:0;}
+.lc-head{display:flex;align-items:center;gap:10px;}
+/* 裝備欄是三格並排，圖再大會把營地→裝備頁撐太高（手機直式），縮到 44 */
+.slot .item-ic.ic-lg{width:44px;height:44px;margin:5px auto;}
+.ic-empty{width:44px;height:44px;margin:5px auto;border-radius:6px;border:1px dashed var(--line);
+  display:flex;align-items:center;justify-content:center;color:var(--dim);font-size:12px;}
+/* 黑市分頁：每個已認證輪迴一頁（見 certPool） */
+.mkt-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;}
+.mkt-tab{flex:1 1 auto;padding:6px 10px;font:inherit;font-size:12px;white-space:nowrap;
+  color:var(--dim);background:var(--panel);border:1px solid var(--line);border-radius:8px;cursor:pointer;}
+.mkt-tab.on{color:var(--gold);border-color:var(--gold);background:var(--panel2);}
+/* 咒鈴：魔力換行動點的按鈕（常駐可見，不足/用過灰掉） */
+.bell-btn{margin-left:8px;padding:2px 8px;font:inherit;font-size:12px;line-height:1.5;
+  color:#ffd98a;background:#2a1f10;border:1px solid #6b5327;border-radius:12px;cursor:pointer;vertical-align:middle;}
+.bell-btn b{color:#7fb3e8;font-weight:400;}
+.bell-btn:active{background:#3d2d16;}
+.bell-btn.off{opacity:.35;cursor:default;}
+.enemy-name{font-size:16px;letter-spacing:2px;margin-top:2px;}
+.enemy-name .elite{color:var(--orange);} .enemy-name .boss{color:var(--red);}
+.intent{
+  display:inline-flex;align-items:center;gap:6px;margin-top:6px;
+  border:1px solid #4a3a2a;background:#1c150e;border-radius:20px;padding:4px 14px;
+  font-size:14px;color:#e8c78a;
+}
+.intent .ii{font-size:16px;}
+.hpbar{height:14px;border-radius:7px;background:#22161a;border:1px solid #3a2530;overflow:hidden;margin-top:8px;position:relative;}
+.hpbar .fill{height:100%;background:linear-gradient(90deg,#a83a3a,#d05252);transition:width .3s;border-radius:7px;}
+.hpbar.player .fill{background:linear-gradient(90deg,#3f7a58,#6fbf8f);}
+.hpbar .txt{position:absolute;inset:0;text-align:center;font-size:10px;line-height:14px;color:#fff;text-shadow:0 1px 2px #000;}
+.status-row{display:flex;gap:6px;justify-content:center;margin-top:6px;min-height:22px;flex-wrap:wrap;}
+.st{font-size:11px;border-radius:6px;padding:1px 7px;border:1px solid var(--line);background:var(--panel);}
+.st.bad{color:#e09090;border-color:#4a2a2a;} .st.good{color:#9fd8b4;border-color:#2a4a36;}
+.blk{color:var(--blue);border-color:#2c4d6e;}
+#log{
+  flex:1 1 auto;min-height:64px;overflow-y:auto;font-size:12px;color:var(--dim);
+  border:1px solid var(--line);border-radius:10px;background:rgba(0,0,0,.25);
+  padding:6px 10px;margin:10px 0;
+}
+#log .l-dmg{color:#e8a0a0;} #log .l-heal{color:#9fd8b4;} #log .l-sys{color:#c8b070;}
+.player-zone{margin-top:0;}
+.pz-top{display:flex;align-items:center;gap:10px;font-size:13px;}
+.pz-top .pname{letter-spacing:1px;}
+.energy{margin-left:auto;display:flex;gap:4px;}
+.pip{width:14px;height:14px;border-radius:50%;border:1px solid #6e5a26;background:#17140c;}
+.pip.on{background:radial-gradient(circle at 35% 35%, #f0d896, #b8842e);box-shadow:0 0 6px rgba(216,168,76,.5);}
+.skill-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;}
+.skill-btn{
+  border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--text);
+  padding:10px 10px;text-align:left;font-family:inherit;cursor:pointer;position:relative;
+}
+.skill-btn:active{background:var(--panel2);}
+.skill-btn:disabled{opacity:.35;}
+.skill-btn .sn{font-size:14px;letter-spacing:1px;}
+.skill-btn .sd{font-size:11px;color:var(--dim);margin-top:2px;line-height:1.35;}
+.skill-btn .sc{position:absolute;top:8px;right:10px;font-size:12px;color:var(--gold);}
+.battle-bottom{display:flex;gap:8px;margin-top:10px;}
+.battle-bottom .btn{padding:11px;}
+.float-dmg{
+  position:absolute;left:50%;top:30%;transform:translateX(-50%);
+  font-size:26px;font-weight:700;color:#ff9090;pointer-events:none;
+  animation:floatup .8s ease-out forwards;text-shadow:0 2px 6px #000;z-index:5;
+}
+.float-dmg.heal{color:#9fd8b4;} .float-dmg.blocked{color:#8ab4d8;font-size:20px;}
+.float-dmg.crit{color:#ffcf5a;font-size:32px;}
+@keyframes floatup{from{opacity:1;margin-top:0}to{opacity:0;margin-top:-46px}}
+/* ---------- loot / event / result ---------- */
+.center-box{margin:auto 0;text-align:center;padding:20px 0;}
+.center-box .big{font-size:56px;}
+.center-box h2{font-family:"Songti TC",serif;font-size:26px;letter-spacing:6px;margin:12px 0 6px;}
+.center-box p{color:var(--dim);font-size:14px;}
+.loot-card{
+  border-radius:12px;padding:14px;margin:14px 0;background:var(--panel);
+  border:1px solid var(--line);text-align:left;
+}
+.ev-text{font-size:15px;line-height:1.8;color:#d8d2c2;margin:14px 0;white-space:pre-line;}
+.choices{display:flex;flex-direction:column;gap:10px;margin-top:14px;}
+.stat-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:14px 0;}
+.stat-box{border:1px solid var(--line);border-radius:10px;padding:10px;text-align:center;background:var(--panel);}
+.stat-box .v{font-size:20px;color:var(--gold);font-family:"Songti TC",serif;}
+.stat-box .k{font-size:11px;color:var(--dim);margin-top:2px;}
+.potion-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;}
+/* 逃脫之繩來源提示 */
+.rope-hint{font-size:11px;color:var(--dim);text-align:center;margin:4px 0 2px;}
+/* 精進三欄：技能 / A分支 / B分支 */
+.su-grid{display:flex;flex-direction:column;gap:6px;margin:6px 0 10px;}
+.su-row{display:grid;grid-template-columns:86px 1fr 1fr;gap:6px;align-items:stretch;}
+.su-head{font-size:11px;color:var(--dim);}
+.su-head .su-name,.su-head .su-cell{padding:2px 4px;background:none;border:none;}
+.su-name{display:flex;flex-direction:column;justify-content:center;gap:2px;padding:8px 6px;background:var(--panel);border:1px solid var(--line);border-radius:8px;}
+.su-name b{font-size:13px;color:var(--text);}
+.su-name span{font-size:10px;color:var(--dim);line-height:1.25;}
+.su-pick{display:flex;flex-direction:column;gap:3px;text-align:left;padding:9px 8px;background:var(--panel);border:1px solid var(--line);border-radius:8px;color:var(--text);font-family:inherit;cursor:pointer;transition:transform .08s,background .15s;}
+.su-pick b{font-size:13px;color:var(--gold);letter-spacing:1px;}
+.su-pick span{font-size:10px;color:var(--dim);line-height:1.3;}
+.su-pick:active{transform:scale(.98);background:var(--panel2);}
+.potion{
+  flex:1;border:1px solid var(--line);border-radius:10px;background:var(--panel);
+  padding:8px 4px;text-align:center;font-size:12px;color:var(--dim);cursor:pointer;
+}
+.potion .pi{font-size:20px;display:block;}
+.potion:active{background:var(--panel2);}
+.toast{
+  position:fixed;top:14%;left:50%;transform:translateX(-50%);
+  background:#1c150e;border:1px solid #4a3a2a;color:#e8c78a;border-radius:20px;
+  padding:8px 18px;font-size:14px;z-index:99;opacity:0;transition:opacity .2s;pointer-events:none;
+  max-width:80%;text-align:center;
+}
+.toast.show{opacity:1;}
+.section-title{font-size:13px;color:var(--dim);letter-spacing:2px;margin:14px 0 6px;border-left:3px solid var(--gold);padding-left:8px;}
+.back-link{color:var(--dim);font-size:14px;padding:8px 0;cursor:pointer;display:inline-block;}
+
+
+/* ================== SVG 圖示 ==================
+   <svg class="ic"><use href="#ic-gold"/></svg>
+   ⚠ 缺這段的話 SVG 會用預設的 300x150px，整個版面會垮 */
+.ic{width:1em;height:1em;fill:currentColor;vertical-align:-.125em;flex:none;}
+.ic.big{width:56px;height:56px;}
+.ic.lg{width:44px;height:44px;}
+.ic.sm{width:16px;height:16px;}
+.center-box .big .ic{width:56px;height:56px;}
+
+.ic-gold{color:var(--gold);} .ic-gem{color:#7eb1c9;}
+.ic-hp{color:#e06a5c;} .ic-poison{color:#8e6ec8;}
+.ic-burn{color:var(--orange);} .ic-dim{color:var(--dim);}
+
+/* ================== 熱區打光階序 ==================
+   讓亮度變成可程式化的資訊通道，而不是烤死在圖裡 */
+.hot{transition:backdrop-filter .3s,opacity .3s;}
+.hot.tier-bright{backdrop-filter:brightness(1.35) saturate(1.1);}
+.hot.tier-dim{backdrop-filter:brightness(.78) saturate(.85);}
+.hot.locked{backdrop-filter:brightness(.32) saturate(.35);}
+.hot.alert{animation:hot-pulse 2.4s ease-in-out infinite;}
+@keyframes hot-pulse{
+  0%,100%{backdrop-filter:brightness(1.1);}
+  50%{backdrop-filter:brightness(1.55) saturate(1.15);}
+}
