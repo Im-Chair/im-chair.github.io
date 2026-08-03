@@ -7,7 +7,7 @@
 <meta name="theme-color" content="#080605">
 <title>貪婪深淵</title>
 <!-- 版本號集中管理：只改這一個 RPG_VER，即同步 CSS／所有 script／標題顯示的版號（破快取用） -->
-<script>window.RPG_VER='394';document.write('<link rel="stylesheet" href="style.css?v='+RPG_VER+'">');</script>
+<script>window.RPG_VER='398';document.write('<link rel="stylesheet" href="style.css?v='+RPG_VER+'">');</script>
 </head>
 <body>
 
@@ -93,9 +93,9 @@
   <div class="camp-top">
     <div class="ct-bar">
       <div class="ov-gold"><svg class="ic"><use href="#ic-gold"/></svg><span id="camp-gold">0</span></div>
+      <div class="ov-title">貪婪深淵</div>
       <div class="ov-gem"><svg class="ic"><use href="#ic-gem"/></svg><span id="camp-gem">0</span></div>
     </div>
-    <div class="ov-title">貪婪深淵</div>
     <div class="ov-hero" onclick="openRoster()">
       <span class="ov-hero-ic" id="camp-cls-ic"></span>
       <span class="ov-hero-tx"><span class="ov-hero-cls" id="camp-cls"></span><span class="ov-hero-cert" id="camp-cert"></span></span>
@@ -104,15 +104,15 @@
   <div class="camp-scene">
     <!-- 八個熱區：座標以 camp2.webp（2:3）為基準。.camp-scene 現在是固定比例 + contain，
          所以這些百分比就是「圖片百分比」，在所有裝置上一致，不再需要逐機手調 -->
-    <div class="hot" data-fx=".17" data-fy=".17" data-fw=".30" data-fh=".24" onclick="openRunStats()"></div>
-    <div class="hot" data-fx=".52" data-fy=".14" data-fw=".28" data-fh=".16" onclick="openBounties()"><span class="hot-badge" id="bounty-badge"></span></div>
-    <div class="hot" data-fx=".84" data-fy=".24" data-fw=".30" data-fh=".26" onclick="openSmith()"></div>
-    <div class="hot" data-fx=".15" data-fy=".46" data-fw=".28" data-fh=".22" onclick="openGear()"></div>
-    <div class="hot" data-fx=".50" data-fy=".46" data-fw=".32" data-fh=".28" onclick="openDivePicker()"></div>
-    <div class="hot" id="hot-market" data-fx=".84" data-fy=".65" data-fw=".30" data-fh=".24" onclick="if(G.rec.deep>=30)openMarket();else toast('深入 30 層後解鎖深淵黑市')"></div>
-    <div class="hot" data-fx=".21" data-fy=".79" data-fw=".32" data-fh=".16" onclick="openSaveMgr()"></div>
+    <div class="hot" data-fx=".17" data-fy=".175" data-fw=".34" data-fh=".25" onclick="openRunStats()"></div>
+    <div class="hot" data-fx=".475" data-fy=".115" data-fw=".28" data-fh=".17" onclick="openBounties()"><span class="hot-badge" id="bounty-badge"></span></div>
+    <div class="hot" data-fx=".855" data-fy=".19" data-fw=".29" data-fh=".28" onclick="openSmith()"></div>
+    <div class="hot" data-fx=".13" data-fy=".455" data-fw=".28" data-fh=".24" onclick="openGear()"></div>
+    <div class="hot" data-fx=".50" data-fy=".46" data-fw=".38" data-fh=".28" onclick="openDivePicker()"></div>
+    <div class="hot" id="hot-market" data-fx=".855" data-fy=".60" data-fw=".29" data-fh=".23" onclick="if(G.rec.deep>=30)openMarket();else toast('深入 30 層後解鎖深淵黑市')"></div>
+    <div class="hot" data-fx=".21" data-fy=".79" data-fw=".38" data-fh=".21" onclick="openSaveMgr()"></div>
     <!-- 圖鑑：暫時關閉（改建中）。熱區保留，openCodex 內以 CODEX_ENABLED 擋下並回 toast -->
-    <div class="hot" id="hot-codex" data-fx=".79" data-fy=".86" data-fw=".32" data-fh=".18" onclick="openCodex()"></div>
+    <div class="hot" id="hot-codex" data-fx=".82" data-fy=".855" data-fw=".34" data-fh=".19" onclick="openCodex()"></div>
   </div>
 </div>
 

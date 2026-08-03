@@ -398,7 +398,7 @@ function doChest(){
     // 寶箱怪
     showEventScreen('📦','寶箱','你伸手掀開箱蓋——箱子也張開了嘴。',
       [{n:'⚔️ 迎戰', f:()=>{ const e = makeEnemy(R.floor, 1);
-        e.n='寶箱怪'; e.i='📦'; e.img=1; e.imgKey='reliq';   // 借聖物匣那張咬人的箱子；不改 key，圖鑑統計不受影響
+        e.n='寶箱怪'; e.i='📦'; e.img=1; e.imgKey='mimic';  // v396：有專屬的寶箱怪圖了，不再借聖物匣。key 仍不動，圖鑑統計不受影響
         startBattle(e); }}]);
   } else {
     const it = makeItem(R.floor, 1);
@@ -624,7 +624,7 @@ const EVENTS = {
         const r = Math.random();
         if(r < 0.55){ treasureRoll(0, '🧟', '遺物'); }
         else if(r < 0.75){
-          const e = makeEnemy(R.floor, 0); e.n='不安息者'; e.i='🧟';
+          const e = makeEnemy(R.floor, 0); e.n='不安息者'; e.i='🧟'; e.img=1; e.imgKey='feign';   // v396：詐屍有專屬圖；沿用 imgKey 不動 key，圖鑑統計不受影響
           showEventScreen('🧟','遺物','你的手才碰到他的行囊，他的手就抓住了你的。',
             [{n:'⚔️ 迎戰', f:()=>startBattle(e, {ambush:true}), primary:true}]);
         }

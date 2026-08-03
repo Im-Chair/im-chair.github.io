@@ -63,7 +63,7 @@ function makeBossEncounter(floor){
   return boss;
 }
 function makeRealmElite(floor){
-  const t = REALM_ELITES[realmIdx(floor)];
+  const t = pick(REALM_ELITES[realmIdx(floor)]);   // v396：每域兩隻，隨機一隻
   const cm = cycMult((R&&R.cycle)||0);
   const em = 100; // 域限精英基準體重
   const hp = Math.round(CURVE.mobHP(floor) * CURVE.eliteHP * (t.hp/em) * cm);

@@ -53,14 +53,14 @@ function confirmClass(){
    現在 .camp-scene 是固定 2:3 + background-size:contain，容器比例＝圖片比例，
    百分比直接就是圖片百分比。不需要圖片尺寸、不需要位移、所有裝置一致。
    ⚠️ 換圖時若新圖不是 2:3，要同步改 style.css 的 aspect-ratio，否則這個保證就沒了。 */
-let campRatio = 2/3;   // camp2.webp 是 1024×1536。只需要「比例」，不需要絕對像素
+let campRatio = 941/1672;   // camp3.webp。只需要「比例」，不需要絕對像素
 /* 開機時從實際圖檔讀回比例，換圖也不會和這裡的常數脫節（舊版把 1080×1747 寫死，換圖就錯）。
    包 try 且不擋任何流程——非必要的東西不可以站在必要流程前面（v389 的教訓）。 */
 try{
   if(typeof Image === 'function'){
     const _ci = new Image();
     _ci.onload = () => { if(_ci.naturalHeight){ campRatio = _ci.naturalWidth/_ci.naturalHeight; layoutCamp(); } };
-    _ci.src = 'camp2.webp?v=' + window.RPG_VER;
+    _ci.src = 'camp3.webp?v=' + window.RPG_VER;
   }
 }catch(e){}
 
@@ -177,8 +177,7 @@ function openCodex(){
   REALMS.slice(0,5).forEach((z, ri)=>{
     html += `<div class="section-title">${z.i} ${z.n}</div><div class="item-list">`;
     for(const [k,e] of Object.entries(ENEMIES)) if(e.realm===ri) html += row({key:k, n:e.n, i:e.i, img:e.img});
-    const re = REALM_ELITES[ri];
-    html += row({key:re.key, n:re.n, i:re.i, img:re.img, boss:true});
+    for(const re of REALM_ELITES[ri]) html += row({key:re.key, n:re.n, i:re.i, img:re.img, boss:true});
     const mb = MINI_BOSSES[ri];
     html += row({key:mb.key, n:mb.n, i:mb.i, img:mb.img, boss:true});
     if(LORD_BOSSES[ri]){ const lb = LORD_BOSSES[ri]; html += row({key:lb.key, n:lb.n, i:lb.i, img:lb.img, boss:true}); }
