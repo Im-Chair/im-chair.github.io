@@ -1,6 +1,8 @@
 :root{
+  /* v393 暖褐調（美術交接文件 6.1）。稀有度四色維持不動——那是玩家已學會的語言 */
   --bg:#080605; --panel:#15110c; --panel2:#221a13; --line:#4a3624;
   --text:#e6e1d3; --dim:#8a7658; --gold:#d8a84c; --red:#d05252;
+  --line-hi:#6a4f38; --gem:#7eb1c9;
   --green:#6fbf8f; --blue:#5a9bd4; --orange:#e0813f; --white-r:#b8bcc8;
   --safe-b:max(env(safe-area-inset-bottom,0px), 32px);
 }
@@ -89,25 +91,40 @@ h1.title{
 .camp-save:active{opacity:.55;}
 .milestone{font-size:12px;color:var(--dim);text-align:center;margin-top:2px;}
 /* 營地美圖：背景圖＋透明熱區＋動態疊層 */
-#s-camp{padding:0;}
-/* v393b：頁首從「疊在圖上」改成獨立區塊；圖改固定比例 + contain，
-   熱區百分比從此在所有裝置一致，不再需要逐機手調 */
-.camp-top{padding:10px 12px 8px;flex:none;}
+/* 上緣補 safe-area：這個畫面把 .screen 的 16px padding 歸零了，不補的話瀏海機頁首會頂到瀏海下 */
+#s-camp{padding:max(env(safe-area-inset-top,0px),4px) 0 calc(4px + var(--safe-b));}
+.camp-scene{position:relative;width:100%;flex:1;min-height:0;overflow:hidden;background:var(--bg);}
+/* v396：941×1672（0.5628≈9:16）的底圖，手機上幾乎滿版，左右只剩幾 px。
+   ⚠️ 不要在這裡加 brightness()：camp3 原生平均明度 0.103，本來就暗。
+      （camp_v2 那張是 0.250，出廠已 gamma 校正過，當初多乘一次變成過曝。）
+      要調亮度就在下面這行加 filter:brightness(x)——全案只有這一個旋鈕。 */
+.camp-scene::before{content:"";position:absolute;inset:0;background:url("camp3.webp?v=404") center/contain no-repeat;}
+/* 子層一律疊在底圖之上。全部已是 position:absolute，所以只給 z-index、不動 position */
+.camp-scene > *{z-index:1;}
+.camp-top{flex:none;padding:6px 12px 8px;display:flex;flex-direction:column;}
 .ct-bar{display:flex;align-items:center;justify-content:space-between;gap:8px;}
-.camp-scene{position:relative;width:100%;flex:none;aspect-ratio:2/3;overflow:hidden;
-  background:var(--bg) url("camp2.webp?v=398") center center/contain no-repeat;
-  filter:brightness(1.38) contrast(1.03);}
-.ov-title{font-family:"Songti TC","Noto Serif TC",serif;font-weight:700;font-size:23px;letter-spacing:6px;text-indent:6px;background:linear-gradient(180deg,#f0d896,#b8842e);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;text-shadow:0 0 18px rgba(216,168,76,.18);}
+.ov-title{flex:1;min-width:0;margin:0;text-align:center;font-family:"Songti TC","Noto Serif TC",serif;font-weight:700;font-size:clamp(21px,6.4vw,30px);letter-spacing:4px;text-indent:4px;white-space:nowrap;background:linear-gradient(180deg,#f0d896,#b8842e);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;text-shadow:0 0 18px rgba(216,168,76,.18);}
 .hot{position:absolute;transform:translate(-50%,-50%);cursor:pointer;border-radius:16px;}
 .hot:active{background:rgba(216,168,76,.20);}
+/* 未解鎖＝那裡還沒點燈（6.6）。黑市與改建中的圖鑑都吃這個
+   ⚠️ 舊 Android WebView 的 backdrop-filter 支援不完整，實機沒效果就改半透明黑 overlay */
+.hot.locked{backdrop-filter:brightness(.32) saturate(.35);-webkit-backdrop-filter:brightness(.32) saturate(.35);}
+/* ---------- SVG 圖示（sprite 內嵌在 index.html 開頭）---------- */
+.ic{width:1em;height:1em;fill:currentColor;vertical-align:-.125em;flex:none;}
+.ic.sm{width:16px;height:16px;}
+.ic.lg{width:44px;height:44px;}
+.ic.big{width:56px;height:56px;}
+.ic-gold{color:var(--gold);}
+.ic-gem{color:var(--gem);}
+.ic-dim{color:var(--dim);}
 .hot-badge{position:absolute;top:-6px;right:2px;background:var(--red);color:#fff;font-size:12px;border-radius:9px;padding:0 6px;min-width:18px;text-align:center;line-height:18px;}
 .ov-gold{padding:5px 13px;background:linear-gradient(#2a1f10,#170f06);border:1px solid #7a5a2a;border-radius:22px;display:flex;align-items:center;gap:6px;color:#f0d896;font-size:15px;font-weight:600;}
-.ov-gem{padding:5px 13px;background:linear-gradient(#101a2a,#0a1018);border:1px solid #2a4a7a;border-radius:22px;display:flex;align-items:center;gap:6px;color:#7eb1c9;font-size:15px;font-weight:600;}
-.ov-hero{margin-top:8px;padding:7px 13px;background:linear-gradient(#241a10,#140d06);border:1px solid #6a4a1e;border-radius:14px;display:flex;align-items:center;gap:9px;cursor:pointer;}
-.ov-hero-ic{font-size:28px;line-height:1;display:flex;align-items:center;}
-.ov-hero-tx{display:flex;flex-direction:column;line-height:1.25;}
+.ov-gem{padding:5px 13px;background:linear-gradient(#101a2a,#0a1018);border:1px solid #2a4a7a;border-radius:22px;display:flex;align-items:center;gap:6px;color:#8fd0ff;font-size:15px;font-weight:600;}
+.ov-hero{align-self:flex-start;margin-top:8px;padding:6px 13px;background:linear-gradient(#241a10,#140d06);border:1px solid #6a4a1e;border-radius:14px;display:flex;align-items:center;gap:9px;cursor:pointer;}
+.ov-hero-ic{font-size:24px;line-height:1;display:flex;}
+.ov-hero-tx{display:flex;align-items:baseline;gap:9px;line-height:1.2;white-space:nowrap;}
 .ov-hero-cls{font-size:15px;color:#e6e1d3;}
-.ov-hero-cert{font-size:12px;color:var(--gold);}
+.ov-hero-cert{font-size:12px;color:#d8a84c;}
 /* ---------- gear ---------- */
 .slot-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0;}
 .slot{
@@ -344,29 +361,3 @@ h1.title{
 .toast.show{opacity:1;}
 .section-title{font-size:13px;color:var(--dim);letter-spacing:2px;margin:14px 0 6px;border-left:3px solid var(--gold);padding-left:8px;}
 .back-link{color:var(--dim);font-size:14px;padding:8px 0;cursor:pointer;display:inline-block;}
-
-
-/* ================== SVG 圖示 ==================
-   <svg class="ic"><use href="#ic-gold"/></svg>
-   ⚠ 缺這段的話 SVG 會用預設的 300x150px，整個版面會垮 */
-.ic{width:1em;height:1em;fill:currentColor;vertical-align:-.125em;flex:none;}
-.ic.big{width:56px;height:56px;}
-.ic.lg{width:44px;height:44px;}
-.ic.sm{width:16px;height:16px;}
-.center-box .big .ic{width:56px;height:56px;}
-
-.ic-gold{color:var(--gold);} .ic-gem{color:#7eb1c9;}
-.ic-hp{color:#e06a5c;} .ic-poison{color:#8e6ec8;}
-.ic-burn{color:var(--orange);} .ic-dim{color:var(--dim);}
-
-/* ================== 熱區打光階序 ==================
-   讓亮度變成可程式化的資訊通道，而不是烤死在圖裡 */
-.hot{transition:backdrop-filter .3s,opacity .3s;}
-.hot.tier-bright{backdrop-filter:brightness(1.35) saturate(1.1);}
-.hot.tier-dim{backdrop-filter:brightness(.78) saturate(.85);}
-.hot.locked{backdrop-filter:brightness(.32) saturate(.35);}
-.hot.alert{animation:hot-pulse 2.4s ease-in-out infinite;}
-@keyframes hot-pulse{
-  0%,100%{backdrop-filter:brightness(1.1);}
-  50%{backdrop-filter:brightness(1.55) saturate(1.15);}
-}
