@@ -359,9 +359,9 @@ const POTIONS = {
   heal:{n:'恢復藥水', i:'🧪', img:'pot_heal', d:'回復生命與部分法力', battle:true, any:true},
   energy:{n:'烈酒',   i:'🍶', img:'pot_energy', d:'本回合 +2 能量', battle:true, any:false},
   bomb:{n:'火油瓶',   i:'🔥', img:'pot_bomb', d:'對敵人造成傷害並使其易傷', battle:true, any:false},
-  purge:{n:'淨化藥水', i:'<svg class="ic"><use href="#ic-refresh"/></svg>', d:'清除自身所有負面狀態', battle:true, any:true},
+  purge:{n:'淨化藥水', i:'<svg class="ic"><use href="#ic-refresh"/></svg>', img:'pot_purge', d:'清除自身所有負面狀態', battle:true, any:true},
   wrath:{n:'狂暴藥劑', i:'🧨', img:'pot_wrath', d:'本場戰鬥傷害 +50%', battle:true, any:false, m:20},
-  stone:{n:'石膚藥劑', i:'<svg class="ic"><use href="#ic-heavy"/></svg>', d:'獲得格擋', battle:true, any:false, m:20},
+  stone:{n:'石膚藥劑', i:'<svg class="ic"><use href="#ic-heavy"/></svg>', img:'pot_stone', d:'獲得格擋', battle:true, any:false, m:20},
   holy:{n:'聖水',     i:'💦', img:'pot_holy', d:'對所有敵人造成傷害並淨化自身', battle:true, any:false, m:20},
 };
 
@@ -423,7 +423,12 @@ const EV_IMG = {
   '📦':'door_chest',                                      // 寶箱
   '🪨':'ev_rock', '🗿':'ev_rock',                          // 塌落的石堆／鈣化的英雄
   '🧟':'ev_corpse',                                       // 前人／遺物
-  '🪙':'coin',                                            // 許願池
+  '🪙':'coin',
+  '🧰':'ev_box',    // 上鎖的鐵盒
+  '🥫':'ev_can',    // 奇怪的罐頭
+  '📜':'ev_scroll', // 殘卷
+  '🎲':'ev_dice',   // 賭徒
+  '🪢':'ev_rope',   // 繩降平台                                            // 許願池
 };
 
 const DOOR_IMG = {fight:'door_fight', elite:'door_elite', rest:'door_rest', chest:'door_chest', event:'ev_corpse'};

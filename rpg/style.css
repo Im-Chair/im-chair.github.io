@@ -571,6 +571,10 @@ h1.title{
   background:#0d0a07;display:flex;align-items:center;justify-content:center;
 }
 .mk-card .thumb img{width:100%;height:100%;object-fit:cover;display:block;}
+/* 修：itemIcon() 沒帶 class 時預設吃 .item-ic.ic-sm，那條帶了 margin-right:9px。
+   在 54px 的 .thumb 裡，圖被推成「寬 100% + 右邊留 9px」→ 整張往左偏出格子（只有拆封品會，
+   因為只有它用 itemIcon 當縮圖）。這裡把外距與自身邊框歸零——稀有度邊框由 .thumb 的 r.b 負責。 */
+.mk-card .thumb .item-ic{margin:0;border:0;border-radius:0;}
 .mk-card .thumb i{font-style:normal;font-size:26px;color:#5d5240;}
 .mk-card .bd{flex:1;min-width:0;}
 .mk-card .t1{font-size:15px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
