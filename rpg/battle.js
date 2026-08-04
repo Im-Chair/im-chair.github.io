@@ -169,8 +169,9 @@ function startBattle(enemies, opt){
   $('p-name').innerHTML = classLabel(G.cls);
   $('log').innerHTML='';
   const e0 = enemies[0];
-  if(e0.boss && e0.intro) log(e0.intro,'sys');
-  else if(B.duo) log('遭遇了 '+enemies.map(e=>e.n).join(' 與 ')+'——先殺哪隻？','sys');
+  // v409：首領 intro 已移除（純風味，且與新美術矛盾）。FINAL_BOSS 的 intro2 保留在相位切換處，
+  //       因為那行同時是「第二形態開始」的唯一提示，不是風味。
+  if(B.duo) log('遭遇了 '+enemies.map(e=>e.n).join(' 與 ')+'——先殺哪隻？','sys');
   else log('遭遇了 '+e0.n+'。','sys');
   if(opt && opt.ambush) log('你被偷襲了！第一回合能量 -1。','sys');
   if(Object.keys(B.st).length) log('異常狀態纏著你進入了戰鬥。','sys');

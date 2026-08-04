@@ -56,6 +56,37 @@ h1.title{
 .class-card .ci{font-size:34px;}
 .class-card .cn{font-size:17px;margin-top:6px;letter-spacing:2px;}
 .class-card .cd{font-size:12px;color:var(--dim);margin-top:4px;min-height:3em;}
+/* ---------- 標題畫面（v409：滿版底圖 + 燈籠閃爍）---------- */
+#s-title{position:relative;overflow:hidden;padding:calc(12px + env(safe-area-inset-top,0px)) 16px calc(20px + var(--safe-b));}
+#s-title::before{content:"";position:absolute;inset:0;background:url("ui/title_bg.webp?v=410") center/cover no-repeat;z-index:0;}
+/* 底部壓一層漸層，讓按鈕與授權小字在亮處也讀得到 */
+#s-title::after{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;
+  background:linear-gradient(180deg,rgba(8,6,5,.55) 0%,rgba(8,6,5,0) 26%,rgba(8,6,5,0) 46%,rgba(8,6,5,.78) 86%);}
+.tglow{position:absolute;inset:0;z-index:2;pointer-events:none;}
+.t-body{position:relative;z-index:3;flex:1;display:flex;flex-direction:column;width:100%;}
+/* 燈籠光暈：座標是從圖片亮點偵測出來的，不是目測。每盞週期與延遲都不同，才不會整齊得像在打拍子 */
+.tg{position:absolute;left:var(--x);top:var(--y);width:var(--s);height:var(--s);
+  transform:translate(-50%,-50%);border-radius:50%;pointer-events:none;mix-blend-mode:screen;
+  background:radial-gradient(circle,rgba(196,150,255,.80) 0%,rgba(146,88,236,.34) 36%,rgba(146,88,236,0) 70%);
+  animation:tflick var(--d) ease-in-out infinite var(--dl);}
+@keyframes tflick{
+  0%,100%{opacity:.30;transform:translate(-50%,-50%) scale(1);}
+  38%    {opacity:.85;transform:translate(-50%,-50%) scale(1.10);}
+  52%    {opacity:.42;}
+  66%    {opacity:.92;transform:translate(-50%,-50%) scale(1.06);}
+  80%    {opacity:.50;}
+}
+/* 底部那團是深處的環境輝光，不是火——用慢而小的呼吸，跟燈焰的抖動區分開 */
+.tg-deep{background:radial-gradient(circle,rgba(170,120,255,.42) 0%,rgba(120,70,220,.18) 45%,rgba(120,70,220,0) 72%);
+  animation-name:tbreath;}
+@keyframes tbreath{0%,100%{opacity:.42;transform:translate(-50%,-50%) scale(1);}50%{opacity:.72;transform:translate(-50%,-50%) scale(1.06);}}
+@media (prefers-reduced-motion:reduce){ .tg{animation:none;opacity:.6;} }
+#rpg-ver{text-align:center;color:var(--dim);font-size:12px;letter-spacing:2px;margin-top:8px;}
+.credit{text-align:center;color:var(--dim);font-size:10px;line-height:1.6;opacity:.6;padding:0 12px;}
+.credit a{color:inherit;}
+/* 域規則常駐（v409）：這四條規則原本只在進域那一次的 intro 出現過，
+   打到第 19 層早忘了、中途死掉重進也不會再看到——等於「玩家看不見的機制」。 */
+.realm-rule{font-size:12px;color:var(--orange);margin-top:4px;letter-spacing:.5px;}
 /* ---------- camp ---------- */
 .camp-hero{
   text-align:center;padding:22px 0 14px;
@@ -98,7 +129,7 @@ h1.title{
    ⚠️ 不要在這裡加 brightness()：camp3 原生平均明度 0.103，本來就暗。
       （camp_v2 那張是 0.250，出廠已 gamma 校正過，當初多乘一次變成過曝。）
       要調亮度就在下面這行加 filter:brightness(x)——全案只有這一個旋鈕。 */
-.camp-scene::before{content:"";position:absolute;inset:0;background:url("camp3.webp?v=408") center/contain no-repeat;}
+.camp-scene::before{content:"";position:absolute;inset:0;background:url("camp3.webp?v=410") center/contain no-repeat;}
 /* 子層一律疊在底圖之上。全部已是 position:absolute，所以只給 z-index、不動 position */
 .camp-scene > *{z-index:1;}
 .camp-top{flex:none;padding:6px 12px 8px;display:flex;flex-direction:column;}

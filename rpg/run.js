@@ -201,6 +201,9 @@ function showDoors(){
   const rh = document.getElementById('rope-hint');
   if(rh) rh.innerHTML = R.hasRope ? '' : `<svg class="ic"><use href="#ic-rope"/></svg> 逃脫之繩：首領 20%起每5層+5%${R.cycle===0?`（本源第 ${ROPE_PITY} 層起必給）`:''}／寶箱 5%／商人 8%｜或花 9 成碎銀逃脫`;
   $('d-bonus').textContent = rarityBonusText(f);
+  // 域規則常駐：原本只在進域的 intro 講一次，打到第 19 層早忘了、中途死掉重進也不再顯示
+  const _z = realmFor(f), _rl = $('d-rule');
+  if(_rl){ _rl.textContent = (_z && _z.rt) ? _z.n + '：' + _z.rt : ''; }
   const grid = $('door-grid'); grid.innerHTML = '';
   if(R.forceDoor){
     const t = R.forceDoor; R.forceDoor = null;
@@ -212,7 +215,7 @@ function showDoors(){
   } else if(f % 5 === 0){
     // 首領層
     const b = bossFor(f);
-    R.doors = [{t:'boss', i:b.i, mimg:(b.img? (b.key||'final') : null), n:'首領・'+b.n, d:'必掉稀有以上'}];
+    R.doors = [{t:'boss', i:b.i, mimg:(b.img? (b.key||'final') : null), n:'首領・'+b.n, d:''}];
     grid.style.gridTemplateColumns = '1fr';
   } else {
     if(!R.doors){
