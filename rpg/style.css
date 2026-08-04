@@ -410,9 +410,9 @@ h1.title{
 .sm-res .g{color:var(--gold);font-variant-numeric:tabular-nums;margin-left:auto;}
 .sm-res .back-link{padding:0;}
 
-.sm-top{display:flex;gap:11px;flex:none;height:clamp(156px,23vh,214px);}
+.sm-top{display:flex;gap:11px;flex:none;height:clamp(150px,20vh,190px);}
 .sm-npc{
-  width:clamp(126px,17.5vh,166px);height:100%;flex:none;border:1px solid var(--line-hi);border-radius:10px;
+  width:clamp(120px,15.5vh,148px);height:100%;flex:none;border:1px solid var(--line-hi);border-radius:10px;
   overflow:hidden;background:var(--sm-npc) center/cover no-repeat,var(--panel);position:relative;
 }
 .sm-npc::after{content:"";position:absolute;inset:0;box-shadow:inset 0 -34px 26px -18px rgba(8,6,5,.92);}
@@ -472,7 +472,7 @@ h1.title{
   border:1px solid #33291b;border-radius:8px;background:#1a150e;font-size:12px;line-height:1.3;
 }
 .rf-cell .tx{flex:1;min-width:0;color:var(--text);}
-.rf-cell .tx small{display:block;color:var(--dim);font-size:10px;letter-spacing:1px;}
+.rf-cell .tx small{display:inline;margin-left:8px;color:var(--dim);font-size:11px;letter-spacing:1px;white-space:nowrap;}
 .rf-cell .lk{
   width:26px;height:26px;flex:none;display:flex;align-items:center;justify-content:center;
   border:1px solid #3d3121;border-radius:6px;color:var(--dim);font-size:14px;background:#120e08;
@@ -496,16 +496,19 @@ h1.title{
 .rf-hint{font-size:11px;color:var(--dim);margin-top:8px;text-align:center;}
 
 
-/* 高螢幕（iPhone 14/15 以上）：把多出來的直向空間分給卡片，避免底部一大塊黑 */
+/* 高螢幕：只放大文字，容器維持緊湊——放大內距只會製造更多空盒子 */
 @media (min-height:780px){
-  .sm-card{padding:16px 15px;}
-  .sm-card .btn{margin-top:14px;padding:15px;}
-  .sm-step b{font-size:34px;}
-  .sm-step{margin-top:10px;}
-  .sm-need{margin-top:13px;}
-  .rf-cell{min-height:46px;}
-  .rf-cell.void.rf-wide{min-height:30px;}
-  .rf-grid{gap:6px;margin-top:10px;}
-  .rf-hint{margin-top:11px;}
-  .sm-work{gap:12px;}
+  .sm-res{font-size:14px;}
+  .sm-slot .kd{font-size:12px;}
+  .sm-slot .nm{font-size:17px;}
+  .sm-slot .ln{font-size:12px;}
+  .sm-card .hd .t{font-size:14px;}
+  .sm-card .hd .cap{font-size:12px;}
+  .sm-step b{font-size:36px;}
+  .sm-step i{font-size:19px;}
+  .sm-step .gain{font-size:15px;}
+  .sm-need span{font-size:13px;}
+  .sm-card .btn{font-size:18px;}
+  .rf-cell{font-size:14px;}
+  .rf-hint{font-size:12px;}
 }

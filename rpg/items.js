@@ -708,7 +708,7 @@ function renderSmith(){
       if(!a){ h += `<div class="rf-cell void">空</div>`; continue; }
       const on = reforgeLocks.includes(i);
       h += `<div class="rf-cell norm${on?' lock':''}" onclick="toggleReforgeLock(${i})">`
-         + `<span class="tx">${AFFIXES[a.k].n}：${AFFIXES[a.k].fmt(a.v)}</span>`
+         + `<span class="tx">${AFFIXES[a.k].fmt(a.v)}</span>`
          + `<span class="lk"><svg class="ic"><use href="#${on?'ic-lock':'ic-unlock'}"/></svg></span></div>`;
     }
     h += cur
