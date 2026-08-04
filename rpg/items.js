@@ -113,27 +113,35 @@ function itemIcon(it, cls){
 /* 黑市改「每個已認證輪迴一個分頁」（見 certPool）。
    分頁不是「有取捨的選擇」，而是一道價格階梯——它真正的價值是：你剛踏進輪迴III，
    還是買得到符合實際實力的輪迴II 貨，而不是被降級成輪迴III 第1層的垃圾。 */
+/* v415：貨物生成抽出來，讓「只刷新這一頁」能重用同一套規則 */
+function rollMarketBoxes(ctx, isTop){
+  const lo = Math.max(1, ctx.floor - 10);
+  const boxes = [];
+  for(let i=0;i<rnd(2,3);i++){                       // 分頁後每頁縮到 2–3 件，否則貨量爆炸
+    const fl = rnd(lo, ctx.floor);
+    // 稀有度：以該樓層的自然掉落分佈為底、整體推高一階（沿用首領權重 白×0.5 橙×2）。
+    // 四種稀有度都上架——稀有度倍率反轉後白裝基礎值最高，只賣稀有/傳說等於只賣基礎值最低的貨。
+    const it = makeItem(fl, 0, ctx.cyc, rollRarity(fl, 2, ctx.cyc));
+    boxes.push({type: Math.random()<0.35?'open':'box', item:it, sold:false});
+  }
+  // 材料只掛在最強分頁（材料不分輪迴，每頁都出現沒有意義）
+  if(isTop && cyclesUnlocked() >= 2 && Math.random() < 0.5)
+    boxes.push({type:'mat', mat: Math.random()<0.5?'iron':'steel', qty:rnd(2,3), sold:false});
+  return boxes;
+}
+function rollMarketRunes(ctx){
+  const runes = [];
+  if(runeMaxRar(ctx.cyc, ctx.floor) >= 0)            // 符文里程碑由該分頁自己的輪迴/樓層決定，不用另寫規則
+    for(let i=0;i<rnd(1,2);i++){ const rn = makeRune(ctx.floor, ctx.cyc); if(rn) runes.push({rune:rn, sold:false}); }
+  return runes;
+}
+
 function marketStock(){
   if(!G.market || G.market.run !== G.rec.runs || !G.market.tabs){
     const pool = certPool();
-    const tabs = pool.map((ctx, ti)=>{
-      const lo = Math.max(1, ctx.floor - 10);
-      const boxes = [];
-      for(let i=0;i<rnd(2,3);i++){                       // 分頁後每頁縮到 2–3 件，否則貨量爆炸
-        const fl = rnd(lo, ctx.floor);
-        // 稀有度：以該樓層的自然掉落分佈為底、整體推高一階（沿用首領權重 白×0.5 橙×2）。
-        // 四種稀有度都上架——稀有度倍率反轉後白裝基礎值最高，只賣稀有/傳說等於只賣基礎值最低的貨。
-        const it = makeItem(fl, 0, ctx.cyc, rollRarity(fl, 2, ctx.cyc));
-        boxes.push({type: Math.random()<0.35?'open':'box', item:it, sold:false});
-      }
-      const runes = [];
-      if(runeMaxRar(ctx.cyc, ctx.floor) >= 0)            // 符文里程碑由該分頁自己的輪迴/樓層決定，不用另寫規則
-        for(let i=0;i<rnd(1,2);i++){ const rn = makeRune(ctx.floor, ctx.cyc); if(rn) runes.push({rune:rn, sold:false}); }
-      // 材料只掛在最強分頁（材料不分輪迴，每頁都出現沒有意義）
-      if(ti===0 && cyclesUnlocked() >= 2 && Math.random() < 0.5)
-        boxes.push({type:'mat', mat: Math.random()<0.5?'iron':'steel', qty:rnd(2,3), sold:false});
-      return {cyc:ctx.cyc, floor:ctx.floor, eq:ctx.eq, boxes, runes};
-    });
+    const tabs = pool.map((ctx, ti)=>
+      ({cyc:ctx.cyc, floor:ctx.floor, eq:ctx.eq,
+        boxes: rollMarketBoxes(ctx, ti===0), runes: rollMarketRunes(ctx)}));
     G.market = {run:G.rec.runs, tabs, ti:0};
     save();
   }
@@ -163,51 +171,99 @@ function marketTabName(t){
   if(t.cyc >= 4) return '無限';
   return '輪迴' + 'I'.repeat(t.cyc);
 }
-function switchMarketTab(i){ const m = marketStock(); m.ti = i; save(); openMarket(); }
+var marketStall = 0;   // 0=裝備 1=符文 2=魔符
+function switchMarketTab(i){ const m = marketStock(); m.ti = i; marketStall = 0; save(); renderMarket(); }
+function switchMarketStall(s){ marketStall = s; renderMarket(); }
+function marketEq(t){ return t.eq || t.floor * cycK(t.cyc || 0); }
+/* 刷新只換當前分頁：費用跟該頁的等效樓層走，與 boxPrice 同一把尺。
+   最強分頁 eq≈50 時約等於改版前的固定 80，弱分頁自然便宜。 */
+function marketRerollCost(t){ return Math.round(20 + marketEq(t) * 1.2); }
 
-function openMarket(){
+function openMarket(){ marketStock(); marketStall = 0; renderMarket(); showScreen('s-market'); }
+
+function renderMarket(){
   const m = marketStock(), t = m.tabs[m.ti];
-  let html = `<h3>深淵黑市</h3><p class="base">燭火後面的攤主沒有露臉。今晚的貨——有封著的，有拆過的，看你信不信自己的手氣。</p>`;
-  if(m.tabs.length > 1){   // 只有一個已認證輪迴時不必顯示分頁
-    html += `<div class="mkt-tabs">` + m.tabs.map((tb,i)=>
-      `<button class="mkt-tab${i===m.ti?' on':''}" onclick="switchMarketTab(${i})">${marketTabName(tb)} ${tb.floor}</button>`
-    ).join('') + `</div>`;
+  $('mk-gold').innerHTML = '<svg class="ic"><use href="#ic-gold"/></svg> ' + G.gold;
+  $('mk-gem').innerHTML  = '<svg class="ic"><use href="#ic-gem"/></svg> ' + (G.gems||0);
+  $('mk-src').innerHTML  = `貨源　<b>${marketTabName(t)}</b>　第 <b>${Math.max(1,t.floor-10)}–${t.floor}</b> 層`;
+
+  $('mk-tabs').innerHTML = m.tabs.map((tb,i)=>
+    `<div class="mk-tab${i===m.ti?' on':''}" onclick="switchMarketTab(${i})">${marketTabName(tb)}<b>${tb.floor}</b></div>`
+  ).join('');
+
+  /* 第二列：符文／魔符／刷新。裝備是預設攤位，點第一列任一分頁就回來 */
+  let bar = `<div class="mk-tab${marketStall===1?' on':''}" onclick="switchMarketStall(1)" style="padding:8px 4px">符文</div>`
+          + `<div class="mk-tab${marketStall===2?' on':''}" onclick="switchMarketStall(2)" style="padding:8px 4px">魔符</div>`;
+  if(marketStall === 1){
+    bar += `<div class="mk-re gem${(G.gems||0)<1?' poor':''}" onclick="rerollMarket()">`
+         + `<svg class="ic"><use href="#ic-dice"/></svg><svg class="ic"><use href="#ic-gem"/></svg> 1</div>`;
+  } else if(marketStall === 0){
+    const rc = marketRerollCost(t);
+    bar += `<div class="mk-re${G.gold<rc?' poor':''}" onclick="rerollMarket()">`
+         + `<svg class="ic"><use href="#ic-dice"/></svg><svg class="ic"><use href="#ic-gold"/></svg> ${rc}</div>`;
+  } else {
+    bar += `<div class="mk-re poor" style="cursor:default">—</div>`;
   }
-  html += `<p style="color:var(--dim);font-size:12px;margin:6px 0 0">貨源：${marketTabName(t)} 第 ${Math.max(1,t.floor-10)}–${t.floor} 層｜價格依貨物出身計算</p>`;
-  html += `<div class="item-list" style="margin-top:8px">`;
-  t.boxes.forEach((b, i)=>{
-    if(b.sold){ html += `<div class="item-row" style="opacity:.4"><span class="in">已售出</span></div>`; return; }
-    const price = boxPrice(b);
-    if(b.type==='mat'){
-      html += `<div class="item-row" onclick="buyBox(${i})">
-        <span class="in">${MATS[b.mat].i} ${MATS[b.mat].n} ×${b.qty}</span>
-        <span class="is">精煉材料｜${price}<svg class="ic"><use href="#ic-gold"/></svg></span></div>`;
-    } else if(b.type==='open'){
-      const it = b.item, r = RARITIES[it.rar];
-      html += `<div class="item-row ${r.b}" onclick="peekOpen(${i})">${itemIcon(it)}<div class="ir-body">
-        <span class="in ${r.cls}">${it.name}</span>
-        <span class="is"><svg class="ic"><use href="#ic-open"/></svg> 拆封品・詞綴可見｜${price}<svg class="ic"><use href="#ic-gold"/></svg></span></div></div>`;
-    } else {
-      const it = b.item, r = RARITIES[it.rar];
-      html += `<div class="item-row ${r.b}" onclick="buyBox(${i})">
-        <span class="in ${r.cls}"><svg class="ic"><use href="#ic-chest"/></svg> ${r.n}之盒</span>
-        <span class="is">${slotName(it.slot)}｜詞綴未知｜${price}<svg class="ic"><use href="#ic-gold"/></svg></span></div>`;
-    }
-  });
-  html += '</div>';
-  if((t.runes||[]).length){
-    html += '<div class="section-title"><svg class="ic"><use href="#ic-star"/></svg> 符文攤（用 <svg class="ic"><use href="#ic-gem"/></svg> 購買）</div><div class="item-list">';
-    t.runes.forEach((s,i)=>{
-      if(s.sold){ html += `<div class="item-row" style="opacity:.4"><span class="in">已售出</span></div>`; return; }
-      const rn = s.rune, a = rn.affixes[0], price = runeGemPrice(rn);
-      html += `<div class="item-row ${RARITIES[rn.rar].b}" onclick="buyRune(${i})"><span class="in ${RARITIES[rn.rar].cls}">${rn.icon} ${rn.name}</span><span class="is">${runeFmt(a)}</span><span class="ip"><svg class="ic"><use href="#ic-gem"/></svg>${price}</span></div>`;
+  $('mk-bar').innerHTML = bar;
+
+  let h = '';
+  if(marketStall === 2){
+    h = '<p class="mk-empty">魔符攤尚未開張。</p>';
+  } else if(marketStall === 1){
+    const rs = t.runes || [];
+    if(!rs.length) h = '<p class="mk-empty">這個貨源還沒有符文可買。</p>';
+    rs.forEach((s,i)=>{
+      if(s.sold){ h += '<div class="mk-card void">已售出</div>'; return; }
+      const rn = s.rune, r = RARITIES[rn.rar], price = runeGemPrice(rn), poor = (G.gems||0) < price;
+      h += `<div class="mk-card rune${poor?' poor':''}" onclick="buyRune(${i})">`
+         + `<div class="thumb">${rn.icon||'✦'}</div>`
+         + `<div class="bd"><div class="t1 ${r.cls}">${rn.name}</div>`
+         + `<div class="t2">${runeFmt(rn.affixes[0])}</div></div>`
+         + `<div class="pr"><svg class="ic"><use href="#ic-gem"/></svg> ${price}</div></div>`;
     });
-    html += '</div>';
+  } else {
+    t.boxes.forEach((b,i)=>{
+      if(b.sold){ h += '<div class="mk-card void">已售出</div>'; return; }
+      const price = boxPrice(b), poor = G.gold < price;
+      if(b.type === 'mat'){
+        h += `<div class="mk-card${poor?' poor':''}" onclick="buyBox(${i})">`
+           + `<div class="thumb">${MATS[b.mat].i}</div>`
+           + `<div class="bd"><div class="t1">${MATS[b.mat].n} ×${b.qty}</div>`
+           + `<div class="t2">精煉材料</div></div>`
+           + `<div class="pr">${price}</div></div>`;
+        return;
+      }
+      const it = b.item, r = RARITIES[it.rar];
+      if(b.type === 'open'){
+        const tags = it.affixes.slice(0,2).map(a=>`<span>${AFFIXES[a.k].fmt(a.v)}</span>`).join('');
+        h += `<div class="mk-card ${r.b}${poor?' poor':''}" onclick="peekOpen(${i})">`
+           + `<div class="thumb ${r.b}">${itemIcon(it)}</div>`
+           + `<div class="bd"><div class="t1 ${r.cls}">${it.name}<span class="mk-tag">+30%</span></div>`
+           + `<div class="t2">${slotName(it.slot)}｜${itemStatLine(it)}</div>`
+           + `<div class="aff">${tags}</div></div>`
+           + `<div class="pr">${price}<small>已拆</small></div></div>`;
+      } else {
+        h += `<div class="mk-card sealed ${r.b}${poor?' poor':''}" onclick="peekBox(${i})">`
+           + `<div class="thumb ${r.b}"><i>?</i></div>`
+           + `<div class="bd"><div class="t1 ${r.cls}">${r.n}之盒</div>`
+           + `<div class="t2">${slotName(it.slot)}｜詞綴未知</div></div>`
+           + `<div class="pr">${price}<small>未拆</small></div></div>`;
+      }
+    });
   }
-  html += `<button class="btn small" style="margin-top:10px" onclick="rerollMarket()"><svg class="ic"><use href="#ic-dice"/></svg> 換一批貨（80<svg class="ic"><use href="#ic-gold"/></svg>）</button>
-    <p style="color:var(--dim);font-size:12px;margin-top:10px"><svg class="ic"><use href="#ic-gold"/></svg> ${G.gold}　<svg class="ic"><use href="#ic-gem"/></svg> ${G.gems||0}｜符文放進「角色→符文槽」鑲入即被動生效。</p>
-    <button class="btn" style="margin-top:6px" onclick="closeSheet()">離開</button>`;
-  openSheet(html);
+  $('mk-goods').innerHTML = h;
+}
+
+/* v415：未拆封改成先確認再扣款。改成整頁之後卡片變大、誤觸成本高（一盒動輒上千碎銀） */
+function peekBox(i){
+  const b = marketTab().boxes[i];
+  if(!b || b.sold) return;
+  const it = b.item, r = RARITIES[it.rar], price = boxPrice(b);
+  openSheet(`<h3>${r.n}之盒</h3>
+    <p class="base">${slotName(it.slot)}｜詞綴未知</p>
+    <div class="row" style="margin-top:10px">
+      <button class="btn primary" onclick="closeSheet();buyBox(${i})">買下 ${price}<svg class="ic"><use href="#ic-gold"/></svg></button>
+      <button class="btn" onclick="closeSheet()">再看看</button></div>`);
 }
 
 function peekOpen(i){
@@ -220,16 +276,22 @@ function peekOpen(i){
     ${affixHtml(it)}${compareHtml(it)}</div>
     <p class="base">拆過的貨，看得清楚，也貴三成。</p>
     <div class="row" style="margin-top:10px">
-      <button class="btn primary" onclick="buyBox(${i})">買下 ${price}<svg class="ic"><use href="#ic-gold"/></svg></button>
-      <button class="btn" onclick="openMarket()">再看看</button></div>`);
+      <button class="btn primary" onclick="closeSheet();buyBox(${i})">買下 ${price}<svg class="ic"><use href="#ic-gold"/></svg></button>
+      <button class="btn" onclick="closeSheet()">再看看</button></div>`);
 }
 
 function rerollMarket(){
-  if(G.gold < 80){ toast('碎銀不夠'); return; }
-  G.gold -= 80;
-  G.market = null;
-  marketStock();
-  openMarket();
+  const m = marketStock(), t = m.tabs[m.ti];
+  const ctx = {cyc:t.cyc, floor:t.floor, eq:t.eq};
+  if(marketStall === 1){                       // 符文攤：固定 1 顆寶石
+    if((G.gems||0) < 1){ toast('<svg class="ic"><use href="#ic-gem"/></svg> 不夠'); return; }
+    G.gems -= 1; t.runes = rollMarketRunes(ctx);
+  } else if(marketStall === 0){
+    const c = marketRerollCost(t);
+    if(G.gold < c){ toast('碎銀不夠'); return; }
+    G.gold -= c; t.boxes = rollMarketBoxes(ctx, m.ti === 0);
+  } else return;
+  save(); renderMarket();                      // 只換這一頁這一攤，ti / marketStall 都不動
 }
 
 function buyBox(i){
@@ -241,7 +303,7 @@ function buyBox(i){
   b.sold = true;
   if(b.type==='mat'){
     G.mats[b.mat] = (G.mats[b.mat]||0) + b.qty;
-    save(); openMarket(); toast(`入手 ${MATS[b.mat].n} ×${b.qty}`);
+    save(); renderMarket(); toast(`入手 ${MATS[b.mat].n} ×${b.qty}`);
     return;
   }
   b.item.banked = true;
@@ -254,8 +316,7 @@ function buyBox(i){
     ${affixHtml(it)}</div>
     <p class="base">${it.cursed?'攤主的方向傳來一聲很輕的笑。':'已存入倉庫。'}</p>
     <div class="row" style="margin-top:10px">
-      <button class="btn" onclick="openMarket()">繼續看貨</button>
-      <button class="btn" onclick="closeSheet()">離開</button></div>`);
+      <button class="btn" onclick="closeSheet();renderMarket()">繼續看貨</button></div>`);
 }
 
 function runeGemPrice(rn){ return (rn.rar+1)*20; }   // 普20／精良40／稀有60／傳說80（鑽石梯度保留，消耗加倍）
@@ -267,7 +328,7 @@ function buyRune(i){
   G.gems -= price; s.sold = true;
   if(!G.runeBag) G.runeBag = [];
   G.runeBag.push(s.rune);
-  save(); openMarket(); toast('入手 '+s.rune.name);
+  save(); closeSheet(); renderMarket(); toast('入手 '+s.rune.name);
 }
 var stashFilter = 'all';
 var stashRarity = 'all', sellMode = false, sellSel = new Set();

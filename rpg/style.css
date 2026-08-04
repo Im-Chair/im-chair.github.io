@@ -512,3 +512,87 @@ h1.title{
   .rf-cell{font-size:14px;}
   .rf-hint{font-size:12px;}
 }
+
+
+/* ================= 深淵黑市 v415 ================= */
+#s-market{
+  overflow:hidden;
+  padding:calc(8px + env(safe-area-inset-top,0px)) 14px calc(10px + var(--safe-b));
+  --mkt-bg:url(ui/bg_market.webp);
+}
+.mk-res{display:flex;align-items:center;gap:14px;font-size:14px;color:var(--dim);padding:2px 0 10px;}
+.mk-res .back-link{padding:0;}
+.mk-res .m{margin-left:auto;color:var(--gem);font-variant-numeric:tabular-nums;}
+.mk-res .g{color:var(--gold);font-variant-numeric:tabular-nums;}
+
+.mk-stage{
+  flex:none;aspect-ratio:1.9/1;border-radius:12px;overflow:hidden;
+  border:1px solid var(--line-hi);position:relative;
+  background:var(--mkt-bg) center/cover no-repeat,#0b0806;
+}
+.mk-stage .src{
+  position:absolute;left:0;right:0;bottom:0;padding:22px 12px 8px;font-size:11px;color:var(--dim);
+  background:linear-gradient(180deg,transparent,rgba(8,6,5,.88));
+}
+.mk-stage .src b{color:var(--text);font-weight:400;}
+
+.mk-tabs{display:flex;gap:5px;margin-top:11px;flex:none;}
+.mk-bar{display:flex;gap:5px;margin-top:6px;flex:none;align-items:stretch;}
+.mk-tab{
+  flex:1;min-width:0;padding:6px 4px;border:1px solid var(--line);border-radius:8px;
+  background:var(--panel);color:var(--dim);font-size:12px;cursor:pointer;line-height:1.3;text-align:center;
+}
+.mk-tab b{display:block;font-size:13px;color:var(--text);font-weight:400;}
+.mk-tab.on{border-color:var(--gold);background:#1a1710;}
+.mk-tab.on b{color:var(--gold);}
+.mk-re{
+  flex:1;min-width:0;padding:7px 4px;border:1px dashed var(--line);border-radius:8px;
+  color:var(--gold);font-size:13px;font-variant-numeric:tabular-nums;cursor:pointer;background:transparent;
+  display:flex;align-items:center;justify-content:center;gap:6px;
+}
+.mk-re.gem{color:var(--gem);}
+.mk-re.poor{color:var(--dim);opacity:.55;}
+
+.mk-goods{
+  flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  margin-top:11px;display:flex;flex-direction:column;gap:8px;padding-bottom:8px;
+}
+.mk-goods::-webkit-scrollbar{display:none;}
+
+.mk-card{
+  display:flex;gap:10px;padding:10px;border-radius:11px;border:1px solid var(--line);
+  background:var(--panel);cursor:pointer;align-items:center;
+  height:86px;flex:none;min-height:0;overflow:hidden;
+}
+/* min-height:0 是關鍵：flex column 的項目預設 min-height:auto，內容比 height 高就會把卡片撐開，
+   拆封品（多一行詞綴）會因此比未拆封的高 */
+.mk-card .thumb{
+  width:54px;height:54px;flex:none;border-radius:8px;overflow:hidden;border:2px solid var(--line-hi);
+  background:#0d0a07;display:flex;align-items:center;justify-content:center;
+}
+.mk-card .thumb img{width:100%;height:100%;object-fit:cover;display:block;}
+.mk-card .thumb i{font-style:normal;font-size:26px;color:#5d5240;}
+.mk-card .bd{flex:1;min-width:0;}
+.mk-card .t1{font-size:15px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.mk-card .t2{font-size:11px;line-height:1.3;color:var(--dim);margin-top:3px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.mk-card .aff{display:flex;gap:4px;margin-top:4px;overflow:hidden;white-space:nowrap;}
+.mk-card .aff span{
+  flex:none;font-size:10px;line-height:1.4;color:var(--dim);
+  border:1px solid #33291b;border-radius:4px;padding:1px 5px;
+}
+.mk-card .pr{flex:none;text-align:right;font-size:15px;color:var(--gold);font-variant-numeric:tabular-nums;}
+.mk-card .pr small{display:block;font-size:10px;color:var(--dim);margin-top:2px;}
+.mk-card.sealed{border-style:dashed;background:#120f0a;}
+.mk-card.sealed .thumb{border-style:dashed;}
+.mk-card.rune{border-color:#2f4a55;background:#101619;}
+.mk-card.rune .thumb{border-color:var(--gem);color:var(--gem);font-size:22px;}
+.mk-card.rune .pr{color:var(--gem);}
+.mk-card.poor{opacity:.5;}
+.mk-card.void{
+  border-style:dashed;background:transparent;cursor:default;
+  align-items:center;justify-content:center;color:#4e4536;font-size:12px;letter-spacing:3px;
+}
+.mk-tag{font-size:10px;color:var(--orange);border:1px solid #6a4f38;border-radius:4px;
+  padding:1px 5px;margin-left:5px;}
+.mk-empty{font-size:12px;color:var(--dim);text-align:center;padding:30px 10px;}
