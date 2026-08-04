@@ -410,9 +410,9 @@ h1.title{
 .sm-res .g{color:var(--gold);font-variant-numeric:tabular-nums;margin-left:auto;}
 .sm-res .back-link{padding:0;}
 
-.sm-top{display:flex;gap:11px;flex:none;}
+.sm-top{display:flex;gap:11px;flex:none;height:clamp(156px,23vh,214px);}
 .sm-npc{
-  width:126px;height:156px;flex:none;border:1px solid var(--line-hi);border-radius:10px;
+  width:clamp(126px,17.5vh,166px);height:100%;flex:none;border:1px solid var(--line-hi);border-radius:10px;
   overflow:hidden;background:var(--sm-npc) center/cover no-repeat,var(--panel);position:relative;
 }
 .sm-npc::after{content:"";position:absolute;inset:0;box-shadow:inset 0 -34px 26px -18px rgba(8,6,5,.92);}
@@ -494,3 +494,18 @@ h1.title{
   border-color:transparent;background:transparent;font-size:10px;width:auto;letter-spacing:1px;
 }
 .rf-hint{font-size:11px;color:var(--dim);margin-top:8px;text-align:center;}
+
+
+/* 高螢幕（iPhone 14/15 以上）：把多出來的直向空間分給卡片，避免底部一大塊黑 */
+@media (min-height:780px){
+  .sm-card{padding:16px 15px;}
+  .sm-card .btn{margin-top:14px;padding:15px;}
+  .sm-step b{font-size:34px;}
+  .sm-step{margin-top:10px;}
+  .sm-need{margin-top:13px;}
+  .rf-cell{min-height:46px;}
+  .rf-cell.void.rf-wide{min-height:30px;}
+  .rf-grid{gap:6px;margin-top:10px;}
+  .rf-hint{margin-top:11px;}
+  .sm-work{gap:12px;}
+}
