@@ -104,7 +104,7 @@ function itemIconSlug(it){
 }
 function itemIcon(it, cls){
   const slug = itemIconSlug(it);
-  if(!slug) return `<span class="item-ic ${cls||'ic-sm'} ic-fb">${it && it.slot==='a'?'🛡️':'💍'}</span>`;
+  if(!slug) return `<span class="item-ic ${cls||'ic-sm'} ic-fb">${it && it.slot==='a'?'<svg class="ic"><use href="#ic-shield"/></svg>':'<svg class="ic"><use href="#ic-gem"/></svg>'}</span>`;
   return `<img class="item-ic ${cls||'ic-sm'} r${it.rar}" src="eq/${slug}.webp?v=${window.RPG_VER}" alt="" draggable="false">`;
 }
 
@@ -316,7 +316,7 @@ function openRunes(){
   let html='<h3>符文</h3><p class="base">符文鑲進符文槽即被動生效，不佔裝備、跨探索永久保留。</p><div class="section-title">符文槽 '+G.runes.filter(Boolean).length+'/3</div><div class="item-list">';
   G.runes.forEach((rn,i)=>{ if(rn){ const a=rn.affixes[0];
     html+=`<div class="item-row ${RARITIES[rn.rar].b}" onclick="unsocketRune(${i})"><div style="width:100%"><div class="${RARITIES[rn.rar].cls}" style="font-weight:600">${rn.icon} ${rn.name}<span style="float:right;color:var(--red);font-weight:400">取下</span></div><div style="color:var(--dim);font-size:12px;line-height:1.35;margin-top:3px">${runeFmt(a)}</div></div></div>`;
-  } else html+=`<div class="item-row" style="opacity:.6"><span class="in" style="color:var(--dim)">◇ 空符文槽</span></div>`; });
+  } else html+=`<div class="item-row" style="opacity:.6"><span class="in" style="color:var(--dim)"><svg class="ic"><use href="#ic-gem"/></svg> 空符文槽</span></div>`; });
   html+='</div><div class="section-title">持有符文</div><div class="item-list">';
   if(!G.runeBag.length) html+='<p style="color:var(--dim);font-size:13px">還沒有符文。深淵裡打得到。</p>';
   for(const rn of G.runeBag){ const a=rn.affixes[0];
@@ -342,13 +342,13 @@ function renderRuneStash(sl){
   }
   sl.appendChild(rr);
   const sm=document.createElement('button'); sm.className='btn small'+(sellMode?' primary':''); sm.style.cssText='width:100%;margin-bottom:6px';
-  sm.textContent=sellMode?'✓ 批次販售中——點符文勾選':'🏷️ 批次販售（多選）';
+  sm.innerHTML=sellMode?'<svg class="ic"><use href="#ic-check"/></svg> 批次販售中——點符文勾選':'<svg class="ic"><use href="#ic-bag"/></svg> 批次販售（多選）';
   sm.onclick=()=>{ sellMode=!sellMode; sellSel.clear(); renderGear(); }; sl.appendChild(sm);
   const sorted = runes.filter(r=>stashRarity==='all'||r.rar===+stashRarity)
     .sort((a,b)=>(b.rar-a.rar) || (a.affixes[0].k<b.affixes[0].k?-1:a.affixes[0].k>b.affixes[0].k?1:0));
   for(const rn of sorted){ const a=rn.affixes[0]; const checked=sellSel.has(rn.id);
     const d=document.createElement('div'); d.className=`item-row ${RARITIES[rn.rar].b}`;
-    d.innerHTML=`<div style="width:100%"><div class="${RARITIES[rn.rar].cls}" style="font-weight:600">${sellMode?(checked?'☑ ':'☐ '):''}${rn.icon} ${rn.name}<span style="float:right;color:var(--dim);font-weight:400;font-size:11px">${RARITIES[rn.rar].n}</span></div><div style="color:var(--dim);font-size:12px;line-height:1.35;margin-top:3px">${runeFmt(a)}</div></div>`;
+    d.innerHTML=`<div style="width:100%"><div class="${RARITIES[rn.rar].cls}" style="font-weight:600">${sellMode?(checked?'<svg class="ic"><use href="#ic-check"/></svg> ':'<svg class="ic"><use href="#ic-uncheck"/></svg> '):''}${rn.icon} ${rn.name}<span style="float:right;color:var(--dim);font-weight:400;font-size:11px">${RARITIES[rn.rar].n}</span></div><div style="color:var(--dim);font-size:12px;line-height:1.35;margin-top:3px">${runeFmt(a)}</div></div>`;
     d.onclick = sellMode ? ()=>{ if(sellSel.has(rn.id)) sellSel.delete(rn.id); else sellSel.add(rn.id); renderGear(); } : ()=>openRuneSheet(rn.id);
     sl.appendChild(d);
   }
@@ -431,7 +431,7 @@ function renderGear(){
   if(gearTab==='own'){
     const sm = document.createElement('button');
     sm.className = 'btn small' + (sellMode?' primary':''); sm.style.cssText = 'width:100%;margin-bottom:6px';
-    sm.textContent = sellMode ? '✓ 批次販售中——點裝備勾選' : '🏷️ 批次販售（多選）';
+    sm.innerHTML = sellMode ? '<svg class="ic"><use href="#ic-check"/></svg> 批次販售中——點裝備勾選' : '<svg class="ic"><use href="#ic-bag"/></svg> 批次販售（多選）';
     sm.onclick = ()=>{ sellMode = !sellMode; sellSel.clear(); renderGear(); };
     sl.appendChild(sm);
   } else { sellMode = false; }   // 共用分頁不販售
@@ -444,7 +444,7 @@ function renderGear(){
     const d = document.createElement('div'); d.className = `item-row ${RARITIES[it.rar].b}`;
     const checked = sellSel.has(it.id);
     d.innerHTML = `${itemIcon(it)}<div class="ir-body">
-      <span class="in ${RARITIES[it.rar].cls}">${selling?(checked?'☑ ':'☐ '):''}${it.name}${it.up?'+'+it.up:''}</span>
+      <span class="in ${RARITIES[it.rar].cls}">${selling?(checked?'<svg class="ic"><use href="#ic-check"/></svg> ':'<svg class="ic"><use href="#ic-uncheck"/></svg> '):''}${it.name}${it.up?'+'+it.up:''}</span>
       <span class="is">${slotName(it.slot)}｜${itemStatLine(it)}</span></div>`;
     d.onclick = selling
       ? ()=>{ if(sellSel.has(it.id)) sellSel.delete(it.id); else sellSel.add(it.id); renderGear(); }

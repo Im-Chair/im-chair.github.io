@@ -174,7 +174,7 @@ function doorPair(){   // 門一定是「戰鬥」＋另一扇（菁英80/事件
   const pev = rollEvent();
   const hint = Math.random()<0.5 ? '你察覺到：'+(EV_HINTS[pev]||'說不上來的氣息') : '誰知道呢';
   const pool2 = [];
-  if(f>=3) pool2.push({t:'elite', i:'😈', n:'精英', d:'更強，掉落更好', w:80});
+  if(f>=3) pool2.push({t:'elite', i:'<svg class="ic"><use href="#ic-star"/></svg>', n:'精英', d:'更強，掉落更好', w:80});
   pool2.push({t:'event', i:'❓', n:'未知', d:hint, ev:pev, w:10});
   pool2.push({t:'rest', i:'🕯️', n:'營火', d:'回復 30% 生命', w:5});
   pool2.push({t:'chest', i:'📦', n:'寶箱', d:'看起來沒上鎖', w:5});
@@ -204,7 +204,7 @@ function showDoors(){
   const grid = $('door-grid'); grid.innerHTML = '';
   if(R.forceDoor){
     const t = R.forceDoor; R.forceDoor = null;
-    const map = {fight:['<svg class="ic"><use href="#ic-sword"/></svg>','戰鬥','逃不掉的'], elite:['😈','精英','逃不掉的'], boss:['☠️','首領','逃不掉的']};
+    const map = {fight:['<svg class="ic"><use href="#ic-sword"/></svg>','戰鬥','逃不掉的'], elite:['<svg class="ic"><use href="#ic-star"/></svg>','精英','逃不掉的'], boss:['<svg class="ic"><use href="#ic-skull"/></svg>','首領','逃不掉的']};
     const m = map[t] || map.fight;
     const fb = (t==='boss') ? bossFor(R.floor) : null;
     R.doors = [{t, i:m[0], mimg:(fb && fb.img)? (fb.key||'final') : null, n:m[1], d:m[2]}];
@@ -291,7 +291,7 @@ function cycleComplete(){   // 輪迴盡頭（第100層）——通關＝成功�
   const n = R.bag.length, g = R.gold, deep = R.floor, kills = R.kills;
   bankRun(deep);
   R = null; B = null; save();
-  $('res-icon').textContent = '🏁';
+  $('res-icon').innerHTML = '<svg class="ic big"><use href="#ic-check"/></svg>';
   $('res-title').textContent = '輪迴盡頭';
   $('res-sub').textContent = `你打到了輪迴的第 ${deep} 層盡頭，深淵替你收了手。貪婪有邊界——這次它站在你這邊。`;
   $('res-body').innerHTML = `<div class="stat-grid">
@@ -337,7 +337,7 @@ function fireExtra(){
   const k = pick(pool);
   if(k==='cook'){
     const pk = Object.keys(R.pots)[0];
-    return {n:`🍲 烹食（熬掉一瓶${POTIONS[pk].n}，生命上限 +8）`, f:()=>{
+    return {n:`<svg class="ic"><use href="#ic-flask"/></svg> 烹食（熬掉一瓶${POTIONS[pk].n}，生命上限 +8）`, f:()=>{
       R.pots[pk]--; if(!R.pots[pk]) delete R.pots[pk];
       if(blessCount('hp') < BLESS_MAX) R.bless.push({k:'hp', v:8});   // 上限2；滿了仍給回血
       R.hp = Math.min(playerMaxHp(), R.hp + 8);
@@ -346,7 +346,7 @@ function fireExtra(){
     }};
   }
   if(k==='scrap'){
-    return {n:`🔧 拆裝（熔掉行囊裡的裝備換碎銀）`, f:()=>scrapFire()};
+    return {n:`<svg class="ic"><use href="#ic-anvil"/></svg> 拆裝（熔掉行囊裡的裝備換碎銀）`, f:()=>scrapFire()};
   }
   if(k==='quench'){
     return {n:'<svg class="ic"><use href="#ic-dagger"/></svg> 淬火（武器附毒或附燃，持續 3 場戰鬥）', f:()=>{
@@ -879,7 +879,7 @@ const EVENTS = {
         [{n:'……還是算了', f:()=>walkAway('📜','殘卷')}]);
     };
     const choices = [
-      {n:'✂️ 以血立契（本次探索生命上限 −15%）', f:()=>{
+      {n:'<svg class="ic"><use href="#ic-dagger"/></svg> 以血立契（本次探索生命上限 −15%）', f:()=>{
         sacrifice(()=>{
           R.hpCut = (R.hpCut||0) + 0.15;
           R.hp = Math.min(R.hp, playerMaxHp());
@@ -1172,7 +1172,7 @@ function openBounties(){
     html += `<div class="item-row bounty-row" onclick="acceptBounty(${i})"><div class="b-left"><span class="b-tier"><svg class="ic"><use href="#ic-board"/></svg> ${bountyTier(b)}</span><span class="b-desc">${bountyDesc(b)}</span></div><span class="b-reward">${rewardText(b.reward)} ＋<svg class="ic"><use href="#ic-gem"/></svg>${b.gems||'1~3'}　<span style="color:var(--gold)">接下 ›</span></span></div>`;
   }
   html += '</div>';
-  if(offers.length) html += '<button class="btn" style="margin-top:10px" onclick="refreshBounties()">🔄 一鍵刷新可接委託</button>';
+  if(offers.length) html += '<button class="btn" style="margin-top:10px" onclick="refreshBounties()"><svg class="ic"><use href="#ic-refresh"/></svg> 一鍵刷新可接委託</button>';
   html += '<button class="btn" style="margin-top:8px" onclick="closeSheet()">關閉</button>';
   openSheet(html);
 }

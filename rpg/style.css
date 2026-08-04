@@ -98,7 +98,7 @@ h1.title{
    ⚠️ 不要在這裡加 brightness()：camp3 原生平均明度 0.103，本來就暗。
       （camp_v2 那張是 0.250，出廠已 gamma 校正過，當初多乘一次變成過曝。）
       要調亮度就在下面這行加 filter:brightness(x)——全案只有這一個旋鈕。 */
-.camp-scene::before{content:"";position:absolute;inset:0;background:url("camp3.webp?v=406") center/contain no-repeat;}
+.camp-scene::before{content:"";position:absolute;inset:0;background:url("camp3.webp?v=408") center/contain no-repeat;}
 /* 子層一律疊在底圖之上。全部已是 position:absolute，所以只給 z-index、不動 position */
 .camp-scene > *{z-index:1;}
 .camp-top{flex:none;padding:6px 12px 8px;display:flex;flex-direction:column;}
@@ -223,6 +223,12 @@ h1.title{
 .e-block.poisoned .enemy-icon>img{filter:grayscale(1) sepia(1) hue-rotate(228deg) saturate(3.4) brightness(1.06);}
 .e-block.burning  .enemy-icon>img{filter:grayscale(1) sepia(1) hue-rotate(-18deg) saturate(3.6) brightness(1.1);}
 .e-block.poisoned.burning .enemy-icon>img{filter:grayscale(1) sepia(1) hue-rotate(285deg) saturate(3.2) brightness(1.08);}
+/* 首領例外：不吃 grayscale(1)。實測首領那批的辨識幾乎全靠顏色（火紅/冰藍/毒紫/金光），
+   全去色後兩兩差異從 51 掉到 25——辨識度只剩一半，而首領戰正是最需要看清狀態的時候。
+   改成保留原色、只壓飽和 + 外圈染色光暈。雜魚不受影響（它們靠剪影辨識，去色沒差）。 */
+.e-block.boss.poisoned .enemy-icon>img{filter:saturate(.72) brightness(.94) drop-shadow(0 0 9px #9b6dd6) drop-shadow(0 0 4px #7a3fb0);}
+.e-block.boss.burning  .enemy-icon>img{filter:saturate(.78) brightness(1.02) drop-shadow(0 0 9px #e0813f) drop-shadow(0 0 4px #d05252);}
+.e-block.boss.poisoned.burning .enemy-icon>img{filter:saturate(.72) drop-shadow(0 0 8px #e0813f) drop-shadow(0 0 8px #9b6dd6);}
 /* ── 通用 UI 圖示（ui/*.webp）：職業／門／藥水／結算／標題 ── */
 .ui-ic{display:block;border-radius:8px;object-fit:cover;}
 .title-art{display:block;width:min(88%,340px);margin:0 auto;border-radius:12px;}

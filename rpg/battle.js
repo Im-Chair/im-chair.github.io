@@ -252,7 +252,7 @@ function renderBattle(){
   B.es.forEach((e,i)=>{
     const dead = e.hp<=0;
     const [ii,it] = dead? ['<svg class="ic"><use href="#ic-skull"/></svg>','已倒下'] : intentText(e);
-    html += `<div class="e-block${(B.duo&&i===B.ti&&!dead)?' sel':''}${dead?' dead':''}${!dead&&e.st.poison?' poisoned':''}${!dead&&e.st.burn?' burning':''}" id="ez-${i}" onclick="selectTarget(${i})">
+    html += `<div class="e-block${(B.duo&&i===B.ti&&!dead)?' sel':''}${dead?' dead':''}${e.boss?' boss':''}${!dead&&e.st.poison?' poisoned':''}${!dead&&e.st.burn?' burning':''}" id="ez-${i}" onclick="selectTarget(${i})">
       <div class="enemy-icon" id="eicon-${i}">${enemyIcon(e)}</div>
       <div class="enemy-name">${e.boss?`<span class="boss">☠ ${e.n}</span>`: e.elite?`<span class="elite">${e.n}</span>`: e.n}${e.tag?` <span class="st" style="cursor:pointer" onclick="explainStatus('tag_${e.tag}')">${ENEMY_TAGS[e.tag].i}${ENEMY_TAGS[e.tag].n}</span>`:''}</div>
       <div><span class="intent"><span class="ii">${ii}</span>${dead?it:'下一步：'+it}</span></div>
@@ -342,7 +342,7 @@ function ringBell(){
 function fmtPts(p){ return p % 1 === 0 ? String(p) : p.toFixed(1); }
 function skillDesc(sid){
   const sk = SK(sid);
-  const vulnMark = (B && tgt() && tgt().st.vuln) ? '▲' : '';
+  const vulnMark = (B && tgt() && tgt().st.vuln) ? '<svg class="ic"><use href="#ic-vuln"/></svg>' : '';
   const parts = [];
   if(sk.mult){
     let mult = sk.mult;
@@ -932,13 +932,13 @@ function afterLoot(){
     const kills = R.kills;
     bankRun(50);   // 通關本源＝成功回營：保存這趟一切（含認證/懸賞，集中處理）
     R = null; B = null; save();
-    $('res-icon').textContent = '🌅';
+    $('res-icon').innerHTML = '<svg class="ic big"><use href="#ic-bless"/></svg>';
     $('res-title').textContent = '本源・完結';
     $('res-sub').textContent = '深淵之心在你身後停止了跳動。五十層的路，你走到了底——但心臟之下傳來低語：「再來一次。這次我不裝睡。」';
     $('res-body').innerHTML = `<div class="stat-grid">
       <div class="stat-box"><div class="v">50</div><div class="k">走到了底</div></div>
       <div class="stat-box"><div class="v">${kills}</div><div class="k">擊殺</div></div>
-      <div class="stat-box"><div class="v">🔄</div><div class="k">輪迴已開</div></div>
+      <div class="stat-box"><div class="v"><svg class="ic"><use href="#ic-refresh"/></svg></div><div class="k">輪迴已開</div></div>
     </div><p style="text-align:center;color:var(--green);font-size:13px">所有收穫已存入倉庫。輪迴在下潛選單等你。</p>`;
     showScreen('s-result');
     return;
