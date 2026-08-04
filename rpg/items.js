@@ -471,7 +471,7 @@ function affixHtml(it){
   return it.affixes.map(a=>{
     const A = AFFIXES[a.k];
     const cls = A.curse?' curse':A.leg?' leg':'';
-    const mark = A.curse?'☠':A.leg?'✸':'◆';
+    const mark = A.curse?'<svg class="ic"><use href="#ic-poison"/></svg>':A.leg?'<svg class="ic"><use href="#ic-legend"/></svg>':'<svg class="ic"><use href="#ic-gem"/></svg>';
     return `<div class="affix${cls}">${mark} ${A.n}：${A.fmt(a.v)}</div>`;
   }).join('') || '<div class="affix" style="color:var(--dim)">（無詞綴）</div>';
 }
@@ -573,7 +573,7 @@ function renderReforgeLock(){
   const normals = it.affixes.filter(a=>!AFFIXES[a.k].leg && !AFFIXES[a.k].curse);
   const fixed = it.affixes.filter(a=>AFFIXES[a.k].leg || AFFIXES[a.k].curse);
   let html = `<h3>重鑄・${it.name}</h3><p class="base">鎖定想保留的詞綴（🔒），其餘重鑄；數量隨機、可能變多。傳說與詛咒自動保留。<span style="color:var(--gold)">每鎖一條費用 +50%</span>。</p>`;
-  html += fixed.map(a=>`<div class="affix ${AFFIXES[a.k].leg?'leg':'curse'}">${AFFIXES[a.k].leg?'✸':'☠'} ${AFFIXES[a.k].n}：${AFFIXES[a.k].fmt(a.v)}　<span style="color:var(--dim)">保留</span></div>`).join('');
+  html += fixed.map(a=>`<div class="affix ${AFFIXES[a.k].leg?'leg':'curse'}">${AFFIXES[a.k].leg?'<svg class="ic"><use href="#ic-legend"/></svg>':'<svg class="ic"><use href="#ic-poison"/></svg>'} ${AFFIXES[a.k].n}：${AFFIXES[a.k].fmt(a.v)}　<span style="color:var(--dim)">保留</span></div>`).join('');
   html += '<div class="item-list" style="margin-top:6px">';
   normals.forEach((a,i)=>{ const locked = reforgeLocks.includes(i);
     html += `<div class="item-row" onclick="toggleReforgeLock(${i})"><span class="in">${locked?'🔒':'🔓'} ${AFFIXES[a.k].n}：${AFFIXES[a.k].fmt(a.v)}</span><span class="is">${locked?'<span style="color:var(--gold)">鎖定</span>':'重鑄'}</span></div>`; });
@@ -617,9 +617,9 @@ function doReforge(){
   }
   pendingReforge = {slot, affixes: legs.concat(curses).concat(kept).concat(rolled)};
   save();
-  const oldList = normals.map(a=>`<div class="affix">◆ ${AFFIXES[a.k].n}：${AFFIXES[a.k].fmt(a.v)}</div>`).join('') || '<div class="affix" style="color:var(--dim)">（無）</div>';
+  const oldList = normals.map(a=>`<div class="affix"><svg class="ic"><use href="#ic-gem"/></svg> ${AFFIXES[a.k].n}：${AFFIXES[a.k].fmt(a.v)}</div>`).join('') || '<div class="affix" style="color:var(--dim)">（無）</div>';
   const newNormals = kept.concat(rolled);
-  const newList = newNormals.map(a=>`<div class="affix">◆ ${AFFIXES[a.k].n}：${AFFIXES[a.k].fmt(a.v)}${kept.includes(a)?' 🔒':''}</div>`).join('') || '<div class="affix" style="color:var(--dim)">（無）</div>';
+  const newList = newNormals.map(a=>`<div class="affix"><svg class="ic"><use href="#ic-gem"/></svg> ${AFFIXES[a.k].n}：${AFFIXES[a.k].fmt(a.v)}${kept.includes(a)?' <svg class="ic"><use href="#ic-lock"/></svg>':''}</div>`).join('') || '<div class="affix" style="color:var(--dim)">（無）</div>';
   openSheet(`<h3>重鑄・${it.name}</h3>
     <p class="base">鎖定的保留，其餘重鑄。傳說與詛咒不受影響。</p>
     <div class="section-title">原本的（${normals.length}）</div>${oldList}

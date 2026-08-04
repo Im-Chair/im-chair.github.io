@@ -34,11 +34,11 @@ const ROPE_BOSS_RAMP = 0.02;  // 首領繩掉率採深遞增：0.12 起、每深
 const ROPE_PITY = 25;         // 保底：深入到此層之後的首領必給繩（單趟仍限一條）
 /* 五素質定義 */
 const STATS = {
-  str:{n:'力量', i:'💪', d:'物理攻擊加成'},
-  int:{n:'智力', i:'🧠', d:'法術攻擊加成'},
-  vit:{n:'體力', i:'🫀', d:'生命＋防禦率＋格擋量'},
-  agi:{n:'敏捷', i:'🦶', d:'行動點＋閃避率'},
-  spi:{n:'精神', i:'✨', d:'法力＋爆擊率'},
+  str:{n:'力量', i:'<svg class="ic"><use href="#ic-str"/></svg>', d:'物理攻擊加成'},
+  int:{n:'智力', i:'<svg class="ic"><use href="#ic-int"/></svg>', d:'法術攻擊加成'},
+  vit:{n:'體力', i:'<svg class="ic"><use href="#ic-heart"/></svg>', d:'生命＋防禦率＋格擋量'},
+  agi:{n:'敏捷', i:'<svg class="ic"><use href="#ic-agi"/></svg>', d:'行動點＋閃避率'},
+  spi:{n:'精神', i:'<svg class="ic"><use href="#ic-spirit"/></svg>', d:'法力＋爆擊率'},
 };
 const SKILLS = {
   /* 結算規則 (§6/§9)：
@@ -199,13 +199,13 @@ const LORD_BOSSES = [
 
 /* 武器四柱 (§3)：行動點費用第3批上線，本批先落地 係數/類型/對盾 */
 const WEAPON_TYPES = {
-  dagger:{n:'匕首', i:'🗡️', pts:4, coef:0.8, blockMod:1.2, magic:false},                 // 連擊·多觸發（係數0.8/對盾1.2：每回合權重3.2，略補其穿盾弱勢）
-  sword: {n:'劍',   i:'⚔️', pts:3, coef:1.0, blockMod:1.0, magic:false, critRate:8},      // 均衡·普攻爆擊率+8%
-  axe:   {n:'斧',   i:'🪓', pts:2, coef:1.5, blockMod:0.5, magic:false},   // 破防·對格擋只被吸收 50%（100盾→門檻50）
-  staff: {n:'杖',   i:'🪄', pts:3, coef:1.0, blockMod:0.5, magic:true,  spellAmp:0.15},   // 法術·法術傷害+15%
+  dagger:{n:'匕首', i:'<svg class="ic"><use href="#ic-dagger"/></svg>', pts:4, coef:0.8, blockMod:1.2, magic:false},                 // 連擊·多觸發（係數0.8/對盾1.2：每回合權重3.2，略補其穿盾弱勢）
+  sword: {n:'劍',   i:'<svg class="ic"><use href="#ic-sword"/></svg>', pts:3, coef:1.0, blockMod:1.0, magic:false, critRate:8},      // 均衡·普攻爆擊率+8%
+  axe:   {n:'斧',   i:'<svg class="ic"><use href="#ic-axe"/></svg>', pts:2, coef:1.5, blockMod:0.5, magic:false},   // 破防·對格擋只被吸收 50%（100盾→門檻50）
+  staff: {n:'杖',   i:'<svg class="ic"><use href="#ic-staff"/></svg>', pts:3, coef:1.0, blockMod:0.5, magic:true,  spellAmp:0.15},   // 法術·法術傷害+15%
   /* 法系第二條軸＝魔力（物攻三把全長在「行動點×係數」同一條軸上，法系不該再切一次） */
-  tome:  {n:'魔典', i:'📕', pts:4, coef:0.8, blockMod:1.2, magic:true, manaCut:0.25},     // 連發·法術魔力成本−25%（權重4×0.8=3.2＝匕首級，所以同樣付 blockMod 1.2 的代價）
-  bell:  {n:'咒鈴', i:'🔔', pts:3, coef:1.0, blockMod:0.5, magic:true, apCost:40},        // 每回合限一次：燒 40% 最大魔力換 1 行動點
+  tome:  {n:'魔典', i:'<svg class="ic"><use href="#ic-tome"/></svg>', pts:4, coef:0.8, blockMod:1.2, magic:true, manaCut:0.25},     // 連發·法術魔力成本−25%（權重4×0.8=3.2＝匕首級，所以同樣付 blockMod 1.2 的代價）
+  bell:  {n:'咒鈴', i:'<svg class="ic"><use href="#ic-bell"/></svg>', pts:3, coef:1.0, blockMod:0.5, magic:true, apCost:40},        // 每回合限一次：燒 40% 最大魔力換 1 行動點
 };
 /* 武器分類：物攻職拿魔攻武器 weaponFit=0（純垃圾），所以掉落要偏向該職業用得到的那組 */
 const WPN_PHYS  = ['dagger','sword','axe'];
@@ -233,12 +233,12 @@ const GARROTE_AMP_CAP = 20;   // 絞殺 poisonAmp 的有效毒層上限(加法�
 const ASSASSIN_POISON_LEECH = 25;   // 盜賊職業內建毒吸:敵人中毒跳傷時回其 25% 生命(生存手段,與蝕取詞綴疊加)。起點值可調
 /* 詞綴化學反應 (§批4)：兩詞綴齊備自動啟動的隱藏協同——配方可調 */
 const CHEMISTRY = [
-  {id:'pcrit',     n:'毒爆',     i:'\u2620\ufe0f\ud83c\udfaf', need:['ptouch','crit'],  d:'爆擊時，淬毒之刃的層數加倍施加'},
-  {id:'burnvamp',  n:'焚血',     i:'\ud83d\udd25\ud83e\ude78', need:['btouch','vamp'],  d:'敵人燃燒跳傷時，你回復其 30%'},
-  {id:'windthorn', n:'風棘',     i:'\ud83d\udca8\ud83c\udf35', need:['agile','thorns'], d:'成功閃避時，反彈該擊 荊棘%×2 的傷害'},
-  {id:'overshield',n:'溢血成盾', i:'\ud83e\ude78\ud83d\udd37', need:['vamp','hp'],      d:'吸血/毒吸溢出時轉為格擋（每回合上限 10% 生命上限）'},
-  {id:'corrode',   n:'腐燃',     i:'\u2620\ufe0f\ud83d\udd25', need:['ptouch','btouch'],d:'對同時中毒與燃燒的目標，傷害 +20%'},
-  {id:'poisonvamp',n:'毒吸',     i:'☠️🩸', need:['ptouch','vamp'],  d:'敵人中毒跳傷時，你回復其 30%'},
+  {id:'pcrit',     n:'毒爆',     i:'<svg class="ic"><use href="#ic-poison"/></svg><svg class="ic"><use href="#ic-vuln"/></svg>', need:['ptouch','crit'],  d:'爆擊時，淬毒之刃的層數加倍施加'},
+  {id:'burnvamp',  n:'焚血',     i:'<svg class="ic"><use href="#ic-fire"/></svg><svg class="ic"><use href="#ic-blood"/></svg>', need:['btouch','vamp'],  d:'敵人燃燒跳傷時，你回復其 30%'},
+  {id:'windthorn', n:'風棘',     i:'<svg class="ic"><use href="#ic-dodge"/></svg><svg class="ic"><use href="#ic-thorns"/></svg>', need:['agile','thorns'], d:'成功閃避時，反彈該擊 荊棘%×2 的傷害'},
+  {id:'overshield',n:'溢血成盾', i:'<svg class="ic"><use href="#ic-blood"/></svg><svg class="ic"><use href="#ic-shield"/></svg>', need:['vamp','hp'],      d:'吸血/毒吸溢出時轉為格擋（每回合上限 10% 生命上限）'},
+  {id:'corrode',   n:'腐燃',     i:'<svg class="ic"><use href="#ic-poison"/></svg><svg class="ic"><use href="#ic-fire"/></svg>', need:['ptouch','btouch'],d:'對同時中毒與燃燒的目標，傷害 +20%'},
+  {id:'poisonvamp',n:'毒吸',     i:'<svg class="ic"><use href="#ic-poison"/></svg><svg class="ic"><use href="#ic-blood"/></svg>', need:['ptouch','vamp'],  d:'敵人中毒跳傷時，你回復其 30%'},
 ];
 const AFFIXES = {
   /* —— 素質類（吃樓層 +0.3/層）—— */
@@ -359,13 +359,13 @@ const POTIONS = {
   heal:{n:'恢復藥水', i:'🧪', img:'pot_heal', d:'回復生命與部分法力', battle:true, any:true},
   energy:{n:'烈酒',   i:'🍶', img:'pot_energy', d:'本回合 +2 能量', battle:true, any:false},
   bomb:{n:'火油瓶',   i:'🔥', img:'pot_bomb', d:'對敵人造成傷害並使其易傷', battle:true, any:false},
-  purge:{n:'淨化藥水', i:'💧', d:'清除自身所有負面狀態', battle:true, any:true},
+  purge:{n:'淨化藥水', i:'<svg class="ic"><use href="#ic-refresh"/></svg>', d:'清除自身所有負面狀態', battle:true, any:true},
   wrath:{n:'狂暴藥劑', i:'🧨', img:'pot_wrath', d:'本場戰鬥傷害 +50%', battle:true, any:false, m:20},
-  stone:{n:'石膚藥劑', i:'🪨', d:'獲得格擋', battle:true, any:false, m:20},
+  stone:{n:'石膚藥劑', i:'<svg class="ic"><use href="#ic-heavy"/></svg>', d:'獲得格擋', battle:true, any:false, m:20},
   holy:{n:'聖水',     i:'💦', img:'pot_holy', d:'對所有敵人造成傷害並淨化自身', battle:true, any:false, m:20},
 };
 
-const MATS = {iron:{n:'沉鐵', i:'⛓️', d:'沉到這個深度的鐵，比地面的密'}, steel:{n:'心鋼', i:'🔩', d:'離心臟越近的金屬，越記得跳動'}};
+const MATS = {iron:{n:'沉鐵', i:'<svg class="ic"><use href="#ic-iron"/></svg>', d:'沉到這個深度的鐵，比地面的密'}, steel:{n:'心鋼', i:'<svg class="ic"><use href="#ic-steel"/></svg>', d:'離心臟越近的金屬，越記得跳動'}};
 
 const REALMS = [
   {n:'淺穴',     i:'🕳️', from:1,  to:10,  intro:'潮濕的岩壁上還留著前人的火把痕跡。這裡死的人最多——因為來的人最多。'},
@@ -401,10 +401,10 @@ const STAT_DIV = [[Infinity,3.5]]; // 素質→率 換算 (§5)：近線性，�
 
 /* 敵人標籤 (§11)：免疫制門檻 */
 const ENEMY_TAGS = {
-  pImm: {n:'毒免', i:'☠️🚫', d:'免疫中毒，毒層無法施加'},
-  bImm: {n:'燃免', i:'🔥🚫', d:'免疫燃燒——燃層無法施加'},
-  heavy:{n:'重甲', i:'🪨',   d:'常駐格擋外殼，每回合恢復。斧、法術、毒燃能繞過'},
-  naked:{n:'脆弱', i:'🩸',   d:'受到的直接傷害 +15%'},
+  pImm: {n:'毒免', i:'<svg class="ic"><use href="#ic-poison-off"/></svg>', d:'免疫中毒，毒層無法施加'},
+  bImm: {n:'燃免', i:'<svg class="ic"><use href="#ic-fire-off"/></svg>', d:'免疫燃燒——燃層無法施加'},
+  heavy:{n:'重甲', i:'<svg class="ic"><use href="#ic-heavy"/></svg>',   d:'常駐格擋外殼，每回合恢復。斧、法術、毒燃能繞過'},
+  naked:{n:'脆弱', i:'<svg class="ic"><use href="#ic-blood"/></svg>',   d:'受到的直接傷害 +15%'},
 };
 const HEAVY_SHELL = 0.12;   // 重甲外殼＝血量×此係數
 const LORD_PHASE_TAGS = [   // 域主上/下半場標籤（血線 50% 切換）

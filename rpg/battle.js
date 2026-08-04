@@ -276,11 +276,11 @@ function renderBattle(){
     const bc = Math.round(playerMaxMana() * _wt.apCost/100);
     const off = B.rung || (R.mana||0) < bc || B.over;
     bellHtml = `<button class="bell-btn${off?' off':''}" onclick="event.stopPropagation();ringBell()"`
-      + `${off?' disabled':''} title="燃燒 ${bc} 魔力換 1 行動點（每回合一次）">🔔+1◆ <b>${bc}</b></button>`;
+      + `${off?' disabled':''} title="燃燒 ${bc} 魔力換 1 行動點（每回合一次）"><svg class="ic"><use href="#ic-bell"/></svg>+1<svg class="ic"><use href="#ic-energy"/></svg> <b>${bc}</b></button>`;
   }
-  en.innerHTML = `<span style="color:var(--gold);font-size:13px">◆ ${fmtPts(B.energy)}/${fmtPts(B.maxEnergy)} 行動</span>` +
-    (playerMaxMana()>0? `<span style="color:#7fb3e8;font-size:13px">　🔮 ${R.mana||0}/${playerMaxMana()}</span>` : '') +
-    (B.shield>0? `<span style="color:#9fd8ff;font-size:13px">　🔷 ${B.shield}</span>` : '') + bellHtml;
+  en.innerHTML = `<span style="color:var(--gold);font-size:13px"><svg class="ic"><use href="#ic-energy"/></svg> ${fmtPts(B.energy)}/${fmtPts(B.maxEnergy)} 行動</span>` +
+    (playerMaxMana()>0? `<span style="color:#7fb3e8;font-size:13px">　<svg class="ic"><use href="#ic-mana"/></svg> ${R.mana||0}/${playerMaxMana()}</span>` : '') +
+    (B.shield>0? `<span style="color:#9fd8ff;font-size:13px">　<svg class="ic"><use href="#ic-shield"/></svg> ${B.shield}</span>` : '') + bellHtml;
   const grid = $('skill-grid'); grid.innerHTML='';
   for(const sid of CLASSES[G.cls].skills){
     const sk = SK(sid);
@@ -293,7 +293,7 @@ function renderBattle(){
     b.disabled = B.over || !!B.charge || noMana || noEnergy;
     b.innerHTML = `<div class="sn">${sk.n}${sk.upN?'⁺':''}${charging?'（蓄力中 '+fmtPts(B.charge.paid)+'/'+fmtPts(cost)+'）':''}</div>
       <div class="sd">${skillDesc(sid)}</div>
-      <span class="sc">◆${fmtPts(cost)}${mc?'｜🔮'+mc:''}${chargeable&&!B.charge?'（蓄）':''}</span>`;
+      <span class="sc"><svg class="ic"><use href="#ic-energy"/></svg>${fmtPts(cost)}${mc?'｜<svg class="ic"><use href="#ic-mana"/></svg>'+mc:''}${chargeable&&!B.charge?'（蓄）':''}</span>`;
     b.onclick = ()=>useSkill(sid);
     grid.appendChild(b);
   }
@@ -370,26 +370,26 @@ function skillDesc(sid){
 }
 
 const STATUS_INFO = {
-  poison:'☠️ 中毒：每回合失去（前10層各1.5%、之後各0.5% 最大生命），每回合層數減半。無視防禦與格擋。首領與精英每回合承受的中毒跳傷有上限（精英/小王 8%、域主/最終王 5% 生命上限）——灰字層數為本回合超出上限的部分，仍會餵絞殺與腐燃、並延長受頂的回合數。「劇毒」與「蝕魂」會**同步抬高這個上限**，對首領仍然全額有效。',
-  burn:'🔥 燃燒：每回合失去（前10層各1.5%、之後各1% 最大生命），每回合層數減半。無視防禦與格擋。首領與精英每回合承受的燃燒跳傷有上限（精英/小王 8%、域主/最終王 5% 生命上限）——灰字層數為本回合超出上限的部分。「烈焰」會**同步抬高這個上限**，對首領仍然全額有效。',
-  weak:'💤 虛弱：造成的傷害 ×0.75。',
-  vuln:'🎯 易傷：受到的傷害 ×1.5。',
-  stun:'💫 暈眩：跳過整個回合。結束後獲得 2 回合暈眩抵抗。',
-  stunImm:'🛡💫 暈眩抵抗：期間不會再被暈眩。',
-  wound:'🩹 重傷：受到的治療效果減半。',
-  rage:'😡 狂怒：造成的傷害提升。',
-  block:'🛡 格擋：在防禦結算後吸收等量傷害，回合結束清零（壁壘詞綴可保留）。斧與法術剋格擋、匕首刮不動。',
-  tag_pImm:'☠️🚫 毒免：毒層無法施加，這場改靠直接傷害。',
-  tag_bImm:'🔥🚫 燃免：燃層無法施加。',
-  tag_heavy:'🪨 重甲：常駐格擋外殼，每回合恢復。斧、法術、毒燃能繞過。',
-  tag_naked:'🩸 脆弱：受到的直接傷害 +15%。',
+  poison:'<svg class="ic"><use href="#ic-poison"/></svg> 中毒：每回合失去（前10層各1.5%、之後各0.5% 最大生命），每回合層數減半。無視防禦與格擋。首領與精英每回合承受的中毒跳傷有上限（精英/小王 8%、域主/最終王 5% 生命上限）——灰字層數為本回合超出上限的部分，仍會餵絞殺與腐燃、並延長受頂的回合數。「劇毒」與「蝕魂」會**同步抬高這個上限**，對首領仍然全額有效。',
+  burn:'<svg class="ic"><use href="#ic-fire"/></svg> 燃燒：每回合失去（前10層各1.5%、之後各1% 最大生命），每回合層數減半。無視防禦與格擋。首領與精英每回合承受的燃燒跳傷有上限（精英/小王 8%、域主/最終王 5% 生命上限）——灰字層數為本回合超出上限的部分。「烈焰」會**同步抬高這個上限**，對首領仍然全額有效。',
+  weak:'<svg class="ic"><use href="#ic-weak"/></svg> 虛弱：造成的傷害 ×0.75。',
+  vuln:'<svg class="ic"><use href="#ic-vuln"/></svg> 易傷：受到的傷害 ×1.5。',
+  stun:'<svg class="ic"><use href="#ic-stun"/></svg> 暈眩：跳過整個回合。結束後獲得 2 回合暈眩抵抗。',
+  stunImm:'<svg class="ic"><use href="#ic-stunimm"/></svg> 暈眩抵抗：期間不會再被暈眩。',
+  wound:'<svg class="ic"><use href="#ic-wound"/></svg> 重傷：受到的治療效果減半。',
+  rage:'<svg class="ic"><use href="#ic-rage"/></svg> 狂怒：造成的傷害提升。',
+  block:'<svg class="ic"><use href="#ic-shield"/></svg> 格擋：在防禦結算後吸收等量傷害，回合結束清零（壁壘詞綴可保留）。斧與法術剋格擋、匕首刮不動。',
+  tag_pImm:'<svg class="ic"><use href="#ic-poison-off"/></svg> 毒免：毒層無法施加，這場改靠直接傷害。',
+  tag_bImm:'<svg class="ic"><use href="#ic-fire-off"/></svg> 燃免：燃層無法施加。',
+  tag_heavy:'<svg class="ic"><use href="#ic-heavy"/></svg> 重甲：常駐格擋外殼，每回合恢復。斧、法術、毒燃能繞過。',
+  tag_naked:'<svg class="ic"><use href="#ic-blood"/></svg> 脆弱：受到的直接傷害 +15%。',
 };
 function explainStatus(k){
   if(STATUS_INFO[k]) openSheet(`<h3>狀態說明</h3><p class="base">${STATUS_INFO[k]}</p>
     <button class="btn" onclick="closeSheet()">關閉</button>`);
 }
 function statusHtml(st, block, e){   // e＝敵人時，毒/燃顯示 A閥灰字（超出本回合跳傷上限的層數）
-  const M = {poison:['☠️ 中毒','bad'],burn:['🔥 燃燒','bad'],weak:['💤 虛弱','bad'],vuln:['🎯 易傷','bad'],stun:['💫 暈眩','bad'],stunImm:['🛡💫 暈眩抵抗','blk'],wound:['🩹 重傷','bad'],rage:['😡 狂怒','bad']};
+  const M = {poison:['<svg class="ic"><use href="#ic-poison"/></svg> 中毒','bad'],burn:['<svg class="ic"><use href="#ic-fire"/></svg> 燃燒','bad'],weak:['<svg class="ic"><use href="#ic-weak"/></svg> 虛弱','bad'],vuln:['<svg class="ic"><use href="#ic-vuln"/></svg> 易傷','bad'],stun:['<svg class="ic"><use href="#ic-stun"/></svg> 暈眩','bad'],stunImm:['<svg class="ic"><use href="#ic-stunimm"/></svg> 暈眩抵抗','blk'],wound:['<svg class="ic"><use href="#ic-wound"/></svg> 重傷','bad'],rage:['<svg class="ic"><use href="#ic-rage"/></svg> 狂怒','bad']};
   let h = '';
   for(const [k,v] of Object.entries(st)){
     if(!(v>0 && M[k])) continue;
@@ -879,7 +879,7 @@ function winBattle(){
   if(Math.random() < runeCh){ const rn = makeRune(R.floor, R.cycle);
     if(rn){ R.runesPending = R.runesPending||[]; R.runesPending.push(rn); toast('<svg class="ic"><use href="#ic-star"/></svg> 拾獲符文：'+rn.name); } }   // 未達里程碑 makeRune 回 null＝不掉（回營才入手）
   setTimeout(()=>{
-    showLoot(drops, gold, B.boss?'👑':'⚔️', isFinal?'你打穿了深淵的心臟':(B.boss?'首領倒下了':'戰鬥勝利'),
+    showLoot(drops, gold, B.boss?'<svg class="ic"><use href="#ic-star"/></svg>':'<svg class="ic"><use href="#ic-sword"/></svg>', isFinal?'你打穿了深淵的心臟':(B.boss?'首領倒下了':'戰鬥勝利'),
       `獲得 ${gold} 碎銀` + (potionDrop? `，撿到 ${POTIONS[potionDrop].i}${POTIONS[potionDrop].n}`:'') + (potionOverflow? `，藥水袋滿——折成 ${potionOverflow} 碎銀`:'') + (matDrop? `，拾獲 ${MATS[matDrop].i}${MATS[matDrop].n} ×1`:''), mendHeal? `（急救回復 ${mendHeal} 血）`:'');
   }, 600);
   save();

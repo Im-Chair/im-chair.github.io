@@ -98,7 +98,7 @@ h1.title{
    ⚠️ 不要在這裡加 brightness()：camp3 原生平均明度 0.103，本來就暗。
       （camp_v2 那張是 0.250，出廠已 gamma 校正過，當初多乘一次變成過曝。）
       要調亮度就在下面這行加 filter:brightness(x)——全案只有這一個旋鈕。 */
-.camp-scene::before{content:"";position:absolute;inset:0;background:url("camp3.webp?v=404") center/contain no-repeat;}
+.camp-scene::before{content:"";position:absolute;inset:0;background:url("camp3.webp?v=406") center/contain no-repeat;}
 /* 子層一律疊在底圖之上。全部已是 position:absolute，所以只給 z-index、不動 position */
 .camp-scene > *{z-index:1;}
 .camp-top{flex:none;padding:6px 12px 8px;display:flex;flex-direction:column;}

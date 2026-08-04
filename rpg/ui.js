@@ -194,33 +194,33 @@ function openRunStats(){
   const wVal = eqStat(w), msVal = mainStat(), msName = STATS[CLASSES[G.cls].mainStat].n;
   const cMagic = CLASSES[G.cls].mainStat==='int', misW = cMagic !== !!wt.magic;
   rows.push([`${wt.i} ${wVal+msVal}`, `攻擊力（武器${wVal}＋${msName}${msVal}）${misW?(cMagic?'｜⚠不合手·普攻武器×0.5、法術×0':'｜⚠不合手·武器攻擊×0'):(wt.magic?'｜普攻物理·法術對盾減半':'')}`]);
-  rows.push([`${R? R.hp : playerMaxHp()}/${playerMaxHp()}`, '❤️ 生命']);
-  if(playerMaxMana()>0) rows.push([`${R? (R.mana||0) : playerMaxMana()}/${playerMaxMana()}`, '🔮 法力（回 '+Math.round(manaRegenPct())+'%/回合）']);
-  rows.push([playerDef(), '🛡 防禦力（減 '+(playerDef()/10).toFixed(1)+' 點）']);
+  rows.push([`${R? R.hp : playerMaxHp()}/${playerMaxHp()}`, '<svg class="ic"><use href="#ic-heart"/></svg> 生命']);
+  if(playerMaxMana()>0) rows.push([`${R? (R.mana||0) : playerMaxMana()}/${playerMaxMana()}`, '<svg class="ic"><use href="#ic-mana"/></svg> 法力（回 '+Math.round(manaRegenPct())+'%/回合）']);
+  rows.push([playerDef(), '<svg class="ic"><use href="#ic-shield"/></svg> 防禦力（減 '+(playerDef()/10).toFixed(1)+' 點）']);
   const mkRate = (fn, statKey, label) => {
     const total = fn(), fromStat = rateFromStat(statTotal(statKey));
     return [total.toFixed(0)+'%'+(total>=RATE_CAP?'（頂）':''), label+(fromStat>0.5?'（素質貢獻 '+fromStat.toFixed(0)+'%）':'')];
   };
-  rows.push(mkRate(defRate, 'vit', '🛡 防禦率'));
-  rows.push(mkRate(dodgeRate, 'agi', '💨 閃避率'));
+  rows.push(mkRate(defRate, 'vit', '<svg class="ic"><use href="#ic-shield"/></svg> 防禦率'));
+  rows.push(mkRate(dodgeRate, 'agi', '<svg class="ic"><use href="#ic-dodge"/></svg> 閃避率'));
   rows.push(mkRate(critRate, 'spi', '<svg class="ic"><use href="#ic-crit"/></svg> 爆擊率'));
   // 五素質列
   const statRow = ['str','int','vit','agi','spi']
     .map(k=>`${STATS[k].i}${statTotal(k)}`).join('　');
   // 功能與傳說
   const extra = [
-    ['vamp','🩸 吸血', v=>Math.min(VAMP_CAP,v)+'%'+(v>VAMP_CAP?'（上限'+VAMP_CAP+'）':'')],
-    ['thorns','🌵 荊棘', v=>'反彈受到傷害 '+v+'%'], ['mend','💊 急救', v=>'戰後回 '+v+'%'],
-    ['dotdrain','🩸 蝕取', v=>'毒燃回血 '+v+'%'],
-    ['ptouch','☠️ 淬毒', v=>'攻擊附 '+v+' 層'], ['btouch','🔥 淬焰', v=>'攻擊附 '+v+' 層'],
-    ['bpyre','🔥 烈焰', v=>'燃傷 +'+v+'%'], ['ppyre','☠️ 劇毒', v=>'毒傷 +'+v+'%'],
+    ['vamp','<svg class="ic"><use href="#ic-blood"/></svg> 吸血', v=>Math.min(VAMP_CAP,v)+'%'+(v>VAMP_CAP?'（上限'+VAMP_CAP+'）':'')],
+    ['thorns','<svg class="ic"><use href="#ic-thorns"/></svg> 荊棘', v=>'反彈受到傷害 '+v+'%'], ['mend','<svg class="ic"><use href="#ic-heal"/></svg> 急救', v=>'戰後回 '+v+'%'],
+    ['dotdrain','<svg class="ic"><use href="#ic-drain"/></svg> 蝕取', v=>'毒燃回血 '+v+'%'],
+    ['ptouch','<svg class="ic"><use href="#ic-poison"/></svg> 淬毒', v=>'攻擊附 '+v+' 層'], ['btouch','<svg class="ic"><use href="#ic-fire"/></svg> 淬焰', v=>'攻擊附 '+v+' 層'],
+    ['bpyre','<svg class="ic"><use href="#ic-fire"/></svg> 烈焰', v=>'燃傷 +'+v+'%'], ['ppyre','<svg class="ic"><use href="#ic-poison"/></svg> 劇毒', v=>'毒傷 +'+v+'%'],
     ['greed','<svg class="ic"><use href="#ic-gold"/></svg> 貪婪', v=>'+'+v+'%'],
-    ['vform','✸ 蝕魂', v=>'攻擊轉中毒'], ['wall','✸ 壁壘', v=>'格擋不消失'],
-    ['fury','✸ 狂血', v=>'傷害+40% 血-30%'], ['spark','✸ 燧心', v=>'爆擊回行動'],
-    ['symbio','✸ 腐生', v=>'毒傷回血50%'], ['exem','✸ 斬首', v=>'低血敵+50%'],
-    ['regen','✸ 血甲', v=>'每回合回3%血'], ['feast','✸ 貪食', v=>'擊殺回15%血'],
-    ['guts','✸ 不屈', v=>'免死一次/場'], ['luck7','✸ 賭運', v=>'爆傷2.1倍'],
-    ['ember','✸ 餘燼', v=>'燃燒不減半'], ['wildfire','✸ 延燒', v=>'擊殺傳燃層'],
+    ['vform','<svg class="ic"><use href="#ic-legend"/></svg> 蝕魂', v=>'攻擊轉中毒'], ['wall','<svg class="ic"><use href="#ic-legend"/></svg> 壁壘', v=>'格擋不消失'],
+    ['fury','<svg class="ic"><use href="#ic-legend"/></svg> 狂血', v=>'傷害+40% 血-30%'], ['spark','<svg class="ic"><use href="#ic-legend"/></svg> 燧心', v=>'爆擊回行動'],
+    ['symbio','<svg class="ic"><use href="#ic-legend"/></svg> 腐生', v=>'毒傷回血50%'], ['exem','<svg class="ic"><use href="#ic-legend"/></svg> 斬首', v=>'低血敵+50%'],
+    ['regen','<svg class="ic"><use href="#ic-legend"/></svg> 血甲', v=>'每回合回3%血'], ['feast','<svg class="ic"><use href="#ic-legend"/></svg> 貪食', v=>'擊殺回15%血'],
+    ['guts','<svg class="ic"><use href="#ic-legend"/></svg> 不屈', v=>'免死一次/場'], ['luck7','<svg class="ic"><use href="#ic-legend"/></svg> 賭運', v=>'爆傷2.1倍'],
+    ['ember','<svg class="ic"><use href="#ic-legend"/></svg> 餘燼', v=>'燃燒不減半'], ['wildfire','<svg class="ic"><use href="#ic-legend"/></svg> 延燒', v=>'擊殺傳燃層'],
   ];
   for(const [k, label, fmt] of extra){ const v = sumAffix(k); if(v>0) rows.push([fmt(v), label]); }
   let html = '<h3>角色檢視</h3>' +
@@ -233,7 +233,7 @@ function openRunStats(){
     if(c.need.every(k=>sumAffix(k)>0))
       chemRows.push(`<div class="base" style="color:var(--gold)">${c.i}【${c.n}】${c.d}</div>`);
   }
-  if(chemRows.length) html += '<div class="section-title">⚗️ 詞綴反應</div>' + chemRows.join('');
+  if(chemRows.length) html += '<div class="section-title"><svg class="ic"><use href="#ic-flask"/></svg> 詞綴反應</div>' + chemRows.join('');
   html += `<button class="btn" style="margin-top:10px" onclick="openRunes()"><svg class="ic"><use href="#ic-star"/></svg> 符文槽 ${(G.runes||[]).filter(Boolean).length}/3${(G.runeBag||[]).length?'　（持有 '+G.runeBag.length+'）':''}</button>`;
   html += '<div class="section-title">身上裝備</div>';
   for(const sk of ['w','a','t']){

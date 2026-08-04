@@ -144,7 +144,7 @@ function enterFloor(){
     R.deepStart = false;
     const heal = Math.round(playerMaxHp()*0.3);
     showEventScreen('🪢','繩降平台','守繩人把你放到了第 '+R.floor+' 層的一座木造平台。平台上有一堆沒熄的營火——上一個租繩子的人留下的。他沒有回來還繩。',
-      [{n:'🩹 在火邊休息（回復 '+heal+' 血）', f:()=>{
+      [{n:'<svg class="ic"><use href="#ic-heal"/></svg> 在火邊休息（回復 '+heal+' 血）', f:()=>{
         R.hp = Math.min(playerMaxHp(), R.hp + heal); nextFloorSame();
       }, primary:true},
       {n:'<svg class="ic"><use href="#ic-anvil"/></svg> 借火光精進一招', f:()=>{
@@ -170,7 +170,7 @@ function pickUpStay(sid, branch){
 
 function doorPair(){   // 門一定是「戰鬥」＋另一扇（菁英80/事件10/營火5/寶箱5；3層前無菁英）
   const f = R.floor;
-  const d1 = {t:'fight', i:'⚔️', n:'戰鬥', d:'普通的敵人'};
+  const d1 = {t:'fight', i:'<svg class="ic"><use href="#ic-sword"/></svg>', n:'戰鬥', d:'普通的敵人'};
   const pev = rollEvent();
   const hint = Math.random()<0.5 ? '你察覺到：'+(EV_HINTS[pev]||'說不上來的氣息') : '誰知道呢';
   const pool2 = [];
@@ -193,7 +193,7 @@ function showDoors(){
   $('d-floor').textContent = f; $('d-floor-big').textContent = f;
   document.querySelector('#s-doors .depth-gauge .lbl').textContent = zz.i+' '+zz.n;
   $('d-gold').textContent = R.gold;
-  $('d-hp').textContent = `❤️ ${R.hp}/${playerMaxHp()}`;
+  $('d-hp').innerHTML = `<svg class="ic"><use href="#ic-heart"/></svg> ${R.hp}/${playerMaxHp()}`;   // v405：改吃 HTML，圖示才顯示得出來
   const rb = document.getElementById('retreat-btn');
   if(rb) rb.style.display = R.hasRope ? '' : 'none';
   const rgb = document.getElementById('retreat-gold-btn');
@@ -204,7 +204,7 @@ function showDoors(){
   const grid = $('door-grid'); grid.innerHTML = '';
   if(R.forceDoor){
     const t = R.forceDoor; R.forceDoor = null;
-    const map = {fight:['⚔️','戰鬥','逃不掉的'], elite:['😈','精英','逃不掉的'], boss:['☠️','首領','逃不掉的']};
+    const map = {fight:['<svg class="ic"><use href="#ic-sword"/></svg>','戰鬥','逃不掉的'], elite:['😈','精英','逃不掉的'], boss:['☠️','首領','逃不掉的']};
     const m = map[t] || map.fight;
     const fb = (t==='boss') ? bossFor(R.floor) : null;
     R.doors = [{t, i:m[0], mimg:(fb && fb.img)? (fb.key||'final') : null, n:m[1], d:m[2]}];
@@ -320,7 +320,7 @@ function nextFloor(){
 
 function doRest(){
   const heal = Math.round(playerMaxHp()*0.3*healMult());
-  const choices = [{n:`🩹 休息（回復 ${heal} 血）`, f:()=>{
+  const choices = [{n:`<svg class="ic"><use href="#ic-heal"/></svg> 休息（回復 ${heal} 血）`, f:()=>{
     R.hp = Math.min(playerMaxHp(), R.hp + heal);
     showEventScreen('🕯️','營火','火光照不遠，但夠暖。\n\n回復了 '+heal+' 點生命。',
       [{n:'繼續前進', f:()=>nextFloor(), primary:true}]);
@@ -397,7 +397,7 @@ function doChest(){
   if(Math.random() < 0.18){
     // 寶箱怪
     showEventScreen('📦','寶箱','你伸手掀開箱蓋——箱子也張開了嘴。',
-      [{n:'⚔️ 迎戰', f:()=>{ const e = makeEnemy(R.floor, 1);
+      [{n:'<svg class="ic"><use href="#ic-sword"/></svg> 迎戰', f:()=>{ const e = makeEnemy(R.floor, 1);
         e.n='寶箱怪'; e.i='📦'; e.img=1; e.imgKey='mimic';  // v396：有專屬的寶箱怪圖了，不再借聖物匣。key 仍不動，圖鑑統計不受影響
         startBattle(e); }}]);
   } else {
@@ -470,7 +470,7 @@ function walkAway(icon, title){
   } else {
     const e = makeEnemy(R.floor, 0);
     showEventScreen(icon, title, '你繞開了它——正好繞進另一個東西的地盤。',
-      [{n:'⚔️ 迎戰', f:()=>startBattle(e, {ambush:true}), primary:true}]);
+      [{n:'<svg class="ic"><use href="#ic-sword"/></svg> 迎戰', f:()=>startBattle(e, {ambush:true}), primary:true}]);
   }
 }
 
@@ -605,7 +605,7 @@ const EVENTS = {
         if(r < 0.38){ treasureRoll(0, '🪨', '石堆下'); }
         else if(r < 0.65){
           showEventScreen('🪨','石堆下','石頭才挪開一半，底下的東西先動了。',
-            [{n:'⚔️ 迎戰', f:()=>startBattle(makeEnemy(R.floor, R.floor>=6?1:0), {ambush:true}), primary:true}]);
+            [{n:'<svg class="ic"><use href="#ic-sword"/></svg> 迎戰', f:()=>startBattle(makeEnemy(R.floor, R.floor>=6?1:0), {ambush:true}), primary:true}]);
         }
         else if(r < 0.85){
           const d = Math.max(4, Math.round(playerMaxHp()*0.08));
@@ -626,7 +626,7 @@ const EVENTS = {
         else if(r < 0.75){
           const e = makeEnemy(R.floor, 0); e.n='不安息者'; e.i='🧟'; e.img=1; e.imgKey='feign';   // v396：詐屍有專屬圖；沿用 imgKey 不動 key，圖鑑統計不受影響
           showEventScreen('🧟','遺物','你的手才碰到他的行囊，他的手就抓住了你的。',
-            [{n:'⚔️ 迎戰', f:()=>startBattle(e, {ambush:true}), primary:true}]);
+            [{n:'<svg class="ic"><use href="#ic-sword"/></svg> 迎戰', f:()=>startBattle(e, {ambush:true}), primary:true}]);
         }
         else {
           const d = Math.max(5, Math.round(playerMaxHp()*0.1));
@@ -713,7 +713,7 @@ const EVENTS = {
         }
         else if(r < 0.60){
           showEventScreen('🚪','門後','低語聲停了。門後的東西一直在等的就是這一刻。',
-            [{n:'⚔️ 迎戰', f:()=>startBattle(makeEnemy(R.floor, 1), {ambush:true}), primary:true}]);
+            [{n:'<svg class="ic"><use href="#ic-sword"/></svg> 迎戰', f:()=>startBattle(makeEnemy(R.floor, 1), {ambush:true}), primary:true}]);
         }
         else if(r < 0.85){
           const g = 15 + R.floor*3; R.gold += g;
@@ -753,7 +753,7 @@ const EVENTS = {
             [{n:'繼續前進', f:()=>nextFloor(), primary:true}]); }
         else if(r<0.75){ const e = makeEnemy(R.floor,0);
           showEventScreen('🔥','灰燼','火堆的主人回來了。他不覺得你是客人。',
-            [{n:'⚔️ 迎戰', f:()=>startBattle(e), primary:true}]); }
+            [{n:'<svg class="ic"><use href="#ic-sword"/></svg> 迎戰', f:()=>startBattle(e), primary:true}]); }
         else { const h = Math.min(Math.round(playerMaxHp()*0.15), playerMaxHp()-R.hp); R.hp += h;
           showEventScreen('🔥','灰燼','什麼都沒埋。你借火烤了烤手，回復 '+h+' 點生命。',
             [{n:'繼續前進', f:()=>nextFloor(), primary:true}]); }
@@ -767,7 +767,7 @@ const EVENTS = {
         if(r<0.45){ treasureRoll(1,'🛞','貨箱'); }
         else if(r<0.75){ const e = makeEnemy(R.floor, R.floor>=13?1:0); e.n='貨箱裡的'+e.n.replace('精英・',''); 
           showEventScreen('🛞','貨箱','貨早就被搬空了，搬貨的東西還住在裡面。',
-            [{n:'⚔️ 迎戰', f:()=>startBattle(e,{ambush:true}), primary:true}]); }
+            [{n:'<svg class="ic"><use href="#ic-sword"/></svg> 迎戰', f:()=>startBattle(e,{ambush:true}), primary:true}]); }
         else { const g = 30 + R.floor*5; R.gold += g;
           showEventScreen('🛞','貨箱','車伕座下的暗格裡藏著 '+g+' 碎銀。車伕還坐在原位，早就不需要錢了。',
             [{n:'收下', f:()=>nextFloor(), primary:true}]); }
@@ -909,7 +909,7 @@ const EVENTS = {
           showLoot([it], 0, '🗿', '英雄的遺物', '他的手指斷裂的聲音像一句遲來的「拿去」。'); }
         else { const e = makeRealmElite(Math.min(R.floor,50));
           showEventScreen('🗿','英雄的遺物','你才碰到他的劍柄，走廊盡頭傳來腳步聲——看守遺物的東西回來了。',
-            [{n:'⚔️ 迎戰', f:()=>startBattle(e), primary:true}]); }
+            [{n:'<svg class="ic"><use href="#ic-sword"/></svg> 迎戰', f:()=>startBattle(e), primary:true}]); }
       }},
       {n:'讓他站著', f:()=>{
         if(Math.random()<0.4){ const b = grantBless();
