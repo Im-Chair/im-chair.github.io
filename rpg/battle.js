@@ -888,13 +888,13 @@ function winBattle(){
 
 function showLoot(items, gold, icon, title, sub, extra){
   R.phase='loot';
-  // icon 可能是 emoji、已組好的 <img>、或 EV_IMG 有對照的 emoji
+  // icon 可能是 emoji、已組好的 <img>/<svg>、或 EV_IMG 有對照的 emoji；title 純文字，sub 吃 HTML
   const li = $('loot-icon'), ls = EV_IMG[icon];
   if(/^</.test(icon)) li.innerHTML = icon;
   else if(ls) li.innerHTML = uiIcon(ls,'ev-img');
   else li.textContent = icon;
   $('loot-title').textContent = title;
-  $('loot-sub').textContent = (sub||'') + (extra||'');
+  $('loot-sub').innerHTML = (sub||'') + (extra||'');   // v414：sub 內含 POTIONS/MATS 的 SVG 圖示，textContent 會把標籤原樣印出來（呼叫點全是內部字串，同 toast 的處理）
   const body = $('loot-body'); body.innerHTML = '';
   if(!items.length){
     body.innerHTML = '<p style="text-align:center;color:var(--dim);font-size:13px">這次沒有裝備掉落。</p>';
