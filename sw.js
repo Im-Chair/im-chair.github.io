@@ -1,4 +1,4 @@
-const CACHE = 'arcade-v17';
+const CACHE = 'arcade-v29';
 // RPG 敵人圖示：檔名＝ENEMIES／首領／域限精英的 key。v385 起 50 隻全數有圖，已無 SVG 回落。
 const RPG_MON = [
   'slime','bat','skel','thief','rat','garg','spider',
@@ -6,8 +6,10 @@ const RPG_MON = [
   'eye','flower','hound','clot','leech','teeth','necro',
   'lantern','sister','monk','reliq','choir','zealot','knight',
   'magma','mist','pulse','puppet','throm','valve','worm',
+  'mimic','feign',
   'mb0','mb1','mb2','mb3','mb4','bb0','bb1','bb2','bb3','final',
-  'ratking','priest','stitch','inquis','acolyte',            // v385：域限精英（方形框圖）
+  'ratking','priest','stitch','inquis','acolyte',            // 域限精英 A（每域第一隻）
+  'miner','raider','swarm','warden','stoker',                 // v396：域限精英 B（每域第二隻）
 ].map(k => `/rpg/mon/${k}.webp`);
 // RPG 通用 UI 圖示（v385）：標題／職業／門／藥水／結算，見 data.js 的 DOOR_IMG 與各表的 img 欄
 const RPG_UI = [
@@ -28,7 +30,9 @@ const ASSETS = [
   // 這裡存的是「不帶 ?v= 版號」的基底網址，靠下方 fetch fallback 的 ignoreSearch 對應到實際帶版號的請求。
   '/rpg/', '/rpg/index.html', '/rpg/style.css',
   '/rpg/data.js', '/rpg/core.js', '/rpg/account.js', '/rpg/items.js',
-  '/rpg/battle.js', '/rpg/run.js', '/rpg/ui.js', '/rpg/camp.webp',
+  // v396：營地底圖 camp3.webp（941×1672≈9:16）。舊的 camp.webp / camp2.webp 已無人引用，
+  // 檔案還留在 rpg/ 但不預快取；確認新圖無誤後可直接刪檔。
+  '/rpg/battle.js', '/rpg/run.js', '/rpg/ui.js', '/rpg/camp3.webp',
   ...RPG_MON, ...RPG_EQ, ...RPG_UI,
 ];
 
