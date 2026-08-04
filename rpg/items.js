@@ -526,8 +526,11 @@ function salvageItem(id){
   G.stash.splice(i,1); G.gold += v; closeSheet(); renderGear(); save(); toast(`分解得 ${v} 碎銀`);
 }
 
+var smithSel = 'w';                     // v411：鐵匠畫面目前選中的裝備欄（w/a）
+function smithPick(sl){ smithSel = sl; reforgeSlot = sl; reforgeLocks = []; renderSmith(); }
 function openSmith(){
-  const si = $('smith-ic'); if(si) si.innerHTML = uiIcon('smith','ev-img','<svg class="ic big"><use href="#ic-anvil"/></svg>');   // 鍛造大圖
+  if(!G.equip[smithSel]) smithSel = G.equip.w ? 'w' : 'a';
+  reforgeSlot = smithSel; reforgeLocks = [];
   renderSmith(); showScreen('s-smith');
 }
 
@@ -565,22 +568,9 @@ function reforgeCost(it){ return Math.round((60 + it.rar*40) * Math.pow(1.5, it.
 var pendingReforge = null;
 
 var reforgeSlot = null, reforgeLocks = [];
-function reforgeItem(slot){ const it = G.equip[slot]; if(!it) return; reforgeSlot = slot; reforgeLocks = []; renderReforgeLock(); }
-function toggleReforgeLock(i){ const p = reforgeLocks.indexOf(i); if(p>=0) reforgeLocks.splice(p,1); else reforgeLocks.push(i); renderReforgeLock(); }
-function renderReforgeLock(){
-  const it = G.equip[reforgeSlot]; if(!it) return;
-  const cost = Math.round(reforgeCost(it) * (1 + reforgeLocks.length*0.5));   // 每鎖一條 +50%
-  const normals = it.affixes.filter(a=>!AFFIXES[a.k].leg && !AFFIXES[a.k].curse);
-  const fixed = it.affixes.filter(a=>AFFIXES[a.k].leg || AFFIXES[a.k].curse);
-  let html = `<h3>重鑄・${it.name}</h3><p class="base">鎖定想保留的詞綴（🔒），其餘重鑄；數量隨機、可能變多。傳說與詛咒自動保留。<span style="color:var(--gold)">每鎖一條費用 +50%</span>。</p>`;
-  html += fixed.map(a=>`<div class="affix ${AFFIXES[a.k].leg?'leg':'curse'}">${AFFIXES[a.k].leg?'<svg class="ic"><use href="#ic-legend"/></svg>':'<svg class="ic"><use href="#ic-poison"/></svg>'} ${AFFIXES[a.k].n}：${AFFIXES[a.k].fmt(a.v)}　<span style="color:var(--dim)">保留</span></div>`).join('');
-  html += '<div class="item-list" style="margin-top:6px">';
-  normals.forEach((a,i)=>{ const locked = reforgeLocks.includes(i);
-    html += `<div class="item-row" onclick="toggleReforgeLock(${i})"><span class="in">${locked?'🔒':'🔓'} ${AFFIXES[a.k].n}：${AFFIXES[a.k].fmt(a.v)}</span><span class="is">${locked?'<span style="color:var(--gold)">鎖定</span>':'重鑄'}</span></div>`; });
-  html += '</div>';
-  html += `<div class="row" style="margin-top:16px"><button class="btn primary" onclick="doReforge()">重鑄（${cost}<svg class="ic"><use href="#ic-gold"/></svg>）</button><button class="btn" onclick="closeSheet()">取消</button></div>`;
-  openSheet(html);
-}
+function reforgeItem(slot){ const it = G.equip[slot]; if(!it) return; smithPick(slot); }
+function toggleReforgeLock(i){ const p = reforgeLocks.indexOf(i); if(p>=0) reforgeLocks.splice(p,1); else reforgeLocks.push(i); renderSmith(); }
+function renderReforgeLock(){ renderSmith(); }   // v411：鎖定 UI 已內嵌在鐵匠畫面
 function reforgeCtx(it){   // 重鑄用的強度情境：新裝備讀出身；舊裝備由現有素質反推有效樓層，避免縮水
   if(it.pf != null) return {floor: it.pf, cyc: it.pc||0};
   let eff = G.rec.deep || 10;
@@ -635,49 +625,105 @@ function applyReforge(){
   const it = G.equip[pendingReforge.slot];
   if(it) it.affixes = pendingReforge.affixes;
   pendingReforge = null;
-  save(); renderSmith(); toast('新詞綴已上身');
-  reforgeItem(reforgeSlot);   // 直接回到重鑄介面（同一件），不必回鐵匠重點
+  save(); closeSheet(); reforgeLocks = []; renderSmith(); toast('新詞綴已上身');
 }
 
 function cancelReforge(){
   pendingReforge = null;
-  renderSmith(); toast('保留了原本的詞綴');
-  reforgeItem(reforgeSlot);   // 保留原本後，仍回到重鑄介面可再鑄
+  closeSheet(); reforgeLocks = []; renderSmith(); toast('保留了原本的詞綴');
+}
+
+function smithScrollChk(){
+  const w = $('sm-work'); if(!w) return;
+  w.classList.toggle('more', w.scrollHeight - w.clientHeight > 4);
 }
 
 function renderSmith(){
-  const list = $('smith-list'); list.innerHTML='';
-  let any = false;
-  for(const sl of ['w','a']){
-    const it = G.equip[sl]; if(!it) continue; any = true;
-    const cost = smithCost(it);
-    const cap = RARITIES[it.rar].upCap;
-    const tier = smithTier(it.up);
-    const gain = (sl==='w'?'攻擊':'防禦') + ' +' + tier.gain;
-    const d = document.createElement('div'); d.className = `item-row ${RARITIES[it.rar].b}`;
-    if(it.up >= cap){
-      d.innerHTML = `<span class="in ${RARITIES[it.rar].cls}">${it.name}+${it.up}</span>
-        <span class="is">已達${RARITIES[it.rar].n}上限 +${cap}</span>`;
-    } else {
-      const matTxt = tier.mat ? `＋${MATS[tier.mat].i}${MATS[tier.mat].n}×${tier.qty}` : '';
-      const rateTxt = tier.rate < 1 ? `｜成功 ${Math.round(tier.rate*100)}%` : '';
-      d.innerHTML = `<span class="in ${RARITIES[it.rar].cls}">${it.name}${it.up?'+'+it.up:''}</span>
-        <span class="is"><svg class="ic"><use href="#ic-anvil"/></svg> ${gain}｜${cost}<svg class="ic"><use href="#ic-gold"/></svg>${matTxt}${rateTxt}</span>`;
-      d.onclick = ()=>tryUpgrade(sl);
+  $('sm-gold').innerHTML = '<svg class="ic"><use href="#ic-gold"/></svg> ' + G.gold;
+  $('sm-mats').innerHTML = MATS.iron.i + ' ' + (G.mats.iron||0) + '\u3000' + MATS.steel.i + ' ' + (G.mats.steel||0);
+
+  /* ---- 上半：身上的武器與護甲（飾品不可鍛造，不列） ---- */
+  const box = $('sm-slots'); box.innerHTML = '';
+  for(const [sl, kd] of [['w','武器'],['a','護甲']]){
+    const it = G.equip[sl];
+    const d = document.createElement('div');
+    if(!it){
+      d.className = 'sm-slot empty'; d.textContent = `— 未裝備${kd} —`;
+      box.appendChild(d); continue;
     }
-    list.appendChild(d);
-    if(G.rec.deep >= 10 && it.affixes.filter(a=>!AFFIXES[a.k].leg && !AFFIXES[a.k].curse).length){
-      const r = document.createElement('div'); r.className = `item-row ${RARITIES[it.rar].b}`;
-      r.innerHTML = `<span class="in" style="color:var(--dim)">↳ 重鑄詞綴${it.rf?`（第 ${it.rf+1} 次）`:''}</span>
-        <span class="is"><svg class="ic"><use href="#ic-dice"/></svg> 傳說/詛咒保留｜${reforgeCost(it)}<svg class="ic"><use href="#ic-gold"/></svg>${it.rf?'（每次 ×1.5）':''}</span>`;
-      r.onclick = ()=>reforgeItem(sl);
-      list.appendChild(r);
-    }
+    const R = RARITIES[it.rar];
+    d.className = 'sm-slot' + (smithSel === sl ? ' on' : '');
+    d.innerHTML = itemIcon(it, 'ic-lg')
+      + `<div class="tx"><div class="kd">${kd}</div>`
+      + `<div class="nm ${R.cls}">${it.name}<span class="up">${it.up ? ' +' + it.up : ''}</span></div>`
+      + `<div class="ln">${R.n}・上限 +${R.upCap}・詞綴 ${it.affixes.length}</div></div>`;
+    d.onclick = ()=>smithPick(sl);
+    box.appendChild(d);
   }
-  if(!any) list.innerHTML = '<p style="color:var(--dim);font-size:13px">身上沒有可強化的武器或護甲。</p>';
-  if(G.rec.deep < 10) list.insertAdjacentHTML('beforeend',
-    '<p style="color:var(--dim);font-size:12px;margin-top:8px">🔒 最深抵達 10 層後，鐵匠會學會「重鑄詞綴」。</p>');
-  list.insertAdjacentHTML('afterbegin', `<div style="text-align:right;color:var(--gold);font-size:14px"><svg class="ic"><use href="#ic-gold"/></svg> ${G.gold}　<span style="color:var(--dim)">${MATS.iron.i}${MATS.iron.n}×${G.mats.iron}　${MATS.steel.i}${MATS.steel.n}×${G.mats.steel}</span></div>
-    <p style="color:var(--dim);font-size:12px">上限：普通+3／精良+6／稀有+9／傳說+12｜+1~6只需碎銀·素質+1｜+7~9需${MATS.iron.n} 2/4/8·素質+2｜+10~12需${MATS.steel.n} 2/4/8·素質+3</p>`);
+
+  /* ---- 下半：精煉 + 重鑄 ---- */
+  const work = $('sm-work');
+  const it = G.equip[smithSel];
+  if(!it){ work.innerHTML = '<p class="sm-lock">身上沒有可鍛造的武器或護甲。</p>'; smithScrollChk(); return; }
+  const R = RARITIES[it.rar], cap = R.upCap;
+  let h = '';
+
+  h += `<div class="sm-card"><div class="hd"><span class="t">精 煉</span>`
+     + `<span class="cap">${it.up} / ${cap}\u3000${R.n}上限</span></div>`;
+  if(it.up >= cap){
+    h += `<div class="sm-lock">已達${R.n}上限 +${cap}，無法再精煉。</div>`;
+  } else {
+    const cost = smithCost(it), tier = smithTier(it.up);
+    const lackG = G.gold < cost, lackM = !!(tier.mat && (G.mats[tier.mat]||0) < tier.qty);
+    h += `<div class="sm-step"><b>+${it.up}</b><i>→</i><b class="to">+${it.up+1}</b>`
+       + `<span class="gain">${smithSel==='w'?'攻擊':'防禦'} +${tier.gain}</span></div>`
+       + `<div class="sm-cap-bar"><u style="width:${Math.round((it.up+1)/cap*100)}%"></u></div>`
+       + `<div class="sm-need">`
+       + `<span class="${lackG?'lack':''}"><svg class="ic"><use href="#ic-gold"/></svg> <b>${cost}</b></span>`
+       + (tier.mat ? `<span class="${lackM?'lack':''}">${MATS[tier.mat].i} <b>${tier.qty}</b> / ${G.mats[tier.mat]||0}</span>` : '')
+       + (tier.rate < 1 ? `<span class="risk">成功 <b>${Math.round(tier.rate*100)}%</b></span>` : `<span>必成</span>`)
+       + `</div>`
+       + `<button class="btn primary${(lackG||lackM)?' lack':''}" onclick="tryUpgrade('${smithSel}')">`
+       + `${tier.rate < 1 ? '賭一把' : '敲下去'}</button>`;
+  }
+  h += `</div>`;
+
+  h += `<div class="sm-card"><div class="hd"><span class="t">重 鑄</span>`
+     + `<span class="cap">${it.rf ? '已重鑄 ' + it.rf + ' 次' : '尚未重鑄'}</span></div>`;
+  if((G.rec.deep||0) < 10){
+    h += `<div class="sm-lock">最深抵達 10 層後，鐵匠會學會重鑄詞綴。</div>`;
+  } else {
+    const leg = it.affixes.find(a=>AFFIXES[a.k].leg);
+    const cur = it.affixes.find(a=>AFFIXES[a.k].curse);
+    /* 這個 normals 的順序必須與 doReforge() 內的 filter 一致，reforgeLocks 存的是它的索引 */
+    const normals = it.affixes.filter(a=>!AFFIXES[a.k].leg && !AFFIXES[a.k].curse);
+    const rc = Math.round(reforgeCost(it) * (1 + reforgeLocks.length*0.5));
+    h += `<div class="rf-grid">`;
+    h += leg
+      ? `<div class="rf-cell leg rf-wide"><span class="tx">${AFFIXES[leg.k].n}：${AFFIXES[leg.k].fmt(leg.v)}<small>傳說</small></span><span class="lk">自動保留</span></div>`
+      : `<div class="rf-cell void rf-wide">無傳說詞綴</div>`;
+    const cells = Math.max(4, normals.length);   // 正常最多 4，多出來也不藏
+    for(let i=0;i<cells;i++){
+      const a = normals[i];
+      if(!a){ h += `<div class="rf-cell void">空</div>`; continue; }
+      const on = reforgeLocks.includes(i);
+      h += `<div class="rf-cell norm${on?' lock':''}" onclick="toggleReforgeLock(${i})">`
+         + `<span class="tx">${AFFIXES[a.k].n}：${AFFIXES[a.k].fmt(a.v)}</span>`
+         + `<span class="lk"><svg class="ic"><use href="#${on?'ic-lock':'ic-unlock'}"/></svg></span></div>`;
+    }
+    h += cur
+      ? `<div class="rf-cell cur rf-wide"><span class="tx">${AFFIXES[cur.k].n}：${AFFIXES[cur.k].fmt(cur.v)}<small>詛咒</small></span><span class="lk">自動保留</span></div>`
+      : `<div class="rf-cell void rf-wide">無詛咒詞綴</div>`;
+    h += `</div>`;
+    h += `<div class="rf-hint">${reforgeLocks.length
+        ? '鎖定 ' + reforgeLocks.length + ' 條，費用 +' + (reforgeLocks.length*50) + '%'
+        : '點詞綴可鎖定，每鎖一條 +50%'}</div>`;
+    h += `<button class="btn${G.gold < rc ? ' lack' : ''}" onclick="doReforge()">重鑄\u3000`
+       + `<span class="bc"><svg class="ic"><use href="#ic-gold"/></svg> ${rc}</span></button>`;
+  }
+  h += `</div>`;
+
+  work.innerHTML = h;
+  smithScrollChk();
 }
 
