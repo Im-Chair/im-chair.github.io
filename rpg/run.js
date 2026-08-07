@@ -44,7 +44,7 @@ function openDivePicker(){
   html += '</div>';
   // 模式說明
   if(pendingMode==='orig'){
-    html += `<p class="base" style="margin-top:8px">五十層的旅程，五域五王。最深 ${G.orig.deep} 層${G.orig.done?'——你已走到底過':''}。不產出精煉材料。</p>`;
+    html += `<p class="base" style="margin-top:8px">五十層的旅程，五域五王。最深 ${G.orig.deep} 層${G.orig.done?'——你已走到底過':''}。</p>`;
   } else {
     const c = cd(pendingMode);
     html += `<p class="base" style="margin-top:8px">深淵重演，敵人 ×${cycMult(pendingMode).toFixed(1)}，掉落更兇，精煉材料只在輪迴出土——第 30 層前掉沉鐵、之後掉心鋼。${c.deep>0?`本輪最深 ${c.deep} 層。`:'你還沒踏進本輪。'}</p>`;
@@ -129,11 +129,11 @@ function enterFloor(){
     if(R.cycle === 1){
       G.mats.iron = (G.mats.iron||0) + 1;
       showEventScreen('🔄','輪迴・'+roman,
-        '深淵重演了自己——但這次它沒打算裝睡。\n\n敵人強度 ×'+cycMult(R.cycle).toFixed(1)+'，掉落遠勝本源。沉鐵與心鋼只在輪迴出土——你的精煉上限，現在才真正打得開。\n\n（守繩人塞給你一塊沉鐵當見面禮）',
+        '深淵重演了自己——但這次它沒打算裝睡。\n\n敵人強度 ×'+cycMult(R.cycle).toFixed(1)+'。沉鐵與心鋼只在輪迴出土——你的精煉上限，現在才真正打得開。\n\n（守繩人塞給你一塊沉鐵當見面禮）',
         go);
     } else {
       showEventScreen('🔄','輪迴・'+roman,
-        '你早就走過這條路。深淵又重演了一次，這回敵人 ×'+cycMult(R.cycle).toFixed(1)+'，掉落與精煉材料都更兇更厚。\n\n這次沒有見面禮——你的行囊早已沉甸甸的。',
+        '你早就走過這條路。深淵又重演了一次，這回敵人 ×'+cycMult(R.cycle).toFixed(1)+'，掉落與精煉材料都更兇更厚。',
         go);
     }
     return;
@@ -1157,7 +1157,7 @@ function openBounties(){
   ensureBounties();
   const active = G.bounties.filter(b=>b.state==='active');
   const offers = G.bounties.filter(b=>b.state==='offer');
-  let html = `<h3>懸賞板</h3><p class="base">自己挑委託接下,達成後回這裡「回報領獎」——不會自動完成。同時最多 ${MAX_ACTIVE} 個。</p>`;
+  let html = `<h3>懸賞板</h3><p class="base">自己挑委託接下,同時最多接 ${MAX_ACTIVE} 個。</p>`;
   html += `<div class="section-title">進行中 ${active.length}/${MAX_ACTIVE}</div>`;
   if(!active.length) html += '<p class="base" style="color:var(--dim)">還沒接委託，往下挑一個。</p>';
   for(const b of active){ const i = G.bounties.indexOf(b);
