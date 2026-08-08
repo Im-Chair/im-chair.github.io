@@ -333,6 +333,7 @@ function buyRune(i){
   G.gems -= price; s.sold = true;
   if(!G.runeBag) G.runeBag = [];
   G.runeBag.push(s.rune);
+  seenRune(s.rune);   // 真正入帳才登記（見 seenRune 註解）
   save(); closeSheet(); renderMarket(); toast('入手 '+s.rune.name);
 }
 var stashFilter = 'all';
@@ -398,6 +399,22 @@ function socketRune(id){
 }
 function unsocketRune(i){ if(!G.runes[i]) return; G.runeBag.push(G.runes[i]); G.runes[i]=null; save(); openRunes(); }
 function runeSellVal(rn){ return 8 + rn.rar*16; }
+
+/* 「符文曾取得過的最高數值」唯一登記入口（成就·符文集齊用）。新增取得管道時呼叫這裡，不要另寫。
+   記的是數值不是稀有度：集齊判定要拿 RUNE_BAND[cat.band][3][1] 的傳說上限去比，只記稀有度判不出來。
+   c 省略時寫進 G；migrateChar 補登舊存檔時要把該角色傳進來（那時 G 還不是它）。
+
+   為什麼不埋在 makeRune：makeRune 有兩個呼叫點，除了掉落，黑市補貨（rollMarketRunes）也走同一支。
+   埋在那裡等於「攤位上出現過就算取得」，花 1 鑽刷新攤位就能集齊，四個成就的難度會歸零。
+   登記時機一律是真正入帳：bankRun（成功回營）與 buyRune（黑市買下）。死亡失去的不算，
+   與「死亡失去未保管的一切」同一套規則。 */
+function seenRune(rn, c){
+  const ch = c || G;
+  if(!ch || !rn || !rn.affixes || !rn.affixes[0]) return;
+  const a = rn.affixes[0];
+  if(!ch.runeSeen) ch.runeSeen = {};
+  if(a.v > (ch.runeSeen[a.k] || 0)) ch.runeSeen[a.k] = a.v;
+}
 function renderRuneStash(sl){
   const runes = G.runeBag || [];
   if(!runes.length){ sl.insertAdjacentHTML('beforeend', '<p style="color:var(--dim);font-size:13px">還沒有符文。戰鬥掉落或黑市購買，鑲進「角色 → 符文槽」即被動生效。</p>'); return; }

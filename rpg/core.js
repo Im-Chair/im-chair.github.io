@@ -47,7 +47,13 @@ const $ = id=>document.getElementById(id);
 
 function newSave(){ return {v3:1, cls:null, gold:0, stash:[], equip:{w:null,a:null,t:null},
   rec:{deep:0,cert:null,runs:0,boss:0}, mats:{iron:0,steel:0}, codex:{}, cyc:{unlocked:0},
-  orig:{deep:0,cp:0,done:false}, cycData:{}, bounties:[], runes:[null,null,null], runeBag:[], gems:0, run:null, uid:1}; }
+  orig:{deep:0,cp:0,done:false}, cycData:{}, bounties:[], runes:[null,null,null], runeBag:[], gems:0, run:null, uid:1,
+  // v424 四個新系統的欄位。這裡與 migrateChar 必須一模一樣，只改一邊會讓新舊角色分岔。
+  statBuy:{str:0,int:0,spi:0,vit:0,agi:0},   // 素質提升：各素質已購點數（0～40）
+  runeSeen:{},                                // 成就：各詞綴「曾取得過」的最高數值（見 seenRune）
+  achv:{},                                    // 成就：id → 取得時間戳
+  sigils:{equipped:[], owned:[]},             // 魔符：已裝備欄位與已擁有清單
+  killBest:0}; }                              // 單場殺怪數的歷史最高
 
 // ⚠️ 僅供「最高成就徽章」排序與顯示，勿再用於任何難度判定（黑市/懸賞/解鎖請用 certPool() 與 cd(n).cp）。
 // 理由：cycle*1000+floor 讓輪迴階級碾壓樓層，輪迴III 第1層會蓋掉輪迴II 100。

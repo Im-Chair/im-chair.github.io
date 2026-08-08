@@ -278,7 +278,7 @@ function bankRun(deep){   // ★唯一的「成功回營」入口(逃脫/通關)
   for(const s of ['w','a','t']) if(G.equip[s]) G.equip[s].banked = true;
   G.gold += R.gold;
   // 符文 / 材料 / 圖鑑（下潛期間只是 pending 在 R 裡，回營才入帳）
-  if(R.runesPending){ if(!G.runeBag) G.runeBag=[]; for(const rn of R.runesPending) G.runeBag.push(rn); }
+  if(R.runesPending){ if(!G.runeBag) G.runeBag=[]; for(const rn of R.runesPending){ G.runeBag.push(rn); seenRune(rn); } }   // seenRune 只在這裡與 buyRune 呼叫＝真正入帳才算
   if(R.matsPending) for(const k in R.matsPending) G.mats[k] = (G.mats[k]||0) + R.matsPending[k];
   if(R.codexPending) for(const k in R.codexPending) G.codex[k] = (G.codex[k]||0) + R.codexPending[k];
   // 最深紀錄（黑市/藥水/鐵匠解鎖都吃這個 → 也要成功回營才算）

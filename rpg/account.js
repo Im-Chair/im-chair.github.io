@@ -27,6 +27,24 @@ function migrateChar(c){
   if(!c.runes) c.runes = [null,null,null];
   if(!c.runeBag) c.runeBag = [];
   if(c.gems===undefined) c.gems = 0;
+
+  /* v424：四個新系統（素質提升／魔符／成就／離線化）的欄位一次補完。
+     與 core.js 的 newSave() 必須一模一樣，只改一邊會讓新舊角色分岔。 */
+  if(!c.statBuy) c.statBuy = {str:0,int:0,spi:0,vit:0,agi:0};
+  else for(const k of ['str','int','spi','vit','agi']) if(c.statBuy[k]===undefined) c.statBuy[k] = 0;
+  if(!c.achv) c.achv = {};
+  if(!c.sigils) c.sigils = {equipped:[], owned:[]};
+  if(!c.sigils.equipped) c.sigils.equipped = [];
+  if(!c.sigils.owned) c.sigils.owned = [];
+  if(c.killBest===undefined) c.killBest = 0;
+
+  /* runeSeen 的補登：舊存檔沒有這個欄位，老角色手上的符文若不補進去，
+     集齊成就會從零開始算，等於白玩。只能補到「現在還持有的」——賣掉或換掉的追不回來。 */
+  if(!c.runeSeen){
+    c.runeSeen = {};
+    for(const rn of (c.runes||[])) seenRune(rn, c);
+    for(const rn of (c.runeBag||[])) seenRune(rn, c);
+  }
 }
 
 function accLoad(){
