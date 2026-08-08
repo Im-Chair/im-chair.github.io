@@ -84,12 +84,12 @@ function enemyIcon(e){
 }
 /* 敵人圖（mon/*.webp）：給門卡、圖鑑等「不是敵人物件」的地方直接用 key 取圖 */
 function monImg(key, cls){
-  return `<img class="${cls||''}" src="mon/${key}.webp?v=${window.RPG_VER}" alt="" draggable="false">`;
+  return `<img class="${cls||''}" src="mon/${key}.webp?v=${window.IMG_VER}" alt="" draggable="false">`;
 }
 /* 通用 UI 圖示（ui/*.webp）：職業、門、藥水、結算。沒有 slug 就回落原本的 emoji。 */
 function uiIcon(slug, cls, fb){
   if(!slug) return fb || '';
-  return `<img class="ui-ic ${cls||''}" src="ui/${slug}.webp?v=${window.RPG_VER}" alt="" draggable="false">`;
+  return `<img class="ui-ic ${cls||''}" src="ui/${slug}.webp?v=${window.IMG_VER}" alt="" draggable="false">`;
 }
 /* 職業圖示唯一入口——所有顯示職業的地方都走這裡：
    選職業卡、營地角色列、角色切換清單、刪除確認、戰鬥名條、角色檢視。

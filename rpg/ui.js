@@ -60,7 +60,7 @@ try{
   if(typeof Image === 'function'){
     const _ci = new Image();
     _ci.onload = () => { if(_ci.naturalHeight){ campRatio = _ci.naturalWidth/_ci.naturalHeight; layoutCamp(); } };
-    _ci.src = 'camp3.webp?v=' + window.RPG_VER;
+    _ci.src = 'camp3.webp?v=' + window.IMG_VER;
   }
 }catch(e){}
 

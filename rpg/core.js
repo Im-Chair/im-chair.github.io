@@ -123,11 +123,25 @@ function blessMult(){   // 數值型祝福隨深度/輪迴縮放（見 data.js B
   return 1 + (f-1)*0.05 + blessCyc(c)*0.5;   // 每層 +5%、每重輪迴再加 blessCyc×0.5（起點值，可調）
 }
 
-function save(){ if(G) G.run = R; accSave();   // 寫回帳號（G 就是當前角色，已在 ACC 內）
-  const cg = document.getElementById('camp-gold'); if(cg && G) cg.textContent = G.gold;
-  const sc = document.getElementById('stash-count'); if(sc && G) sc.textContent = `倉庫 ${G.stash.length} 件`;
-  const gg = document.getElementById('gear-gold'); if(gg && G) gg.innerHTML = '<svg class="ic"><use href="#ic-gold"/></svg> ' + G.gold;
+/* 貨幣顯示的唯一入口。
+   以前每個畫面各自寫一份（save() 寫 camp-gold、renderCamp 寫 camp-gem、renderMarket 寫 mk-gem），
+   所以「回報懸賞拿到鑽石」之後只有一部分畫面更新 → 營地與黑市的鑽石數字對不上。碎銀之前也犯過同一件事。
+   現在一律在這裡從 G 讀，並由 save() 統一觸發——任何改動金錢的地方本來都會 save()。
+   新增顯示點只要往 WALLET 加一筆，不要再在各自的 render 裡另寫。 */
+const WALLET = [['camp-gold', g=>g.gold, 0], ['camp-gem', g=>g.gems||0, 0],
+                ['mk-gold', g=>g.gold, 1], ['mk-gem', g=>g.gems||0, 1],
+                ['gear-gold', g=>g.gold, 1], ['sm-gold', g=>g.gold, 1]];
+function syncWallet(){
+  if(!G) return;
+  for(const [id, get, withIcon] of WALLET){
+    const el = document.getElementById(id); if(!el) continue;
+    const ic = id.slice(-3) === 'gem' ? 'ic-gem' : 'ic-gold';
+    if(withIcon) el.innerHTML = '<svg class="ic"><use href="#' + ic + '"/></svg> ' + get(G);
+    else el.textContent = get(G);
+  }
+  const sc = document.getElementById('stash-count'); if(sc) sc.textContent = '倉庫 ' + G.stash.length + ' 件';
 }
+function save(){ if(G) G.run = R; accSave(); syncWallet(); }
 
 function load(){ try{
   accLoad();                       // 建立/遷移帳號、挑出當前角色到 G（每角色遷移在 account.js）
@@ -150,7 +164,7 @@ function preloadArt(){
   // ⚠️ 整段包 try：預載只是最佳化，絕對不能因為它壞掉就擋住遊戲流程。
   //    （踩過：這函式在 renderCamp 第一行丟例外 → confirmClass 的 showScreen('s-camp') 跑不到 → 卡在選職業）
   try{
-    const v = '?v=' + window.RPG_VER;
+    const v = '?v=' + window.IMG_VER;   // 圖片一律吃 IMG_VER，見 index.html 的說明
     const urls = [];
     for(const k in ENEMIES) if(ENEMIES[k].img) urls.push('mon/'+k+'.webp'+v);
     for(const b of MINI_BOSSES.concat(LORD_BOSSES)) if(b.img) urls.push('mon/'+b.key+'.webp'+v);
@@ -161,11 +175,15 @@ function preloadArt(){
     for(const s of new Set(Object.values(DOOR_IMG))) urls.push('ui/'+s+'.webp'+v);
     for(const k in POTIONS) if(POTIONS[k].img) urls.push('ui/'+POTIONS[k].img+'.webp'+v);
     for(const s of new Set(Object.values(EV_IMG))) urls.push('ui/'+s+'.webp'+v);
-    urls.push('ui/res_death.webp'+v, 'ui/smith.webp'+v);
+    for(const z of REALMS) if(z.bg) urls.push('ui/'+z.bg+'.webp'+v);   // 進域橫幅
+    urls.push('ui/res_death.webp'+v, 'ui/smith.webp'+v,
+              'ui/npc_smith.webp'+v, 'ui/bg_market.webp'+v,           // 鐵匠與黑市的場景圖
+              'camp3.webp'+v);                                        // 營地底圖（第一次進營地就要）
+    // title_bg 由 CSS 直接引用，瀏覽器解析 style.css 時就會抓，不需要在這裡預載
     let i = 0;
     const batch = ()=>{
       try{
-        for(let n=0; n<8 && i<urls.length; n++, i++){
+        for(let n=0; n<12 && i<urls.length; n++, i++){   // 資產量從 79 成長到 120+，批次跟著加大
           const im = new Image(); im.decoding = 'async'; im.src = urls[i]; _preloaded.push(im);
         }
         if(i < urls.length) setTimeout(batch, 120);
@@ -256,7 +274,10 @@ function chemOn(id){ // 化學反應是否啟動：配方所需詞綴齊備
   return !!c && c.need.every(k=>sumAffix(k)>0);
 }
 
-function openSheet(html){ $('sheet').innerHTML = html; $('sheet-mask').classList.add('show'); }
+/* ⚠️ scrollTop 一定要歸零：.sheet 是 max-height:78vh + overflow-y:auto。
+   從長表（角色檢視）切到短表（符文）時舊的捲動位置會留著 → 使用者看到一片空白、
+   「關閉」鍵被捲到視窗外，點下去當然沒反應。這就是「符文的關閉鍵沒功能」的成因。 */
+function openSheet(html){ const el = $('sheet'); el.innerHTML = html; el.scrollTop = 0; $('sheet-mask').classList.add('show'); }
 
 function closeSheet(){ $('sheet-mask').classList.remove('show'); }
 

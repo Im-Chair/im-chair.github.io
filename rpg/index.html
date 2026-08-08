@@ -6,8 +6,14 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#080605">
 <title>貪婪深淵</title>
-<!-- 版本號集中管理：只改這一個 RPG_VER，即同步 CSS／所有 script／標題顯示的版號（破快取用） -->
-<script>window.RPG_VER='417';document.write('<link rel="stylesheet" href="style.css?v='+RPG_VER+'">');</script>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon.png">
+<!-- 兩個版號，用途不同，不要合併：
+     RPG_VER：程式碼版號。改任何 js/css 就 +1，會同步套到 CSS 連結、所有 <script src> 與標題顯示。
+     IMG_VER：圖片版號。只在「真的換圖」時才 +1。
+     為什麼要拆：圖片有 121 張、共 3.0 MB。以前圖也掛 RPG_VER，結果從 393 推到 420 這 27 次進版，
+     每一次都讓全部圖換成新 URL——瀏覽器整批重抓、SW 快取每版累積一整套重複 entry，而圖根本沒動。 -->
+<script>window.RPG_VER='421';window.IMG_VER='1';document.write('<link rel="stylesheet" href="style.css?v='+RPG_VER+'">');</script>
 </head>
 <body>
 
@@ -114,7 +120,7 @@
   <div class="t-body">
     <div class="spacer"></div>
     <h1 class="title">貪婪深淵</h1>
-    <div class="subtitle">深不見底的地底隱藏著什麼樣的寶藏</div>
+    <div class="subtitle">深入一層，或帶著一切離開</div>
     <div id="rpg-ver"></div>
     <div class="spacer"></div>
     <button class="btn primary" onclick="titleStart()">進入深淵</button>
@@ -222,8 +228,8 @@
     <div class="realm-rule" id="d-rule"></div>
   </div>
   <div class="door-grid" id="door-grid"></div>
-  <button class="btn retreat-btn" id="retreat-btn" onclick="retreat()" style="display:none"><svg class="ic"><use href="#ic-rope"/></svg> 使用逃脫之繩——活著離開，記錄這趟深度</button>
-  <button class="btn retreat-btn" id="retreat-gold-btn" onclick="retreatByGold()" style="display:none"><svg class="ic"><use href="#ic-gold"/></svg> 花費 9 成碎銀逃脫——活著離開，記錄這趟深度</button>
+  <button class="btn retreat-btn" id="retreat-btn" onclick="retreat()" style="display:none"><svg class="ic"><use href="#ic-rope"/></svg> 使用逃脫之繩</button>
+  <button class="btn retreat-btn" id="retreat-gold-btn" onclick="retreatByGold()" style="display:none"><svg class="ic"><use href="#ic-gold"/></svg> 花 9 成碎銀逃脫</button>
   <div class="rope-hint" id="rope-hint"></div>
   <div style="height:8px"></div>
   <button class="btn" style="font-size:14px" onclick="openRunStats()"><svg class="ic"><use href="#ic-hero"/></svg> 角色檢視 <span id="bag-hint" style="color:var(--dim);font-size:12px"></span></button>

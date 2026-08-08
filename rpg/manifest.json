@@ -1,0 +1,16 @@
+{
+  "name": "貪婪深淵",
+  "short_name": "貪婪深淵",
+  "description": "越深獎勵越好，死亡失去未保管的一切。瀏覽器 roguelite。",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#080605",
+  "theme_color": "#080605",
+  "lang": "zh-Hant",
+  "icons": [
+    { "src": "icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

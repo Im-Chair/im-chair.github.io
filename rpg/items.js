@@ -105,7 +105,7 @@ function itemIconSlug(it){
 function itemIcon(it, cls){
   const slug = itemIconSlug(it);
   if(!slug) return `<span class="item-ic ${cls||'ic-sm'} ic-fb">${it && it.slot==='a'?'<svg class="ic"><use href="#ic-shield"/></svg>':'<svg class="ic"><use href="#ic-gem"/></svg>'}</span>`;
-  return `<img class="item-ic ${cls||'ic-sm'} r${it.rar}" src="eq/${slug}.webp?v=${window.RPG_VER}" alt="" draggable="false">`;
+  return `<img class="item-ic ${cls||'ic-sm'} r${it.rar}" src="eq/${slug}.webp?v=${window.IMG_VER}" alt="" draggable="false">`;
 }
 
 /* 彙總玩家所有詞綴 */
@@ -192,8 +192,14 @@ function renderMarket(){
   ).join('');
 
   /* 第二列：符文／魔符／刷新。裝備是預設攤位，點第一列任一分頁就回來 */
-  let bar = `<div class="mk-tab${marketStall===1?' on':''}" onclick="switchMarketStall(1)" style="padding:8px 4px">符文</div>`
-          + `<div class="mk-tab${marketStall===2?' on':''}" onclick="switchMarketStall(2)" style="padding:8px 4px">魔符</div>`;
+  // 符文攤只在「該分頁的輪迴/樓層真的解鎖符文」時出現。
+  // 以前無條件顯示，點本源分頁再點符文會進到一個永遠空的攤位——看起來就是「跳不出商品」。
+  const hasRune = runeMaxRar(t.cyc || 0, t.floor) >= 0;
+  if(!hasRune && marketStall === 1) marketStall = 0;      // 切分頁後若符文攤消失，自動退回裝備攤
+  let bar = hasRune
+    ? `<div class="mk-tab${marketStall===1?' on':''}" onclick="switchMarketStall(1)" style="padding:8px 4px">符文</div>`
+    : `<div class="mk-tab" style="padding:8px 4px;opacity:.35;cursor:default" onclick="toast('這個貨源還沒有符文——輪迴 I 之後才有')">符文</div>`;
+  bar += `<div class="mk-tab${marketStall===2?' on':''}" onclick="switchMarketStall(2)" style="padding:8px 4px">魔符</div>`;
   if(marketStall === 1){
     bar += `<div class="mk-re gem${(G.gems||0)<1?' poor':''}" onclick="rerollMarket()">`
          + `<svg class="ic"><use href="#ic-dice"/></svg><svg class="ic"><use href="#ic-gem"/></svg> 1</div>`;

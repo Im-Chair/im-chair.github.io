@@ -44,7 +44,7 @@ function openDivePicker(){
   html += '</div>';
   // 模式說明
   if(pendingMode==='orig'){
-    html += `<p class="base" style="margin-top:8px">五十層的旅程，五域五王。最深 ${G.orig.deep} 層${G.orig.done?'——你已走到底過':''}。</p>`;
+    html += `<p class="base" style="margin-top:8px">五十層的旅程，五域五王。最深 ${G.orig.deep} 層${G.orig.done?'——你已走到底過':''}。不產出精煉材料。</p>`;
   } else {
     const c = cd(pendingMode);
     html += `<p class="base" style="margin-top:8px">深淵重演，敵人 ×${cycMult(pendingMode).toFixed(1)}，掉落更兇，精煉材料只在輪迴出土——第 30 層前掉沉鐵、之後掉心鋼。${c.deep>0?`本輪最深 ${c.deep} 層。`:'你還沒踏進本輪。'}</p>`;
@@ -129,11 +129,11 @@ function enterFloor(){
     if(R.cycle === 1){
       G.mats.iron = (G.mats.iron||0) + 1;
       showEventScreen('🔄','輪迴・'+roman,
-        '深淵重演了自己——但這次它沒打算裝睡。\n\n敵人強度 ×'+cycMult(R.cycle).toFixed(1)+'。沉鐵與心鋼只在輪迴出土——你的精煉上限，現在才真正打得開。\n\n（守繩人塞給你一塊沉鐵當見面禮）',
+        '深淵重演了自己——但這次它沒打算裝睡。\n\n敵人強度 ×'+cycMult(R.cycle).toFixed(1)+'，掉落遠勝本源。沉鐵與心鋼只在輪迴出土——你的精煉上限，現在才真正打得開。\n\n（守繩人塞給你一塊沉鐵當見面禮）',
         go);
     } else {
       showEventScreen('🔄','輪迴・'+roman,
-        '你早就走過這條路。深淵又重演了一次，這回敵人 ×'+cycMult(R.cycle).toFixed(1)+'，掉落與精煉材料都更兇更厚。',
+        '你早就走過這條路。深淵又重演了一次，這回敵人 ×'+cycMult(R.cycle).toFixed(1)+'，掉落與精煉材料都更兇更厚。\n\n這次沒有見面禮——你的行囊早已沉甸甸的。',
         go);
     }
     return;
@@ -199,7 +199,7 @@ function showDoors(){
   const rgb = document.getElementById('retreat-gold-btn');
   if(rgb) rgb.style.display = (!R.hasRope && R.gold > 0 && R.floor > 1) ? '' : 'none';   // 無繩時可花 9 成碎銀逃脫
   const rh = document.getElementById('rope-hint');
-  if(rh) rh.innerHTML = R.hasRope ? '' : `<svg class="ic"><use href="#ic-rope"/></svg> 逃脫之繩：首領 20%起每5層+5%${R.cycle===0?`（本源第 ${ROPE_PITY} 層起必給）`:''}／寶箱 5%／商人 8%｜或花 9 成碎銀逃脫`;
+  if(rh) rh.innerHTML = R.hasRope ? '' : '';
   $('d-bonus').textContent = rarityBonusText(f);
   // 域規則常駐：原本只在進域的 intro 講一次，打到第 19 層早忘了、中途死掉重進也不再顯示
   const _z = realmFor(f), _rl = $('d-rule');
@@ -314,7 +314,9 @@ function nextFloor(){
   save();
   const now = realmFor(R.floor);
   if(now !== before){
-    showEventScreen(now.i, '進入・'+now.n, now.intro,
+    // v418：進域改用橫幅（realm0–5）。橫幅比 56px 的 emoji 更能標記「換層了」這件事
+    const _bn = now.bg ? `<img class="realm-banner" src="ui/${now.bg}.webp?v=${window.IMG_VER}" alt="">` : now.i;
+    showEventScreen(_bn, '進入・'+now.n, now.intro,
       [{n:'繼續前進', f:()=>{ R.doors=null; showDoors(); }, primary:true}]);
     return;
   }
@@ -415,7 +417,11 @@ function showEventScreen(icon,title,text,choices){
   $('ev-floor').textContent = R.floor;
   $('ev-gold').textContent = R.gold;
   const evs = EV_IMG[icon];
-  if(evs) $('ev-icon').innerHTML = uiIcon(evs,'ev-img'); else $('ev-icon').textContent = icon;
+  // icon 可能是 emoji（查 EV_IMG）、或呼叫端已組好的 HTML（進域橫幅就是）。
+  // 舊版 else 分支直接 textContent，傳 HTML 進來就把 <img …> 原樣印在畫面上——那就是「結算畫面出現程式碼」。
+  if(/^</.test(icon)) $('ev-icon').innerHTML = icon;
+  else if(evs) $('ev-icon').innerHTML = uiIcon(evs,'ev-img');
+  else $('ev-icon').textContent = icon;
   $('ev-title').textContent = title;
   $('ev-text').textContent = text;
   const c = $('ev-choices'); c.innerHTML='';
@@ -430,7 +436,8 @@ function showSkillUpScreen(icon, title, text, onPick, extraChoices){
   R.phase='event';
   $('ev-floor').textContent = R.floor;
   $('ev-gold').textContent = R.gold;
-  $('ev-icon').textContent = icon;
+  if(/^</.test(icon)) $('ev-icon').innerHTML = icon;
+  else { const _e = EV_IMG[icon]; if(_e) $('ev-icon').innerHTML = uiIcon(_e,'ev-img'); else $('ev-icon').textContent = icon; }
   $('ev-title').textContent = title;
   $('ev-text').textContent = text;
   const c = $('ev-choices'); c.innerHTML='';
@@ -929,7 +936,7 @@ function merchantLabel(st){
   if(st.kind==='oil') return `<svg class="ic"><use href="#ic-bless"/></svg> 祝福油（隨機一項本次探索祝福）— ${st.price}<svg class="ic"><use href="#ic-gold"/></svg>`;
   if(st.kind==='quench') return `<svg class="ic"><use href="#ic-dagger"/></svg> 淬毒服務（攻擊附 3 中毒，3 場戰鬥）— ${st.price}<svg class="ic"><use href="#ic-gold"/></svg>`;
   if(st.kind==='mat') return `${MATS[st.mat].i} ${MATS[st.mat].n} ×1 — ${st.price}<svg class="ic"><use href="#ic-gold"/></svg>`;
-  if(st.kind==='rope') return `<svg class="ic"><use href="#ic-rope"/></svg> 逃脫之繩（活著離開，記錄這趟深度）— ${st.price}<svg class="ic"><use href="#ic-gold"/></svg>`;
+  if(st.kind==='rope') return `<svg class="ic"><use href="#ic-rope"/></svg> 逃脫之繩 — ${st.price}<svg class="ic"><use href="#ic-gold"/></svg>`;
   return `${POTIONS[st.k].i} ${POTIONS[st.k].n}（${pdesc(st.k)}）— ${st.price}<svg class="ic"><use href="#ic-gold"/></svg>`;
 }
 
@@ -1157,7 +1164,7 @@ function openBounties(){
   ensureBounties();
   const active = G.bounties.filter(b=>b.state==='active');
   const offers = G.bounties.filter(b=>b.state==='offer');
-  let html = `<h3>懸賞板</h3><p class="base">自己挑委託接下,同時最多接 ${MAX_ACTIVE} 個。</p>`;
+  let html = `<h3>懸賞板</h3><p class="base">自己挑委託接下,達成後回這裡「回報領獎」——不會自動完成。同時最多 ${MAX_ACTIVE} 個。</p>`;
   html += `<div class="section-title">進行中 ${active.length}/${MAX_ACTIVE}</div>`;
   if(!active.length) html += '<p class="base" style="color:var(--dim)">還沒接委託，往下挑一個。</p>';
   for(const b of active){ const i = G.bounties.indexOf(b);
