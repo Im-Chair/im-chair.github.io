@@ -175,7 +175,7 @@ function openCodex(){
       : `<div class="item-row" style="opacity:.4"><span class="in"><svg class="ic"><use href="#ic-unknown"/></svg> ？？？</span><span class="is">未收錄</span></div>`;
   };
   REALMS.slice(0,5).forEach((z, ri)=>{
-    html += `<div class="section-title">${z.i} ${z.n}</div><div class="item-list">`;
+    html += `<div class="section-title">${z.n}</div><div class="item-list">`;
     for(const [k,e] of Object.entries(ENEMIES)) if(e.realm===ri) html += row({key:k, n:e.n, i:e.i, img:e.img});
     for(const re of REALM_ELITES[ri]) html += row({key:re.key, n:re.n, i:re.i, img:re.img, boss:true});
     const mb = MINI_BOSSES[ri];
@@ -193,7 +193,7 @@ function openRunStats(){
   const w = G.equip.w, wt = weaponType();
   const wVal = eqStat(w), msVal = mainStat(), msName = STATS[CLASSES[G.cls].mainStat].n;
   const cMagic = CLASSES[G.cls].mainStat==='int', misW = cMagic !== !!wt.magic;
-  rows.push([`${wt.i} ${wVal+msVal}`, `攻擊力（武器${wVal}＋${msName}${msVal}）${misW?(cMagic?'｜⚠不合手·普攻武器×0.5、法術×0':'｜⚠不合手·武器攻擊×0'):(wt.magic?'｜普攻物理·法術對盾減半':'')}`]);
+  rows.push([`${wt.i} ${wVal+msVal}`, `攻擊力（武器${wVal}＋${msName}${msVal}）${misW?(cMagic?'｜<svg class="ic"><use href="#ic-warn"/></svg> 不合手·普攻武器×0.5、法術×0':'｜<svg class="ic"><use href="#ic-warn"/></svg> 不合手·武器攻擊×0'):(wt.magic?'｜普攻物理·法術對盾減半':'')}`]);
   rows.push([`${R? R.hp : playerMaxHp()}/${playerMaxHp()}`, '<svg class="ic"><use href="#ic-heart"/></svg> 生命']);
   if(playerMaxMana()>0) rows.push([`${R? (R.mana||0) : playerMaxMana()}/${playerMaxMana()}`, '<svg class="ic"><use href="#ic-mana"/></svg> 法力（回 '+Math.round(manaRegenPct())+'%/回合）']);
   rows.push([playerDef(), '<svg class="ic"><use href="#ic-shield"/></svg> 防禦力（減 '+(playerDef()/10).toFixed(1)+' 點）']);

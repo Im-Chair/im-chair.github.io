@@ -356,13 +356,13 @@ const PREFIX = {white:['破舊的','素面的','無名的'], blue:['精良的','
 const POTIONS = {
   // 註：heal/bomb/stone/holy 的實際數值會隨樓層/最大生命縮放，顯示一律走 core.js 的 pdesc()／potPower()；
   //     下方 d 只是「固定效果道具」(energy/purge/wrath) 的顯示文字，縮放型的 d 僅作定性說明、不寫死數字以免誤導。
-  heal:{n:'恢復藥水', i:'🧪', img:'pot_heal', d:'回復生命與部分法力', battle:true, any:true},
-  energy:{n:'烈酒',   i:'🍶', img:'pot_energy', d:'本回合 +2 能量', battle:true, any:false},
-  bomb:{n:'火油瓶',   i:'🔥', img:'pot_bomb', d:'對敵人造成傷害並使其易傷', battle:true, any:false},
+  heal:{n:'恢復藥水', i:'<svg class="ic"><use href="#ic-potion"/></svg>', img:'pot_heal', d:'回復生命與部分法力', battle:true, any:true},
+  energy:{n:'烈酒',   i:'<svg class="ic"><use href="#ic-potion"/></svg>', img:'pot_energy', d:'本回合 +2 能量', battle:true, any:false},
+  bomb:{n:'火油瓶',   i:'<svg class="ic"><use href="#ic-fire"/></svg>', img:'pot_bomb', d:'對敵人造成傷害並使其易傷', battle:true, any:false},
   purge:{n:'淨化藥水', i:'<svg class="ic"><use href="#ic-refresh"/></svg>', img:'pot_purge', d:'清除自身所有負面狀態', battle:true, any:true},
-  wrath:{n:'狂暴藥劑', i:'🧨', img:'pot_wrath', d:'本場戰鬥傷害 +50%', battle:true, any:false, m:20},
+  wrath:{n:'狂暴藥劑', i:'<svg class="ic"><use href="#ic-rage"/></svg>', img:'pot_wrath', d:'本場戰鬥傷害 +50%', battle:true, any:false, m:20},
   stone:{n:'石膚藥劑', i:'<svg class="ic"><use href="#ic-heavy"/></svg>', img:'pot_stone', d:'獲得格擋', battle:true, any:false, m:20},
-  holy:{n:'聖水',     i:'💦', img:'pot_holy', d:'對所有敵人造成傷害並淨化自身', battle:true, any:false, m:20},
+  holy:{n:'聖水',     i:'<svg class="ic"><use href="#ic-bless"/></svg>', img:'pot_holy', d:'對所有敵人造成傷害並淨化自身', battle:true, any:false, m:20},
 };
 
 const MATS = {iron:{n:'沉鐵', i:'<svg class="ic"><use href="#ic-iron"/></svg>', d:'沉到這個深度的鐵，比地面的密'}, steel:{n:'心鋼', i:'<svg class="ic"><use href="#ic-steel"/></svg>', d:'離心臟越近的金屬，越記得跳動'}};

@@ -76,8 +76,8 @@ function openDivePicker(){
     const nxt = (!capped || ds < 91) ? (ds===1?11:ds+10) : 0;
     if(nxt) nextCp = '活著逃脫到第 '+nxt+' 層並拉繩，解鎖傳送至該層';
   }
-  if(nextCp) html += `<p style="color:var(--dim);font-size:12px;margin-top:8px">🔒 ${nextCp}。</p>`;
-  if(cu === 0) html += '<p style="color:var(--dim);font-size:12px">🔒 打穿本源 50 層通關，解鎖輪迴。</p>';
+  if(nextCp) html += `<p style="color:var(--dim);font-size:12px;margin-top:8px"><svg class="ic"><use href="#ic-lock"/></svg> ${nextCp}。</p>`;
+  if(cu === 0) html += '<p style="color:var(--dim);font-size:12px"><svg class="ic"><use href="#ic-lock"/></svg> 打穿本源 50 層通關，解鎖輪迴。</p>';
   html += '<button class="btn" style="margin-top:8px" onclick="closeSheet()">取消</button>';
   openSheet(html);
 }
@@ -175,7 +175,7 @@ function doorPair(){   // 門一定是「戰鬥」＋另一扇（菁英80/事件
   const hint = Math.random()<0.5 ? '你察覺到：'+(EV_HINTS[pev]||'說不上來的氣息') : '誰知道呢';
   const pool2 = [];
   if(f>=3) pool2.push({t:'elite', i:'<svg class="ic"><use href="#ic-star"/></svg>', n:'精英', d:'更強，掉落更好', w:80});
-  pool2.push({t:'event', i:'❓', n:'未知', d:hint, ev:pev, w:10});
+  pool2.push({t:'event', i:'<svg class="ic"><use href="#ic-unknown"/></svg>', n:'未知', d:hint, ev:pev, w:10});
   pool2.push({t:'rest', i:'🕯️', n:'營火', d:'回復 30% 生命', w:5});
   pool2.push({t:'chest', i:'📦', n:'寶箱', d:'看起來沒上鎖', w:5});
   return [d1, weightedPick(pool2)];
@@ -191,7 +191,7 @@ function showDoors(){
   const f = R.floor;
   const zz = realmFor(f);
   $('d-floor').textContent = f; $('d-floor-big').textContent = f;
-  document.querySelector('#s-doors .depth-gauge .lbl').textContent = zz.i+' '+zz.n;
+  document.querySelector('#s-doors .depth-gauge .lbl').textContent = zz.n;   // 域圖示拿掉：域已有專屬橫幅，這裡只需要名字
   $('d-gold').textContent = R.gold;
   $('d-hp').innerHTML = `<svg class="ic"><use href="#ic-heart"/></svg> ${R.hp}/${playerMaxHp()}`;   // v405：改吃 HTML，圖示才顯示得出來
   const rb = document.getElementById('retreat-btn');
@@ -356,7 +356,7 @@ function fireExtra(){
   if(k==='quench'){
     return {n:'<svg class="ic"><use href="#ic-dagger"/></svg> 淬火（武器附毒或附燃，持續 3 場戰鬥）', f:()=>{
       showEventScreen('🕯️','淬火','把刀刃埋進火堆，接下來抹什麼？',
-        [{n:'☠️ 抹毒（攻擊附 2 中毒）', f:()=>{ R.quench={k:'ptouch',v:2,battles:3};
+        [{n:'<svg class="ic"><use href="#ic-poison"/></svg> 抹毒（攻擊附 2 中毒）', f:()=>{ R.quench={k:'ptouch',v:2,battles:3};
           showEventScreen('🕯️','淬火','刀刃泛起烏青色。（持續 3 場戰鬥）',[{n:'出發',f:()=>nextFloor(),primary:true}]); }},
         {n:'🔥 淬焰（攻擊附 2 燃燒）', f:()=>{ R.quench={k:'btouch',v:2,battles:3};
           showEventScreen('🕯️','淬火','刀刃透著暗紅的熱。（持續 3 場戰鬥）',[{n:'出發',f:()=>nextFloor(),primary:true}]); }}]);
@@ -522,7 +522,7 @@ function treasureRoll(bonus, icon, title){
   } else if(r < 0.9){
     const k = pick(potionPool());
     if(potAdd(k)){
-      showEventScreen(icon, title, '找到了 '+POTIONS[k].i+' '+POTIONS[k].n+'。（'+pdesc(k)+'）',
+      showEventScreen(icon, title, '找到了 '+uiIcon(POTIONS[k].img,'pi-img',POTIONS[k].i)+' '+POTIONS[k].n+'。（'+pdesc(k)+'）',
         [{n:'收下，繼續前進', f:()=>nextFloor(), primary:true}]);
     } else {
       const g = 20 + R.floor*3; R.gold += g;
@@ -683,7 +683,7 @@ const EVENTS = {
       if(outcome==='item'){ const it = makeItem(R.floor, 1); R.bag.push(it); showLoot([it], 0, '🧰', '鐵盒打開了', ''); }
       else if(outcome==='potion'){
         let got = [];
-        for(let i=0;i<2;i++){ const k = pick(potionPool()); if(potAdd(k)) got.push(POTIONS[k].i+POTIONS[k].n); }
+        for(let i=0;i<2;i++){ const k = pick(potionPool()); if(potAdd(k)) got.push(uiIcon(POTIONS[k].img,'pi-img',POTIONS[k].i)+POTIONS[k].n); }
         showEventScreen('🧰','鐵盒打開了', got.length? '裡面墊著稻草，放著 '+got.join('、')+'。':'裡面是藥水，但你的藥水袋已經滿了。',
           [{n:'繼續前進', f:()=>nextFloor(), primary:true}]);
       }
@@ -937,7 +937,7 @@ function merchantLabel(st){
   if(st.kind==='quench') return `<svg class="ic"><use href="#ic-dagger"/></svg> 淬毒服務（攻擊附 3 中毒，3 場戰鬥）— ${st.price}<svg class="ic"><use href="#ic-gold"/></svg>`;
   if(st.kind==='mat') return `${MATS[st.mat].i} ${MATS[st.mat].n} ×1 — ${st.price}<svg class="ic"><use href="#ic-gold"/></svg>`;
   if(st.kind==='rope') return `<svg class="ic"><use href="#ic-rope"/></svg> 逃脫之繩 — ${st.price}<svg class="ic"><use href="#ic-gold"/></svg>`;
-  return `${POTIONS[st.k].i} ${POTIONS[st.k].n}（${pdesc(st.k)}）— ${st.price}<svg class="ic"><use href="#ic-gold"/></svg>`;
+  return `${uiIcon(POTIONS[st.k].img,'pi-img',POTIONS[st.k].i)} ${POTIONS[st.k].n}（${pdesc(st.k)}）— ${st.price}<svg class="ic"><use href="#ic-gold"/></svg>`;
 }
 
 function buyMerchant(idx){

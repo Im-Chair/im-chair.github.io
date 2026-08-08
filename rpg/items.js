@@ -222,7 +222,7 @@ function renderMarket(){
       if(s.sold){ h += '<div class="mk-card void">已售出</div>'; return; }
       const rn = s.rune, r = RARITIES[rn.rar], price = runeGemPrice(rn), poor = (G.gems||0) < price;
       h += `<div class="mk-card rune${poor?' poor':''}" onclick="buyRune(${i})">`
-         + `<div class="thumb">${rn.icon||'✦'}</div>`
+         + `<div class="thumb">${rn.icon||'<svg class="ic"><use href="#ic-star"/></svg>'}</div>`
          + `<div class="bd"><div class="t1 ${r.cls}">${rn.name}</div>`
          + `<div class="t2">${runeFmt(rn.affixes[0])}</div></div>`
          + `<div class="pr"><svg class="ic"><use href="#ic-gem"/></svg> ${price}</div></div>`;
@@ -563,9 +563,9 @@ function openItemSheet(it, from){
   let btns = ''; let extra = '';
   if(from==='stash'){ btns = `<button class="btn primary" onclick="equipFromStash(${it.id})">裝備</button>
     <button class="btn danger" onclick="salvageItem(${it.id})">分解 +${salvage}<svg class="ic"><use href="#ic-gold"/></svg></button>`;
-    extra = `<button class="btn" style="margin-top:8px" onclick="moveToShared(${it.id})">📦 存入共用倉庫</button>`; }
+    extra = `<button class="btn" style="margin-top:8px" onclick="moveToShared(${it.id})"><svg class="ic"><use href="#ic-chest"/></svg> 存入共用倉庫</button>`; }
   else if(from==='shared'){ btns = `<button class="btn primary" onclick="equipFromShared(${it.id})">裝備</button>
-    <button class="btn" onclick="sharedToOwn(${it.id})">↩ 取回個人</button>`; }
+    <button class="btn" onclick="sharedToOwn(${it.id})"><svg class="ic"><use href="#ic-refresh"/></svg> 取回個人</button>`; }
   else if(from==='equipped') btns = `<button class="btn" onclick="unequipItem('${it.slot}')">卸下</button>`;
   else if(from==='bag') btns = `<button class="btn primary" onclick="equipFromBag(${it.id},'stats')">立刻換上</button>`;
   openSheet(`<h3 class="${r.cls}">${it.name}${it.up?' +'+it.up:''}</h3>

@@ -255,10 +255,10 @@ function renderBattle(){
     const [ii,it] = dead? ['<svg class="ic"><use href="#ic-skull"/></svg>','已倒下'] : intentText(e);
     html += `<div class="e-block${(B.duo&&i===B.ti&&!dead)?' sel':''}${dead?' dead':''}${e.boss?' boss':''}${!dead&&e.st.poison?' poisoned':''}${!dead&&e.st.burn?' burning':''}" id="ez-${i}" onclick="selectTarget(${i})">
       <div class="enemy-icon" id="eicon-${i}">${enemyIcon(e)}</div>
-      <div class="enemy-name">${e.boss?`<span class="boss">☠ ${e.n}</span>`: e.elite?`<span class="elite">${e.n}</span>`: e.n}${e.tag?` <span class="st" style="cursor:pointer" onclick="explainStatus('tag_${e.tag}')">${ENEMY_TAGS[e.tag].i}${ENEMY_TAGS[e.tag].n}</span>`:''}</div>
+      <div class="enemy-name">${e.boss?`<span class="boss"><svg class="ic"><use href="#ic-skull"/></svg> ${e.n}</span>`: e.elite?`<span class="elite">${e.n}</span>`: e.n}${e.tag?` <span class="st" style="cursor:pointer" onclick="explainStatus('tag_${e.tag}')">${ENEMY_TAGS[e.tag].i}${ENEMY_TAGS[e.tag].n}</span>`:''}</div>
       <div><span class="intent"><span class="ii">${ii}</span>${dead?it:'下一步：'+it}</span></div>
       <div class="hpbar"><div class="fill" style="width:${Math.max(0,e.hp/e.maxhp*100)}%"></div>
-        <div class="txt">${Math.max(0,e.hp)} / ${e.maxhp}${e.block?`（🛡${e.block}）`:''}</div></div>
+        <div class="txt">${Math.max(0,e.hp)} / ${e.maxhp}${e.block?`（<svg class="ic"><use href="#ic-shield"/></svg>${e.block}）`:''}</div></div>
       <div class="status-row">${statusHtml(e.st, 0, e)}</div>
     </div>`;
   });
@@ -269,7 +269,7 @@ function renderBattle(){
   $('p-hptxt').textContent = `${R.hp} / ${mhp}`;
   $('p-status').innerHTML = statusHtml(B.st, 0);
   const bb = $('p-block');
-  if(B.block>0){ bb.style.display='inline-block'; bb.textContent = '🛡 '+B.block; } else bb.style.display='none';
+  if(B.block>0){ bb.style.display='inline-block'; bb.innerHTML = '<svg class="ic"><use href="#ic-shield"/></svg> '+B.block; } else bb.style.display='none';
   const en = $('p-energy');
   const _wt = weaponType();
   let bellHtml = '';
@@ -404,7 +404,7 @@ function statusHtml(st, block, e){   // e＝敵人時，毒/燃顯示 A閥灰字
     }
     h += `<span class="st ${M[k][1]}" onclick="explainStatus('${k}')">${M[k][0]} ${inner}</span>`;
   }
-  if(block>0) h += `<span class="st blk" onclick="explainStatus('block')">🛡 ${block}</span>`;
+  if(block>0) h += `<span class="st blk" onclick="explainStatus('block')"><svg class="ic"><use href="#ic-shield"/></svg> ${block}</span>`;
   return h;
 }
 
@@ -562,8 +562,8 @@ function castSkill(sk){
 function applyStatus(target, ap, name){
   for(const [k,v] of Object.entries(ap)){
     if(k==='stun' && target.stunImm){ log('暈眩被抵抗了！','sys'); continue; }
-    if(k==='poison' && target._immP){ log('☠️🚫 毒免——毒層無法施加。','sys'); continue; }
-    if(k==='burn' && target._immB){ log('🔥🚫 燃免——燃層無法施加。','sys'); continue; }
+    if(k==='poison' && target._immP){ log('<svg class="ic"><use href="#ic-poison-off"/></svg> 毒免——毒層無法施加。','sys'); continue; }
+    if(k==='burn' && target._immB){ log('<svg class="ic"><use href="#ic-fire-off"/></svg> 燃免——燃層無法施加。','sys'); continue; }
     const cap = (k==='poison'||k==='burn') ? dotCap(k, target !== B.st) : 99;   // 對敵吃職業專精、對己維持 base
     target[k] = Math.min(cap, (target[k]||0) + v);
   }
@@ -595,7 +595,7 @@ function dealToEnemy(mult, sk, f){
   /* 蝕魂：攻擊轉中毒，每擊 2 層，受毒層上限（20）結構性封頂 */
   if(sumAffix('vform') && !(f && f.poisonAmp)){
     applyStatus(e.st, {poison:2});
-    floatDmg(zone, '☠2', crit?'crit':'');
+    floatDmg(zone, '毒2', crit?'crit':'');   // floatDmg 走 textContent，跳字不塞 HTML
     log(`${sk.n} 化作 2 層蝕魂之毒${crit?'（爆擊！）':''}。`,'dmg');
     if(f && f.apply) applyStatus(e.st, f.apply);
     return;
@@ -881,7 +881,7 @@ function winBattle(){
     if(rn){ R.runesPending = R.runesPending||[]; R.runesPending.push(rn); toast('<svg class="ic"><use href="#ic-star"/></svg> 拾獲符文：'+rn.name); } }   // 未達里程碑 makeRune 回 null＝不掉（回營才入手）
   setTimeout(()=>{
     showLoot(drops, gold, B.boss?'<svg class="ic"><use href="#ic-star"/></svg>':'<svg class="ic"><use href="#ic-sword"/></svg>', isFinal?'你打穿了深淵的心臟':(B.boss?'首領倒下了':'戰鬥勝利'),
-      `獲得 ${gold} 碎銀` + (potionDrop? `，撿到 ${POTIONS[potionDrop].i}${POTIONS[potionDrop].n}`:'') + (potionOverflow? `，藥水袋滿——折成 ${potionOverflow} 碎銀`:'') + (matDrop? `，拾獲 ${MATS[matDrop].i}${MATS[matDrop].n} ×1`:''), mendHeal? `（急救回復 ${mendHeal} 血）`:'');
+      `獲得 ${gold} 碎銀` + (potionDrop? `，撿到 ${uiIcon(POTIONS[potionDrop].img,'pi-img',POTIONS[potionDrop].i)}${POTIONS[potionDrop].n}`:'') + (potionOverflow? `，藥水袋滿——折成 ${potionOverflow} 碎銀`:'') + (matDrop? `，拾獲 ${MATS[matDrop].i}${MATS[matDrop].n} ×1`:''), mendHeal? `（急救回復 ${mendHeal} 血）`:'');
   }, 600);
   save();
 }
