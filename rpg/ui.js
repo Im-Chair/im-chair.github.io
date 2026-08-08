@@ -86,8 +86,7 @@ function renderCamp(){
   ensureBounties();
   const c = CLASSES[G.cls];
   const set = (id,v)=>{ const e=$(id); if(e) e.textContent = v; };
-  set('camp-gold', G.gold);
-  set('camp-gem', G.gems||0);
+  syncWallet();   // 貨幣顯示唯一入口（core.js WALLET）；勿在此另寫 camp-gold／camp-gem
   const ci = $('camp-cls-ic'); if(ci) ci.innerHTML = classIcon(G.cls,'sm');
   set('camp-cls', c.name);
   set('camp-cert', '認證 '+certText(G.rec.cert));

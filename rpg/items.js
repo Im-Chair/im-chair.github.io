@@ -183,8 +183,7 @@ function openMarket(){ marketStock(); marketStall = 0; renderMarket(); showScree
 
 function renderMarket(){
   const m = marketStock(), t = m.tabs[m.ti];
-  $('mk-gold').innerHTML = '<svg class="ic"><use href="#ic-gold"/></svg> ' + G.gold;
-  $('mk-gem').innerHTML  = '<svg class="ic"><use href="#ic-gem"/></svg> ' + (G.gems||0);
+  syncWallet();   // 貨幣顯示唯一入口（core.js WALLET）；勿在此另寫 mk-gold／mk-gem
   $('mk-src').innerHTML  = `貨源　<b>${marketTabName(t)}</b>　第 <b>${Math.max(1,t.floor-10)}–${t.floor}</b> 層`;
 
   $('mk-tabs').innerHTML = m.tabs.map((tb,i)=>
@@ -446,7 +445,7 @@ function sellRune(id){
 }
 
 function renderGear(){
-  $('gear-gold').innerHTML = '<svg class="ic"><use href="#ic-gold"/></svg> ' + G.gold;
+  syncWallet();   // 同上：gear-gold 由 WALLET 統一寫
   const er = $('equip-row'); er.innerHTML = '';
   for(const s of ['w','a','t']){
     const it = G.equip[s];
@@ -706,7 +705,7 @@ function smithScrollChk(){
 }
 
 function renderSmith(){
-  $('sm-gold').innerHTML = '<svg class="ic"><use href="#ic-gold"/></svg> ' + G.gold;
+  syncWallet();   // 同上：sm-gold 由 WALLET 統一寫
   $('sm-mats').innerHTML = MATS.iron.i + ' ' + (G.mats.iron||0) + '\u3000' + MATS.steel.i + ' ' + (G.mats.steel||0);
 
   /* ---- 上半：身上的武器與護甲（飾品不可鍛造，不列） ---- */
