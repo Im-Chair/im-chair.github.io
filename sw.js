@@ -1,4 +1,4 @@
-const CACHE = 'arcade-v37';
+const CACHE = 'arcade-v40';
 // RPG 敵人圖示：檔名＝ENEMIES／首領／域限精英的 key。v385 起 50 隻全數有圖，已無 SVG 回落。
 const RPG_MON = [
   'slime','bat','skel','thief','rat','garg','spider',
@@ -18,6 +18,9 @@ const RPG_UI = [
   'pot_heal','pot_wrath','pot_energy','pot_holy','pot_bomb','ev_rock',
   'res_death','smith','coin','gem','title_bg','npc_smith','bg_market',
   'pot_purge','pot_stone','ev_box','ev_can','ev_scroll','ev_dice','ev_rope',
+  'ev_door','ev_shrine','ev_mine','ev_cart','ev_cyst','ev_root','ev_lava','ev_confess',
+  'ev_well','ev_crack','ev_cycle','ev_merchant',
+  'realm0','realm1','realm2','realm3','realm4','realm5',
 ].map(k => `/rpg/ui/${k}.webp`);
 // RPG 裝備圖示（v382）：武器看 wtype、護甲／飾品看名稱，見 data.js 的 ITEM_ICON
 const RPG_EQ = [
@@ -30,6 +33,7 @@ const ASSETS = [
   // RPG：預先快取核心檔，讓「裝了 App 但還沒連網進過 RPG」的使用者也能離線開啟。
   // 這裡存的是「不帶 ?v= 版號」的基底網址，靠下方 fetch fallback 的 ignoreSearch 對應到實際帶版號的請求。
   '/rpg/', '/rpg/index.html', '/rpg/style.css',
+  '/rpg/manifest.json', '/rpg/icon.png',   // v421：深淵有自己的 manifest，可獨立「加到主畫面」
   '/rpg/data.js', '/rpg/core.js', '/rpg/account.js', '/rpg/items.js',
   // v396：營地底圖 camp3.webp（941×1672≈9:16）。舊的 camp.webp / camp2.webp 已無人引用，
   // 檔案還留在 rpg/ 但不預快取；確認新圖無誤後可直接刪檔。
