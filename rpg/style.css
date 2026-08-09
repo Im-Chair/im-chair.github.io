@@ -603,3 +603,74 @@ h1.title{
 .mk-tag{font-size:10px;color:var(--orange);border:1px solid #6a4f38;border-radius:4px;
   padding:1px 5px;margin-left:5px;}
 .mk-empty{font-size:12px;color:var(--dim);text-align:center;padding:30px 10px;}
+
+/* ===== 懸賞板 v425（獨立畫面）=====
+   紙條底色＝難度帶（above/at/below），圖釘＝狀態（ready/active/offer）。
+   兩個訊號各佔一個通道，不要合併——合併之後就有一項讀不出來。 */
+.bn-res{display:flex;align-items:center;gap:14px;font-size:14px;color:var(--dim);padding:2px 0 10px;}
+.bn-res .back-link{padding:0;}
+.bn-res .m{margin-left:auto;color:var(--gem);font-variant-numeric:tabular-nums;}
+.bn-res .g{color:var(--gold);font-variant-numeric:tabular-nums;}
+
+.bn-board{
+  flex:none;border:1px solid var(--line-hi);border-radius:12px;padding:9px 8px;
+  background:#17100a repeating-linear-gradient(91deg,rgba(0,0,0,.3) 0 26px,rgba(255,255,255,.02) 26px 28px);
+  box-shadow:inset 0 0 26px rgba(8,6,5,.75);
+}
+.bn-hd{display:flex;align-items:baseline;padding:0 3px 8px;}
+.bn-hd .t{font-size:12px;color:var(--gold);letter-spacing:4px;}
+.bn-hd .q{margin-left:auto;font-size:10px;color:var(--dim);}
+.bn-hd .q b{color:var(--text);font-weight:400;}
+.bn-hd .q b.on{color:var(--gold);}
+
+/* 用 flex 不用 grid：委託數量是 4～8 張浮動的（offer 固定 4 ＋ active/ready 各最多 2），
+   grid 的最後一排會落單靠左；flex + justify-content:center 讓不滿的那排自己置中。 */
+.bn-grid{display:flex;flex-wrap:wrap;justify-content:center;gap:8px 6px;}
+.bn-note{
+  width:calc(33.333% - 4px);
+  position:relative;cursor:pointer;padding:13px 5px 7px;text-align:center;border-radius:2px;
+  border:1px solid var(--line);background:var(--panel2);
+  box-shadow:0 2px 5px rgba(8,6,5,.55);transition:transform .12s;
+}
+.bn-note.above{background:#3a1f18;border-color:#6b3030;}
+.bn-note.at   {background:#2a2016;border-color:#5a4430;}
+.bn-note.below{background:#1e281a;border-color:#40593a;}
+.bn-note.on{transform:none !important;box-shadow:0 0 0 2px var(--gold),0 3px 9px rgba(8,6,5,.6);}
+.bn-note .pin{position:absolute;top:4px;left:50%;margin-left:-3.5px;width:7px;height:7px;
+  border-radius:50%;background:#7a6242;box-shadow:0 1px 2px rgba(8,6,5,.8);}
+.bn-note .pin.ready{background:var(--gold);}
+.bn-note .pin.active{background:#cfc6b0;}
+.bn-note .cy{font-size:10px;color:#a08b68;letter-spacing:1px;}
+.bn-note .ty{font-size:14px;margin:2px 0 5px;}
+.bn-note.on .ty{color:#f7b873;}
+.bn-note .rw{font-size:10px;white-space:nowrap;}
+.bn-note .gm{font-size:10px;color:var(--gem);margin-top:2px;}
+
+.bn-key{display:flex;gap:9px;justify-content:center;margin-top:10px;font-size:9px;color:var(--dim);}
+.bn-key .sp{margin-left:5px;}
+.bn-key i{display:inline-block;width:7px;height:7px;margin-right:3px;}
+.bn-key .k-above{background:#3a1f18;border:1px solid #6b3030;}
+.bn-key .k-at{background:#2a2016;border:1px solid #5a4430;}
+.bn-key .k-below{background:#1e281a;border:1px solid #40593a;}
+.bn-key .k-ready{width:6px;height:6px;border-radius:50%;background:var(--gold);}
+.bn-key .k-active{width:6px;height:6px;border-radius:50%;background:#cfc6b0;}
+
+.bn-card{border:1px solid var(--line);background:var(--panel);border-radius:12px;padding:11px 12px;margin-top:10px;}
+.bn-card.ready{border-color:var(--gold);background:#1a1710;}
+.bn-card .hd{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--dim);letter-spacing:2px;}
+.bn-card .hd .cy{margin-left:auto;letter-spacing:1px;}
+.bn-card .hd .bd{letter-spacing:0;padding:1px 7px;border:1px solid var(--line);border-radius:99px;}
+.bn-card .hd .bd.above{border-color:#6b3030;color:var(--red);}
+.bn-card .hd .bd.below{border-color:#40593a;color:var(--green);}
+/* ⚠ 固定兩行高，不是 min-height：一行的委託下方留白，切換紙條時版面不位移。
+   bountyDesc 的句型必須維持在兩行內（此寬度約 36 全形字），新增句型時要回來確認。 */
+.bn-card .desc{font-size:14px;line-height:1.45;height:2.9em;margin:7px 0 9px;overflow:hidden;}
+.bn-card .rw{display:flex;align-items:center;gap:11px;font-size:12px;}
+.bn-card .rw .gm{color:var(--gem);}
+.bn-card .act{margin-top:10px;padding:9px;text-align:center;border:1px solid var(--line);
+  border-radius:8px;color:var(--gold);font-size:13px;cursor:pointer;}
+.bn-card .act.ready{border-color:var(--gold);}
+.bn-card .act.drop{border-color:#5a2a2a;color:var(--red);}
+
+.bn-re{border:1px dashed var(--line);border-radius:8px;padding:8px;text-align:center;
+  color:var(--gold);font-size:12px;margin-top:9px;cursor:pointer;}

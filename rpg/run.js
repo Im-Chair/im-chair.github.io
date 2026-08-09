@@ -1133,7 +1133,7 @@ function claimBounty(b){
 }
 function claimBountyUI(i){   // 玩家手動點「回報領獎」
   const b = G.bounties[i]; if(!b || b.state!=='ready') return;
-  claimBounty(b); ensureBounties(); save(); openBounties();
+  claimBounty(b); ensureBounties(); save(); renderBounty();
 }
 function bountyProgress(kind){
   if(!R || !G.bounties) return;
@@ -1154,39 +1154,77 @@ function finalizeBounties(){   // 只有活著回營（逃脫/通關）才把「
 function acceptBounty(i){
   const b = G.bounties[i]; if(!b || b.state!=='offer') return;
   if(G.bounties.filter(x=>x.state==='active').length >= MAX_ACTIVE){ toast(`同時最多接 ${MAX_ACTIVE} 個委託`); return; }
-  b.state = 'active'; save(); openBounties();
+  b.state = 'active'; save(); renderBounty();
 }
 function abandonBounty(i){
   const b = G.bounties[i]; if(!b || b.state!=='active') return;
-  G.bounties.splice(i,1); ensureBounties(); save(); openBounties();
+  G.bounties.splice(i,1); ensureBounties(); save(); renderBounty();
 }
-function openBounties(){
+/* ===== 懸賞板 v425：原為 sheet(openBounties)，改為獨立畫面 #s-bounty =====
+   上半六張紙條只放摘要（輪迴／類型／獎勵＋鑽石），下半是被點那張的詳情。
+   樓層不放紙條上——88px 寬只容得下三行，樓層改由 bountyDesc 在詳情裡交代。 */
+const BOUNTY_TY = {reach:'抵達', streakkill:'連殺', loot:'取裝備', boss:'殺王',
+                   flawless:'無傷', dotkill:'毒燃斬', kill:'擊殺'};
+const BOUNTY_BAND = {above:'挑戰', at:'評定', below:'好刷'};
+const BN_ROT = [-3, 2, -1, 3, -2, 1];   // 紙條歪斜角。依顯示順序取，不要隨機——隨機的話每次 render 都在抖
+let bountySel = null;   // 選中的委託「物件」而非索引：ensureBounties 會增刪陣列，索引會失效
+
+function bountyOrder(){   // 顯示順序：可回報 → 進行中 → 可接
+  const w = {ready:0, active:1, offer:2};
+  return G.bounties.map((b,i)=>({b,i})).sort((x,y)=>(w[x.b.state]!==undefined?w[x.b.state]:3)-(w[y.b.state]!==undefined?w[y.b.state]:3));
+}
+/* 獎勵的顯示唯一入口（紙條與詳情共用）。回 [色, 圖示, 紙條短標, 詳情全標]。
+   kind:'gear' 寫「隨機裝備」不是「稀有以上」——claimBounty 走 makeItem(f,2,mode,null)，
+   稀有度是 rollRarity(floor, bonus=2) 骰的，本源有四成機率出白裝。 */
+function bountyRw(r){
+  if(r.kind==='gold')      return ['var(--gold)',  'ic-gold',  String(r.amt), r.amt+' 碎銀'];
+  if(r.kind==='legendary') return ['var(--orange)','ic-star',  '傳說', '傳說裝備'];
+  if(r.kind==='mat')       return ['var(--gold)',  'ic-anvil', MATS[r.mat].n, MATS[r.mat].n+' ×'+r.amt];
+  return ['var(--blue)', 'ic-chest', '隨機裝', '隨機裝備'];
+}
+function openBounty(){
   ensureBounties();
-  const active = G.bounties.filter(b=>b.state==='active');
-  const offers = G.bounties.filter(b=>b.state==='offer');
-  let html = `<h3>懸賞板</h3><p class="base">自己挑委託接下,達成後回這裡「回報領獎」——不會自動完成。同時最多 ${MAX_ACTIVE} 個。</p>`;
-  html += `<div class="section-title">進行中 ${active.length}/${MAX_ACTIVE}</div>`;
-  if(!active.length) html += '<p class="base" style="color:var(--dim)">還沒接委託，往下挑一個。</p>';
-  for(const b of active){ const i = G.bounties.indexOf(b);
-    html += `<div class="item-row bounty-row"><div class="b-left"><span class="b-tier"><svg class="ic"><use href="#ic-time"/></svg> ${bountyTier(b)}</span><span class="b-desc">${bountyDesc(b)}</span></div><span class="b-reward">${rewardText(b.reward)} ＋<svg class="ic"><use href="#ic-gem"/></svg>${b.gems||'1~3'}　<span style="color:var(--red);cursor:pointer" onclick="abandonBounty(${i})">放棄</span></span></div>`;
-  }
-  const ready = G.bounties.filter(b=>b.state==='ready');
-  if(ready.length){
-    html += `<div class="section-title">可回報 ${ready.length}</div>`;
-    for(const b of ready){ const i = G.bounties.indexOf(b);
-      html += `<div class="item-row bounty-row"><div class="b-left"><span class="b-tier"><svg class="ic"><use href="#ic-check"/></svg> ${bountyTier(b)}</span><span class="b-desc">${bountyDesc(b)}</span></div><span class="b-reward">${rewardText(b.reward)} ＋<svg class="ic"><use href="#ic-gem"/></svg>${b.gems||'1~3'}　<span style="color:var(--gold);cursor:pointer" onclick="claimBountyUI(${i})">回報領獎 ›</span></span></div>`;
-    }
-  }
-  html += '<div class="section-title">可接委託</div><div class="item-list">';
-  for(const b of offers){ const i = G.bounties.indexOf(b);
-    html += `<div class="item-row bounty-row" onclick="acceptBounty(${i})"><div class="b-left"><span class="b-tier"><svg class="ic"><use href="#ic-board"/></svg> ${bountyTier(b)}</span><span class="b-desc">${bountyDesc(b)}</span></div><span class="b-reward">${rewardText(b.reward)} ＋<svg class="ic"><use href="#ic-gem"/></svg>${b.gems||'1~3'}　<span style="color:var(--gold)">接下 ›</span></span></div>`;
-  }
-  html += '</div>';
-  if(offers.length) html += '<button class="btn" style="margin-top:10px" onclick="refreshBounties()"><svg class="ic"><use href="#ic-refresh"/></svg> 一鍵刷新可接委託</button>';
-  html += '<button class="btn" style="margin-top:8px" onclick="closeSheet()">關閉</button>';
-  openSheet(html);
+  const ord = bountyOrder();
+  if(!ord.some(x=>x.b===bountySel)) bountySel = ord.length ? ord[0].b : null;
+  renderBounty(); showScreen('s-bounty');
 }
-function refreshBounties(){ G.bounties = G.bounties.filter(b=>b.state!=='offer'); ensureBounties(); save(); openBounties(); }
+function selectBounty(i){ bountySel = G.bounties[i]; renderBounty(); }
+function renderBounty(){
+  ensureBounties();
+  syncWallet();   // 貨幣顯示唯一入口（core.js WALLET）；勿在此另寫 bn-gold／bn-gem
+  const ord = bountyOrder();
+  if(!ord.some(x=>x.b===bountySel)) bountySel = ord.length ? ord[0].b : null;
+
+  const nAct = G.bounties.filter(b=>b.state==='active').length;
+  const nRdy = G.bounties.filter(b=>b.state==='ready').length;
+  $('bn-quota').innerHTML = `進行中 <b>${nAct}</b>/${MAX_ACTIVE}　可回報 <b class="${nRdy?'on':''}">${nRdy}</b>`;
+
+  $('bn-grid').innerHTML = ord.map((x,n)=>{
+    const b = x.b, rw = bountyRw(b.reward);
+    return `<div class="bn-note ${b.band||'at'}${b===bountySel?' on':''}" style="transform:rotate(${BN_ROT[n%BN_ROT.length]}deg)" onclick="selectBounty(${x.i})">
+      <span class="pin ${b.state}"></span>
+      <div class="cy">${bountyTier(b)}</div>
+      <div class="ty">${BOUNTY_TY[b.type]||'？'}</div>
+      <div class="rw" style="color:${rw[0]}"><svg class="ic"><use href="#${rw[1]}"/></svg> ${rw[2]}</div>
+      <div class="gm"><svg class="ic"><use href="#ic-gem"/></svg> ${b.gems||'1~3'}</div>
+    </div>`;
+  }).join('');
+
+  const b = bountySel;
+  if(!b){ $('bn-detail').innerHTML = ''; return; }
+  const i = G.bounties.indexOf(b), rw = bountyRw(b.reward), bd = b.band || 'at';
+  const st = b.state==='ready' ? '已達成' : b.state==='active' ? '進行中' : '未接下';
+  const btn = b.state==='ready'  ? `<div class="act ready" onclick="claimBountyUI(${i})">回報領獎 ›</div>`
+            : b.state==='active' ? `<div class="act drop" onclick="abandonBounty(${i})">放棄委託</div>`
+            :                      `<div class="act" onclick="acceptBounty(${i})">接下委託 ›</div>`;
+  $('bn-detail').innerHTML = `<div class="bn-card${b.state==='ready'?' ready':''}">
+    <div class="hd"><span>${st}</span><span class="cy">${bountyTier(b)}</span><span class="bd ${bd}">${BOUNTY_BAND[bd]}</span></div>
+    <div class="desc">${bountyDesc(b)}</div>
+    <div class="rw"><span style="color:${rw[0]}"><svg class="ic"><use href="#${rw[1]}"/></svg> ${rw[3]}</span>
+      <span class="gm"><svg class="ic"><use href="#ic-gem"/></svg> ${b.gems||'1~3'}</span></div>
+    ${btn}</div>`;
+}
+function refreshBounties(){ G.bounties = G.bounties.filter(b=>b.state!=='offer'); ensureBounties(); save(); renderBounty(); }
 
 function backToCamp(){   // 每次下潛回來(逃脫/死亡/通關)自動刷新可接委託(offer);進行中/可回報保留
   if(G.bounties) G.bounties = G.bounties.filter(b=>b.state!=='offer');

@@ -136,7 +136,8 @@ function blessMult(){   // 數值型祝福隨深度/輪迴縮放（見 data.js B
    新增顯示點只要往 WALLET 加一筆，不要再在各自的 render 裡另寫。 */
 const WALLET = [['camp-gold', g=>g.gold, 0], ['camp-gem', g=>g.gems||0, 0],
                 ['mk-gold', g=>g.gold, 1], ['mk-gem', g=>g.gems||0, 1],
-                ['gear-gold', g=>g.gold, 1], ['sm-gold', g=>g.gold, 1]];
+                ['gear-gold', g=>g.gold, 1], ['sm-gold', g=>g.gold, 1],
+                ['bn-gold', g=>g.gold, 1], ['bn-gem', g=>g.gems||0, 1]];
 function syncWallet(){
   if(!G) return;
   for(const [id, get, withIcon] of WALLET){
