@@ -177,6 +177,7 @@ function preloadArt(){
     for(const b of MINI_BOSSES.concat(LORD_BOSSES)) if(b.img) urls.push('mon/'+b.key+'.webp'+v);
     if(FINAL_BOSS.img) urls.push('mon/final.webp'+v);
     for(const e of REALM_ELITES) if(e.img) urls.push('mon/'+e.key+'.webp'+v);
+    for(const k of RUNTIME_MON_IMG) urls.push('mon/'+k+'.webp'+v);   // imgKey 借用的圖，資料表推導不到
     for(const w in WEAPON_TYPES) urls.push('eq/'+w+'.webp'+v);
     for(const s of new Set(Object.values(ITEM_ICON))) urls.push('eq/'+s+'.webp'+v);
     for(const s of new Set(Object.values(DOOR_IMG))) urls.push('ui/'+s+'.webp'+v);

@@ -443,7 +443,15 @@ const EV_IMG = {
   '🏮':'ev_merchant',// 迷路的商人                                            // 許願池
 };
 
-const DOOR_IMG = {fight:'door_fight', elite:'door_elite', rest:'door_rest', chest:'door_chest', event:'ev_corpse'};
+/* 執行時才掛上的借用圖(v432)。這兩隻在 run.js 用 e.imgKey 借別的檔名，
+   key 本身留給圖鑑統計，所以**推導不到**——preloadArt 掃資料表掃不出它們，
+   sw.js 的 RPG_MON 也要照這份手動登記。新增這類借用圖時要回來補一筆。 */
+const RUNTIME_MON_IMG = ['mimic', 'feign'];
+
+/* 未知門有自己的圖(v431)。以前指向 ev_corpse——那是一具具體的屍體，
+   既不是「未知」，還跟「前人遺物」事件本身撞圖：不管抽到哪個事件，門上永遠同一具屍體。
+   preloadArt 是掃這張表的值，所以這裡改完預載自動跟上，不用另外登記。 */
+const DOOR_IMG = {fight:'door_fight', elite:'door_elite', rest:'door_rest', chest:'door_chest', event:'door_unknown'};
 
 /* 🔒 圖鑑開關（v383 暫時關閉，準備改建）。false = 營地入口只回一則 toast，
    但擊殺計數與首殺獎勵照常運作，資料不會斷層。ui.js 的 openCodex 介面程式碼原封保留。 */

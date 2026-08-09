@@ -13,7 +13,7 @@
      IMG_VER：圖片版號。只在「真的換圖」時才 +1。
      為什麼要拆：圖片有 121 張、共 3.0 MB。以前圖也掛 RPG_VER，結果從 393 推到 420 這 27 次進版，
      每一次都讓全部圖換成新 URL——瀏覽器整批重抓、SW 快取每版累積一整套重複 entry，而圖根本沒動。 -->
-<script>window.RPG_VER='429';window.IMG_VER='3';document.write('<link rel="stylesheet" href="style.css?v='+RPG_VER+'">');</script>
+<script>window.RPG_VER='432';window.IMG_VER='4';document.write('<link rel="stylesheet" href="style.css?v='+RPG_VER+'">');</script>
 </head>
 <body>
 
@@ -236,25 +236,26 @@
   <div class="bn-re" onclick="refreshBounties()"><svg class="ic"><use href="#ic-refresh"/></svg> 刷新可接委託</div>
 </div>
 
-<!-- ===== 抉擇（門）===== -->
+<!-- ===== 抉擇（門）v431 =====
+     頂部是「撤退決策條」：血／碎銀／行囊未保管件數。這三個數字決定「現在走還是再貪一層」，
+     行囊件數以前藏在角色檢視按鈕的小字裡——那是死了就全沒的東西，不該藏。
+     樓層只在 depth-gauge 顯示一次（原本 topbar 又寫了一份，重複）。 -->
 <div class="screen" id="s-doors">
-  <div class="topbar">
-    <span class="depth">第 <span id="d-floor">1</span> 層</span>
-    <span id="d-hp"></span>
-    <span class="gold-chip"><svg class="ic"><use href="#ic-gold"/></svg> <span id="d-gold">0</span></span>
+  <div class="dr-res">
+    <span class="hp" id="dr-hp"></span>
+    <span class="g" id="dr-gold"></span>
+    <span class="bag" id="dr-bag"></span>
   </div>
+  <div class="dr-bar"><i id="dr-hpfill"></i></div>
   <div class="depth-gauge">
-    <div class="lbl">目前深度</div>
+    <div class="lbl"></div>
     <div class="num" id="d-floor-big">1</div>
-    <div class="bonus" id="d-bonus"></div>
     <div class="realm-rule" id="d-rule"></div>
   </div>
   <div class="door-grid" id="door-grid"></div>
   <button class="btn retreat-btn" id="retreat-btn" onclick="retreat()" style="display:none"><svg class="ic"><use href="#ic-rope"/></svg> 使用逃脫之繩</button>
   <button class="btn retreat-btn" id="retreat-gold-btn" onclick="retreatByGold()" style="display:none"><svg class="ic"><use href="#ic-gold"/></svg> 花 9 成碎銀逃脫</button>
-  <div class="rope-hint" id="rope-hint"></div>
-  <div style="height:8px"></div>
-  <button class="btn" style="font-size:14px" onclick="openRunStats()"><svg class="ic"><use href="#ic-hero"/></svg> 角色檢視 <span id="bag-hint" style="color:var(--dim);font-size:12px"></span></button>
+  <button class="btn" style="font-size:15px;margin-top:8px" onclick="openRunStats()"><svg class="ic"><use href="#ic-hero"/></svg> 角色檢視</button>
   <div class="potion-row" id="door-potions"></div>
 </div>
 

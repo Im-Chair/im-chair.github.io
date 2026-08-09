@@ -119,7 +119,6 @@ function resumeRun(){
   showDoors();
 }
 
-function rarityBonusText(f){ return `稀有掉落權重 +${Math.round(f*2.2)}%`; }
 
 function enterFloor(){
   if(R.cycIntro){
@@ -170,14 +169,16 @@ function pickUpStay(sid, branch){
 
 function doorPair(){   // 門一定是「戰鬥」＋另一扇（菁英80/事件10/營火5/寶箱5；3層前無菁英）
   const f = R.floor;
-  const d1 = {t:'fight', i:'<svg class="ic"><use href="#ic-sword"/></svg>', n:'戰鬥', d:'普通的敵人'};
+  // 描述一律不給：「普通的敵人」「更強，掉落更好」「看起來沒上鎖」都是玩家看圖就知道的廢話。
+  // 只有未知門的氣味是真提示（指向 EV_HINTS 的那個事件），留著；抽不到就整行不顯示。
+  const d1 = {t:'fight', i:'<svg class="ic"><use href="#ic-sword"/></svg>', n:'戰鬥'};
   const pev = rollEvent();
-  const hint = Math.random()<0.5 ? '你察覺到：'+(EV_HINTS[pev]||'說不上來的氣息') : '誰知道呢';
+  const hint = Math.random()<0.5 ? (EV_HINTS[pev]||'') : '';
   const pool2 = [];
-  if(f>=3) pool2.push({t:'elite', i:'<svg class="ic"><use href="#ic-star"/></svg>', n:'精英', d:'更強，掉落更好', w:80});
+  if(f>=3) pool2.push({t:'elite', i:'<svg class="ic"><use href="#ic-star"/></svg>', n:'精英', w:80});
   pool2.push({t:'event', i:'<svg class="ic"><use href="#ic-unknown"/></svg>', n:'未知', d:hint, ev:pev, w:10});
-  pool2.push({t:'rest', i:'🕯️', n:'營火', d:'回復 30% 生命', w:5});
-  pool2.push({t:'chest', i:'📦', n:'寶箱', d:'看起來沒上鎖', w:5});
+  pool2.push({t:'rest', i:'<svg class="ic"><use href="#ic-fire"/></svg>', n:'營火', w:5});
+  pool2.push({t:'chest', i:'<svg class="ic"><use href="#ic-chest"/></svg>', n:'寶箱', w:5});
   return [d1, weightedPick(pool2)];
 }
 
@@ -190,32 +191,35 @@ function showDoors(){
   R.phase = 'doors';
   const f = R.floor;
   const zz = realmFor(f);
-  $('d-floor').textContent = f; $('d-floor-big').textContent = f;
+  $('d-floor-big').textContent = f;   // 樓層只顯示這一次；原本 topbar 又寫了一份，重複
   document.querySelector('#s-doors .depth-gauge .lbl').textContent = zz.n;   // 域圖示拿掉：域已有專屬橫幅，這裡只需要名字
-  $('d-gold').textContent = R.gold;
-  $('d-hp').innerHTML = `<svg class="ic"><use href="#ic-heart"/></svg> ${R.hp}/${playerMaxHp()}`;   // v405：改吃 HTML，圖示才顯示得出來
+  /* 撤退決策條：血／碎銀／行囊。這三個數字就是「現在走還是再貪一層」的全部依據。
+     行囊件數以前藏在角色檢視按鈕的小字裡——死了就全沒的東西不該藏在按鈕標題。 */
+  const _mx = playerMaxHp();
+  $('dr-hp').innerHTML = `<svg class="ic"><use href="#ic-heart"/></svg> ${R.hp}<small>/${_mx}</small>`;
+  $('dr-hpfill').style.width = Math.max(0, Math.min(100, R.hp / _mx * 100)) + '%';
+  $('dr-gold').innerHTML = `<svg class="ic"><use href="#ic-gold"/></svg> ${R.gold}`;
+  $('dr-bag').innerHTML = `<svg class="ic"><use href="#ic-bag"/></svg> ${R.bag.length}`;
   const rb = document.getElementById('retreat-btn');
   if(rb) rb.style.display = R.hasRope ? '' : 'none';
   const rgb = document.getElementById('retreat-gold-btn');
   if(rgb) rgb.style.display = (!R.hasRope && R.gold > 0 && R.floor > 1) ? '' : 'none';   // 無繩時可花 9 成碎銀逃脫
-  const rh = document.getElementById('rope-hint');
-  if(rh) rh.innerHTML = R.hasRope ? '' : '';
-  $('d-bonus').textContent = rarityBonusText(f);
-  // 域規則常駐：原本只在進域的 intro 講一次，打到第 19 層早忘了、中途死掉重進也不再顯示
-  const _z = realmFor(f), _rl = $('d-rule');
-  if(_rl){ _rl.textContent = (_z && _z.rt) ? _z.n + '：' + _z.rt : ''; }
+  // 域規則常駐：原本只在進域的 intro 講一次，打到第 19 層早忘了、中途死掉重進也不再顯示。
+  // 只印規則本身——域名上面 .lbl 已經有了，再帶一次是重複。
+  const _rl = $('d-rule');
+  if(_rl) _rl.textContent = (zz && zz.rt) ? zz.rt : '';
   const grid = $('door-grid'); grid.innerHTML = '';
   if(R.forceDoor){
     const t = R.forceDoor; R.forceDoor = null;
-    const map = {fight:['<svg class="ic"><use href="#ic-sword"/></svg>','戰鬥','逃不掉的'], elite:['<svg class="ic"><use href="#ic-star"/></svg>','精英','逃不掉的'], boss:['<svg class="ic"><use href="#ic-skull"/></svg>','首領','逃不掉的']};
+    const map = {fight:['<svg class="ic"><use href="#ic-sword"/></svg>','戰鬥'], elite:['<svg class="ic"><use href="#ic-star"/></svg>','精英'], boss:['<svg class="ic"><use href="#ic-skull"/></svg>','首領']};
     const m = map[t] || map.fight;
     const fb = (t==='boss') ? bossFor(R.floor) : null;
-    R.doors = [{t, i:m[0], mimg:(fb && fb.img)? (fb.key||'final') : null, n:m[1], d:m[2]}];
+    R.doors = [{t, i:m[0], mimg:(fb && fb.img)? (fb.key||'final') : null, n:m[1]}];
     grid.style.gridTemplateColumns = '1fr';
   } else if(f % 5 === 0){
     // 首領層
     const b = bossFor(f);
-    R.doors = [{t:'boss', i:b.i, mimg:(b.img? (b.key||'final') : null), n:'首領・'+b.n, d:''}];
+    R.doors = [{t:'boss', i:b.i, mimg:(b.img? (b.key||'final') : null), n:b.n}];   // 「首領」由 .dk 標籤呈現，名字不再自帶前綴
     grid.style.gridTemplateColumns = '1fr';
   } else {
     if(!R.doors){
@@ -224,14 +228,17 @@ function showDoors(){
     grid.style.gridTemplateColumns = '1fr 1fr';
   }
   for(const d of R.doors){
-    const el = document.createElement('div'); el.className = 'door';
+    const el = document.createElement('div'); el.className = 'door' + (d.t==='boss' ? ' boss' : '');
     const dimg = DOOR_IMG[d.t];
-    const pic = d.mimg ? monImg(d.mimg,'ui-ic di-img') : (dimg ? uiIcon(dimg,'di-img') : d.i);
-    el.innerHTML = `<div class="di">${pic}</div><div class="dn">${d.n}</div><div class="dd">${d.d}</div>`;
+    const pic = d.mimg ? monImg(d.mimg,'dr-img') : (dimg ? uiIcon(dimg,'dr-img') : d.i);
+    el.innerHTML = `<div class="di">${pic}</div><div class="dt">`
+      + (d.t==='boss' ? '<div class="dk"><svg class="ic"><use href="#ic-skull"/></svg> 首領</div>' : '')
+      + `<div class="dn">${d.n}</div>`
+      + (d.d ? `<div class="dd">${d.d}</div>` : '')
+      + '</div>';
     el.onclick = ()=>enterDoor(d);
     grid.appendChild(el);
   }
-  $('bag-hint').textContent = R.bag.length ? `（行囊 ${R.bag.length} 件未保管）` : '';
   renderDoorPotions();
   save();
   showScreen('s-doors');
@@ -1175,8 +1182,13 @@ function bountyDiff(b){
   const d = BOUNTY_TYPE_DIFF[b.type] || 1;
   return d >= 2 ? 'hard' : d >= 1.5 ? 'mid' : 'easy';
 }
-const BN_ROT = [-4, 3, -2, 4, -3, 2];   // 紙條歪斜角。依顯示順序取，不要隨機——隨機的話每次 render 都在抖
-const BN_OFF = [0, 13, 4, 10, 0, 16];   // 垂直偏移(px)。跟角度一起做出「隨手釘上去」的錯落，不是整齊兩排
+/* 紙條的錯落與堆疊全部走 transform，不要用 margin——transform 不影響 layout，
+   容器寬高才會固定。之前用 margin-top + rotate，旋轉後的外框比格子寬，把版面撐出橫向捲軸。
+   依「顯示順序」取，不要隨機：隨機的話每次 render 都在抖。 */
+const BN_TF = ['translate(6px,-3px) rotate(-6deg)', 'translate(-3px,11px) rotate(5deg)',
+               'translate(-7px,1px) rotate(-3deg)', 'translate(7px,9px) rotate(4deg)',
+               'translate(-2px,-2px) rotate(-5deg)', 'translate(-7px,14px) rotate(6deg)'];
+const BN_Z   = [3, 1, 4, 2, 5, 1];   // 疊放順序。刻意亂序，照 DOM 順序疊會像整齊的魚鱗
 let bountySel = null;   // 選中的委託「物件」而非索引：ensureBounties 會增刪陣列，索引會失效
 
 function bountyOrder(){   // 顯示順序：可回報 → 進行中 → 可接
@@ -1211,7 +1223,7 @@ function renderBounty(){
 
   $('bn-grid').innerHTML = ord.map((x,n)=>{
     const b = x.b, rw = bountyRw(b.reward);
-    return `<div class="bn-note ${bountyDiff(b)}${b===bountySel?' on':''}" style="transform:rotate(${BN_ROT[n%BN_ROT.length]}deg);margin-top:${BN_OFF[n%BN_OFF.length]}px" onclick="selectBounty(${x.i})">
+    return `<div class="bn-note ${bountyDiff(b)}${b===bountySel?' on':''}" style="transform:${BN_TF[n%BN_TF.length]};z-index:${b===bountySel?9:BN_Z[n%BN_Z.length]}" onclick="selectBounty(${x.i})">
       <span class="pin ${b.state}"></span>
       <div class="cy">${bountyTier(b)}</div>
       <div class="ty">${BOUNTY_TY[b.type]||'？'}</div>

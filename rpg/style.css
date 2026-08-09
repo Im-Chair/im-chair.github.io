@@ -198,25 +198,58 @@ h1.title{
 .cmp .up{color:var(--green);} .cmp .dn{color:var(--red);}
 /* ---------- doors / decision ---------- */
 .depth-gauge{
-  text-align:center;margin:8px 0 4px;font-family:"Songti TC",serif;
+  text-align:center;margin:12px 0 2px;font-family:"Songti TC",serif;
 }
-.depth-gauge .num{font-size:52px;color:var(--gold);letter-spacing:4px;}
+.depth-gauge .num{font-size:56px;line-height:1.05;color:var(--gold);letter-spacing:4px;}
 .depth-gauge .lbl{font-size:13px;color:var(--dim);letter-spacing:4px;}
 .depth-gauge .bonus{font-size:12px;color:var(--orange);margin-top:2px;}
-.door-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:18px 0;}
+/* ===== 抉擇（門）v431 =====
+   #s-doors 的螢幕內距收到 12px、欄距 10px，全部讓給門圖：
+   兩欄的圖寬 = (螢幕寬 − 內距×2 − 欄距) ÷ 2，這是門圖能多大的唯一決定式。
+   門圖是 200×200（新的未知門 384）的正方透明 sprite，所以圖框做正方最省空間——
+   做成直式的話 object-fit:contain 會上下留白，等於白做。 */
+#s-doors{padding:12px 12px calc(30px + var(--safe-b));}
+/* 撤退決策條：血／碎銀／行囊 */
+.dr-res{
+  display:flex;align-items:center;gap:6px;padding:7px 10px;
+  border:1px solid var(--line);border-radius:10px;background:var(--panel);
+  font-size:13px;font-variant-numeric:tabular-nums;
+}
+.dr-res .hp{color:var(--red);}
+.dr-res .hp small{font-size:inherit;color:#6a5a42;}
+.dr-res .g{margin-left:auto;color:var(--gold);}
+.dr-res .bag{color:#c7ab7e;}
+.dr-bar{height:5px;border-radius:99px;background:#2a1d12;margin-top:5px;overflow:hidden;}
+.dr-bar i{display:block;height:100%;width:100%;background:linear-gradient(90deg,#8a3030,#d05252);transition:width .25s;}
+
+.door-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0 12px;}
 .door{
-  border:1px solid #3a3145;border-radius:12px 12px 4px 4px;
-  background:linear-gradient(180deg,#1d1826 0%,#141019 100%);
-  padding:26px 10px 18px;text-align:center;cursor:pointer;position:relative;
-  box-shadow:inset 0 -10px 24px rgba(0,0,0,.5);
+  border:1px solid var(--line-hi);border-radius:12px 12px 4px 4px;
+  background:linear-gradient(180deg,#241a11 0%,#15110c 100%);
+  overflow:hidden;cursor:pointer;position:relative;
+  box-shadow:inset 0 -10px 24px rgba(8,6,5,.5);
   transition:transform .1s;
 }
 .door:active{transform:scale(.96);}
 .door::before{content:'';position:absolute;top:8px;left:50%;transform:translateX(-50%);
   width:70%;height:3px;border-radius:3px;background:#2c2438;}
-.door .di{font-size:38px;filter:drop-shadow(0 0 10px rgba(216,168,76,.2));}
-.door .dn{margin-top:10px;font-size:15px;letter-spacing:2px;}
-.door .dd{font-size:11px;color:var(--dim);margin-top:3px;}
+.door .di{
+  aspect-ratio:1;background:radial-gradient(ellipse at 50% 58%,#2a1e12 0%,#15100b 72%);
+  display:flex;align-items:center;justify-content:center;font-size:38px;
+}
+.dr-img{width:100%;height:100%;object-fit:contain;display:block;}
+.door .dt{padding:8px 4px 11px;text-align:center;border-top:1px solid #3a2a1a;}
+.door .dn{font-size:17px;letter-spacing:3px;}
+.door .dd{font-size:12px;color:var(--dim);margin-top:1px;letter-spacing:1px;}
+/* 首領層只有一扇門。維持單欄但改成橫幅：圖框固定 170px 高、紅框，
+   不要讓一扇「普通門」撐滿整排——那看起來只是版面壞掉。 */
+.door.boss{border-color:#8a4a3a;background:linear-gradient(180deg,#2e1a14 0%,#15100b 100%);
+  box-shadow:inset 0 -14px 30px rgba(8,6,5,.6);}
+.door.boss .di{aspect-ratio:auto;height:170px;
+  background:radial-gradient(ellipse at 50% 58%,#3a2018 0%,#15100b 72%);}
+.door.boss .dt{border-top-color:#4a2a20;padding:9px 4px 12px;}
+.door.boss .dk{font-size:12px;color:var(--red);letter-spacing:5px;}
+.door.boss .dn{font-size:19px;margin-top:1px;}
 .retreat-btn{
   margin-top:6px;border:1px solid #2f4436;background:#101a14;color:var(--green);
   letter-spacing:2px;
@@ -268,7 +301,6 @@ h1.title{
 .ci-sm{width:26px;height:26px;border-radius:5px;display:inline-block;vertical-align:middle;}
 .cls-tag{display:inline-flex;align-items:center;gap:6px;vertical-align:middle;}
 /* 門圖走「橫幅」而不是正方形：門卡本來就有 26px 上留白與頂部裝飾線，正方形會把卡片撐得太高 */
-.di-img{width:100%;height:92px;border:1px solid var(--line);margin-bottom:2px;}
 .pi-img{width:24px;height:24px;border-radius:5px;display:inline-block;vertical-align:middle;}
 .pi-row{width:38px;height:38px;margin-right:9px;flex:0 0 auto;border:1px solid var(--line);}
 .res-img{width:min(70%,220px);margin:0 auto;border-radius:12px;}
@@ -278,7 +310,6 @@ h1.title{
   border:1px solid var(--line-hi);box-shadow:0 6px 20px rgba(0,0,0,.55);}
 .cx-ic{width:38px;height:38px;margin-right:9px;flex:0 0 auto;border-radius:6px;border:1px solid var(--line);object-fit:cover;}
 /* 門卡若放的是敵人去背圖，底色要墊一下，不然深色 sprite 貼在深色門上看不清 */
-.door .di>img.di-img{background:radial-gradient(ellipse at 50% 60%, #262032 0%, #16121d 70%);object-fit:contain;}
 /* 域限精英：邊緣已在圖檔裡做軟性淡出（見交接筆記十五），不要再加硬框，
    否則又變回「貼了一塊方形」的樣子。 */
 /* 裝備圖示（eq/*.webp）。素材本身是深色圖磚，直接當方塊用——去背會把柔邊畫壞，
@@ -618,37 +649,44 @@ h1.title{
   flex:1;min-height:0;display:flex;flex-direction:column;
   /* 邊框 2px ＋ 內襯一道暗線＝木框的厚度感；底色從 #17100a 拉到皮革/木頭 ramp 的 #3a2b1d 一帶，
      再用兩組條紋做出板縫與板面，否則整塊只是一個深色色塊，看不出是木板。 */
-  border:2px solid #8a6a45;border-radius:12px;padding:11px 9px 13px;
+  border:2px solid #8a6a45;border-radius:12px;padding:11px 5px 13px;   /* 左右只留 5px：寬度讓給 .bn-grid 的內距，紙條實際大小不變 */
   background:#3a2b1d repeating-linear-gradient(91deg,
     rgba(0,0,0,.42) 0 2px, transparent 2px 4px,
     rgba(255,255,255,.05) 4px 30px, rgba(0,0,0,.42) 30px 32px);
   box-shadow:inset 0 0 0 1px #2c1c10, inset 0 0 30px rgba(8,6,5,.55), 0 2px 0 #241a11;
 }
-.bn-hd{flex:none;display:flex;align-items:baseline;padding:0 3px 9px;}
+.bn-hd{flex:none;display:flex;align-items:baseline;padding:0 7px 8px;}
 .bn-hd .t{font-size:14px;color:#f7b873;letter-spacing:4px;text-shadow:0 1px 2px rgba(8,6,5,.7);}
 .bn-hd .q{margin-left:auto;font-size:12px;color:#c7ab7e;}
 .bn-hd .q b{color:var(--text);font-weight:400;}
 .bn-hd .q b.on{color:var(--gold);}
 
 /* align-content:center：把紙條整團置中，不要 space-evenly——空間一多就變成幾條孤零零的橫排。
-   min-height:0 + overflow-y:auto：8 張（3 排）在矮螢幕上仍能捲。 */
+   min-height:0 + overflow-y:auto：8 張（3 排）在矮螢幕上仍能捲。
+
+   ⚠ padding 的左右 14px 不是留白，是「縮放的預留空間」。
+   左右兩欄的紙條本來就 translateX 往外偏 7px，被選中時再 scale(1.05) 又往外長約 3px；
+   沒有這 14px，overflow-x:hidden 會把最外側那道金框裁掉（只有中間欄不會，因為它沒貼邊）。
+   下方 30px 同理：transform 的位移不撐開容器，往下偏的那排不留白就會被切。 */
 .bn-grid{
-  flex:1;min-height:0;overflow-y:auto;
-  /* align-items:flex-start 讓每張紙條吃自己的 margin-top（JS 的 BN_OFF），做出釘歪的錯落感；
-     少了它，同一排會被拉成等高，偏移就看不出來。 */
-  display:flex;flex-wrap:wrap;justify-content:center;align-content:center;align-items:flex-start;gap:6px 7px;
+  flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;
+  display:flex;flex-wrap:wrap;justify-content:center;align-content:center;align-items:flex-start;
+  gap:2px;padding:10px 14px 30px;
 }
 .bn-grid::-webkit-scrollbar{display:none;}
 .bn-note{
-  width:calc(33.333% - 5px);
+  width:calc(33.333% - 2px);
   position:relative;cursor:pointer;padding:16px 5px 10px;text-align:center;border-radius:2px;
   border:1px solid var(--line);background:var(--panel2);
-  box-shadow:0 3px 7px rgba(8,6,5,.6);transition:transform .12s;
+  box-shadow:0 3px 7px rgba(8,6,5,.6);transition:transform .16s ease-out, box-shadow .16s;
 }
 .bn-note.hard{background:#4a251c;border-color:#7d3a33;}
 .bn-note.mid {background:#3a2c1d;border-color:#6b5336;}
 .bn-note.easy{background:#26331f;border-color:#4d6845;}
-.bn-note.on{transform:none !important;box-shadow:0 0 0 2px #f2c455,0 4px 10px rgba(8,6,5,.65);}
+/* 被選的那張：擺正、放大一點、z-index 拉到最上層＝「從板子上拿起來」。
+   z-index 是關鍵——紙條彼此重疊，沒有它金框會被鄰居蓋住。 */
+.bn-note.on{transform:scale(1.05) !important;z-index:9 !important;
+  box-shadow:0 0 0 2px #f2c455,0 8px 18px rgba(8,6,5,.7);}
 .bn-note .pin{position:absolute;top:5px;left:50%;margin-left:-4px;width:8px;height:8px;
   border-radius:50%;background:#8d7550;box-shadow:0 1px 3px rgba(8,6,5,.85);}
 .bn-note .pin.ready{background:#f2c455;}
@@ -659,7 +697,7 @@ h1.title{
 .bn-note .rw{font-size:12px;white-space:nowrap;}
 .bn-note .gm{font-size:12px;color:var(--gem);margin-top:3px;}
 
-.bn-key{flex:none;display:flex;gap:10px;justify-content:center;margin-top:12px;font-size:11px;color:#c7ab7e;}
+.bn-key{flex:none;display:flex;gap:10px;justify-content:center;margin-top:2px;font-size:11px;color:#c7ab7e;}
 .bn-key .sp{margin-left:6px;}
 .bn-key i{display:inline-block;width:8px;height:8px;margin-right:4px;}
 .bn-key .k-hard{background:#4a251c;border:1px solid #7d3a33;}
