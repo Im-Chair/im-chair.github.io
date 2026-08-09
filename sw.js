@@ -1,4 +1,4 @@
-const CACHE = 'arcade-v41';
+const CACHE = 'arcade-v42';
 // RPG 敵人圖示：檔名＝ENEMIES／首領／域限精英的 key。v385 起 50 隻全數有圖，已無 SVG 回落。
 const RPG_MON = [
   'slime','bat','skel','thief','rat','garg','spider',
@@ -6,7 +6,7 @@ const RPG_MON = [
   'eye','flower','hound','clot','leech','teeth','necro',
   'lantern','sister','monk','reliq','choir','zealot','knight',
   'magma','mist','pulse','puppet','throm','valve','worm',
-  'mimic','feign',
+  'mimic','feign',                                             // 執行時用 imgKey 借用，見 data.js 的 RUNTIME_MON_IMG
   'mb0','mb1','mb2','mb3','mb4','bb0','bb1','bb2','bb3','final',
   'ratking','priest','stitch','inquis','acolyte',            // 域限精英 A（每域第一隻）
   'miner','raider','swarm','warden','stoker',                 // v396：域限精英 B（每域第二隻）
@@ -14,7 +14,7 @@ const RPG_MON = [
 // RPG 通用 UI 圖示（v385）：標題／職業／門／藥水／結算，見 data.js 的 DOOR_IMG 與各表的 img 欄
 const RPG_UI = [
   'title','cls_sword','cls_assassin','cls_white','cls_dark',
-  'door_fight','door_elite','door_rest','door_chest','ev_corpse',
+  'door_fight','door_elite','door_rest','door_chest','door_unknown','ev_corpse',   // v431：未知門有自己的圖；ev_corpse 仍是「前人遺物」事件在用
   'pot_heal','pot_wrath','pot_energy','pot_holy','pot_bomb','ev_rock',
   'res_death','smith','coin','gem','title_bg','npc_smith','bg_market',
   'pot_purge','pot_stone','ev_box','ev_can','ev_scroll','ev_dice','ev_rope',
