@@ -1165,7 +1165,16 @@ function abandonBounty(i){
    樓層不放紙條上——88px 寬只容得下三行，樓層改由 bountyDesc 在詳情裡交代。 */
 const BOUNTY_TY = {reach:'抵達', streakkill:'連殺', loot:'取裝備', boss:'殺王',
                    flawless:'無傷', dotkill:'毒燃斬', kill:'擊殺'};
-const BOUNTY_BAND = {above:'挑戰', at:'評定', below:'好刷'};
+/* 紙條底色＝**類型難度**，不是 b.band。
+   b.band(above/at/below) 只是「這條的樓層相對你的認證深度」,鑽石數完全不吃它——
+   `gems` 吃的是 BOUNTY_TYPE_DIFF 與樓層比。以前用 band 上色,畫面上最醒目的訊號標的是樓層,
+   玩家卻會把它讀成難度,於是出現「評定的無傷 7 鑽比挑戰的取裝備 5 鑽還多」看起來像 bug。
+   現在顏色跟著獎勵走,band 改用中性文字在詳情裡講深度。 */
+const BOUNTY_DEPTH = {above:'深層', at:'標準', below:'淺層'};
+function bountyDiff(b){
+  const d = BOUNTY_TYPE_DIFF[b.type] || 1;
+  return d >= 2 ? 'hard' : d >= 1.5 ? 'mid' : 'easy';
+}
 const BN_ROT = [-3, 2, -1, 3, -2, 1];   // 紙條歪斜角。依顯示順序取，不要隨機——隨機的話每次 render 都在抖
 let bountySel = null;   // 選中的委託「物件」而非索引：ensureBounties 會增刪陣列，索引會失效
 
@@ -1201,7 +1210,7 @@ function renderBounty(){
 
   $('bn-grid').innerHTML = ord.map((x,n)=>{
     const b = x.b, rw = bountyRw(b.reward);
-    return `<div class="bn-note ${b.band||'at'}${b===bountySel?' on':''}" style="transform:rotate(${BN_ROT[n%BN_ROT.length]}deg)" onclick="selectBounty(${x.i})">
+    return `<div class="bn-note ${bountyDiff(b)}${b===bountySel?' on':''}" style="transform:rotate(${BN_ROT[n%BN_ROT.length]}deg)" onclick="selectBounty(${x.i})">
       <span class="pin ${b.state}"></span>
       <div class="cy">${bountyTier(b)}</div>
       <div class="ty">${BOUNTY_TY[b.type]||'？'}</div>
@@ -1212,13 +1221,13 @@ function renderBounty(){
 
   const b = bountySel;
   if(!b){ $('bn-detail').innerHTML = ''; return; }
-  const i = G.bounties.indexOf(b), rw = bountyRw(b.reward), bd = b.band || 'at';
+  const i = G.bounties.indexOf(b), rw = bountyRw(b.reward), dp = b.band || 'at';
   const st = b.state==='ready' ? '已達成' : b.state==='active' ? '進行中' : '未接下';
   const btn = b.state==='ready'  ? `<div class="act ready" onclick="claimBountyUI(${i})">回報領獎 ›</div>`
             : b.state==='active' ? `<div class="act drop" onclick="abandonBounty(${i})">放棄委託</div>`
             :                      `<div class="act" onclick="acceptBounty(${i})">接下委託 ›</div>`;
   $('bn-detail').innerHTML = `<div class="bn-card${b.state==='ready'?' ready':''}">
-    <div class="hd"><span>${st}</span><span class="cy">${bountyTier(b)}</span><span class="bd ${bd}">${BOUNTY_BAND[bd]}</span></div>
+    <div class="hd"><span>${st}</span><span class="cy">${bountyTier(b)}</span><span class="bd">${BOUNTY_DEPTH[dp]}</span></div>
     <div class="desc">${bountyDesc(b)}</div>
     <div class="rw"><span style="color:${rw[0]}"><svg class="ic"><use href="#${rw[1]}"/></svg> ${rw[3]}</span>
       <span class="gm"><svg class="ic"><use href="#ic-gem"/></svg> ${b.gems||'1~3'}</span></div>
