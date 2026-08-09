@@ -616,13 +616,17 @@ h1.title{
    只給板子 flex:1 的話，紙條之間會被撐出很大的空隙，下半又空一塊，看起來就是「一半一半」的破版。 */
 .bn-board{
   flex:1;min-height:0;display:flex;flex-direction:column;
-  border:1px solid var(--line-hi);border-radius:12px;padding:10px 9px;
-  background:#17100a repeating-linear-gradient(91deg,rgba(0,0,0,.3) 0 26px,rgba(255,255,255,.02) 26px 28px);
-  box-shadow:inset 0 0 26px rgba(8,6,5,.75);
+  /* 邊框 2px ＋ 內襯一道暗線＝木框的厚度感；底色從 #17100a 拉到皮革/木頭 ramp 的 #3a2b1d 一帶，
+     再用兩組條紋做出板縫與板面，否則整塊只是一個深色色塊，看不出是木板。 */
+  border:2px solid #8a6a45;border-radius:12px;padding:11px 9px 13px;
+  background:#3a2b1d repeating-linear-gradient(91deg,
+    rgba(0,0,0,.42) 0 2px, transparent 2px 4px,
+    rgba(255,255,255,.05) 4px 30px, rgba(0,0,0,.42) 30px 32px);
+  box-shadow:inset 0 0 0 1px #2c1c10, inset 0 0 30px rgba(8,6,5,.55), 0 2px 0 #241a11;
 }
 .bn-hd{flex:none;display:flex;align-items:baseline;padding:0 3px 9px;}
-.bn-hd .t{font-size:14px;color:var(--gold);letter-spacing:4px;}
-.bn-hd .q{margin-left:auto;font-size:12px;color:var(--dim);}
+.bn-hd .t{font-size:14px;color:#f7b873;letter-spacing:4px;text-shadow:0 1px 2px rgba(8,6,5,.7);}
+.bn-hd .q{margin-left:auto;font-size:12px;color:#c7ab7e;}
 .bn-hd .q b{color:var(--text);font-weight:400;}
 .bn-hd .q b.on{color:var(--gold);}
 
@@ -630,37 +634,39 @@ h1.title{
    min-height:0 + overflow-y:auto：8 張（3 排）在矮螢幕上仍能捲。 */
 .bn-grid{
   flex:1;min-height:0;overflow-y:auto;
-  display:flex;flex-wrap:wrap;justify-content:center;align-content:center;gap:9px 7px;
+  /* align-items:flex-start 讓每張紙條吃自己的 margin-top（JS 的 BN_OFF），做出釘歪的錯落感；
+     少了它，同一排會被拉成等高，偏移就看不出來。 */
+  display:flex;flex-wrap:wrap;justify-content:center;align-content:center;align-items:flex-start;gap:6px 7px;
 }
 .bn-grid::-webkit-scrollbar{display:none;}
 .bn-note{
   width:calc(33.333% - 5px);
   position:relative;cursor:pointer;padding:16px 5px 10px;text-align:center;border-radius:2px;
   border:1px solid var(--line);background:var(--panel2);
-  box-shadow:0 2px 5px rgba(8,6,5,.55);transition:transform .12s;
+  box-shadow:0 3px 7px rgba(8,6,5,.6);transition:transform .12s;
 }
-.bn-note.hard{background:#3a1f18;border-color:#6b3030;}
-.bn-note.mid {background:#2a2016;border-color:#5a4430;}
-.bn-note.easy{background:#1e281a;border-color:#40593a;}
-.bn-note.on{transform:none !important;box-shadow:0 0 0 2px var(--gold),0 3px 9px rgba(8,6,5,.6);}
+.bn-note.hard{background:#4a251c;border-color:#7d3a33;}
+.bn-note.mid {background:#3a2c1d;border-color:#6b5336;}
+.bn-note.easy{background:#26331f;border-color:#4d6845;}
+.bn-note.on{transform:none !important;box-shadow:0 0 0 2px #f2c455,0 4px 10px rgba(8,6,5,.65);}
 .bn-note .pin{position:absolute;top:5px;left:50%;margin-left:-4px;width:8px;height:8px;
-  border-radius:50%;background:#7a6242;box-shadow:0 1px 2px rgba(8,6,5,.8);}
-.bn-note .pin.ready{background:var(--gold);}
-.bn-note .pin.active{background:#cfc6b0;}
-.bn-note .cy{font-size:12px;color:#a08b68;letter-spacing:1px;}
+  border-radius:50%;background:#8d7550;box-shadow:0 1px 3px rgba(8,6,5,.85);}
+.bn-note .pin.ready{background:#f2c455;}
+.bn-note .pin.active{background:#efe6cf;}
+.bn-note .cy{font-size:12px;color:#b39c76;letter-spacing:1px;}
 .bn-note .ty{font-size:17px;margin:3px 0 7px;}
 .bn-note.on .ty{color:#f7b873;}
 .bn-note .rw{font-size:12px;white-space:nowrap;}
 .bn-note .gm{font-size:12px;color:var(--gem);margin-top:3px;}
 
-.bn-key{flex:none;display:flex;gap:10px;justify-content:center;margin-top:10px;font-size:11px;color:var(--dim);}
+.bn-key{flex:none;display:flex;gap:10px;justify-content:center;margin-top:12px;font-size:11px;color:#c7ab7e;}
 .bn-key .sp{margin-left:6px;}
 .bn-key i{display:inline-block;width:8px;height:8px;margin-right:4px;}
-.bn-key .k-hard{background:#3a1f18;border:1px solid #6b3030;}
-.bn-key .k-mid{background:#2a2016;border:1px solid #5a4430;}
-.bn-key .k-easy{background:#1e281a;border:1px solid #40593a;}
-.bn-key .k-ready{width:8px;height:8px;border-radius:50%;background:var(--gold);}
-.bn-key .k-active{width:8px;height:8px;border-radius:50%;background:#cfc6b0;}
+.bn-key .k-hard{background:#4a251c;border:1px solid #7d3a33;}
+.bn-key .k-mid{background:#3a2c1d;border:1px solid #6b5336;}
+.bn-key .k-easy{background:#26331f;border:1px solid #4d6845;}
+.bn-key .k-ready{width:8px;height:8px;border-radius:50%;background:#f2c455;}
+.bn-key .k-active{width:8px;height:8px;border-radius:50%;background:#efe6cf;}
 
 .bn-card{
   flex:1;min-height:0;display:flex;flex-direction:column;

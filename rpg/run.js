@@ -1175,7 +1175,8 @@ function bountyDiff(b){
   const d = BOUNTY_TYPE_DIFF[b.type] || 1;
   return d >= 2 ? 'hard' : d >= 1.5 ? 'mid' : 'easy';
 }
-const BN_ROT = [-3, 2, -1, 3, -2, 1];   // 紙條歪斜角。依顯示順序取，不要隨機——隨機的話每次 render 都在抖
+const BN_ROT = [-4, 3, -2, 4, -3, 2];   // 紙條歪斜角。依顯示順序取，不要隨機——隨機的話每次 render 都在抖
+const BN_OFF = [0, 13, 4, 10, 0, 16];   // 垂直偏移(px)。跟角度一起做出「隨手釘上去」的錯落，不是整齊兩排
 let bountySel = null;   // 選中的委託「物件」而非索引：ensureBounties 會增刪陣列，索引會失效
 
 function bountyOrder(){   // 顯示順序：可回報 → 進行中 → 可接
@@ -1210,7 +1211,7 @@ function renderBounty(){
 
   $('bn-grid').innerHTML = ord.map((x,n)=>{
     const b = x.b, rw = bountyRw(b.reward);
-    return `<div class="bn-note ${bountyDiff(b)}${b===bountySel?' on':''}" style="transform:rotate(${BN_ROT[n%BN_ROT.length]}deg)" onclick="selectBounty(${x.i})">
+    return `<div class="bn-note ${bountyDiff(b)}${b===bountySel?' on':''}" style="transform:rotate(${BN_ROT[n%BN_ROT.length]}deg);margin-top:${BN_OFF[n%BN_OFF.length]}px" onclick="selectBounty(${x.i})">
       <span class="pin ${b.state}"></span>
       <div class="cy">${bountyTier(b)}</div>
       <div class="ty">${BOUNTY_TY[b.type]||'？'}</div>
