@@ -232,12 +232,13 @@ h1.title{
   border:1px solid;white-space:nowrap;flex:0 0 auto;}
 .ichip.curse{color:var(--red);border-color:#7a3434;}
 .ichip.leg{color:var(--orange);border-color:#7a4622;}
-/* 一般詞綴換行不截斷,並且**固定保留兩行**(15px×2)。
-   詞綴少的裝備第二行是空的——這是刻意的:列高因此永遠是 67px,
-   不會因為裝備詞綴多寡而讓下面的列上下移動。
-   單一詞綴名不斷字(span nowrap),斷點只會落在分隔號之間。 */
+/* 一般詞綴固定一行(15px)。
+   v441 曾改成固定保留兩行以求「絕對不跳」,但實機 76 件裝備沒有一件需要換行——
+   傳說最多骰 4 條一般詞綴,最壞 177px,而 390px 上這一欄有 203px。
+   預留的第二行永遠是空的,只是讓每列多 15px、可見件數 7 → 6 且畫面鬆垮。
+   高度仍然固定,所以照樣不會跳;真的溢出(僅 360px 窄機配滿詞綴傳說,超出約 4px)以「…」收尾。 */
 .ir-affix{font-size:10px;color:var(--green);margin-top:3px;line-height:1.5;
-  height:30px;overflow:hidden;}
+  height:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .ir-affix span{white-space:nowrap;}
 .ir-affix i{font-style:normal;color:#463c2e;padding:0 3px;}
 .ir-affix .ir-none{color:#50462f;}
