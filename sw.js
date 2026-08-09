@@ -1,4 +1,4 @@
-const CACHE = 'arcade-v42';
+const CACHE = 'arcade-v43';
 // RPG 敵人圖示：檔名＝ENEMIES／首領／域限精英的 key。v385 起 50 隻全數有圖，已無 SVG 回落。
 const RPG_MON = [
   'slime','bat','skel','thief','rat','garg','spider',
