@@ -612,12 +612,14 @@ h1.title{
 .bn-res .m{margin-left:auto;color:var(--gem);font-variant-numeric:tabular-nums;}
 .bn-res .g{color:var(--gold);font-variant-numeric:tabular-nums;}
 
+/* 板子吃掉剩餘高度（詳情卡與刷新鈕貼在下面），否則整個畫面只佔一半、下方一大片黑 */
 .bn-board{
-  flex:none;border:1px solid var(--line-hi);border-radius:12px;padding:9px 8px;
+  flex:1;min-height:0;display:flex;flex-direction:column;
+  border:1px solid var(--line-hi);border-radius:12px;padding:9px 8px;
   background:#17100a repeating-linear-gradient(91deg,rgba(0,0,0,.3) 0 26px,rgba(255,255,255,.02) 26px 28px);
   box-shadow:inset 0 0 26px rgba(8,6,5,.75);
 }
-.bn-hd{display:flex;align-items:baseline;padding:0 3px 8px;}
+.bn-hd{flex:none;display:flex;align-items:baseline;padding:0 3px 8px;}
 .bn-hd .t{font-size:12px;color:var(--gold);letter-spacing:4px;}
 .bn-hd .q{margin-left:auto;font-size:10px;color:var(--dim);}
 .bn-hd .q b{color:var(--text);font-weight:400;}
@@ -625,10 +627,16 @@ h1.title{
 
 /* 用 flex 不用 grid：委託數量是 4～8 張浮動的（offer 固定 4 ＋ active/ready 各最多 2），
    grid 的最後一排會落單靠左；flex + justify-content:center 讓不滿的那排自己置中。 */
-.bn-grid{display:flex;flex-wrap:wrap;justify-content:center;gap:8px 6px;}
+/* align-content:space-evenly：板子變高時把幾排紙條攤開，而不是全部擠在上緣留一大片空木板。
+   min-height:0 + overflow-y:auto：8 張（3 排）在矮螢幕上仍能捲。 */
+.bn-grid{
+  flex:1;min-height:0;overflow-y:auto;
+  display:flex;flex-wrap:wrap;justify-content:center;align-content:space-evenly;gap:8px 6px;
+}
+.bn-grid::-webkit-scrollbar{display:none;}
 .bn-note{
   width:calc(33.333% - 4px);
-  position:relative;cursor:pointer;padding:13px 5px 7px;text-align:center;border-radius:2px;
+  position:relative;cursor:pointer;padding:15px 5px 9px;text-align:center;border-radius:2px;
   border:1px solid var(--line);background:var(--panel2);
   box-shadow:0 2px 5px rgba(8,6,5,.55);transition:transform .12s;
 }
@@ -646,7 +654,7 @@ h1.title{
 .bn-note .rw{font-size:10px;white-space:nowrap;}
 .bn-note .gm{font-size:10px;color:var(--gem);margin-top:2px;}
 
-.bn-key{display:flex;gap:9px;justify-content:center;margin-top:10px;font-size:9px;color:var(--dim);}
+.bn-key{flex:none;display:flex;gap:9px;justify-content:center;margin-top:10px;font-size:9px;color:var(--dim);}
 .bn-key .sp{margin-left:5px;}
 .bn-key i{display:inline-block;width:7px;height:7px;margin-right:3px;}
 .bn-key .k-above{background:#3a1f18;border:1px solid #6b3030;}
