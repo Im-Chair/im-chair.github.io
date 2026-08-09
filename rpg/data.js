@@ -386,6 +386,16 @@ const BLESSINGS = [
 // 這些祝福為「死值」會被深層輾過，隨深度/輪迴縮放（見 blessMult）；crit=率有上限、vamp=已隨傷害縮放，故維持固定
 const BLESS_SCALE_KEYS = {str:1, hp:1};
 
+/* 祝福的短名與圖示：唯一來源。BLESSINGS[].n 是完整句子（點祝福磚才看得到），
+   顯示成格子時要短名。以前 openRunStats 自己在函式裡寫了一份 bn={str:'力量',…}，
+   樓層畫面再寫一份就會分岔——所以提到這裡，兩邊都讀它。
+   圖示全部是既有 sprite，不需要新素材。 */
+const BLESS_NAME = {str:'力量', crit:'銳利', vamp:'血契', plate:'守勢', hp:'堅韌'};
+const BLESS_ICON = {str:'ic-str', crit:'ic-crit', vamp:'ic-blood', plate:'ic-shield', hp:'ic-heart'};
+/* 委託類型的圖示（樓層畫面的委託格用）。BOUNTY_TY 的短名在 run.js，那是文字；這裡是圖。 */
+const BOUNTY_ICON = {reach:'ic-dive', streakkill:'ic-sword', loot:'ic-chest',
+                     boss:'ic-skull', flawless:'ic-shield', dotkill:'ic-poison', kill:'ic-sword'};
+
 const EV_REALM = {mine:0, oldfire:0, wreck:1, wishwell:1, cyst:2, vein:2, confess:3, candle:3, bloodspring:4, calcified:4};
 
 const EV_HINTS = {shrine:'香灰味', gambler:'骰子聲', merchant:'燈籠的紅光', spring:'水聲', can:'金屬滾動聲',

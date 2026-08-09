@@ -246,8 +246,7 @@ function openRunStats(){
   }
   if(R && R.bless.length){
     html += '<div class="section-title">本次祝福</div>';
-    const bn = {str:'力量',crit:'銳利',vamp:'血契',plate:'守勢',hp:'堅韌'};
-    html += R.bless.map(b=>`<div class="affix"><svg class="ic"><use href="#ic-bless"/></svg> ${bn[b.k]||b.k} +${BLESS_SCALE_KEYS[b.k] ? Math.round(b.v*blessMult()) : b.v}</div>`).join('');
+    html += R.bless.map(b=>`<div class="affix"><svg class="ic"><use href="#${BLESS_ICON[b.k]||'ic-bless'}"/></svg> ${BLESS_NAME[b.k]||b.k} +${BLESS_SCALE_KEYS[b.k] ? Math.round(b.v*blessMult()) : b.v}</div>`).join('');
   }
   html += bagListHtml('stats');
   html += '<button class="btn" style="margin-top:14px" onclick="closeSheet()">關閉</button>';
@@ -269,6 +268,20 @@ function bagListHtml(back){
 }
 /* 樓層畫面的行囊入口（點決策條上的件數）。內容本來就在角色檢視裡，
    但那顆按鈕改名之後沒人找得到——這是入口問題，不是內容問題。 */
+/* 祝福磚點開的說明。BLESSINGS[].n 是完整句子（「守勢的祝福：每場戰鬥開始獲得 10% 最大生命的格擋」），
+   以前遊戲裡沒有任何地方看得到。零層的也能點——玩家該知道還沒吃到的是什麼。
+   標題已經寫了「X 的祝福」，所以內文只取冒號後那半，不要重複。 */
+function openBlessInfo(k){
+  const bs = BLESSINGS.find(b => b.k === k); if(!bs) return;
+  const own = (R && R.bless) ? R.bless.filter(b => b.k === k) : [];
+  const sum = own.reduce((a, b) => a + (BLESS_SCALE_KEYS[k] ? Math.round(b.v * blessMult()) : b.v), 0);
+  openSheet(`<h3>${BLESS_NAME[k]}的祝福</h3>
+    <p class="base">${bs.n.split('：')[1] || bs.n}</p>
+    <div class="section-title">這趟</div>
+    <div class="base">${own.length ? own.length + '/' + BLESS_MAX + ' 層　合計 +' + sum : '尚未獲得'}</div>
+    <button class="btn" style="margin-top:14px" onclick="closeSheet()">關閉</button>`);
+}
+
 function openBag(){
   if(!R || !R.bag.length){ toast('行囊是空的'); return; }
   openSheet(bagListHtml('bag') + '<button class="btn" style="margin-top:14px" onclick="closeSheet()">關閉</button>');

@@ -204,10 +204,25 @@ function showDoors(){
   if(rb) rb.style.display = R.hasRope ? '' : 'none';
   const rgb = document.getElementById('retreat-gold-btn');
   if(rgb) rgb.style.display = (!R.hasRope && R.gold > 0 && R.floor > 1) ? '' : 'none';   // 無繩時可花 9 成碎銀逃脫
+  /* 深度區塊的底＝該域的橫幅。REALMS[].bg 那六張以前只在進域那一瞬間出現一次，
+     之後整趟再也看不到——拿來當底，零新素材就有「你人在哪」的實感。 */
+  const _dp = $('d-depth');
+  if(_dp) _dp.style.backgroundImage = (zz && zz.bg) ? `url("ui/${zz.bg}.webp?v=${window.IMG_VER}")` : 'none';
+  /* 大數字的參照點。沒有它，「24」是多還是少玩家無從判斷。
+     破紀錄只在 rec>0 時才標——新角色 rec=0，每一層都是新紀錄的話這個標記就不值錢了。 */
+  const _rec = certDepthOf(R.cycle), _rc = $('d-rec');
+  if(_rc){
+    const isNew = _rec > 0 && f > _rec;
+    _rc.textContent = isNew ? '◆ 新紀錄' : (_rec > 0 ? '最深紀錄 ' + _rec : '');
+    _rc.className = 'rec' + (isNew ? ' new' : '');
+  }
   // 域規則常駐：原本只在進域的 intro 講一次，打到第 19 層早忘了、中途死掉重進也不再顯示。
   // 只印規則本身——域名上面 .lbl 已經有了，再帶一次是重複。
+  // 距首領同一行：首領固定在 5 的倍數，這個數字直接影響「現在撤還是再拚一層」。
+  const _nb = f % 5;
   const _rl = $('d-rule');
-  if(_rl) _rl.textContent = (zz && zz.rt) ? zz.rt : '';
+  if(_rl) _rl.textContent = [(zz && zz.rt) ? zz.rt : '',
+                             _nb === 0 ? '就在這一層' : '距首領 ' + (5 - _nb) + ' 層'].filter(Boolean).join('　·　');
   const grid = $('door-grid'); grid.innerHTML = '';
   if(R.forceDoor){
     const t = R.forceDoor; R.forceDoor = null;
@@ -239,9 +254,44 @@ function showDoors(){
     el.onclick = ()=>enterDoor(d);
     grid.appendChild(el);
   }
+  renderDoorBounty();
+  renderDoorBless();
   renderDoorPotions();
   save();
   showScreen('s-doors');
+}
+
+/* 委託格：固定 MAX_ACTIVE 格，沒接就顯示空槽。
+   恆定佔位是刻意的——這區會隨接/放棄委託變動，不固定的話整個下半部會上下跳。 */
+function renderDoorBounty(){
+  const el = $('dr-bounty'); if(!el) return;
+  const act = (G.bounties || []).filter(b => b.state === 'active');
+  let h = '';
+  for(let i = 0; i < MAX_ACTIVE; i++){
+    const b = act[i];
+    if(!b){ h += '<div class="bn-slot empty">未接委託</div>'; continue; }
+    const st = bountySlotState(b);
+    h += `<div class="bn-slot ${st}">
+      <div class="hd"><svg class="ic"><use href="#${BOUNTY_ICON[b.type] || 'ic-board'}"/></svg><span>${bountyTier(b)}</span></div>
+      <div class="tx">${bountyDesc(b)}</div>`
+      + (st === 'dead' ? '<svg class="x" viewBox="0 0 40 40" preserveAspectRatio="none"><path d="M5 5 L35 35 M35 5 L5 35"/></svg>' : '')
+      + '</div>';
+  }
+  el.innerHTML = h;
+}
+/* 祝福格：五種全列，沒吃到的也佔位。
+   0 層灰階／1 層亮框／2 層(BLESS_MAX，滿級)連圖示一起亮。點開看完整說明。 */
+function renderDoorBless(){
+  const el = $('dr-bless'); if(!el) return;
+  const lv = {};
+  for(const b of (R.bless || [])) lv[b.k] = (lv[b.k] || 0) + 1;
+  el.innerHTML = BLESSINGS.map(bs => {
+    const n = lv[bs.k] || 0;
+    const cls = n >= BLESS_MAX ? 'max' : n > 0 ? 'on' : 'off';
+    return `<div class="bl-tile ${cls}" onclick="openBlessInfo('${bs.k}')">
+      <svg class="ic"><use href="#${BLESS_ICON[bs.k]}"/></svg>
+      <div class="nm">${BLESS_NAME[bs.k]}</div></div>`;
+  }).join('');
 }
 
 function renderDoorPotions(){
@@ -1142,12 +1192,28 @@ function claimBountyUI(i){   // 玩家手動點「回報領獎」
   const b = G.bounties[i]; if(!b || b.state!=='ready') return;
   claimBounty(b); ensureBounties(); save(); renderBounty();
 }
+/* 這趟到底有沒有可能達成——**判定與顯示共用同一支**，不要各寫一份。
+   兩種永遠不可能：
+   1. 輪迴不符：接了輪迴II 的委託卻在本源下潛，bountyProgress 本來就直接跳過。
+      ensureBounties 的第 4 格是刻意給其他輪迴的（回訪理由），所以這很常見。
+   2. 起點太深：「抵達 N 層」要求真的「下潛到」N（比起點更深），傳送到 N 層以下起步就永遠假。
+   以前這兩個條件只寫在 bountyProgress 裡，玩家在深淵裡完全看不出來「這條這趟白接了」。 */
+function bountyReachable(b){
+  if(!R || b.mode !== R.cycle) return false;
+  if(b.type === 'reach' && b.floor <= R.startFloor) return false;
+  return true;
+}
+/* 樓層畫面的委託格狀態：已達成／這趟不可能／可解未解 */
+function bountySlotState(b){
+  if(b.met) return 'done';
+  return bountyReachable(b) ? 'todo' : 'dead';
+}
 function bountyProgress(kind){
   if(!R || !G.bounties) return;
   for(const b of G.bounties){
-    if(b.state !== 'active' || b.mode !== R.cycle || b.type !== kind) continue;
+    if(b.state !== 'active' || b.type !== kind || !bountyReachable(b)) continue;
     let ok;
-    if(kind==='reach') ok = R.floor >= b.floor && b.floor > R.startFloor;   // 必須真的「下潛到」X（比起點更深）；傳送到 X 以下不算
+    if(kind==='reach') ok = R.floor >= b.floor;   // 「比起點更深」已由 bountyReachable 擋掉
     else if(kind==='streakkill') ok = R.kills >= b.target;
     else if(kind==='flawless' || kind==='dotkill') ok = R.floor >= b.floor;  // 特殊條件已由呼叫端確認
     else ok = R.floor === b.floor;                                            // kill/loot/boss

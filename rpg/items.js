@@ -572,10 +572,13 @@ function compareHtml(it){
   return lines.join('');
 }
 
-function openItemSheet(it, from){
+/* back 只在 from==='bag' 時有意義：行囊有兩個入口（角色檢視／樓層畫面的行囊鈕），
+   返回與換裝完都必須回到來的那一個。以前寫死 openRunStats()，從行囊點進來會被丟到角色檢視。 */
+function openItemSheet(it, from, back){
   const r = RARITIES[it.rar];
   const salvage = 6 + it.rar*10 + Math.floor(it.base/2);
-  const backCall = from==='bag' ? 'openRunStats()' : 'closeSheet()';
+  const ret = (back === 'bag') ? 'bag' : 'stats';
+  const backCall = from==='bag' ? (ret==='bag' ? 'openBag()' : 'openRunStats()') : 'closeSheet()';
   let btns = ''; let extra = '';
   if(from==='stash'){ btns = `<button class="btn primary" onclick="equipFromStash(${it.id})">裝備</button>
     <button class="btn danger" onclick="salvageItem(${it.id})">分解 +${salvage}<svg class="ic"><use href="#ic-gold"/></svg></button>`;
@@ -583,7 +586,7 @@ function openItemSheet(it, from){
   else if(from==='shared'){ btns = `<button class="btn primary" onclick="equipFromShared(${it.id})">裝備</button>
     <button class="btn" onclick="sharedToOwn(${it.id})"><svg class="ic"><use href="#ic-refresh"/></svg> 取回個人</button>`; }
   else if(from==='equipped') btns = `<button class="btn" onclick="unequipItem('${it.slot}')">卸下</button>`;
-  else if(from==='bag') btns = `<button class="btn primary" onclick="equipFromBag(${it.id},'stats')">立刻換上</button>`;
+  else if(from==='bag') btns = `<button class="btn primary" onclick="equipFromBag(${it.id},'${ret}')">立刻換上</button>`;
   openSheet(`<h3 class="${r.cls}">${it.name}${it.up?' +'+it.up:''}</h3>
     <div class="base">${r.n}${slotName(it.slot)}｜${itemStatLine(it)}${it.banked===false&&from!=='equipped'&&R?'｜<span style="color:var(--orange)">未保管</span>':''}</div>
     ${affixHtml(it)}${compareHtml(it)}

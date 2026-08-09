@@ -88,7 +88,7 @@ h1.title{
 .credit a{color:inherit;}
 /* 域規則常駐（v409）：這四條規則原本只在進域那一次的 intro 出現過，
    打到第 19 層早忘了、中途死掉重進也不會再看到——等於「玩家看不見的機制」。 */
-.realm-rule{font-size:12px;color:var(--orange);margin-top:4px;letter-spacing:.5px;}
+.realm-rule{font-size:11px;color:var(--orange);margin-top:1px;letter-spacing:.5px;font-family:system-ui,-apple-system,sans-serif;}
 /* ---------- camp ---------- */
 .camp-hero{
   text-align:center;padding:22px 0 14px;
@@ -199,11 +199,22 @@ h1.title{
 .cmp{font-size:12px;color:var(--dim);border-top:1px solid var(--line);margin-top:10px;padding-top:8px;}
 .cmp .up{color:var(--green);} .cmp .dn{color:var(--red);}
 /* ---------- doors / decision ---------- */
+/* 深度區塊：底圖是該域的橫幅(JS 設 background-image)。壓暗 + 上下淡出，大數字才讀得到。
+   ::before 疊暗罩、::after 疊漸層，兩層分開才好各自調整不互相干擾。 */
 .depth-gauge{
-  text-align:center;margin:12px 0 2px;font-family:"Songti TC",serif;
+  position:relative;overflow:hidden;isolation:isolate;
+  text-align:center;margin:9px 0 0;padding:7px 0 6px;font-family:"Songti TC",serif;
+  border:1px solid #3a2a1a;border-radius:10px;
+  background-position:center;background-size:cover;background-repeat:no-repeat;
 }
-.depth-gauge .num{font-size:56px;line-height:1.05;color:var(--gold);letter-spacing:4px;}
-.depth-gauge .lbl{font-size:13px;color:var(--dim);letter-spacing:4px;}
+.depth-gauge::before{content:"";position:absolute;inset:0;background:rgba(8,6,5,.62);z-index:-2;}
+.depth-gauge::after{content:"";position:absolute;inset:0;z-index:-1;
+  background:linear-gradient(180deg,#080605 0%,transparent 30%,transparent 70%,#080605 100%);}
+.depth-gauge>*{position:relative;}
+.depth-gauge .rec{font-size:11px;color:#96805f;font-family:system-ui,-apple-system,sans-serif;}
+.depth-gauge .rec.new{color:#f2c455;letter-spacing:2px;}
+.depth-gauge .num{font-size:46px;line-height:1.08;color:var(--gold);letter-spacing:4px;}
+.depth-gauge .lbl{font-size:12px;color:#b49e78;letter-spacing:4px;}
 .depth-gauge .bonus{font-size:12px;color:var(--orange);margin-top:2px;}
 /* ===== 抉擇（門）v431 =====
    #s-doors 的螢幕內距收到 12px、欄距 10px，全部讓給門圖：
@@ -736,6 +747,48 @@ h1.title{
   border-radius:8px;color:var(--gold);font-size:15px;cursor:pointer;}
 .bn-card .act.ready{border-color:var(--gold);}
 .bn-card .act.drop{border-color:#5a2a2a;color:var(--red);}
+
+/* ===== 樓層畫面的委託格與祝福格(v435) =====
+   兩區都是**恆定佔位**：委託固定 MAX_ACTIVE 格、祝福固定五種。
+   狀態改變(接委託/吃祝福)不會改變任何高度——這是刻意的，版面不准跳。 */
+.dr-bounty{flex:none;display:flex;gap:8px;margin-top:9px;}
+.bn-slot{
+  position:relative;flex:1;min-width:0;height:54px;overflow:hidden;
+  border:1px solid var(--line);border-radius:9px;background:var(--panel);padding:6px 8px;
+}
+.bn-slot.empty{border-style:dashed;border-color:#3a2c1e;background:transparent;
+  display:flex;align-items:center;justify-content:center;font-size:12px;color:#5c4d3a;}
+.bn-slot .hd{display:flex;align-items:center;gap:5px;font-size:10px;color:#7a6850;letter-spacing:1px;}
+.bn-slot .tx{font-size:12px;line-height:1.25;margin-top:2px;color:#9d8a6e;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+/* 已達成：整格點燈 */
+.bn-slot.done{border-color:var(--gold);background:#211a0e;
+  box-shadow:0 0 0 1px rgba(242,196,85,.25), inset 0 0 14px rgba(242,196,85,.10);}
+.bn-slot.done .hd{color:#c9a45a;}
+.bn-slot.done .tx{color:#f2c455;}
+/* 這趟不可能達成：黑底、暗紅框、整格打叉（見 bountyReachable） */
+.bn-slot.dead{border-color:#6b2020;background:#0c0807;}
+.bn-slot.dead .hd{color:#6a4038;}
+.bn-slot.dead .tx{color:#6a5548;}
+.bn-slot .x{position:absolute;inset:0;width:100%;height:100%;opacity:.5;pointer-events:none;}
+.bn-slot .x path{stroke:var(--red);stroke-width:2.4;fill:none;vector-effect:non-scaling-stroke;}
+
+.dr-bless{flex:none;display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:7px;}
+.bl-tile{
+  border:1px solid #3a2c1e;border-radius:8px;background:#110d09;
+  padding:6px 2px 5px;text-align:center;cursor:pointer;
+}
+.bl-tile .ic{width:19px;height:19px;color:#463a2c;}
+.bl-tile .nm{font-size:9px;color:#4e4234;letter-spacing:1px;margin-top:1px;}
+.bl-tile:active{background:var(--panel2);}
+/* 一層：框亮。兩層(滿級)：圖也亮。用兩個訊號分層，一眼看得出滿沒滿 */
+.bl-tile.on{border-color:var(--gold);background:#1c150d;}
+.bl-tile.on .ic{color:#7a6242;}
+.bl-tile.on .nm{color:#9d8a6e;}
+.bl-tile.max{border-color:var(--gold);background:#1c150d;
+  box-shadow:0 0 0 1px rgba(242,196,85,.3), inset 0 0 12px rgba(242,196,85,.14);}
+.bl-tile.max .ic{color:#f2c455;}
+.bl-tile.max .nm{color:var(--text);}
 
 .bn-re{flex:none;border:1px dashed var(--line);border-radius:8px;padding:11px;text-align:center;
   color:var(--gold);font-size:15px;margin-top:10px;cursor:pointer;}

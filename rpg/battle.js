@@ -925,7 +925,10 @@ function equipFromBag(id, ret){
   R.hp = Math.min(R.hp, playerMaxHp());
   closeSheet(); save(); toast('已裝備 '+it.name);
   if(R.phase==='doors') showDoors();
+  // 回到來的那個清單。行囊可能因為這次換裝而清空（該欄位本來沒東西可換下來），
+  // 那就不要再開一個空視窗然後多吐一則「行囊是空的」。
   if(ret==='stats') openRunStats();
+  else if(ret==='bag' && R.bag.length) openBag();
 }
 
 function afterLoot(){
