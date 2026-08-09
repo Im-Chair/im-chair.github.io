@@ -476,7 +476,7 @@ function weaponFit(sk){   // 職業/武器不匹配時的武器攻擊力折算
 function calcPlayerDmg(mult, sk){
   // 唯一公式 (§6)：(武器攻擊×合手 ＋ 主素質) × 武器係數 × 招式倍率
   const w = G.equip.w;
-  const wAtk = Math.round((w ? eqStat(w) : 3) * weaponFit(sk));
+  const wAtk = Math.round((w ? eqStat(w) : 3) * blessWpnMult() * weaponFit(sk));   // 力量祝福是武器攻擊乘率（見 core.js blessWpnMult）
   const manaPart = (sk && sk.magic) ? skillManaC(sk) * MANA_DMG_K : 0;   // 法術：消耗魔力轉戰力，讓魔力投資有回報
   let d = (wAtk + mainStat() + manaPart) * weaponType().coef * mult;
   if(sumAffix('fury')) d = Math.round(d*1.4);

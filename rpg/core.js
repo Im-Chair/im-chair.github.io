@@ -223,7 +223,7 @@ function sumAffix(key){
     for(const a of it.affixes) if(a.k===key && !AFFIXES[a.k].curse) v += a.v;
   }
   if(G.runes) for(const rn of G.runes){ if(rn) for(const a of rn.affixes) if(a.k===key && !AFFIXES[a.k].curse && !a.mul) v += a.v; } // 符文被動（乘法型 mul 另由 runeMul 計）
-  if(R && R.bless) for(const b of R.bless) if(b.k===key) v += (BLESS_SCALE_KEYS[b.k] ? Math.round(b.v * blessMult()) : b.v);
+  if(R && R.bless) for(const b of R.bless) if(b.k===key && !BLESS_NOT_AFFIX[b.k]) v += (BLESS_SCALE_KEYS[b.k] ? Math.round(b.v * blessMult()) : b.v);
   if(R && R.quench && R.quench.battles>0 && R.quench.k===key) v += R.quench.v;
   return v;
 }
@@ -271,9 +271,18 @@ function playerMaxMana(){   // 全職業統一：所有人都有魔力（魔符�
 function manaRegenPct(){ return Math.min(MREGEN_CAP, 25 + statTotal('spi')/10 + sumAffix('mregen')); }   // 精神同時提升回魔速度（成本改%制後，回魔率＝施法頻率）
 function weaponType(){ const w = G.equip.w; return WEAPON_TYPES[(w && w.wtype) || 'sword']; }
 function mainStat(){ return statTotal(CLASSES[G.cls].mainStat); }
+/* 力量祝福＝武器攻擊乘率，唯一入口（v436）。
+   改成乘率是為了跨職業一致：舊制加的是「力量」素質，而傷害公式讀的是 mainStat()，
+   主素質為 int 的法師／制魔師拿到等於沒拿。乘率掛在武器攻擊上，四個職業都吃得到。
+   任何要顯示或計算武器攻擊的地方都要經過這裡，不要另外寫一份 1+v/100。 */
+function blessWpnMult(){
+  let p = 0;
+  if(R && R.bless) for(const b of R.bless) if(b.k === 'str') p += b.v;
+  return 1 + p/100;
+}
+function wpnAtk(){ return Math.round(eqStat(G.equip.w) * blessWpnMult()); }   // 顯示用武器攻擊（含祝福）
 function playerAtk(){ // 顯示用：武器攻擊＋主素質
-  const w = G.equip.w;
-  return eqStat(w) + mainStat();
+  return wpnAtk() + mainStat();
 }
 function playerCrit(){ return critRate(); }
 

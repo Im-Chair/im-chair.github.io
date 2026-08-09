@@ -13,7 +13,7 @@
      IMG_VER：圖片版號。只在「真的換圖」時才 +1。
      為什麼要拆：圖片有 121 張、共 3.0 MB。以前圖也掛 RPG_VER，結果從 393 推到 420 這 27 次進版，
      每一次都讓全部圖換成新 URL——瀏覽器整批重抓、SW 快取每版累積一整套重複 entry，而圖根本沒動。 -->
-<script>window.RPG_VER='435';window.IMG_VER='4';document.write('<link rel="stylesheet" href="style.css?v='+RPG_VER+'">');</script>
+<script>window.RPG_VER='437';window.IMG_VER='4';document.write('<link rel="stylesheet" href="style.css?v='+RPG_VER+'">');</script>
 </head>
 <body>
 
@@ -241,12 +241,15 @@
      行囊件數以前藏在角色檢視按鈕的小字裡——那是死了就全沒的東西，不該藏。
      樓層只在 depth-gauge 顯示一次（原本 topbar 又寫了一份，重複）。 -->
 <div class="screen" id="s-doors">
+  <!-- v437 版面順序：血量 → 祝福 → 深度 → 門 → 委託 → 動作 → 藥水 → 資源四格。
+       間距全部固定(10/10/12/12/10/8/8),不再有任何一塊吸收剩餘高度——
+       門區以前吃掉所有剩餘再置中,結果剩餘被平均攤成門上下兩條大縫(實測 46 / 44px)。 -->
   <div class="dr-res">
     <span class="hp" id="dr-hp"></span>
-    <span class="g" id="dr-gold"></span>
-    <span class="bag" id="dr-bag" onclick="openBag()"></span>
   </div>
   <div class="dr-bar"><i id="dr-hpfill"></i></div>
+  <!-- 祝福 5 格是**恆定佔位**(BLESSINGS 五種),沒吃到就顯示灰格——版面高度永遠一樣。 -->
+  <div class="dr-bless" id="dr-bless"></div>
   <!-- 深度區塊的底是「該域的橫幅」(REALMS[].bg)。那六張圖以前只在進域那一瞬間出現一次,
        之後整趟再也看不到——拿來當底,畫面才有「你人在哪」的實感,而且零新素材。 -->
   <div class="depth-gauge" id="d-depth">
@@ -256,10 +259,8 @@
     <div class="realm-rule" id="d-rule"></div>
   </div>
   <div class="door-grid" id="door-grid"></div>
-  <!-- 委託 2 格、祝福 5 格都是**恆定佔位**(MAX_ACTIVE=2、BLESSINGS 五種),
-       沒接委託就顯示空槽、沒吃到祝福就顯示灰格——版面高度永遠一樣,不會因為狀態變化而跑動。 -->
+  <!-- 委託 2 格同樣是恆定佔位(MAX_ACTIVE=2),沒接就顯示空槽。 -->
   <div class="dr-bounty" id="dr-bounty"></div>
-  <div class="dr-bless" id="dr-bless"></div>
   <!-- 逃脫與角色檢視併成一排、改用 .slim：這兩顆不是主角，主角是門。
        兩顆逃脫鈕同時間只會有一顆顯示，另一顆 display:none，flex 會自動讓剩下的填滿。 -->
   <div class="row dr-acts">
@@ -268,6 +269,8 @@
     <button class="btn slim" onclick="openRunStats()"><svg class="ic"><use href="#ic-hero"/></svg> 角色檢視</button>
   </div>
   <div class="potion-row" id="door-potions"></div>
+  <!-- 資源四格：碎銀／行囊／符文／魔符。由 renderDoorCells() 填,四格恆定佔位。 -->
+  <div class="dr-cells" id="dr-cells"></div>
 </div>
 
 <!-- ===== 戰鬥 ===== -->

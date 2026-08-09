@@ -190,7 +190,7 @@ function openCodex(){
 function openRunStats(){
   const rows = [];
   const w = G.equip.w, wt = weaponType();
-  const wVal = eqStat(w), msVal = mainStat(), msName = STATS[CLASSES[G.cls].mainStat].n;
+  const wVal = wpnAtk(), msVal = mainStat(), msName = STATS[CLASSES[G.cls].mainStat].n;   // wpnAtk 已含力量祝福的乘率，面板才不會跟實戰對不上
   const cMagic = CLASSES[G.cls].mainStat==='int', misW = cMagic !== !!wt.magic;
   rows.push([`${wt.i} ${wVal+msVal}`, `攻擊力（武器${wVal}＋${msName}${msVal}）${misW?(cMagic?'｜<svg class="ic"><use href="#ic-warn"/></svg> 不合手·普攻武器×0.5、法術×0':'｜<svg class="ic"><use href="#ic-warn"/></svg> 不合手·武器攻擊×0'):(wt.magic?'｜普攻物理·法術對盾減半':'')}`]);
   rows.push([`${R? R.hp : playerMaxHp()}/${playerMaxHp()}`, '<svg class="ic"><use href="#ic-heart"/></svg> 生命']);
@@ -278,7 +278,7 @@ function openBlessInfo(k){
   openSheet(`<h3>${BLESS_NAME[k]}的祝福</h3>
     <p class="base">${bs.n.split('：')[1] || bs.n}</p>
     <div class="section-title">這趟</div>
-    <div class="base">${own.length ? own.length + '/' + BLESS_MAX + ' 層　合計 +' + sum : '尚未獲得'}</div>
+    <div class="base">${own.length ? own.length + '/' + BLESS_MAX + ' 層　合計 +' + sum + (bs.u || '') : '尚未獲得'}</div>
     <button class="btn" style="margin-top:14px" onclick="closeSheet()">關閉</button>`);
 }
 

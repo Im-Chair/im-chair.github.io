@@ -193,13 +193,10 @@ function showDoors(){
   const zz = realmFor(f);
   $('d-floor-big').textContent = f;   // 樓層只顯示這一次；原本 topbar 又寫了一份，重複
   document.querySelector('#s-doors .depth-gauge .lbl').textContent = zz.n;   // 域圖示拿掉：域已有專屬橫幅，這裡只需要名字
-  /* 撤退決策條：血／碎銀／行囊。這三個數字就是「現在走還是再貪一層」的全部依據。
-     行囊件數以前藏在角色檢視按鈕的小字裡——死了就全沒的東西不該藏在按鈕標題。 */
+  /* 最上層只剩血量：碎銀與行囊 v437 搬到畫面最下面的資源四格（renderDoorCells）。 */
   const _mx = playerMaxHp();
   $('dr-hp').innerHTML = `<svg class="ic"><use href="#ic-heart"/></svg> ${R.hp}<small>/${_mx}</small>`;
   $('dr-hpfill').style.width = Math.max(0, Math.min(100, R.hp / _mx * 100)) + '%';
-  $('dr-gold').innerHTML = `<svg class="ic"><use href="#ic-gold"/></svg> ${R.gold}`;
-  $('dr-bag').innerHTML = `<svg class="ic"><use href="#ic-bag"/></svg> ${R.bag.length}`;
   const rb = document.getElementById('retreat-btn');
   if(rb) rb.style.display = R.hasRope ? '' : 'none';
   const rgb = document.getElementById('retreat-gold-btn');
@@ -257,6 +254,7 @@ function showDoors(){
   renderDoorBounty();
   renderDoorBless();
   renderDoorPotions();
+  renderDoorCells();
   save();
   showScreen('s-doors');
 }
@@ -278,6 +276,25 @@ function renderDoorBounty(){
       + '</div>';
   }
   el.innerHTML = h;
+}
+/* 資源四格（v437）：碎銀／行囊／符文／魔符，恆定四格。
+   碎銀讀 R.gold ——本趟撿到的，不是倉庫的 G.gold，所以不能掛進 WALLET（那張表從 G 讀）。
+   符文格的「有沒有」不用 runeMaxRar() 判：那支回答的是「這一層會不會掉符文」，
+   而符文是跨探索永久保留的，拿舊符文的人在本源第 1 層也該看得到自己的槽。
+   所以條件是「手上真的有符文」，沒有才顯示解鎖里程碑（輪迴I 50 層，同樣出自 runeMaxRar 的定義）。 */
+function renderDoorCells(){
+  const el = $('dr-cells'); if(!el) return;
+  const socketed = (G.runes || []).filter(Boolean).length;
+  const hasRune = socketed > 0 || (G.runeBag || []).length > 0;
+  const cells = [
+    {k:'碎銀', v:R.gold, cls:'gold'},
+    {k:'行囊', v:R.bag.length + ' 件', cls:'tap', on:'openBag()'},
+    hasRune ? {k:'符文', v:socketed + '/3'} : {k:'符文', v:'輪迴I 50 層', cls:'locked'},
+    {k:'魔符', v:'未開放', cls:'locked'},
+  ];
+  el.innerHTML = cells.map(c =>
+    `<div class="dr-cell ${c.cls || ''}"${c.on ? ` onclick="${c.on}"` : ''}>
+      <div class="ck">${c.k}</div><div class="cv">${c.v}</div></div>`).join('');
 }
 /* 祝福格：五種全列，沒吃到的也佔位。
    0 層灰階／1 層亮框／2 層(BLESS_MAX，滿級)連圖示一起亮。點開看完整說明。 */
@@ -878,8 +895,10 @@ const EVENTS = {
     showEventScreen('🌿','裸露的樹根','一條手臂粗的氣根從黑暗裡垂下來，斷口滲著溫熱的汁液。喝的人聽說會變強。也聽說會變別的。',
       [{n:'喝一口', f:()=>{
         const r = Math.random();
-        if(r<0.5){ if(blessCount('str') < BLESS_MAX) R.bless.push({k:'str',v:3}); const h = Math.min(Math.round(playerMaxHp()*0.2), playerMaxHp()-R.hp); R.hp += h;
-          showEventScreen('🌿','樹根','樹汁在你血管裡燒。力量 +3（本次探索），回復 '+h+' 點生命。',
+        // v436：力量祝福改為武器攻擊乘率後，這裡的 v 也是百分點。舊值 3 在新制下比常規授予(5)還差，
+        // 故拉齊為 5；這個事件的「更好」由額外回血提供，不再靠祝福值加碼（避免超過每層 5% 的難度上限）。
+        if(r<0.5){ if(blessCount('str') < BLESS_MAX) R.bless.push({k:'str',v:5}); const h = Math.min(Math.round(playerMaxHp()*0.2), playerMaxHp()-R.hp); R.hp += h;
+          showEventScreen('🌿','樹根','樹汁在你血管裡燒。武器攻擊 +5%（本次探索），回復 '+h+' 點生命。',
             [{n:'繼續前進', f:()=>nextFloor(), primary:true}]); }
         else { R.pendingStatus = {wound:3};
           showEventScreen('🌿','樹根','汁液是甜的——太甜了。你的傷口開始不肯癒合（下場戰鬥重傷 3）。',
