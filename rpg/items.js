@@ -447,7 +447,7 @@ function renderRuneStash(sl){
     const a = rn.affixes[0], r = RARITIES[rn.rar], on = sellSel.has(rn.id);
     return `<div class="item-row ${r.b}${on?' picked':''}" onclick="openRuneSheet(${rn.id})">
       <span class="tick${on?' on':''}" onclick="event.stopPropagation();gearPick(${rn.id})"></span>
-      <div class="ir-body">
+      <div class="ir-main">
         <div class="ir-top"><span class="ir-type ${r.cls}">${rn.icon} ${rn.name}</span></div>
         <div class="ir-affix"><span>${runeFmt(a)}</span></div>
       </div>
@@ -608,7 +608,7 @@ function itemRowHtml(it, o){
     ? `<span class="tick${o.checked?' on':''}" onclick="event.stopPropagation();${o.onTick}"></span>` : '';
   return `<div class="item-row ${r.b}${o.checked?' picked':''}"${o.onOpen?` onclick="${o.onOpen}"`:''}>
     ${tk}${itemIcon(it)}
-    <div class="ir-body">
+    <div class="ir-main">
       <div class="ir-top"><span class="ir-type ${r.cls}">${itemTypeName(it)}${it.up?'+'+it.up:''}</span>${chips}</div>
       <div class="ir-affix">${affx}</div>
     </div>

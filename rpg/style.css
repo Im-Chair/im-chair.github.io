@@ -222,7 +222,10 @@ h1.title{
    詛咒與傳說排在最前面，截斷時被砍掉的才會是一般詞綴。 */
 .item-row{gap:9px;padding:6px 12px;}
 .item-row.picked{border-color:var(--gold);background:#221c0e;}
-.ir-body{flex:1 1 auto;min-width:0;}
+/* ⚠️ 不要叫 .ir-body：那個名字已經被藥水列(battle.js)與圖鑑擊殺列(ui.js)用著，
+   而且它是 display:flex（水平）。v440 第一版重用了同名 class，結果後面那條舊規則覆蓋掉新的，
+   「類型排」與「詞綴排」變成左右並排而不是上下兩排。 */
+.ir-main{flex:1 1 auto;min-width:0;}
 .ir-top{display:flex;align-items:center;gap:5px;min-width:0;}
 .ir-type{font-size:13px;letter-spacing:1px;white-space:nowrap;}
 .ichip{font-size:9px;line-height:16px;padding:0 6px;border-radius:4px;background:#140f0c;
