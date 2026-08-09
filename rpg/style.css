@@ -35,6 +35,8 @@ h1.title{
 .btn.primary{border-color:#8a6a2a;background:linear-gradient(180deg,#2a2416,#1e1a10);color:var(--gold);letter-spacing:2px;}
 .btn.danger{border-color:#5a2a2a;color:var(--red);}
 .btn.small{padding:8px 12px;font-size:14px;width:auto;display:inline-block;}
+/* 次要動作用 .slim：滿寬但矮。給「逃脫／角色檢視」這種不該跟主角搶份量的按鈕 */
+.btn.slim{padding:9px 10px;font-size:14px;letter-spacing:1px;white-space:nowrap;}
 .btn:disabled{opacity:.35;pointer-events:none;}
 .row{display:flex;gap:10px;}
 .row .btn{flex:1;}
@@ -211,14 +213,20 @@ h1.title{
 #s-doors{padding:12px 12px calc(30px + var(--safe-b));}
 /* 撤退決策條：血／碎銀／行囊 */
 .dr-res{
-  display:flex;align-items:center;gap:6px;padding:7px 10px;
+  display:flex;align-items:center;gap:8px;padding:8px 10px;
   border:1px solid var(--line);border-radius:10px;background:var(--panel);
-  font-size:13px;font-variant-numeric:tabular-nums;
+  font-size:16px;font-variant-numeric:tabular-nums;
 }
 .dr-res .hp{color:var(--red);}
-.dr-res .hp small{font-size:inherit;color:#6a5a42;}
+.dr-res .hp small{font-size:13px;color:#6a5a42;}
 .dr-res .g{margin-left:auto;color:var(--gold);}
-.dr-res .bag{color:#c7ab7e;}
+/* 行囊是可點的（開行囊清單），所以給它一個框讓它看起來像按鈕——
+   v431 把件數從「角色檢視」按鈕的小字移上來之後，就沒有任何東西告訴玩家點得下去了。 */
+.dr-res .bag{
+  color:#c7ab7e;cursor:pointer;border:1px solid var(--line);border-radius:7px;
+  padding:1px 8px;line-height:1.5;
+}
+.dr-res .bag:active{background:var(--panel2);}
 .dr-bar{height:5px;border-radius:99px;background:#2a1d12;margin-top:5px;overflow:hidden;}
 .dr-bar i{display:block;height:100%;width:100%;background:linear-gradient(90deg,#8a3030,#d05252);transition:width .25s;}
 
@@ -251,9 +259,9 @@ h1.title{
 .door.boss .dk{font-size:12px;color:var(--red);letter-spacing:5px;}
 .door.boss .dn{font-size:19px;margin-top:1px;}
 .retreat-btn{
-  margin-top:6px;border:1px solid #2f4436;background:#101a14;color:var(--green);
-  letter-spacing:2px;
+  border:1px solid #2f4436;background:#101a14;color:var(--green);letter-spacing:1px;
 }
+.dr-acts{margin-top:2px;}
 /* ---------- battle ---------- */
 #battle{padding-bottom:calc(12px + var(--safe-b));}
 .enemy-zone{padding:6px 0 4px;}

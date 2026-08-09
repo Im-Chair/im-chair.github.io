@@ -13,7 +13,7 @@
      IMG_VER：圖片版號。只在「真的換圖」時才 +1。
      為什麼要拆：圖片有 121 張、共 3.0 MB。以前圖也掛 RPG_VER，結果從 393 推到 420 這 27 次進版，
      每一次都讓全部圖換成新 URL——瀏覽器整批重抓、SW 快取每版累積一整套重複 entry，而圖根本沒動。 -->
-<script>window.RPG_VER='432';window.IMG_VER='4';document.write('<link rel="stylesheet" href="style.css?v='+RPG_VER+'">');</script>
+<script>window.RPG_VER='433';window.IMG_VER='4';document.write('<link rel="stylesheet" href="style.css?v='+RPG_VER+'">');</script>
 </head>
 <body>
 
@@ -244,7 +244,7 @@
   <div class="dr-res">
     <span class="hp" id="dr-hp"></span>
     <span class="g" id="dr-gold"></span>
-    <span class="bag" id="dr-bag"></span>
+    <span class="bag" id="dr-bag" onclick="openBag()"></span>
   </div>
   <div class="dr-bar"><i id="dr-hpfill"></i></div>
   <div class="depth-gauge">
@@ -253,9 +253,13 @@
     <div class="realm-rule" id="d-rule"></div>
   </div>
   <div class="door-grid" id="door-grid"></div>
-  <button class="btn retreat-btn" id="retreat-btn" onclick="retreat()" style="display:none"><svg class="ic"><use href="#ic-rope"/></svg> 使用逃脫之繩</button>
-  <button class="btn retreat-btn" id="retreat-gold-btn" onclick="retreatByGold()" style="display:none"><svg class="ic"><use href="#ic-gold"/></svg> 花 9 成碎銀逃脫</button>
-  <button class="btn" style="font-size:15px;margin-top:8px" onclick="openRunStats()"><svg class="ic"><use href="#ic-hero"/></svg> 角色檢視</button>
+  <!-- 逃脫與角色檢視併成一排、改用 .slim：這兩顆不是主角，主角是門。
+       兩顆逃脫鈕同時間只會有一顆顯示，另一顆 display:none，flex 會自動讓剩下的填滿。 -->
+  <div class="row dr-acts">
+    <button class="btn slim retreat-btn" id="retreat-btn" onclick="retreat()" style="display:none"><svg class="ic"><use href="#ic-rope"/></svg> 逃脫之繩</button>
+    <button class="btn slim retreat-btn" id="retreat-gold-btn" onclick="retreatByGold()" style="display:none"><svg class="ic"><use href="#ic-gold"/></svg> 9 成碎銀逃脫</button>
+    <button class="btn slim" onclick="openRunStats()"><svg class="ic"><use href="#ic-hero"/></svg> 角色檢視</button>
+  </div>
   <div class="potion-row" id="door-potions"></div>
 </div>
 
