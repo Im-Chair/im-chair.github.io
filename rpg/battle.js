@@ -246,20 +246,23 @@ function startPlayerTurn(first){
 
 function renderBattle(){
   $('b-floor').textContent = R.floor;
-  $('b-gold').textContent = R.gold;
   ensureTarget();
+  $('b-turn').textContent = '第 ' + (B.turn || 1) + ' 回合';
   const zone = $('enemy-zone');
   let html = `<div class="e-wrap${B.duo?' duo':''}">`;
   B.es.forEach((e,i)=>{
     const dead = e.hp<=0;
     const [ii,it] = dead? ['<svg class="ic"><use href="#ic-skull"/></svg>','已倒下'] : intentText(e);
     html += `<div class="e-block${(B.duo&&i===B.ti&&!dead)?' sel':''}${dead?' dead':''}${e.boss?' boss':''}${!dead&&e.st.poison?' poisoned':''}${!dead&&e.st.burn?' burning':''}" id="ez-${i}" onclick="selectTarget(${i})">
-      <div class="enemy-icon" id="eicon-${i}">${enemyIcon(e)}</div>
-      <div class="enemy-name">${e.boss?`<span class="boss"><svg class="ic"><use href="#ic-skull"/></svg> ${e.n}</span>`: e.elite?`<span class="elite">${e.n}</span>`: e.n}${e.tag?` <span class="st" style="cursor:pointer" onclick="explainStatus('tag_${e.tag}')">${ENEMY_TAGS[e.tag].i}${ENEMY_TAGS[e.tag].n}</span>`:''}</div>
-      <div><span class="intent"><span class="ii">${ii}</span>${dead?it:'下一步：'+it}</span></div>
-      <div class="hpbar"><div class="fill" style="width:${Math.max(0,e.hp/e.maxhp*100)}%"></div>
+      <div class="hpbar e-hp"><div class="fill" style="width:${Math.max(0,e.hp/e.maxhp*100)}%"></div>
         <div class="txt">${Math.max(0,e.hp)} / ${e.maxhp}${e.block?`（<svg class="ic"><use href="#ic-shield"/></svg>${e.block}）`:''}</div></div>
-      <div class="status-row">${statusHtml(e.st, 0, e)}</div>
+      <div class="enemy-icon" id="eicon-${i}">${enemyIcon(e)}</div>
+      <div class="enemy-name">${e.boss?`<span class="boss"><svg class="ic"><use href="#ic-skull"/></svg> ${e.n}</span>`: e.elite?`<span class="elite">${e.n}</span>`: e.n}</div>
+      <div class="e-row">
+        <div class="e-debuffs">${statusHtml(e.st, 0, e)}</div>
+        <div class="e-states">${traitHtml(e)}</div>
+      </div>
+      <div class="e-intent"><span class="intent"><span class="ii">${ii}</span>${dead?it:'下一步：'+it}</span></div>
     </div>`;
   });
   html += '</div>';
@@ -268,8 +271,18 @@ function renderBattle(){
   $('p-hpfill').style.width = Math.max(0, R.hp/mhp*100)+'%';
   $('p-hptxt').textContent = `${R.hp} / ${mhp}`;
   $('p-status').innerHTML = statusHtml(B.st, 0);
-  const bb = $('p-block');
-  if(B.block>0){ bb.style.display='inline-block'; bb.innerHTML = '<svg class="ic"><use href="#ic-shield"/></svg> '+B.block; } else bb.style.display='none';
+  const _mmp = playerMaxMana();
+  $('p-mpfill').style.width = _mmp>0 ? Math.max(0,(R.mana||0)/_mmp*100)+'%' : '0%';
+  $('p-mptxt').textContent = `${R.mana||0} / ${_mmp}`;
+  /* 格擋與護盾一律留位（0 時只是變暗）。以前是 display:none/inline-block 切換，
+     整行寬度因此在 195〜393px 之間跳，每回合都在左右滑。 */
+  const _chip = (id, on, ic, v) => {
+    const el = $(id); if(!el) return;
+    el.className = 'dchip' + (on ? ' on' : '');
+    el.innerHTML = `<svg class="ic"><use href="#${ic}"/></svg> ${v}`;
+  };
+  _chip('p-block', B.block>0, 'ic-shield', B.block||0);
+  _chip('p-shield', B.shield>0, 'ic-mana', B.shield||0);
   const en = $('p-energy');
   const _wt = weaponType();
   let bellHtml = '';
@@ -279,9 +292,8 @@ function renderBattle(){
     bellHtml = `<button class="bell-btn${off?' off':''}" onclick="event.stopPropagation();ringBell()"`
       + `${off?' disabled':''} title="燃燒 ${bc} 魔力換 1 行動點（每回合一次）"><svg class="ic"><use href="#ic-bell"/></svg>+1<svg class="ic"><use href="#ic-energy"/></svg> <b>${bc}</b></button>`;
   }
-  en.innerHTML = `<span style="color:var(--gold);font-size:13px"><svg class="ic"><use href="#ic-energy"/></svg> ${fmtPts(B.energy)}/${fmtPts(B.maxEnergy)} 行動</span>` +
-    (playerMaxMana()>0? `<span style="color:#7fb3e8;font-size:13px">　<svg class="ic"><use href="#ic-mana"/></svg> ${R.mana||0}/${playerMaxMana()}</span>` : '') +
-    (B.shield>0? `<span style="color:#9fd8ff;font-size:13px">　<svg class="ic"><use href="#ic-shield"/></svg> ${B.shield}</span>` : '') + bellHtml;
+  // 法力改成第二列的條、護盾改成第三列的固定欄位，這裡只留行動點與咒鈴。
+  en.innerHTML = `<span style="color:var(--gold);font-size:13px"><svg class="ic"><use href="#ic-energy"/></svg> ${fmtPts(B.energy)}/${fmtPts(B.maxEnergy)}</span>` + bellHtml;
   const grid = $('skill-grid'); grid.innerHTML='';
   for(const sid of CLASSES[G.cls].skills){
     const sk = SK(sid);
@@ -296,6 +308,13 @@ function renderBattle(){
       <div class="sd">${skillDesc(sid)}</div>
       <span class="sc"><svg class="ic"><use href="#ic-energy"/></svg>${fmtPts(cost)}${mc?'｜<svg class="ic"><use href="#ic-mana"/></svg>'+mc:''}${chargeable&&!B.charge?'（蓄）':''}</span>`;
     b.onclick = ()=>useSkill(sid);
+    grid.appendChild(b);
+  }
+  // 魔符槽佔位：見 data.js SIGIL_SLOTS。現在就佔住格子，系統上線時版面不會位移。
+  for(let s = 0; s < SIGIL_SLOTS; s++){
+    const b = document.createElement('button');
+    b.className = 'skill-btn empty'; b.disabled = true;
+    b.innerHTML = '<div class="sn">魔符</div><div class="sd">未設定</div>';
     grid.appendChild(b);
   }
   $('btn-end').disabled = B.over || !!B.charge;
@@ -383,8 +402,32 @@ const STATUS_INFO = {
   tag_pImm:'<svg class="ic"><use href="#ic-poison-off"/></svg> 毒免：毒層無法施加，這場改靠直接傷害。',
   tag_bImm:'<svg class="ic"><use href="#ic-fire-off"/></svg> 燃免：燃層無法施加。',
   tag_heavy:'<svg class="ic"><use href="#ic-heavy"/></svg> 重甲：常駐格擋外殼，每回合恢復。斧、法術、毒燃能繞過。',
+  /* 以下四項是輪迴前綴的效果。以前只有名字前三個字，數值從來沒有顯示過。 */
+  trait_thorns:'<svg class="ic"><use href="#ic-thorns"/></svg> 荊棘：你每次造成傷害時，會被反彈固定傷害。',
+  trait_evamp:'<svg class="ic"><use href="#ic-blood"/></svg> 吸血：牠造成傷害時，依比例回復自身生命。',
+  trait_shell:'<svg class="ic"><use href="#ic-shield"/></svg> 堅殼：每回合開始自動獲得格擋。',
+  trait_rage:'<svg class="ic"><use href="#ic-rage"/></svg> 狂怒：牠造成的傷害提高。',
   tag_naked:'<svg class="ic"><use href="#ic-blood"/></svg> 脆弱：受到的直接傷害 +15%。',
 };
+/* 敵人「自帶特性」的唯一來源。兩組來源：
+   1. ENEMY_TAGS（e.tag，每隻最多一個，域主會在半血切換）
+   2. 輪迴前綴 CYC_PREFIX 掛上的欄位——applyCycPrefix() 只把三個字加進 e.n，
+      反傷/吸血/自動格擋/增傷這些數值以前玩家完全看不到。
+   刻意讀「實際欄位」而不是回頭查 CYC_PREFIX：那支在生成時跑完就沒留記號，
+   而且首領也可能由別的途徑拿到同樣欄位，讀欄位才不會漏。 */
+function enemyTraits(e){
+  const out = [];
+  if(e.tag && ENEMY_TAGS[e.tag]) out.push({k:'tag_'+e.tag, n:ENEMY_TAGS[e.tag].n});
+  if(e.thorns)    out.push({k:'trait_thorns',  n:'荊棘 '+e.thorns});
+  if(e.evamp)     out.push({k:'trait_evamp',   n:'吸血 '+Math.round(e.evamp*100)+'%'});
+  if(e.autoblock) out.push({k:'trait_shell',   n:'堅殼 '+e.autoblock});
+  if(e.dmgMul && e.dmgMul !== 1) out.push({k:'trait_rage', n:'狂怒 ×'+e.dmgMul});
+  return out;
+}
+function traitHtml(e){
+  return enemyTraits(e).map(t =>
+    `<span class="st trait" onclick="event.stopPropagation();explainStatus('${t.k}')">${t.n}</span>`).join('');
+}
 function explainStatus(k){
   if(STATUS_INFO[k]) openSheet(`<h3>狀態說明</h3><p class="base">${STATUS_INFO[k]}</p>
     <button class="btn" onclick="closeSheet()">關閉</button>`);

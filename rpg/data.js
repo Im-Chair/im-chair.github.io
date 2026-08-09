@@ -424,6 +424,11 @@ const ENEMY_TAGS = {
   heavy:{n:'重甲', i:'<svg class="ic"><use href="#ic-heavy"/></svg>',   d:'常駐格擋外殼，每回合恢復。斧、法術、毒燃能繞過'},
   naked:{n:'脆弱', i:'<svg class="ic"><use href="#ic-blood"/></svg>',   d:'受到的直接傷害 +15%'},
 };
+/* 魔符技能槽：戰鬥畫面固定保留的格數。魔符系統尚未實作，槽位先以停用的佔位鈕呈現。
+   目的是讓版面高度「現在」就等於系統上線後的高度——否則魔符一上線整頁會位移一整列。
+   實作魔符時把佔位鈕換成真的技能即可，版面不用再動。 */
+const SIGIL_SLOTS = 2;
+
 const HEAVY_SHELL = 0.12;   // 重甲外殼＝血量×此係數
 const LORD_PHASE_TAGS = [   // 域主上/下半場標籤（血線 50% 切換）
   ['heavy','naked'], ['pImm','bImm'], ['bImm','pImm'], ['naked','heavy'],

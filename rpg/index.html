@@ -13,7 +13,7 @@
      IMG_VER：圖片版號。只在「真的換圖」時才 +1。
      為什麼要拆：圖片有 121 張、共 3.0 MB。以前圖也掛 RPG_VER，結果從 393 推到 420 這 27 次進版，
      每一次都讓全部圖換成新 URL——瀏覽器整批重抓、SW 快取每版累積一整套重複 entry，而圖根本沒動。 -->
-<script>window.RPG_VER='437';window.IMG_VER='4';document.write('<link rel="stylesheet" href="style.css?v='+RPG_VER+'">');</script>
+<script>window.RPG_VER='438';window.IMG_VER='4';document.write('<link rel="stylesheet" href="style.css?v='+RPG_VER+'">');</script>
 </head>
 <body>
 
@@ -275,20 +275,32 @@
 
 <!-- ===== 戰鬥 ===== -->
 <div class="screen" id="s-battle">
+  <!-- v438：碎銀在戰鬥中無法使用,移除;右邊改放回合數。
+       B.turn 從 v1 就存在但從來沒顯示過,而「熔獄：敵人第 5 回合起狂怒」這類域規則靠的就是它。 -->
   <div class="topbar">
     <span class="depth">第 <span id="b-floor">1</span> 層</span>
-    <span class="gold-chip"><svg class="ic"><use href="#ic-gold"/></svg> <span id="b-gold">0</span></span>
+    <span class="turn" id="b-turn"></span>
   </div>
   <div class="enemy-zone" id="enemy-zone"></div>
   <div id="log"></div>
+  <!-- v438 玩家區：三列固定欄位。舊版把名字/格擋/行動點/法力/護盾/咒鈴全塞進一行 13px 的
+       .pz-top,實測寬度在 195〜393px 之間擺盪(格擋、護盾一出現整行就左右滑),
+       咒鈴武器同時有格擋與護盾時還會溢出 28〜35px。現在每個欄位都有固定席位,0 也留位。 -->
   <div class="player-zone" id="player-zone" style="position:relative">
-    <div class="pz-top" onclick="openRunStats()">
+    <div class="pz-id" onclick="openRunStats()">
+      <img class="pz-cls" id="p-cls" alt="">
       <span class="pname" id="p-name"></span>
-      <span class="st blk" id="p-block" style="display:none"></span>
       <span class="energy" id="p-energy"></span>
     </div>
-    <div class="hpbar player"><div class="fill" id="p-hpfill"></div><div class="txt" id="p-hptxt"></div></div>
-    <div class="status-row" id="p-status"></div>
+    <div class="pz-bars">
+      <div class="hpbar player"><div class="fill" id="p-hpfill"></div><div class="txt" id="p-hptxt"></div></div>
+      <div class="hpbar mana"><div class="fill" id="p-mpfill"></div><div class="txt" id="p-mptxt"></div></div>
+    </div>
+    <div class="pz-def">
+      <span class="dchip" id="p-block"></span>
+      <span class="dchip" id="p-shield"></span>
+      <span class="status-row" id="p-status"></span>
+    </div>
     <div class="skill-grid" id="skill-grid"></div>
     <div class="battle-bottom">
       <button class="btn" style="flex:0 0 30%" onclick="openBattlePotions()"><svg class="ic"><use href="#ic-potion"/></svg> 道具</button>

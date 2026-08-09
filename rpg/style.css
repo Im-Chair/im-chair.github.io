@@ -288,22 +288,65 @@ h1.title{
 .dr-cell.locked .ck{color:#5c4d3a;}
 .dr-cell.locked .cv{font-size:10px;color:#5c4d3a;letter-spacing:0;}
 /* ---------- battle ---------- */
-#battle{padding-bottom:calc(12px + var(--safe-b));}
-.enemy-zone{padding:6px 0 4px;}
-.e-wrap{display:grid;gap:8px;grid-template-columns:1fr;}
+/* v438 修：選擇器一直是 #battle,但元素 id 是 s-battle,所以這條從來沒生效過——
+   底部內距實際吃的是 .screen 的 30px。修好後省下的 18px 給怪物圖。 */
+#s-battle{padding-bottom:calc(12px + var(--safe-b));}
+/* 戰鬥的頂欄瘦身：只有樓層與碎銀兩個小數字,不需要 37px。只縮戰鬥這一頁,
+   事件/戰利品沿用 .topbar 原值。 */
+#s-battle .topbar{padding:2px 2px 6px;font-size:13px;}
+/* v438：敵人區改成吸收層(flex:1)。以前吸收剩餘高度的是 #log——
+   那是一段可捲動的歷史記錄,卻佔著整頁最大的固定席位(390×786 實測 181px,而怪物圖只有 96px)。
+   現在剩餘高度歸怪物圖,上限 200px＝素材本身的尺寸(mon/ 全部 200×200),超過就是放大糊圖。 */
+.enemy-zone{padding:6px 0 4px;flex:1 1 auto;min-height:0;display:flex;}
+.e-wrap{display:grid;gap:8px;grid-template-columns:1fr;grid-auto-rows:1fr;flex:1 1 auto;min-height:0;}
 .e-wrap.duo{grid-template-columns:1fr 1fr;}
-.e-block{position:relative;text-align:center;border:1px solid transparent;border-radius:12px;padding:4px 2px;}
+.e-block{position:relative;text-align:center;border:1px solid transparent;border-radius:12px;padding:4px 2px;
+  display:flex;flex-direction:column;justify-content:center;min-height:0;}
+/* 狀態與特性：直排在怪物圖右側。以前橫排在血條下方,狀態一多一少整個下半部就被擠動;
+   絕對定位之後長幾格都不影響版面高度。雙怪欄寬只有 175px,所以欄位收到 52px。 */
+/* 狀態列：名字下方一列，左＝你造成的（中毒/燃燒/易傷…）、右＝牠自帶的（標籤＋輪迴前綴）。
+   單怪與雙怪用同一種排法，敵人區高度因此完全相同，切換時整頁不會有任何一列上下移動。
+
+   為什麼不做成圖左右兩側的直欄（原本的方向）：量過素材，57 張怪物圖畫布雖然是 200px，
+   但左右透明邊中位數只有 18px、其中 17 張只剩 5〜11px。雙怪欄寬 175px，
+   兩側各切 52px 的直欄會實際蓋住怪物身體 21〜34px。單怪放得下、雙怪放不下——
+   而兩種情況用不同排法就會差 22px 高度，版面就固定不了。
+
+   高度固定兩行（42px）且 overflow:hidden：狀態掛幾個都不影響版面，
+   中毒一到期也不會讓下半部往上跳。 */
+.e-row{display:flex;justify-content:space-between;align-items:flex-start;gap:6px;
+  height:42px;overflow:hidden;margin-top:3px;}
+.e-debuffs,.e-states{display:flex;flex-wrap:wrap;gap:4px;min-width:0;align-content:flex-start;}
+.e-debuffs{justify-content:flex-start;}
+.e-states{justify-content:flex-end;}
+.e-debuffs .st,.e-states .st{margin:0;font-size:10px;line-height:18px;padding:0 6px;white-space:nowrap;}
+.e-wrap.duo .e-row{height:42px;}
+.e-wrap.duo .e-debuffs .st,.e-wrap.duo .e-states .st{font-size:9px;line-height:17px;padding:0 5px;}
+.st.trait{color:#c9b38a;border-color:#4a3c28;background:#181310;}
+/* 敵人血條放在怪物頭頂（獨立一列，不疊圖——疊在深色 sprite 上會糊）。
+   收窄到左右各留 40px，視覺重量才不會壓過怪物本身。 */
+.e-hp{margin:0 40px 6px;height:18px;flex:none;}
+.e-hp .txt{line-height:18px;}
+.e-wrap.duo .e-hp{margin:0 6px 4px;height:15px;}
+.e-wrap.duo .e-hp .txt{line-height:15px;font-size:9px;}
 .e-wrap.duo .e-block{cursor:pointer;}
 .e-wrap.duo .e-block.sel{border-color:var(--gold);background:rgba(216,168,76,.05);}
-.e-wrap.duo .enemy-icon{font-size:69px;height:69px;}
-.e-wrap.duo .enemy-icon>svg{width:63px;height:63px;}
-.e-wrap.duo .enemy-name{font-size:13px;}
 .e-wrap.duo .intent{font-size:12px;padding:2px 8px;}
 .e-block.dead{opacity:.3;filter:grayscale(1);}
-.enemy-icon{font-size:96px;line-height:1;height:96px;display:flex;align-items:center;justify-content:center;transition:transform .1s;filter:drop-shadow(0 6px 16px rgba(0,0,0,.6));position:relative;}
-.enemy-icon>svg{width:87px;height:87px;display:block;color:#cfc6b4;}
-.enemy-icon>img{width:87px;height:87px;object-fit:contain;display:block;-webkit-user-drag:none;user-select:none;}
-.e-wrap.duo .enemy-icon>img{width:63px;height:63px;}
+/* v438：怪物圖 96 → 168。剩餘高度本來就由 #log(flex:1 1 auto) 吸收,
+   所以圖放大多少、記錄框就自動讓出多少,不必動 #log——記錄框可捲動,是整頁最不需要高度的一塊。
+   以 390×786 估：記錄框由 181px 收到 127px,仍高於 min-height 64px。 */
+/* 圖吃剩餘高度，上限 175px。
+   上限不是 200（素材尺寸）而是 175，因為雙怪的欄寬就是 175px——object-fit:contain 取短邊，
+   雙怪再高也只會渲染成 175 寬。單怪跟著訂 175，兩種情況才會一樣大。
+   min 75 是「6 格技能 ＋ 628px 螢幕」這個最壞組合下還放得下的值。 */
+.enemy-icon{font-size:min(20vh,150px);line-height:1;flex:1 1 auto;min-height:75px;max-height:175px;
+  display:flex;align-items:center;justify-content:center;transition:transform .1s;
+  filter:drop-shadow(0 6px 16px rgba(0,0,0,.6));position:relative;}
+.enemy-icon>svg,.enemy-icon>img{height:100%;width:100%;object-fit:contain;display:block;}
+.enemy-icon>svg{color:#cfc6b4;}
+.enemy-icon>img{-webkit-user-drag:none;user-select:none;}
+/* 雙怪不另設上限：單怪與雙怪共用 175px，兩種情況怪物一樣大。 */
 /* 選取回饋：雙怪時 .e-wrap.duo .e-block.sel 的外框（上方 177 行）就夠了，
    不要再加圖示光圈——方框＋圓框同時出現只是噪音。SVG 仍保留染金，點陣圖靠外框。 */
 .e-block.sel .enemy-icon>svg{color:var(--gold);}
@@ -372,8 +415,12 @@ h1.title{
 .bell-btn b{color:#7fb3e8;font-weight:400;}
 .bell-btn:active{background:#3d2d16;}
 .bell-btn.off{opacity:.35;cursor:default;}
+/* 名稱留在怪物腳下（放頂欄會被「堅殼的 廣場悲鳴者」這種長名撐爆）。 */
 .enemy-name{font-size:16px;letter-spacing:2px;margin-top:2px;}
 .enemy-name .elite{color:var(--orange);} .enemy-name .boss{color:var(--red);}
+.e-wrap.duo .enemy-name{font-size:13px;letter-spacing:1px;}
+/* 頂欄右邊改放回合數。B.turn 一直存在卻從沒顯示過，而域規則「第 5 回合起狂怒」靠的就是它。 */
+#s-battle .turn{margin-left:auto;font-size:13px;color:var(--dim);white-space:nowrap;}
 .intent{
   display:inline-flex;align-items:center;gap:6px;margin-top:6px;
   border:1px solid #4a3a2a;background:#1c150e;border-radius:20px;padding:4px 14px;
@@ -388,25 +435,56 @@ h1.title{
 .st{font-size:11px;border-radius:6px;padding:1px 7px;border:1px solid var(--line);background:var(--panel);}
 .st.bad{color:#e09090;border-color:#4a2a2a;} .st.good{color:#9fd8b4;border-color:#2a4a36;}
 .blk{color:var(--blue);border-color:#2c4d6e;}
+/* v438：固定三行,不再是吸收層。11px×1.4 三行 ＝ 46.2 ＋ 內距 8 ＋ 框 2 ≈ 56px。
+   仍可捲動看更早的記錄,只是不再靠佔版面來換可讀性。 */
 #log{
-  flex:1 1 auto;min-height:64px;overflow-y:auto;font-size:12px;color:var(--dim);
+  flex:none;height:56px;overflow-y:auto;font-size:11px;line-height:1.4;color:var(--dim);
   border:1px solid var(--line);border-radius:10px;background:rgba(0,0,0,.25);
-  padding:6px 10px;margin:10px 0;
+  padding:4px 10px;margin:5px 0;
 }
 #log .l-dmg{color:#e8a0a0;} #log .l-heal{color:#9fd8b4;} #log .l-sys{color:#c8b070;}
-.player-zone{margin-top:0;}
-.pz-top{display:flex;align-items:center;gap:10px;font-size:13px;}
-.pz-top .pname{letter-spacing:1px;}
-.energy{margin-left:auto;display:flex;gap:4px;}
+.player-zone{margin-top:0;flex:none;display:flex;flex-direction:column;}
+/* 第一列：職業圖＋名字＋行動點/咒鈴。職業圖是既有素材(ui/cls_*.webp、classIcon()),
+   戰鬥畫面以前完全沒用——敵人有 200px 大圖、玩家只有一行字,兩邊份量差太多。 */
+.pz-id{display:flex;align-items:center;gap:9px;font-size:13px;height:26px;}
+.pz-id .pname{letter-spacing:1px;}
+.pz-cls{width:26px;height:26px;border-radius:6px;border:1px solid var(--line);flex:0 0 auto;object-fit:cover;}
+.energy{margin-left:auto;display:flex;align-items:center;gap:6px;white-space:nowrap;}
+/* 第二列：生命與法力並排。法力以前只是 13px 的一段文字,擠在名字旁邊——
+   對法師與制魔師那是主資源,不該跟名字搶位置。 */
+.pz-bars{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;}
+.pz-bars .hpbar{margin-top:0;height:18px;}
+.pz-bars .hpbar .txt{line-height:18px;font-size:10px;}
+.hpbar.mana{background:#141a24;border-color:#26364a;}
+.hpbar.mana .fill{background:linear-gradient(90deg,#2f5f96,#5f9ede);}
+/* 第三列：格擋／護盾固定席位(值為 0 也留著,只是變暗)＋玩家狀態。
+   這一列高度固定,狀態多寡不影響版面。 */
+.pz-def{display:flex;align-items:center;gap:6px;margin-top:6px;height:22px;overflow:hidden;}
+.dchip{
+  flex:0 0 74px;text-align:center;font-size:11px;line-height:20px;height:22px;
+  border:1px solid #2c2418;border-radius:6px;background:#100d09;color:#4e4234;
+}
+.dchip.on{border-color:#2c4d6e;background:var(--panel);color:var(--blue);}
+.pz-def .status-row{margin-top:0;min-height:0;flex:1 1 auto;justify-content:flex-end;flex-wrap:nowrap;overflow:hidden;}
 .pip{width:14px;height:14px;border-radius:50%;border:1px solid #6e5a26;background:#17140c;}
 .pip.on{background:radial-gradient(circle at 35% 35%, #f0d896, #b8842e);box-shadow:0 0 6px rgba(216,168,76,.5);}
-.skill-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;}
+/* 二欄。魔符上線後技能 4 → 6,會變成二欄三列(多吃 68px)——這已經算進上面的高度預算。
+   grid-auto-rows 的 minmax 讓高螢幕多出來的高度變成更好按的鈕,而不是底部留白。 */
+/* 二欄。魔符上線後技能 4 → 6 會變成二欄三列——高度預算已經算進去。
+   基準 52px（原 60），高螢幕多出來的高度由 minmax 變成更好按的鈕而不是底部留白。 */
+.skill-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px;
+  grid-auto-rows:minmax(52px,60px);}
 .skill-btn{
-  border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--text);
-  padding:10px 10px;text-align:left;font-family:inherit;cursor:pointer;position:relative;
+  border:1px solid var(--line);border-radius:9px;background:var(--panel);color:var(--text);
+  padding:7px 9px;text-align:left;font-family:inherit;cursor:pointer;position:relative;
+  display:flex;flex-direction:column;justify-content:center;
 }
 .skill-btn:active{background:var(--panel2);}
 .skill-btn:disabled{opacity:.35;}
+/* 魔符佔位鈕：虛線框、不用 :disabled 的 .35 透明度（那會淡到看不出是個槽）。 */
+.skill-btn.empty:disabled{opacity:1;border-style:dashed;border-color:#2f2618;background:transparent;}
+.skill-btn.empty .sn{color:#5c4d3a;}
+.skill-btn.empty .sd{color:#413729;}
 .skill-btn .sn{font-size:14px;letter-spacing:1px;}
 .skill-btn .sd{font-size:11px;color:var(--dim);margin-top:2px;line-height:1.35;}
 .skill-btn .sc{position:absolute;top:8px;right:10px;font-size:12px;color:var(--gold);}
