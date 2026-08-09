@@ -230,7 +230,11 @@ h1.title{
 .dr-bar{height:5px;border-radius:99px;background:#2a1d12;margin-top:5px;overflow:hidden;}
 .dr-bar i{display:block;height:100%;width:100%;background:linear-gradient(90deg,#8a3030,#d05252);transition:width .25s;}
 
-.door-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0 12px;}
+/* 門吃掉剩餘高度，按鈕與藥水列因此被推到畫面底部——否則內容只佔上面六成，下面一片黑。
+   align-content:center 讓門本身維持自然大小、在多出來的空間裡置中，
+   不是把門拉長（門圖是正方 sprite，拉長只會變成上下留白）。 */
+.door-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0 12px;
+  flex:1;min-height:0;align-content:center;}
 .door{
   border:1px solid var(--line-hi);border-radius:12px 12px 4px 4px;
   background:linear-gradient(180deg,#241a11 0%,#15110c 100%);

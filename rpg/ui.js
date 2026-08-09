@@ -249,7 +249,7 @@ function openRunStats(){
     const bn = {str:'力量',crit:'銳利',vamp:'血契',plate:'守勢',hp:'堅韌'};
     html += R.bless.map(b=>`<div class="affix"><svg class="ic"><use href="#ic-bless"/></svg> ${bn[b.k]||b.k} +${BLESS_SCALE_KEYS[b.k] ? Math.round(b.v*blessMult()) : b.v}</div>`).join('');
   }
-  html += bagListHtml();
+  html += bagListHtml('stats');
   html += '<button class="btn" style="margin-top:14px" onclick="closeSheet()">關閉</button>';
   openSheet(html);
 }
@@ -257,11 +257,11 @@ function openRunStats(){
 /* 行囊清單的唯一渲染入口：角色檢視與行囊視窗共用。
    v433 給行囊開了獨立入口，兩邊各寫一份遲早會分岔（貨幣顯示就是這樣出過包）。
    空行囊回空字串，呼叫端不必自己判斷。 */
-function bagListHtml(){
+function bagListHtml(back){
   if(!R || !R.bag.length) return '';
   let h = `<div class="section-title">行囊（${R.bag.length} 件・未保管）</div><div class="item-list">`;
   for(const it of R.bag){
-    h += `<div class="item-row ${RARITIES[it.rar].b}" onclick="openBagItem(${it.id})">
+    h += `<div class="item-row ${RARITIES[it.rar].b}" onclick="openBagItem(${it.id},'${back||'stats'}')">
       <span class="in ${RARITIES[it.rar].cls}">${it.name}</span>
       <span class="is">${slotName(it.slot)}｜${itemStatLine(it)}</span></div>`;
   }
@@ -271,12 +271,15 @@ function bagListHtml(){
    但那顆按鈕改名之後沒人找得到——這是入口問題，不是內容問題。 */
 function openBag(){
   if(!R || !R.bag.length){ toast('行囊是空的'); return; }
-  openSheet(bagListHtml() + '<button class="btn" style="margin-top:14px" onclick="closeSheet()">關閉</button>');
+  openSheet(bagListHtml('bag') + '<button class="btn" style="margin-top:14px" onclick="closeSheet()">關閉</button>');
 }
 
-function openBagItem(id){
+/* back = 'stats' | 'bag'：從哪個清單點進來的，返回與換裝完都要回同一個地方。
+   v433 之前行囊只有角色檢視一個入口，所以 openItemSheet 把返回目的地寫死；
+   開了第二個入口就露餡——從行囊點進去、返回卻跳到角色檢視。 */
+function openBagItem(id, back){
   const it = R.bag.find(x=>x.id===id); if(!it) return;
-  openItemSheet(it, 'bag');
+  openItemSheet(it, 'bag', back);
 }
 
 (function init(){
