@@ -256,15 +256,14 @@ function openRunStats(){
 /* 行囊清單的唯一渲染入口：角色檢視與行囊視窗共用。
    v433 給行囊開了獨立入口，兩邊各寫一份遲早會分岔（貨幣顯示就是這樣出過包）。
    空行囊回空字串，呼叫端不必自己判斷。 */
+/* 行囊清單。v440 起與倉庫共用 itemRowHtml()——每一列長得完全一樣，
+   差別只在行囊不開勾選（下潛中不能販售），而「未保管」只在標頭講一次，不逐列掛。 */
 function bagListHtml(back){
   if(!R || !R.bag.length) return '';
-  let h = `<div class="section-title">行囊（${R.bag.length} 件・未保管）</div><div class="item-list">`;
-  for(const it of R.bag){
-    h += `<div class="item-row ${RARITIES[it.rar].b}" onclick="openBagItem(${it.id},'${back||'stats'}')">
-      <span class="in ${RARITIES[it.rar].cls}">${it.name}</span>
-      <span class="is">${slotName(it.slot)}｜${itemStatLine(it)}</span></div>`;
-  }
-  return h + '</div>';
+  return `<div class="section-title">行囊（${R.bag.length} 件・<span style="color:var(--orange)">未保管</span>）</div>`
+    + '<div class="item-list">'
+    + R.bag.map(it=>itemRowHtml(it, {onOpen:`openBagItem(${it.id},'${back||'stats'}')`})).join('')
+    + '</div>';
 }
 /* 樓層畫面的行囊入口（點決策條上的件數）。內容本來就在角色檢視裡，
    但那顆按鈕改名之後沒人找得到——這是入口問題，不是內容問題。 */

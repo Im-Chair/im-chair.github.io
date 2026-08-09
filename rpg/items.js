@@ -337,7 +337,7 @@ function buyRune(i){
   save(); closeSheet(); renderMarket(); toast('入手 '+s.rune.name);
 }
 var stashFilter = 'all';
-var stashRarity = 'all', sellMode = false, sellSel = new Set();
+var stashRarity = 'all', sellSel = new Set();   // v440：沒有販售模式了，勾選常駐
 
 let gearTab = 'own';   // 倉庫分頁：own 個人 / shared 共用
 function openGear(){ renderGear(); showScreen('s-gear'); }
@@ -415,38 +415,47 @@ function seenRune(rn, c){
   if(!ch.runeSeen) ch.runeSeen = {};
   if(a.v > (ch.runeSeen[a.k] || 0)) ch.runeSeen[a.k] = a.v;
 }
-function renderRuneStash(sl){
-  const runes = G.runeBag || [];
-  if(!runes.length){ sl.insertAdjacentHTML('beforeend', '<p style="color:var(--dim);font-size:13px">還沒有符文。戰鬥掉落或黑市購買，鑲進「角色 → 符文槽」即被動生效。</p>'); return; }
-  const rr = document.createElement('div'); rr.className='row'; rr.style.cssText='gap:6px;margin-bottom:8px';
-  for(const [f,label] of [['all','全'],['0','普'],['1','精良'],['2','稀有'],['3','傳說']]){
-    const b=document.createElement('button'); b.className='btn small'+(stashRarity===f?' primary':''); b.style.flex='1';
-    b.textContent=label; b.onclick=()=>{ stashRarity=f; renderGear(); }; rr.appendChild(b);
-  }
-  sl.appendChild(rr);
-  const sm=document.createElement('button'); sm.className='btn small'+(sellMode?' primary':''); sm.style.cssText='width:100%;margin-bottom:6px';
-  sm.innerHTML=sellMode?'<svg class="ic"><use href="#ic-check"/></svg> 批次販售中——點符文勾選':'<svg class="ic"><use href="#ic-bag"/></svg> 批次販售（多選）';
-  sm.onclick=()=>{ sellMode=!sellMode; sellSel.clear(); renderGear(); }; sl.appendChild(sm);
-  const sorted = runes.filter(r=>stashRarity==='all'||r.rar===+stashRarity)
+/* 符文分頁：跟裝備分頁同一套互動（勾選常駐、控制列在上方、沒有販售模式）。 */
+function runeVisible(){
+  return (G.runeBag || []).filter(r=>stashRarity==='all' || r.rar===+stashRarity)
     .sort((a,b)=>(b.rar-a.rar) || (a.affixes[0].k<b.affixes[0].k?-1:a.affixes[0].k>b.affixes[0].k?1:0));
-  for(const rn of sorted){ const a=rn.affixes[0]; const checked=sellSel.has(rn.id);
-    const d=document.createElement('div'); d.className=`item-row ${RARITIES[rn.rar].b}`;
-    d.innerHTML=`<div style="width:100%"><div class="${RARITIES[rn.rar].cls}" style="font-weight:600">${sellMode?(checked?'<svg class="ic"><use href="#ic-check"/></svg> ':'<svg class="ic"><use href="#ic-uncheck"/></svg> '):''}${rn.icon} ${rn.name}<span style="float:right;color:var(--dim);font-weight:400;font-size:11px">${RARITIES[rn.rar].n}</span></div><div style="color:var(--dim);font-size:12px;line-height:1.35;margin-top:3px">${runeFmt(a)}</div></div>`;
-    d.onclick = sellMode ? ()=>{ if(sellSel.has(rn.id)) sellSel.delete(rn.id); else sellSel.add(rn.id); renderGear(); } : ()=>openRuneSheet(rn.id);
-    sl.appendChild(d);
-  }
-  if(sellMode){
-    const p2=document.createElement('button'); p2.className='btn small'; p2.style.cssText='width:100%;margin-top:8px';
-    p2.textContent=sellSel.size?'全部取消':'全選（依目前篩選）';
-    p2.onclick=()=>{ if(sellSel.size) sellSel.clear(); else for(const r of sorted) sellSel.add(r.id); renderGear(); }; sl.appendChild(p2);
-    const sel=runes.filter(r=>sellSel.has(r.id));
-    if(sel.length){
-      const val=sel.reduce((s,r)=>s+runeSellVal(r),0);
-      const sb=document.createElement('button'); sb.className='btn primary'; sb.style.cssText='width:100%;margin-top:6px';
-      sb.innerHTML=`販售選取 ${sel.length} 個（+${val}<svg class="ic"><use href="#ic-gold"/></svg>）`;
-      sb.onclick=()=>{ G.runeBag=runes.filter(r=>!sellSel.has(r.id)); G.gold+=val; sellSel.clear(); save(); renderGear(); toast(`販售 ${sel.length} 符文，得 ${val} 碎銀`); }; sl.appendChild(sb);
-    }
-  }
+}
+function runePickAll(){
+  const vis = runeVisible();
+  if(vis.every(r=>sellSel.has(r.id))) sellSel.clear(); else for(const r of vis) sellSel.add(r.id);
+  renderGear();
+}
+function runeSellPicked(){
+  const sel = runeVisible().filter(r=>sellSel.has(r.id));
+  if(!sel.length) return;
+  const val = sel.reduce((s,r)=>s+runeSellVal(r), 0);
+  G.runeBag = (G.runeBag||[]).filter(r=>!sellSel.has(r.id));
+  G.gold += val; sellSel.clear(); save(); renderGear();
+  toast(`販售 ${sel.length} 符文，得 ${val} 碎銀`);
+}
+function renderRuneStash(sl){
+  const vis = runeVisible(), all = G.runeBag || [];
+  const nsel = vis.filter(r=>sellSel.has(r.id)).length;
+  const val = vis.filter(r=>sellSel.has(r.id)).reduce((s,r)=>s+runeSellVal(r), 0);
+  const allOn = vis.length > 0 && nsel === vis.length;
+  const opt = list => list.map(([v,label])=>`<option value="${v}"${stashRarity===v?' selected':''}>${label}</option>`).join('');
+  $('gear-ctl').innerHTML = `<span class="tick${allOn?' on':''}" onclick="runePickAll()"></span>
+    <select class="gsel grow" onchange="gearRarityTo(this.value)">${opt(
+      [['all','稀有：全部 '+all.length],['0','稀有：普通'],['1','稀有：精良'],['2','稀有：稀有'],['3','稀有：傳說']])}</select>
+    <button class="gsell${nsel?' on':''}" ${nsel?'':'disabled'} onclick="runeSellPicked()">${nsel?'販售 +'+val:'販售'}</button>`;
+  sl.innerHTML = vis.length ? vis.map(rn=>{
+    const a = rn.affixes[0], r = RARITIES[rn.rar], on = sellSel.has(rn.id);
+    return `<div class="item-row ${r.b}${on?' picked':''}" onclick="openRuneSheet(${rn.id})">
+      <span class="tick${on?' on':''}" onclick="event.stopPropagation();gearPick(${rn.id})"></span>
+      <div class="ir-body">
+        <div class="ir-top"><span class="ir-type ${r.cls}">${rn.icon} ${rn.name}</span></div>
+        <div class="ir-affix"><span>${runeFmt(a)}</span></div>
+      </div>
+      <div class="ir-right"><div class="ir-stat">${r.n}</div></div>
+    </div>`;
+  }).join('')
+   : `<p class="ir-empty">${all.length ? '這個條件下沒有符文。換個篩選看看。'
+        : '還沒有符文。戰鬥掉落或黑市購買，鑲進「角色 → 符文槽」即被動生效。'}</p>`;
 }
 function openRuneSheet(id){
   const rn = (G.runeBag||[]).find(r=>r.id===id); if(!rn) return;
@@ -461,99 +470,154 @@ function sellRune(id){
   G.runeBag.splice(i,1); G.gold+=val; closeSheet(); renderGear(); save(); toast(`分解得 ${val} 碎銀`);
 }
 
+/* 目前分頁實際看得到的清單（已套用部位與稀有度篩選、已排序）。
+   全選、販售、渲染三邊都讀它——以前全選是 for(sorted) 而販售是 filter(G.stash)，
+   兩份清單不同步，改了篩選之後會連「畫面上看不到的東西」一起賣掉。 */
+function gearVisible(){
+  const stash = gearTab === 'shared' ? ACC.sharedStash : G.stash;
+  const slotOrder = {w:0, a:1, t:2};
+  return stash
+    .filter(i => (stashFilter==='all' || i.slot===stashFilter) && (stashRarity==='all' || i.rar===+stashRarity))
+    .sort((a,b)=>(slotOrder[a.slot]-slotOrder[b.slot]) || (b.rar-a.rar) || (eqStat(b)-eqStat(a)));
+}
+/* 切分頁或改篩選一律清空選取：選取是用 id 存的，留著會指到看不見的東西。 */
+function gearTabTo(t){
+  if(t === 'sigil'){ toast('魔符尚未開放'); return; }
+  gearTab = t; sellSel.clear(); renderGear();
+}
+function gearFilterTo(f){ stashFilter = f; sellSel.clear(); renderGear(); }
+function gearRarityTo(f){ stashRarity = f; sellSel.clear(); renderGear(); }
+function gearPick(id){ if(sellSel.has(id)) sellSel.delete(id); else sellSel.add(id); renderGear(); }
+function gearPickAll(){
+  const vis = gearVisible();
+  if(vis.every(i=>sellSel.has(i.id))) sellSel.clear();
+  else for(const i of vis) sellSel.add(i.id);
+  renderGear();
+}
+function gearSellPicked(){
+  const sel = gearVisible().filter(i=>sellSel.has(i.id));
+  if(!sel.length) return;
+  const val = sel.reduce((s,i)=>s+salvageVal(i), 0);
+  G.stash = G.stash.filter(i=>!sellSel.has(i.id));
+  G.gold += val; sellSel.clear(); save(); renderGear();
+  toast(`販售 ${sel.length} 件，得 ${val} 碎銀`);
+}
+function gearOpen(id){
+  const it = gearVisible().find(i=>i.id===id); if(!it) return;
+  openItemSheet(it, gearTab==='shared' ? 'shared' : 'stash');
+}
+
 function renderGear(){
   syncWallet();   // 同上：gear-gold 由 WALLET 統一寫
-  const er = $('equip-row'); er.innerHTML = '';
-  for(const s of ['w','a','t']){
+  /* 重畫前後保住捲動位置。innerHTML='' 會讓容器高度瞬間歸零，
+     瀏覽器把 scrollTop 夾到 0——捲到下面勾一件就會彈回頂端。 */
+  const scr = $('s-gear'), keep = scr ? scr.scrollTop : 0;
+  /* 身上裝備三格：只顯示類型＋強化與主數值，不顯示名稱（見 itemTypeName 的理由）。
+     詛咒／傳說標籤壓在圖的左下角，不另外佔一行，所以三格高度固定。 */
+  $('equip-row').innerHTML = ['w','a','t'].map(s=>{
     const it = G.equip[s];
-    const d = document.createElement('div'); d.className = 'slot';
-    d.innerHTML = it
-      ? `<div class="sl">${slotName(s)}</div>${itemIcon(it,'ic-lg')}<div class="sn ${RARITIES[it.rar].cls}">${it.name}${it.up?'+'+it.up:''}</div><div style="font-size:11px;color:var(--dim)">${itemStatLine(it)}</div>`
-      : `<div class="sl">${slotName(s)}</div><div class="ic-empty">—</div><div class="sn" style="color:var(--dim)">— 空 —</div>`;
-    if(it) d.onclick = ()=>openItemSheet(it, 'equipped');
-    er.appendChild(d);
-  }
-  const sl = $('stash-list'); sl.innerHTML = '';
-  // 個人／共用 分頁
-  const tabRow = document.createElement('div');
-  tabRow.className = 'row'; tabRow.style.cssText = 'gap:6px;margin-bottom:8px';
-  for(const [t, label, arr] of [['own','個人倉庫',G.stash],['shared','共用倉庫',ACC.sharedStash],['runes','符文',G.runeBag||[]]]){
-    const b = document.createElement('button');
-    b.className = 'btn small' + (gearTab===t?' primary':''); b.style.flex = '1';
-    b.textContent = `${label} ${arr.length}`;
-    b.onclick = ()=>{ gearTab = t; renderGear(); };
-    tabRow.appendChild(b);
-  }
-  sl.appendChild(tabRow);
-  if(gearTab==='runes'){ renderRuneStash(sl); return; }
-  const stash = gearTab==='shared' ? ACC.sharedStash : G.stash;
-  const fromKind = gearTab==='shared' ? 'shared' : 'stash';
-  if(!stash.length){
-    sl.insertAdjacentHTML('beforeend', `<p style="color:var(--dim);font-size:13px">${gearTab==='shared'?'共用倉庫是空的。把想跨角色共享的裝備存進來。':'倉庫空空。深淵裡什麼都有，去搬。'}</p>`);
-    return;
-  }
-  const fr = document.createElement('div');
-  fr.className = 'row'; fr.style.cssText = 'gap:6px;margin-bottom:6px';
-  for(const [f, label] of [['all','全部'],['w','武器'],['a','護甲'],['t','飾品']]){
-    const b = document.createElement('button');
-    b.className = 'btn small' + (stashFilter===f?' primary':''); b.style.flex = '1';
-    b.textContent = label + (f==='all' ? ` ${stash.length}` : ` ${stash.filter(i=>i.slot===f).length}`);
-    b.onclick = ()=>{ stashFilter = f; renderGear(); };
-    fr.appendChild(b);
-  }
-  sl.appendChild(fr);
-  const rr = document.createElement('div');
-  rr.className = 'row'; rr.style.cssText = 'gap:6px;margin-bottom:8px';
-  for(const [f, label] of [['all','全'],['0','普'],['1','精良'],['2','稀有'],['3','傳說']]){
-    const b = document.createElement('button');
-    b.className = 'btn small' + (stashRarity===f?' primary':''); b.style.flex = '1';
-    b.textContent = label; b.onclick = ()=>{ stashRarity = f; renderGear(); };
-    rr.appendChild(b);
-  }
-  sl.appendChild(rr);
-  if(gearTab==='own'){
-    const sm = document.createElement('button');
-    sm.className = 'btn small' + (sellMode?' primary':''); sm.style.cssText = 'width:100%;margin-bottom:6px';
-    sm.innerHTML = sellMode ? '<svg class="ic"><use href="#ic-check"/></svg> 批次販售中——點裝備勾選' : '<svg class="ic"><use href="#ic-bag"/></svg> 批次販售（多選）';
-    sm.onclick = ()=>{ sellMode = !sellMode; sellSel.clear(); renderGear(); };
-    sl.appendChild(sm);
-  } else { sellMode = false; }   // 共用分頁不販售
-  const slotOrder = {w:0, a:1, t:2};
-  const sorted = stash
-    .filter(i=>(stashFilter==='all' || i.slot===stashFilter) && (stashRarity==='all' || i.rar===+stashRarity))
-    .sort((a,b)=>(slotOrder[a.slot]-slotOrder[b.slot]) || (b.rar-a.rar) || (eqStat(b)-eqStat(a)));
-  const selling = sellMode && gearTab==='own';
-  for(const it of sorted){
-    const d = document.createElement('div'); d.className = `item-row ${RARITIES[it.rar].b}`;
-    const checked = sellSel.has(it.id);
-    d.innerHTML = `${itemIcon(it)}<div class="ir-body">
-      <span class="in ${RARITIES[it.rar].cls}">${selling?(checked?'<svg class="ic"><use href="#ic-check"/></svg> ':'<svg class="ic"><use href="#ic-uncheck"/></svg> '):''}${it.name}${it.up?'+'+it.up:''}</span>
-      <span class="is">${slotName(it.slot)}｜${itemStatLine(it)}</span></div>`;
-    d.onclick = selling
-      ? ()=>{ if(sellSel.has(it.id)) sellSel.delete(it.id); else sellSel.add(it.id); renderGear(); }
-      : ()=>openItemSheet(it, fromKind);
-    sl.appendChild(d);
-  }
-  if(selling){
-    const p2 = document.createElement('button'); p2.className='btn small'; p2.style.cssText='width:100%;margin-top:8px';
-    p2.textContent = sellSel.size ? '全部取消' : '全選（依目前篩選）';
-    p2.onclick = ()=>{ if(sellSel.size) sellSel.clear(); else for(const i of sorted) sellSel.add(i.id); renderGear(); };
-    sl.appendChild(p2);
-    const sel = G.stash.filter(i=>sellSel.has(i.id));
-    if(sel.length){
-      const val = sel.reduce((s,i)=>s+6+i.rar*10+Math.floor(i.base/2),0);
-      const sb = document.createElement('button'); sb.className='btn primary'; sb.style.cssText='width:100%;margin-top:6px';
-      sb.innerHTML = `販售選取 ${sel.length} 件（+${val}<svg class="ic"><use href="#ic-gold"/></svg>）`;
-      sb.onclick = ()=>{ G.stash = G.stash.filter(i=>!sellSel.has(i.id)); G.gold += val; sellSel.clear(); save(); renderGear(); toast(`販售 ${sel.length} 件，得 ${val} 碎銀`); };
-      sl.appendChild(sb);
-    }
-  }
+    if(!it) return `<div class="slot"><span class="sl">${slotName(s)}</span><div class="se">— 空 —</div></div>`;
+    const cur = it.affixes.filter(a=>affixTone(a)==='curse').map(a=>`<span class="ichip curse">${AFFIXES[a.k].n}</span>`).join('');
+    const leg = it.affixes.filter(a=>affixTone(a)==='leg').map(a=>`<span class="ichip leg">${AFFIXES[a.k].n}</span>`).join('');
+    return `<div class="slot on" onclick="openItemSheet(G.equip['${s}'],'equipped')">
+      <span class="sl">${slotName(s)}</span>
+      <div class="sw">${itemIcon(it,'ic-eq')}<div class="stag">${cur}${leg}</div></div>
+      <div class="sfoot"><span class="${RARITIES[it.rar].cls}">${itemTypeName(it)}${it.up?'+'+it.up:''}</span><span>${itemMain(it).t}</span></div>
+    </div>`;
+  }).join('');
+  // 分頁獨佔一列。魔符系統尚未實作，分頁灰掉、點下去只給 toast——
+  // 不做成可進入的空頁面：黑市符文攤犯過一次，空攤位看起來就是「壞掉」。
+  $('gear-tabs').innerHTML = [['own','個人',G.stash.length],['shared','共用',ACC.sharedStash.length],
+                              ['runes','符文',(G.runeBag||[]).length],['sigil','魔符',null]]
+    .map(([t,label,n])=>`<button class="gtab${gearTab===t?' on':''}${n===null?' off':''}" onclick="gearTabTo('${t}')">${label}${n===null?'':' '+n}</button>`).join('');
+  const sl = $('stash-list');
+  if(gearTab === 'runes'){ $('gear-ctl').innerHTML = ''; sl.innerHTML = ''; renderRuneStash(sl); if(scr) scr.scrollTop = keep; return; }
+  const vis = gearVisible();
+  const own = gearTab === 'own';
+  const nsel = vis.filter(i=>sellSel.has(i.id)).length;
+  const val = vis.filter(i=>sellSel.has(i.id)).reduce((s,i)=>s+salvageVal(i), 0);
+  const allOn = vis.length > 0 && nsel === vis.length;
+  const opt = (cur, list) => list.map(([v,label])=>`<option value="${v}"${cur===v?' selected':''}>${label}</option>`).join('');
+  const stash = own ? G.stash : ACC.sharedStash;
+  $('gear-ctl').innerHTML = own
+    ? `<span class="tick${allOn?' on':''}" onclick="gearPickAll()"></span>
+       <select class="gsel" onchange="gearFilterTo(this.value)">${opt(stashFilter,
+         [['all','部位：全部 '+stash.length],['w','部位：武器 '+stash.filter(i=>i.slot==='w').length],
+          ['a','部位：護甲 '+stash.filter(i=>i.slot==='a').length],['t','部位：飾品 '+stash.filter(i=>i.slot==='t').length]])}</select>
+       <select class="gsel" onchange="gearRarityTo(this.value)">${opt(stashRarity,
+         [['all','稀有：全部'],['0','稀有：普通'],['1','稀有：精良'],['2','稀有：稀有'],['3','稀有：傳說']])}</select>
+       <button class="gsell${nsel?' on':''}" ${nsel?'':'disabled'} onclick="gearSellPicked()">${nsel?'販售 +'+val:'販售'}</button>`
+    : `<select class="gsel wide" onchange="gearFilterTo(this.value)">${opt(stashFilter,
+         [['all','部位：全部 '+stash.length],['w','部位：武器'],['a','部位：護甲'],['t','部位：飾品']])}</select>
+       <select class="gsel wide" onchange="gearRarityTo(this.value)">${opt(stashRarity,
+         [['all','稀有：全部'],['0','稀有：普通'],['1','稀有：精良'],['2','稀有：稀有'],['3','稀有：傳說']])}</select>`;
+  sl.innerHTML = vis.length
+    ? vis.map(it=>itemRowHtml(it, {tick:own, checked:sellSel.has(it.id),
+        onTick:`gearPick(${it.id})`, onOpen:`gearOpen(${it.id})`})).join('')
+    : `<p class="ir-empty">${gearTab==='shared'
+        ? '共用倉庫是空的。把想跨角色共享的裝備存進來。'
+        : (G.stash.length ? '這個條件下沒有裝備。換個篩選看看。' : '倉庫空空。深淵裡什麼都有，去搬。')}</p>`;
+  if(scr) scr.scrollTop = keep;
+}
+
+/* 詞綴分類的唯一入口：''＝一般（綠）／'leg'＝傳說（橘）／'curse'＝詛咒（紅）。
+   以前這段判斷寫死在 affixHtml 裡，清單要用就得複製一份 → 以後改分類必然分岔。 */
+function affixTone(a){ const A = AFFIXES[a.k]; return A.curse ? 'curse' : A.leg ? 'leg' : ''; }
+/* 分解／販售價的唯一入口。以前 openItemSheet 與批次販售各寫了一份同樣的算式。 */
+function salvageVal(it){ return 6 + it.rar*10 + Math.floor(it.base/2); }
+/* 清單上顯示的「類型」。武器顯示武器類型而不是名稱——名稱會誤導：
+   「短劍」是劍(3行動)、「短刃」是匕首(4行動)，「袖劍」是匕首，「戰錘/碎骨錘」是斧。
+   而武器類型決定行動點、係數、對盾剋制與物/魔攻，是實打實的機制。
+   護甲與飾品的名稱只被 itemIconSlug() 用來查圖示，沒有任何機制意義，所以只顯示部位。 */
+function itemTypeName(it){
+  return it.slot === 'w' ? WEAPON_TYPES[it.wtype||'sword'].n : slotName(it.slot);
+}
+/* 主數值。飾品 base 固定為 0、價值全在詞綴，所以改顯示詞綴數。 */
+function itemMain(it){
+  if(it.slot === 't') return {t:'詞綴 ' + it.affixes.length, v:null};
+  return {t:(it.slot==='w'?'攻 ':'防 ') + eqStat(it), v:eqStat(it)};
+}
+/* 與「身上那件」的差值。清單上唯一要做的判斷就是這個，
+   以前得逐件點進去看 compareHtml() 才知道。 */
+function itemDiff(it){
+  const m = itemMain(it); if(m.v === null) return null;
+  const cur = G.equip[it.slot];
+  if(!cur || cur.id === it.id) return null;
+  return m.v - eqStat(cur);
+}
+/* 裝備清單列的唯一渲染器——倉庫與行囊共用，差別只在 o 的開關。
+   o = {tick:是否顯示勾選圈, checked, onTick:勾圈的 onclick, onOpen:整列的 onclick} */
+function itemRowHtml(it, o){
+  o = o || {};
+  const r = RARITIES[it.rar];
+  const cur = it.affixes.filter(a=>affixTone(a)==='curse');
+  const leg = it.affixes.filter(a=>affixTone(a)==='leg');
+  const nor = it.affixes.filter(a=>affixTone(a)==='');
+  // 詛咒排最前、傳說次之：截斷時優先砍掉的是一般詞綴，最該看到的兩類不會被藏起來。
+  const chips = cur.map(a=>`<span class="ichip curse">${AFFIXES[a.k].n}</span>`).join('')
+              + leg.map(a=>`<span class="ichip leg">${AFFIXES[a.k].n}</span>`).join('');
+  const affx = nor.length
+    ? nor.map(a=>`<span>${AFFIXES[a.k].n}</span>`).join('<i>·</i>')
+    : '<span class="ir-none">無詞綴</span>';
+  const m = itemMain(it), df = itemDiff(it);
+  const dh = df === null ? ''
+    : `<div class="ir-diff ${df>0?'up':df<0?'dn':''}">${df>0?'▲ +'+df:df<0?'▼ '+df:'—'}</div>`;
+  const tk = o.tick
+    ? `<span class="tick${o.checked?' on':''}" onclick="event.stopPropagation();${o.onTick}"></span>` : '';
+  return `<div class="item-row ${r.b}${o.checked?' picked':''}"${o.onOpen?` onclick="${o.onOpen}"`:''}>
+    ${tk}${itemIcon(it)}
+    <div class="ir-body">
+      <div class="ir-top">${chips}<span class="ir-type ${r.cls}">${itemTypeName(it)}${it.up?'+'+it.up:''}</span></div>
+      <div class="ir-affix">${affx}</div>
+    </div>
+    <div class="ir-right"><div class="ir-stat">${m.t}</div>${dh}</div>
+  </div>`;
 }
 
 function affixHtml(it){
   return it.affixes.map(a=>{
     const A = AFFIXES[a.k];
-    const cls = A.curse?' curse':A.leg?' leg':'';
+    const t = affixTone(a); const cls = t ? ' ' + t : '';
     const mark = A.curse?'<svg class="ic"><use href="#ic-poison"/></svg>':A.leg?'<svg class="ic"><use href="#ic-legend"/></svg>':'<svg class="ic"><use href="#ic-gem"/></svg>';
     return `<div class="affix${cls}">${mark} ${A.n}：${A.fmt(a.v)}</div>`;
   }).join('') || '<div class="affix" style="color:var(--dim)">（無詞綴）</div>';
@@ -576,7 +640,7 @@ function compareHtml(it){
    返回與換裝完都必須回到來的那一個。以前寫死 openRunStats()，從行囊點進來會被丟到角色檢視。 */
 function openItemSheet(it, from, back){
   const r = RARITIES[it.rar];
-  const salvage = 6 + it.rar*10 + Math.floor(it.base/2);
+  const salvage = salvageVal(it);
   const ret = (back === 'bag') ? 'bag' : 'stats';
   const backCall = from==='bag' ? (ret==='bag' ? 'openBag()' : 'openRunStats()') : 'closeSheet()';
   let btns = ''; let extra = '';
@@ -608,7 +672,7 @@ function unequipItem(s){
 function salvageItem(id){
   const i = G.stash.findIndex(x=>x.id===id); if(i<0) return;
   const it = G.stash[i];
-  const v = 6 + it.rar*10 + Math.floor(it.base/2);
+  const v = salvageVal(it);
   G.stash.splice(i,1); G.gold += v; closeSheet(); renderGear(); save(); toast(`分解得 ${v} 碎銀`);
 }
 
