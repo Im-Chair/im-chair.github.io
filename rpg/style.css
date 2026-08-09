@@ -229,8 +229,13 @@ h1.title{
   border:1px solid;white-space:nowrap;flex:0 0 auto;}
 .ichip.curse{color:var(--red);border-color:#7a3434;}
 .ichip.leg{color:var(--orange);border-color:#7a4622;}
-.ir-affix{font-size:10px;color:var(--green);margin-top:3px;white-space:nowrap;overflow:hidden;
-  text-overflow:ellipsis;line-height:1.5;}
+/* 一般詞綴換行不截斷,並且**固定保留兩行**(15px×2)。
+   詞綴少的裝備第二行是空的——這是刻意的:列高因此永遠是 67px,
+   不會因為裝備詞綴多寡而讓下面的列上下移動。
+   單一詞綴名不斷字(span nowrap),斷點只會落在分隔號之間。 */
+.ir-affix{font-size:10px;color:var(--green);margin-top:3px;line-height:1.5;
+  height:30px;overflow:hidden;}
+.ir-affix span{white-space:nowrap;}
 .ir-affix i{font-style:normal;color:#463c2e;padding:0 3px;}
 .ir-affix .ir-none{color:#50462f;}
 .ir-right{flex:0 0 auto;text-align:right;line-height:1.35;}

@@ -521,7 +521,7 @@ function renderGear(){
     const leg = it.affixes.filter(a=>affixTone(a)==='leg').map(a=>`<span class="ichip leg">${AFFIXES[a.k].n}</span>`).join('');
     return `<div class="slot on" onclick="openItemSheet(G.equip['${s}'],'equipped')">
       <span class="sl">${slotName(s)}</span>
-      <div class="sw">${itemIcon(it,'ic-eq')}<div class="stag">${cur}${leg}</div></div>
+      <div class="sw">${itemIcon(it,'ic-eq')}<div class="stag">${leg}${cur}</div></div>
       <div class="sfoot"><span class="${RARITIES[it.rar].cls}">${itemTypeName(it)}${it.up?'+'+it.up:''}</span><span>${itemMain(it).t}</span></div>
     </div>`;
   }).join('');
@@ -593,9 +593,11 @@ function itemRowHtml(it, o){
   const cur = it.affixes.filter(a=>affixTone(a)==='curse');
   const leg = it.affixes.filter(a=>affixTone(a)==='leg');
   const nor = it.affixes.filter(a=>affixTone(a)==='');
-  // 詛咒排最前、傳說次之：截斷時優先砍掉的是一般詞綴，最該看到的兩類不會被藏起來。
-  const chips = cur.map(a=>`<span class="ichip curse">${AFFIXES[a.k].n}</span>`).join('')
-              + leg.map(a=>`<span class="ichip leg">${AFFIXES[a.k].n}</span>`).join('');
+  // 上行順序：類型 → 傳說 → 詛咒。類型是主要辨識，放最前面；
+  // 兩種標籤都在同一行且最多各一條，不會互相擠掉。
+  const chips = leg.map(a=>`<span class="ichip leg">${AFFIXES[a.k].n}</span>`).join('')
+              + cur.map(a=>`<span class="ichip curse">${AFFIXES[a.k].n}</span>`).join('');
+  // 一般詞綴會換行，不截斷——放不下就往下排，不會有看不到的詞綴。
   const affx = nor.length
     ? nor.map(a=>`<span>${AFFIXES[a.k].n}</span>`).join('<i>·</i>')
     : '<span class="ir-none">無詞綴</span>';
@@ -607,7 +609,7 @@ function itemRowHtml(it, o){
   return `<div class="item-row ${r.b}${o.checked?' picked':''}"${o.onOpen?` onclick="${o.onOpen}"`:''}>
     ${tk}${itemIcon(it)}
     <div class="ir-body">
-      <div class="ir-top">${chips}<span class="ir-type ${r.cls}">${itemTypeName(it)}${it.up?'+'+it.up:''}</span></div>
+      <div class="ir-top"><span class="ir-type ${r.cls}">${itemTypeName(it)}${it.up?'+'+it.up:''}</span>${chips}</div>
       <div class="ir-affix">${affx}</div>
     </div>
     <div class="ir-right"><div class="ir-stat">${m.t}</div>${dh}</div>
