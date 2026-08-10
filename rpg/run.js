@@ -487,16 +487,29 @@ function doChest(){
   }
 }
 
+/* 事件圖示的唯一入口。showEventScreen 與 showSkillUpScreen 都走這裡——
+   v449 之前兩邊各寫一份幾乎一樣的判斷，改一邊就會漏一邊。
+   ⚠️ 只有 icon 真的變了才動 DOM。事件鏈（營火→淬火→抹什麼→結果、賭徒、罐頭、
+   石堆、神龕、泉水…）一路都是同一個 icon，但每按一次選項就重建一次 <img>，
+   新元素即使檔案在快取裡也得重新解碼，中間空一幀——那就是「事件頁每次操作閃一下」。
+   同源問題見 v446 的敵人區塊。 */
+function setEventIcon(icon){
+  const el = $('ev-icon');
+  if(el.dataset.icon === icon) return;      // 同一張圖，不重建
+  const evs = EV_IMG[icon];
+  // icon 可能是 emoji（查 EV_IMG）、或呼叫端已組好的 HTML（進域橫幅就是）。
+  // 舊版 else 分支直接 textContent，傳 HTML 進來就把 <img …> 原樣印在畫面上——那就是「結算畫面出現程式碼」。
+  if(/^</.test(icon)) el.innerHTML = icon;
+  else if(evs) el.innerHTML = uiIcon(evs,'ev-img');
+  else el.textContent = icon;
+  el.dataset.icon = icon;
+}
+
 function showEventScreen(icon,title,text,choices){
   R.phase='event';
   $('ev-floor').textContent = R.floor;
   $('ev-gold').textContent = R.gold;
-  const evs = EV_IMG[icon];
-  // icon 可能是 emoji（查 EV_IMG）、或呼叫端已組好的 HTML（進域橫幅就是）。
-  // 舊版 else 分支直接 textContent，傳 HTML 進來就把 <img …> 原樣印在畫面上——那就是「結算畫面出現程式碼」。
-  if(/^</.test(icon)) $('ev-icon').innerHTML = icon;
-  else if(evs) $('ev-icon').innerHTML = uiIcon(evs,'ev-img');
-  else $('ev-icon').textContent = icon;
+  setEventIcon(icon);
   $('ev-title').textContent = title;
   $('ev-text').textContent = text;
   const c = $('ev-choices'); c.innerHTML='';
@@ -511,8 +524,7 @@ function showSkillUpScreen(icon, title, text, onPick, extraChoices){
   R.phase='event';
   $('ev-floor').textContent = R.floor;
   $('ev-gold').textContent = R.gold;
-  if(/^</.test(icon)) $('ev-icon').innerHTML = icon;
-  else { const _e = EV_IMG[icon]; if(_e) $('ev-icon').innerHTML = uiIcon(_e,'ev-img'); else $('ev-icon').textContent = icon; }
+  setEventIcon(icon);
   $('ev-title').textContent = title;
   $('ev-text').textContent = text;
   const c = $('ev-choices'); c.innerHTML='';

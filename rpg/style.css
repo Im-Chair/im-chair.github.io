@@ -366,7 +366,7 @@ h1.title{
 #s-battle{padding-bottom:calc(12px + var(--safe-b));}
 /* 戰鬥的頂欄瘦身：只有樓層與碎銀兩個小數字,不需要 37px。只縮戰鬥這一頁,
    事件/戰利品沿用 .topbar 原值。 */
-#s-battle .topbar{padding:2px 2px 6px;font-size:13px;}
+#s-battle .topbar{padding:2px 2px 6px;font-size:15px;}
 /* v438：敵人區改成吸收層(flex:1)。以前吸收剩餘高度的是 #log——
    那是一段可捲動的歷史記錄,卻佔著整頁最大的固定席位(390×786 實測 181px,而怪物圖只有 96px)。
    現在剩餘高度歸怪物圖,上限 200px＝素材本身的尺寸(mon/ 全部 200×200),超過就是放大糊圖。 */
@@ -388,20 +388,20 @@ h1.title{
    高度固定兩行（42px）且 overflow:hidden：狀態掛幾個都不影響版面，
    中毒一到期也不會讓下半部往上跳。 */
 .e-row{display:flex;justify-content:space-between;align-items:flex-start;gap:6px;
-  height:42px;overflow:hidden;margin-top:3px;}
+  height:46px;overflow:hidden;margin-top:3px;}
 .e-debuffs,.e-states{display:flex;flex-wrap:wrap;gap:4px;min-width:0;align-content:flex-start;}
 .e-debuffs{justify-content:flex-start;}
 .e-states{justify-content:flex-end;}
-.e-debuffs .st,.e-states .st{margin:0;font-size:10px;line-height:18px;padding:0 6px;white-space:nowrap;}
-.e-wrap.duo .e-row{height:42px;}
-.e-wrap.duo .e-debuffs .st,.e-wrap.duo .e-states .st{font-size:9px;line-height:17px;padding:0 5px;}
+.e-debuffs .st,.e-states .st{margin:0;font-size:13px;line-height:20px;padding:0 7px;white-space:nowrap;}
+.e-wrap.duo .e-row{height:46px;}
+.e-wrap.duo .e-debuffs .st,.e-wrap.duo .e-states .st{font-size:11px;line-height:18px;padding:0 5px;}
 .st.trait{color:#c9b38a;border-color:#4a3c28;background:#181310;}
 /* 敵人血條放在怪物頭頂（獨立一列，不疊圖——疊在深色 sprite 上會糊）。
    收窄到左右各留 40px，視覺重量才不會壓過怪物本身。 */
-.e-hp{margin:0 40px 6px;height:18px;flex:none;}
-.e-hp .txt{line-height:18px;}
-.e-wrap.duo .e-hp{margin:0 6px 4px;height:15px;}
-.e-wrap.duo .e-hp .txt{line-height:15px;font-size:9px;}
+.e-hp{margin:0 40px 6px;height:20px;flex:none;}
+.e-hp .txt{line-height:20px;font-size:14px;}
+.e-wrap.duo .e-hp{margin:0 6px 4px;height:18px;}
+.e-wrap.duo .e-hp .txt{line-height:18px;font-size:12px;}
 .e-wrap.duo .e-block{cursor:pointer;}
 .e-wrap.duo .e-block.sel{border-color:var(--gold);background:rgba(216,168,76,.05);}
 .e-wrap.duo .intent{font-size:12px;padding:2px 8px;}
@@ -453,9 +453,13 @@ h1.title{
 .pi-img{width:24px;height:24px;border-radius:5px;display:inline-block;vertical-align:middle;}
 .pi-row{width:38px;height:38px;margin-right:9px;flex:0 0 auto;border:1px solid var(--line);}
 .res-img{width:min(70%,220px);margin:0 auto;border-radius:12px;}
-.ev-img{width:min(52%,150px);margin:0 auto;border-radius:10px;}
+/* aspect-ratio 是為了「圖還沒解碼完，容器就先佔好高度」。沒有它的話高度會塌成 0，
+   下面的標題／內文／選項整批往上跳、圖出現時再跳回來——事件頁每次操作的上下抖動就是這個。
+   量過才敢寫死：走 .ev-img 的 21 張全是正方形（ev_* 與 door_* 18 張 192×192、3 張 200×200）。 */
+.ev-img{width:min(52%,150px);aspect-ratio:1;margin:0 auto;border-radius:10px;}
 /* 進域橫幅：比事件的方形小圖大一級，讓「換層」跟「又一個事件」在視覺上分得開 */
-.realm-banner{display:block;width:100%;max-width:520px;margin:0 auto;border-radius:10px;
+/* 同上：realm0–5 六張全是 760×345，寫死比例讓橫幅在解碼前就佔好高度 */
+.realm-banner{display:block;width:100%;max-width:520px;aspect-ratio:760/345;margin:0 auto;border-radius:10px;
   border:1px solid var(--line-hi);box-shadow:0 6px 20px rgba(0,0,0,.55);}
 .cx-ic{width:38px;height:38px;margin-right:9px;flex:0 0 auto;border-radius:6px;border:1px solid var(--line);object-fit:cover;}
 /* 門卡若放的是敵人去背圖，底色要墊一下，不然深色 sprite 貼在深色門上看不清 */
@@ -495,9 +499,9 @@ h1.title{
 .intent{
   display:inline-flex;align-items:center;gap:6px;margin-top:6px;
   border:1px solid #4a3a2a;background:#1c150e;border-radius:20px;padding:4px 14px;
-  font-size:14px;color:#e8c78a;
+  font-size:15px;color:#e8c78a;
 }
-.intent .ii{font-size:16px;}
+.intent .ii{font-size:17px;}
 .hpbar{height:14px;border-radius:7px;background:#22161a;border:1px solid #3a2530;overflow:hidden;margin-top:8px;position:relative;}
 .hpbar .fill{height:100%;background:linear-gradient(90deg,#a83a3a,#d05252);transition:width .3s;border-radius:7px;}
 .hpbar.player .fill{background:linear-gradient(90deg,#3f7a58,#6fbf8f);}
@@ -526,15 +530,15 @@ h1.title{
 /* 第二列：生命與法力並排。法力以前只是 13px 的一段文字,擠在名字旁邊——
    對法師與制魔師那是主資源,不該跟名字搶位置。 */
 .pz-bars{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;}
-.pz-bars .hpbar{margin-top:0;height:18px;}
-.pz-bars .hpbar .txt{line-height:18px;font-size:10px;}
+.pz-bars .hpbar{margin-top:0;height:20px;}
+.pz-bars .hpbar .txt{line-height:20px;font-size:13px;}
 .hpbar.mana{background:#141a24;border-color:#26364a;}
 .hpbar.mana .fill{background:linear-gradient(90deg,#2f5f96,#5f9ede);}
 /* 第三列：格擋／護盾固定席位(值為 0 也留著,只是變暗)＋玩家狀態。
    這一列高度固定,狀態多寡不影響版面。 */
 .pz-def{display:flex;align-items:center;gap:6px;margin-top:6px;height:22px;overflow:hidden;}
 .dchip{
-  flex:0 0 74px;text-align:center;font-size:11px;line-height:20px;height:22px;
+  flex:0 0 74px;text-align:center;font-size:12px;line-height:20px;height:22px;
   border:1px solid #2c2418;border-radius:6px;background:#100d09;color:#4e4234;
 }
 .dchip.on{border-color:#2c4d6e;background:var(--panel);color:var(--blue);}
@@ -559,7 +563,7 @@ h1.title{
 .skill-btn.empty .sn{color:#5c4d3a;}
 .skill-btn.empty .sd{color:#413729;}
 .skill-btn .sn{font-size:14px;letter-spacing:1px;}
-.skill-btn .sd{font-size:11px;color:var(--dim);margin-top:2px;line-height:1.35;}
+.skill-btn .sd{font-size:12px;color:var(--dim);margin-top:2px;line-height:1.35;}
 .skill-btn .sc{position:absolute;top:8px;right:10px;font-size:12px;color:var(--gold);}
 .battle-bottom{display:flex;gap:8px;margin-top:10px;}
 .battle-bottom .btn{padding:11px;}

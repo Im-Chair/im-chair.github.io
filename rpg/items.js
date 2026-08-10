@@ -208,7 +208,13 @@ function renderMarket(){
   let bar = hasRune
     ? `<div class="mk-tab${marketStall===1?' on':''}" onclick="switchMarketStall(1)" style="padding:8px 4px">符文</div>`
     : `<div class="mk-tab" style="padding:8px 4px;opacity:.35;cursor:default" onclick="toast('這個貨源還沒有符文——輪迴 I 之後才有')">符文</div>`;
-  bar += `<div class="mk-tab${marketStall===2?' on':''}" onclick="switchMarketStall(2)" style="padding:8px 4px">魔符</div>`;
+  // 魔符攤跟掉落同一個開關：沒買魔符格＝玩家還沒選擇這個系統，商人也不該開始賣。
+  // 比照符文攤的作法灰掉並給提示，不是整個藏起來——玩家要看得到「這裡之後會有東西」。
+  const hasSigil = sigilSlots() > 0;
+  if(!hasSigil && marketStall === 2) marketStall = 0;
+  bar += hasSigil
+    ? `<div class="mk-tab${marketStall===2?' on':''}" onclick="switchMarketStall(2)" style="padding:8px 4px">魔符</div>`
+    : `<div class="mk-tab" style="padding:8px 4px;opacity:.35;cursor:default" onclick="toast('開啟魔符格之後，這裡才會有魔符可買')">魔符</div>`;
   if(marketStall === 1){
     bar += `<div class="mk-re gem${(G.gems||0)<1?' poor':''}" onclick="rerollMarket()">`
          + `<svg class="ic"><use href="#ic-dice"/></svg><svg class="ic"><use href="#ic-gem"/></svg> 1</div>`;
@@ -225,7 +231,8 @@ function renderMarket(){
   if(marketStall === 2){
     const sgs = t.sigils || [];
     const left = sgs.filter(s=>!s.sold).length;
-    if(!sigilPool().length) h = '<p class="mk-empty">售盡。</p>';       // 20 支集滿＝這個攤位永遠沒貨了
+    if(!hasSigil) h = '<p class="mk-empty">開啟魔符格之後，這裡才會有魔符可買。</p>';   // 上面已擋，這裡是保險
+    else if(!sigilPool().length) h = '<p class="mk-empty">售盡。</p>';   // 20 支集滿＝這個攤位永遠沒貨了
     else if(!left) h = '<p class="mk-empty">這一趟的盲盒都賣完了。</p>';
     else sgs.forEach((s,i)=>{
       if(s.sold){ h += '<div class="mk-card void">已售出</div>'; return; }
@@ -359,6 +366,7 @@ function peekSigilBox(i){
 function buySigilBox(i){
   const b = (marketTab().sigils||[])[i];
   if(!b || b.sold) return;
+  if(sigilSlots() <= 0){ toast('開啟魔符格之後，這裡才會有魔符可買'); return; }   // 攤位已擋，這裡防繞過
   if((G.gems||0) < SIGIL_GEM_PRICE){ toast('<svg class="ic"><use href="#ic-gem"/></svg> 不夠'); return; }
   /* 盒子是補貨時抽的，中間可能已經從掉落拿到同一支——那就當場從現有池子換一支，
      否則玩家花 50 鑽買到重複的。池子空了＝已經集滿，直接退掉不收錢。 */
