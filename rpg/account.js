@@ -33,9 +33,10 @@ function migrateChar(c){
   if(!c.statBuy) c.statBuy = {str:0,int:0,spi:0,vit:0,agi:0};
   else for(const k of ['str','int','spi','vit','agi']) if(c.statBuy[k]===undefined) c.statBuy[k] = 0;
   if(!c.achv) c.achv = {};
-  if(!c.sigils) c.sigils = {equipped:[], owned:[]};
+  if(!c.sigils) c.sigils = {equipped:[], owned:[], slots:0};
   if(!c.sigils.equipped) c.sigils.equipped = [];
   if(!c.sigils.owned) c.sigils.owned = [];
+  if(typeof c.sigils.slots !== 'number') c.sigils.slots = 0;   // v424 建欄位時還沒有格數，舊存檔補 0
   if(c.killBest===undefined) c.killBest = 0;
 
   /* runeSeen 的補登：舊存檔沒有這個欄位，老角色手上的符文若不補進去，

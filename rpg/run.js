@@ -162,8 +162,8 @@ function nextFloorSame(){ R.doors = null; showDoors(); }
 function pickUpStay(sid, branch){
   if(!R.skillUps) R.skillUps = {};
   R.skillUps[sid] = branch;
-  const u = SKILL_UPS[sid][branch];
-  showEventScreen('🪢','精進完成','「'+SKILLS[sid].n+'」蛻變為「'+u.n+'」。\n\n'+u.d+'（本次探索有效）',
+  const u = upsOf(sid)[branch];
+  showEventScreen('🪢','精進完成','「'+skName(sid)+'」蛻變為「'+u.n+'」。\n\n'+u.d+'（本次探索有效）',
     [{n:'出發', f:()=>nextFloorSame(), primary:true}]);
 }
 
@@ -353,6 +353,7 @@ function bankRun(deep){   // ★唯一的「成功回營」入口(逃脫/通關)
   G.gold += R.gold;
   // 符文 / 材料 / 圖鑑（下潛期間只是 pending 在 R 裡，回營才入帳）
   if(R.runesPending){ if(!G.runeBag) G.runeBag=[]; for(const rn of R.runesPending){ G.runeBag.push(rn); seenRune(rn); } }   // seenRune 只在這裡與 buyRune 呼叫＝真正入帳才算
+  if(R.sigilsPending) for(const sid of R.sigilsPending) grantSigil(sid);   // 魔符入帳唯一入口，與 buySigilBox 同一支
   if(R.matsPending) for(const k in R.matsPending) G.mats[k] = (G.mats[k]||0) + R.matsPending[k];
   if(R.codexPending) for(const k in R.codexPending) G.codex[k] = (G.codex[k]||0) + R.codexPending[k];
   // 最深紀錄（黑市/藥水/鐵匠解鎖都吃這個 → 也要成功回營才算）
@@ -466,8 +467,8 @@ function scrapFire(){
 function pickUp(sid, branch){
   if(!R.skillUps) R.skillUps = {};
   R.skillUps[sid] = branch;
-  const u = SKILL_UPS[sid][branch];
-  showEventScreen('🕯️','精進完成','「'+SKILLS[sid].n+'」蛻變為「'+u.n+'」。\n\n'+u.d+'（本次探索有效）',
+  const u = upsOf(sid)[branch];
+  showEventScreen('🕯️','精進完成','「'+skName(sid)+'」蛻變為「'+u.n+'」。\n\n'+u.d+'（本次探索有效）',
     [{n:'繼續前進', f:()=>nextFloor(), primary:true}]);
 }
 
@@ -515,16 +516,16 @@ function showSkillUpScreen(icon, title, text, onPick, extraChoices){
   $('ev-title').textContent = title;
   $('ev-text').textContent = text;
   const c = $('ev-choices'); c.innerHTML='';
-  const upgradable = CLASSES[G.cls].skills.filter(sid=>!(R.skillUps&&R.skillUps[sid]));
+  const upgradable = upgradableSkills();
   const grid = document.createElement('div'); grid.className='su-grid';
   const head = document.createElement('div'); head.className='su-row su-head';
   head.innerHTML = '<div class="su-name">技能／功能</div><div class="su-cell">A 分支</div><div class="su-cell">B 分支</div>';
   grid.appendChild(head);
   for(const sid of upgradable){
-    const base = SKILLS[sid], ups = SKILL_UPS[sid];
+    const base = SK(sid), ups = upsOf(sid);
     const row = document.createElement('div'); row.className='su-row';
     const name = document.createElement('div'); name.className='su-name';
-    name.innerHTML = `<b>${base.n}</b><span>${base.d}</span>`;
+    name.innerHTML = `<b>${base.sigil?'<svg class="ic"><use href="#ic-sigil"/></svg> ':''}${base.n}</b><span>${base.d}</span>`;
     const ba = document.createElement('button'); ba.className='su-cell su-pick';
     ba.innerHTML = `<b>${ups.a.n}</b><span>${ups.a.d}</span>`; ba.onclick = ()=>onPick(sid,'a');
     const bb = document.createElement('button'); bb.className='su-cell su-pick';
@@ -562,7 +563,7 @@ function rollEvent(){
   const ri = realmIdx(R.floor);
   const weights = {shrine:9, gambler:8, merchant:12, spring:9, can:4,
                    rock:9, corpse:9, crack:7, box:9, whisper:7};
-  if(!(R.scrollSeen && R.scrollSeen[ri]) && CLASSES[G.cls].skills.some(sid=>!(R.skillUps&&R.skillUps[sid])))
+  if(!(R.scrollSeen && R.scrollSeen[ri]) && upgradableSkills().length)
     weights.scroll = 14;
   for(const [k,zr] of Object.entries(EV_REALM)) if(zr===ri) weights[k] = 16;
   if(!R.seenEv) R.seenEv = {};
@@ -952,7 +953,7 @@ const EVENTS = {
     const ri = realmIdx(R.floor);
     if(!R.scrollSeen) R.scrollSeen = {};
     R.scrollSeen[ri] = true;
-    const upgradable = CLASSES[G.cls].skills.filter(sid=>!(R.skillUps&&R.skillUps[sid]));
+    const upgradable = upgradableSkills();
     if(!upgradable.length){
       const g = 40 + R.floor*3; R.gold += g;
       showEventScreen('📜','殘卷','石臺上攤著一頁殘卷，但上面的招式你都已經會了。\n\n卷頁化為 '+g+' 碎銀。',

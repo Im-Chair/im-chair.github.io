@@ -52,7 +52,7 @@ function newSave(){ return {v3:1, cls:null, gold:0, stash:[], equip:{w:null,a:nu
   statBuy:{str:0,int:0,spi:0,vit:0,agi:0},   // 素質提升：各素質已購點數（0～40）
   runeSeen:{},                                // 成就：各詞綴「曾取得過」的最高數值（見 seenRune）
   achv:{},                                    // 成就：id → 取得時間戳
-  sigils:{equipped:[], owned:[]},             // 魔符：已裝備欄位與已擁有清單
+  sigils:{equipped:[], owned:[], slots:0},    // 魔符：已裝備欄位／已擁有清單／已購買的格數
   killBest:0}; }                              // 單場殺怪數的歷史最高
 
 // ⚠️ 僅供「最高成就徽章」排序與顯示，勿再用於任何難度判定（黑市/懸賞/解鎖請用 certPool() 與 cd(n).cp）。
@@ -173,10 +173,15 @@ function preloadArt(){
   try{
     const v = '?v=' + window.IMG_VER;   // 圖片一律吃 IMG_VER，見 index.html 的說明
     const urls = [];
+    // 職業圖排最前面：選職業畫面緊接在標題之後，是全流程最早需要圖的地方
+    for(const c in CLASSES) if(CLASSES[c].img) urls.push('ui/'+CLASSES[c].img+'.webp'+v);
     for(const k in ENEMIES) if(ENEMIES[k].img) urls.push('mon/'+k+'.webp'+v);
     for(const b of MINI_BOSSES.concat(LORD_BOSSES)) if(b.img) urls.push('mon/'+b.key+'.webp'+v);
     if(FINAL_BOSS.img) urls.push('mon/final.webp'+v);
-    for(const e of REALM_ELITES) if(e.img) urls.push('mon/'+e.key+'.webp'+v);
+    // ⚠️ REALM_ELITES 是「每域一個子陣列」的巢狀結構，要跑兩層。
+    //    v446 之前只跑一層，e 拿到的是陣列、e.img 恆為 undefined ——
+    //    10 隻域限精英一張都沒預載，症狀是「進精英戰圖慢一拍」。
+    for(const arr of REALM_ELITES) for(const e of arr) if(e.img) urls.push('mon/'+e.key+'.webp'+v);
     for(const k of RUNTIME_MON_IMG) urls.push('mon/'+k+'.webp'+v);   // imgKey 借用的圖，資料表推導不到
     for(const w in WEAPON_TYPES) urls.push('eq/'+w+'.webp'+v);
     for(const s of new Set(Object.values(ITEM_ICON))) urls.push('eq/'+s+'.webp'+v);
@@ -193,6 +198,9 @@ function preloadArt(){
       try{
         for(let n=0; n<12 && i<urls.length; n++, i++){   // 資產量從 79 成長到 120+，批次跟著加大
           const im = new Image(); im.decoding = 'async'; im.src = urls[i]; _preloaded.push(im);
+          // 一定要 decode()：只等下載完成的話，解碼仍會發生在第一次繪製的當下——
+          // 也就是玩家看得到的那一格。失敗（404／格式壞）只是少預載一張，不能讓它冒出來
+          if(im.decode) im.decode().catch(()=>{});
         }
         if(i < urls.length) setTimeout(batch, 120);
       }catch(e){ console.warn('[abyss] 預載中止：', e); }
@@ -271,6 +279,35 @@ function playerMaxMana(){   // 全職業統一：所有人都有魔力（魔符�
 function manaRegenPct(){ return Math.min(MREGEN_CAP, 25 + statTotal('spi')/10 + sumAffix('mregen')); }   // 精神同時提升回魔速度（成本改%制後，回魔率＝施法頻率）
 function weaponType(){ const w = G.equip.w; return WEAPON_TYPES[(w && w.wtype) || 'sword']; }
 function mainStat(){ return statTotal(CLASSES[G.cls].mainStat); }
+/* 六格技能的唯一來源。任何要列出「玩家現在能用哪些招」的地方都必須走這裡，
+   不准再直接讀 CLASSES[G.cls].skills——拆卸與魔符只在這一支裡結算。
+
+   回傳固定長度 4 + SIGIL_SLOTS 的陣列，空格是 null；長度固定所以戰鬥畫面高度恆定。
+   G.sigils.equipped 的索引約定：
+     0 .. swap.length-1        職業自帶的拆卸格（法師 2、制魔師 1、劍士盜賊 0）
+     swap.length .. 之後        花錢買來的魔符格（上限 SIGIL_SLOTS）
+   equipped 是空陣列時回傳值與改動前的 CLASSES[G.cls].skills 完全相同，行為不變。 */
+function activeSkills(){
+  const cls = CLASSES[G.cls];
+  const eq = (G && G.sigils && G.sigils.equipped) || [];
+  const swap = cls.swap || [];
+  const out = cls.skills.slice();
+  swap.forEach((sid, i) => {                      // 拆掉的本職技換成該格裝的魔符
+    const s = eq[i];
+    if(!s) return;
+    const p = out.indexOf(sid);
+    if(p >= 0) out[p] = s;
+  });
+  for(let i = 0; i < SIGIL_SLOTS; i++) out.push(eq[swap.length + i] || null);
+  return out;
+}
+/* 空魔符格要顯示的字，三種狀態。戰鬥畫面與角色檢視共用這一支，不要各寫一份。
+   k＝這是第幾個「花錢買的」格子（0 起算）；職業自帶的拆卸格不會走到這裡。 */
+function sigilSlotHint(k){
+  if(!G.orig.done) return '未開放';
+  return k < sigilSlots() ? '未裝備' : '未購買';
+}
+function sigilSlots(){ return (G.sigils && G.sigils.slots) || 0; }   // 已購買的魔符格數，唯一入口
 /* 力量祝福＝武器攻擊乘率，唯一入口（v436）。
    改成乘率是為了跨職業一致：舊制加的是「力量」素質，而傷害公式讀的是 mainStat()，
    主素質為 int 的法師／制魔師拿到等於沒拿。乘率掛在武器攻擊上，四個職業都吃得到。

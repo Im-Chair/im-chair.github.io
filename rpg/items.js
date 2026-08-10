@@ -135,13 +135,23 @@ function rollMarketRunes(ctx){
     for(let i=0;i<rnd(1,2);i++){ const rn = makeRune(ctx.floor, ctx.cyc); if(rn) runes.push({rune:rn, sold:false}); }
   return runes;
 }
+/* 魔符盲盒：補貨時就先抽好，而且四個互不重複。
+   為什麼先抽而不是買的時候才抽：同一批四個盒子如果各自現抽，會抽到同一支。
+   玩家看不到內容，所以先抽跟後抽對他來說沒有差別，但先抽保證不撞。 */
+function rollMarketSigils(){
+  const pool = sigilPool().slice();
+  const boxes = [];
+  for(let i=0; i<SIGIL_BOXES && pool.length; i++)
+    boxes.push({sid: pool.splice(Math.floor(Math.random()*pool.length), 1)[0], sold:false});
+  return boxes;
+}
 
 function marketStock(){
   if(!G.market || G.market.run !== G.rec.runs || !G.market.tabs){
     const pool = certPool();
     const tabs = pool.map((ctx, ti)=>
       ({cyc:ctx.cyc, floor:ctx.floor, eq:ctx.eq,
-        boxes: rollMarketBoxes(ctx, ti===0), runes: rollMarketRunes(ctx)}));
+        boxes: rollMarketBoxes(ctx, ti===0), runes: rollMarketRunes(ctx), sigils: rollMarketSigils()}));
     G.market = {run:G.rec.runs, tabs, ti:0};
     save();
   }
@@ -213,7 +223,19 @@ function renderMarket(){
 
   let h = '';
   if(marketStall === 2){
-    h = '<p class="mk-empty">魔符攤尚未開張。</p>';
+    const sgs = t.sigils || [];
+    const left = sgs.filter(s=>!s.sold).length;
+    if(!sigilPool().length) h = '<p class="mk-empty">售盡。</p>';       // 20 支集滿＝這個攤位永遠沒貨了
+    else if(!left) h = '<p class="mk-empty">這一趟的盲盒都賣完了。</p>';
+    else sgs.forEach((s,i)=>{
+      if(s.sold){ h += '<div class="mk-card void">已售出</div>'; return; }
+      const poor = (G.gems||0) < SIGIL_GEM_PRICE;
+      h += `<div class="mk-card sealed${poor?' poor':''}" onclick="peekSigilBox(${i})">`
+         + `<div class="thumb"><i>?</i></div>`
+         + `<div class="bd"><div class="t1">封印的魔符</div>`
+         + `<div class="t2">內容未知</div></div>`
+         + `<div class="pr"><svg class="ic"><use href="#ic-gem"/></svg> ${SIGIL_GEM_PRICE}</div></div>`;
+    });
   } else if(marketStall === 1){
     const rs = t.runes || [];
     if(!rs.length) h = '<p class="mk-empty">這個貨源還沒有符文可買。</p>';
@@ -324,6 +346,37 @@ function buyBox(i){
       <button class="btn" onclick="closeSheet();renderMarket()">繼續看貨</button></div>`);
 }
 
+/* 魔符盲盒：比照未拆封裝備，先確認再扣款（誤觸成本 50 鑽）。 */
+function peekSigilBox(i){
+  const b = (marketTab().sigils||[])[i];
+  if(!b || b.sold) return;
+  openSheet(`<h3>封印的魔符</h3>
+    <p class="base">攤主不讓看，也不肯說是哪一支。他只保證：不會是你已經有的那些。</p>
+    <div class="row" style="margin-top:10px">
+      <button class="btn primary" onclick="closeSheet();buySigilBox(${i})">買下 ${SIGIL_GEM_PRICE}<svg class="ic"><use href="#ic-gem"/></svg></button>
+      <button class="btn" onclick="closeSheet()">再看看</button></div>`);
+}
+function buySigilBox(i){
+  const b = (marketTab().sigils||[])[i];
+  if(!b || b.sold) return;
+  if((G.gems||0) < SIGIL_GEM_PRICE){ toast('<svg class="ic"><use href="#ic-gem"/></svg> 不夠'); return; }
+  /* 盒子是補貨時抽的，中間可能已經從掉落拿到同一支——那就當場從現有池子換一支，
+     否則玩家花 50 鑽買到重複的。池子空了＝已經集滿，直接退掉不收錢。 */
+  let sid = b.sid;
+  if((G.sigils.owned||[]).includes(sid)) sid = rollSigil();
+  if(!sid){ b.sold = true; save(); renderMarket(); toast('這個盒子是空的——你已經集滿了'); return; }
+  G.gems -= SIGIL_GEM_PRICE;
+  b.sold = true;
+  grantSigil(sid);
+  save();
+  const sk = SK(sid);
+  openSheet(`<h3>開封</h3>
+    <div class="loot-card"><div class="lc-head"><svg class="ic big"><use href="#ic-sigil"/></svg><div style="font-size:16px">${sk.n}</div></div>
+    <div style="font-size:13px;color:var(--dim);margin:4px 0">${sk.d}</div></div>
+    <p class="base">裝進魔符格才會生效。</p>
+    <div class="row" style="margin-top:10px">
+      <button class="btn" onclick="closeSheet();renderMarket()">繼續看貨</button></div>`);
+}
 function runeGemPrice(rn){ return (rn.rar+1)*20; }   // 普20／精良40／稀有60／傳說80（鑽石梯度保留，消耗加倍）
 function buyRune(i){
   const t = marketTab(); const s = t && t.runes && t.runes[i];
@@ -415,6 +468,106 @@ function seenRune(rn, c){
   if(!ch.runeSeen) ch.runeSeen = {};
   if(a.v > (ch.runeSeen[a.k] || 0)) ch.runeSeen[a.k] = a.v;
 }
+/* ===== 魔符 =====
+   跟符文的差別：魔符沒有稀有度也沒有數值，20 支就是 20 支，且**不會重複**。
+   所以沒有分解、沒有售價，取得管道要做的事只有一件——從「還沒有的」裡面抽一支。 */
+function sigilPool(){                                  // 還沒擁有的魔符 id。掉落與黑市共用這一支，不要另寫
+  const own = (G.sigils && G.sigils.owned) || [];
+  return Object.keys(SIGILS).filter(k => !own.includes(k));
+}
+function rollSigil(){ const p = sigilPool(); return p.length ? pick(p) : null; }   // 抽一支還沒有的，集滿回 null
+function grantSigil(sid){                              // 入帳唯一入口（掉落回營、黑市買下都走這裡）
+  if(!sid || !SIGILS[sid]) return false;
+  if(!G.sigils.owned) G.sigils.owned = [];
+  if(G.sigils.owned.includes(sid)) return false;
+  G.sigils.owned.push(sid);
+  return true;
+}
+/* 買魔符格。價格讀 SIGIL_SLOT_COST，本源通關才開放。 */
+function sigilSlotCost(){ return SIGIL_SLOT_COST[sigilSlots()] || null; }
+function buySigilSlot(){
+  if(!G.orig.done){ toast('通關本源之後才能開啟魔符格'); return; }
+  const c = sigilSlotCost();
+  if(!c){ toast('魔符格已經買滿了'); return; }
+  if(c.gold && G.gold < c.gold){ toast('碎銀不夠'); return; }
+  if(c.gems && (G.gems||0) < c.gems){ toast('<svg class="ic"><use href="#ic-gem"/></svg> 不夠'); return; }
+  if(c.gold) G.gold -= c.gold;
+  if(c.gems) G.gems -= c.gems;
+  G.sigils.slots = sigilSlots() + 1;
+  save(); openSigils();
+  toast('魔符格開啟——深淵裡開始掉落魔符了');
+}
+/* 魔符格清單：把「職業自帶的拆卸格」與「花錢買的格」攤成同一個陣列，
+   index 直接對應 G.sigils.equipped（見 core.js activeSkills 的索引約定）。 */
+function sigilSlotRows(){
+  const cls = CLASSES[G.cls], swap = cls.swap || [], rows = [];
+  swap.forEach((sid,i)=> rows.push({i, kind:'swap', base:sid, open:true}));
+  for(let k=0;k<SIGIL_SLOTS;k++) rows.push({i:swap.length+k, kind:'buy', k, open:k < sigilSlots()});
+  return rows;
+}
+function openSigils(){
+  if(!G.sigils) G.sigils = {equipped:[], owned:[], slots:0};
+  const eq = G.sigils.equipped, rows = sigilSlotRows();
+  const usable = rows.filter(r=>r.open).length;
+  let html = '<h3>魔符</h3><p class="base">魔符裝進魔符格即成為戰鬥中的技能，跨探索永久保留。點格子可以更換。</p>';
+  html += `<div class="section-title">魔符格 ${rows.filter(r=>r.open&&eq[r.i]).length}/${usable}</div><div class="item-list">`;
+  for(const r of rows){
+    const sid = eq[r.i];
+    if(!r.open){
+      const c = SIGIL_SLOT_COST[r.k];
+      const label = !G.orig.done ? '未開放'
+        : (r.k === sigilSlots()
+            ? `購買　${c.gold ? c.gold+'<svg class="ic"><use href="#ic-gold"/></svg>' : c.gems+'<svg class="ic"><use href="#ic-gem"/></svg>'}`
+            : '未購買');
+      const act = (G.orig.done && r.k === sigilSlots()) ? ' onclick="buySigilSlot()"' : '';
+      html += `<div class="item-row" style="opacity:.7"${act}><span class="in" style="color:var(--dim)"><svg class="ic"><use href="#ic-sigil"/></svg> 魔符格</span><span class="is" style="color:${act?'var(--gold)':'var(--dim)'}">${label}</span></div>`;
+      continue;
+    }
+    if(sid){
+      html += `<div class="item-row" onclick="pickSigilFor(${r.i})"><div style="width:100%"><div style="font-weight:600"><svg class="ic"><use href="#ic-sigil"/></svg> ${SK(sid).n}<span style="float:right;color:var(--gold);font-weight:400">更換</span></div><div style="color:var(--dim);font-size:12px;line-height:1.35;margin-top:3px">${SK(sid).d}</div></div></div>`;
+    } else if(r.kind === 'swap'){
+      html += `<div class="item-row" onclick="pickSigilFor(${r.i})"><div style="width:100%"><div style="font-weight:600;color:var(--dim)">${SKILLS[r.base].n}<span style="float:right;color:var(--gold);font-weight:400">換成魔符</span></div><div style="color:var(--dim);font-size:12px;line-height:1.35;margin-top:3px">本職技能，可以拆下來讓給魔符</div></div></div>`;
+    } else {
+      html += `<div class="item-row" onclick="pickSigilFor(${r.i})"><span class="in" style="color:var(--dim)"><svg class="ic"><use href="#ic-sigil"/></svg> 空魔符格</span><span class="is" style="color:var(--gold)">裝上</span></div>`;
+    }
+  }
+  html += `</div><div class="section-title">持有魔符 ${(G.sigils.owned||[]).length}/${Object.keys(SIGILS).length}</div><div class="item-list">`;
+  if(!(G.sigils.owned||[]).length) html += '<p style="color:var(--dim);font-size:13px">還沒有魔符。開啟魔符格之後，深淵裡打得到，深淵黑市也買得到。</p>';
+  for(const sid of (G.sigils.owned||[])){
+    const on = eq.includes(sid);
+    html += `<div class="item-row" style="opacity:${on?.55:1}"><div style="width:100%"><div style="font-weight:600"><svg class="ic"><use href="#ic-sigil"/></svg> ${SK(sid).n}${on?'<span style="float:right;color:var(--dim);font-weight:400">裝備中</span>':''}</div><div style="color:var(--dim);font-size:12px;line-height:1.35;margin-top:3px">${SK(sid).d}</div></div></div>`;
+  }
+  html += '</div><button class="btn" style="margin-top:12px" onclick="closeSheet()">關閉</button>';
+  openSheet(html);
+}
+/* 點某一格 → 選要放哪一支。用「先選格子再選魔符」的單一互動，
+   因為拆卸格會頂掉一支本職技能，自動塞入會讓玩家莫名其妙少一招。 */
+function pickSigilFor(slot){
+  const eq = G.sigils.equipped, cur = eq[slot];
+  const row = sigilSlotRows().find(r=>r.i===slot);
+  const free = (G.sigils.owned||[]).filter(s=>!eq.includes(s) || s===cur);
+  let html = '<h3>選擇魔符</h3>';
+  if(row && row.kind === 'swap')
+    html += `<p class="base">這一格原本是本職技能「${SKILLS[row.base].n}」。裝上魔符就會頂掉它，取下即還原。</p>`;
+  html += '<div class="item-list">';
+  if(cur) html += `<div class="item-row" onclick="clearSigil(${slot})"><span class="in" style="color:var(--red)">取下 ${SK(cur).n}</span></div>`;
+  if(!free.length) html += '<p style="color:var(--dim);font-size:13px">沒有可裝的魔符。</p>';
+  for(const sid of free){
+    if(sid === cur) continue;
+    html += `<div class="item-row" onclick="setSigil(${slot},'${sid}')"><div style="width:100%"><div style="font-weight:600"><svg class="ic"><use href="#ic-sigil"/></svg> ${SK(sid).n}</div><div style="color:var(--dim);font-size:12px;line-height:1.35;margin-top:3px">${SK(sid).d}</div></div></div>`;
+  }
+  html += '</div><button class="btn" style="margin-top:12px" onclick="openSigils()">返回</button>';
+  openSheet(html);
+}
+function setSigil(slot, sid){
+  const eq = G.sigils.equipped;
+  const was = eq.indexOf(sid); if(was >= 0) eq[was] = null;   // 同一支不能占兩格
+  while(eq.length <= slot) eq.push(null);
+  eq[slot] = sid;
+  save(); openSigils();
+}
+function clearSigil(slot){ if(G.sigils.equipped[slot]){ G.sigils.equipped[slot] = null; save(); } openSigils(); }
+
 /* 符文分頁：跟裝備分頁同一套互動（勾選常駐、控制列在上方、沒有販售模式）。 */
 function runeVisible(){
   return (G.runeBag || []).filter(r=>stashRarity==='all' || r.rar===+stashRarity)

@@ -159,6 +159,7 @@ function startBattle(enemies, opt){
   const agiBonus = statTotal('agi') > 200 ? 2 : statTotal('agi') > 100 ? 1 : 0; // 敏捷追加行動點：101–200 → +1、>200 → +2
   const _wpts = weaponType().pts || 3;                                            // 武器每回合行動點
   B = {es:enemies, ti:0, energy:_wpts+agiBonus, maxEnergy:_wpts+agiBonus, block:0, shield:0, st:{}, turn:1, nextCrit:0,
+       apKeep:0, carryAp:0, reso:0,                    // 魔符：囤積的結轉額度／已結轉點數／共鳴的本回合加傷
        over:false, sparkN:0, rageWarned:false, charge:null, noHit:true,
        boss:enemies.some(e=>e.boss), elite:Math.max(...enemies.map(e=>e.elite||0)), duo:enemies.length>1};
   const _zrule = realmFor(R.floor) && realmFor(R.floor).rule;
@@ -203,7 +204,7 @@ function floatDmg(zone, txt, cls){
 
 function startPlayerTurn(first){
   if(B.over) return;
-  if(!first){ B.energy = B.maxEnergy; if(!sumAffix('wall')) B.block = 0; }
+  if(!first){ B.energy = B.maxEnergy + (B.carryAp||0); B.carryAp = 0; if(!sumAffix('wall')) B.block = 0; }
   B.rung = 0;   // 咒鈴：換點額度每回合重置
   if(first){ const pl = sumAffix('plate');   // 守勢祝福：每「場」戰鬥開始一次，獲得 (plate% × 最大生命) 的格擋
     if(pl){ const blk = Math.round(playerMaxHp()*pl/100); B.block += blk; if(blk) log(`守勢：獲得 ${blk} 格擋。`,'sys'); } }
@@ -244,29 +245,66 @@ function startPlayerTurn(first){
   renderBattle();
 }
 
+/* ── 敵人區塊：組成沒變就不重建 DOM ──
+   v446 之前這裡是 zone.innerHTML 整塊重蓋。問題出在它會把 <img> 一起砍掉重建，
+   新元素即使檔案早就在快取裡，也得重新解碼與光柵化，中間必定空一幀。
+   中毒／燃燒時還疊上 .e-block.poisoned .enemy-icon>img 的四段濾鏡鏈
+   （grayscale→sepia→hue-rotate→saturate），整層要從零光柵化，那一幀特別明顯——
+   而 DOT 每跳一次傷害就重繪一次，於是變成「中毒期間每回合閃一下」。
+   順帶修掉兩個同源症狀：
+     - floatDmg 把傷害數字 appendChild 到 #ez-i 底下，下一次重繪會把還在飛的數字吃掉
+     - 受擊抖動 .enemy-icon.hit（.3s）在動畫跑完前遇到重繪就中斷
+   簽章只需涵蓋「換了一批敵人」：B.es 在一場戰鬥中不會增減（全域無 push/splice/重指派），
+   圖也不會換（imgKey 在 run.js 生怪當下就決定好了）。 */
+function enemyZoneSig(){
+  return B.es.map(e => (e.imgKey || e.key) + (e.frame ? '#f' : '')).join('|') + (B.duo ? '|duo' : '');
+}
+function drawEnemyZone(){
+  const zone = $('enemy-zone');
+  const sig = enemyZoneSig();
+  if(zone.dataset.sig !== sig){          // 只有換了一批敵人才重建骨架
+    let html = `<div class="e-wrap${B.duo?' duo':''}">`;
+    B.es.forEach((e,i)=>{
+      html += `<div class="e-block" id="ez-${i}" onclick="selectTarget(${i})">
+        <div class="hpbar e-hp"><div class="fill" id="ehp-${i}"></div>
+          <div class="txt" id="ehptxt-${i}"></div></div>
+        <div class="enemy-icon" id="eicon-${i}">${enemyIcon(e)}</div>
+        <div class="enemy-name" id="ename-${i}"></div>
+        <div class="e-row">
+          <div class="e-debuffs" id="edeb-${i}"></div>
+          <div class="e-states" id="est-${i}"></div>
+        </div>
+        <div class="e-intent" id="eint-${i}"></div>
+      </div>`;
+    });
+    zone.innerHTML = html + '</div>';
+    zone.dataset.sig = sig;
+  }
+  B.es.forEach((e,i)=>{
+    const dead = e.hp<=0;
+    const [ii,it] = dead? ['<svg class="ic"><use href="#ic-skull"/></svg>','已倒下'] : intentText(e);
+    const bl = $('ez-'+i);
+    // classList.toggle 的第二參數在舊 WebView 不支援（同 renderCamp 的處理），一律 add/remove
+    const setc = (c,on)=>{ if(on) bl.classList.add(c); else bl.classList.remove(c); };
+    setc('sel',      B.duo && i===B.ti && !dead);
+    setc('dead',     dead);
+    setc('boss',     !!e.boss);
+    setc('poisoned', !dead && !!e.st.poison);
+    setc('burning',  !dead && !!e.st.burn);
+    $('ehp-'+i).style.width = Math.max(0, e.hp/e.maxhp*100)+'%';
+    $('ehptxt-'+i).innerHTML = `${Math.max(0,e.hp)} / ${e.maxhp}${e.block?`（<svg class="ic"><use href="#ic-shield"/></svg>${e.block}）`:''}`;
+    $('ename-'+i).innerHTML = e.boss?`<span class="boss"><svg class="ic"><use href="#ic-skull"/></svg> ${e.n}</span>`: e.elite?`<span class="elite">${e.n}</span>`: e.n;
+    $('edeb-'+i).innerHTML  = statusHtml(e.st, 0, e);
+    $('est-'+i).innerHTML   = traitHtml(e);
+    $('eint-'+i).innerHTML  = `<span class="intent"><span class="ii">${ii}</span>${dead?it:'下一步：'+it}</span>`;
+  });
+}
+
 function renderBattle(){
   $('b-floor').textContent = R.floor;
   ensureTarget();
   $('b-turn').textContent = '第 ' + (B.turn || 1) + ' 回合';
-  const zone = $('enemy-zone');
-  let html = `<div class="e-wrap${B.duo?' duo':''}">`;
-  B.es.forEach((e,i)=>{
-    const dead = e.hp<=0;
-    const [ii,it] = dead? ['<svg class="ic"><use href="#ic-skull"/></svg>','已倒下'] : intentText(e);
-    html += `<div class="e-block${(B.duo&&i===B.ti&&!dead)?' sel':''}${dead?' dead':''}${e.boss?' boss':''}${!dead&&e.st.poison?' poisoned':''}${!dead&&e.st.burn?' burning':''}" id="ez-${i}" onclick="selectTarget(${i})">
-      <div class="hpbar e-hp"><div class="fill" style="width:${Math.max(0,e.hp/e.maxhp*100)}%"></div>
-        <div class="txt">${Math.max(0,e.hp)} / ${e.maxhp}${e.block?`（<svg class="ic"><use href="#ic-shield"/></svg>${e.block}）`:''}</div></div>
-      <div class="enemy-icon" id="eicon-${i}">${enemyIcon(e)}</div>
-      <div class="enemy-name">${e.boss?`<span class="boss"><svg class="ic"><use href="#ic-skull"/></svg> ${e.n}</span>`: e.elite?`<span class="elite">${e.n}</span>`: e.n}</div>
-      <div class="e-row">
-        <div class="e-debuffs">${statusHtml(e.st, 0, e)}</div>
-        <div class="e-states">${traitHtml(e)}</div>
-      </div>
-      <div class="e-intent"><span class="intent"><span class="ii">${ii}</span>${dead?it:'下一步：'+it}</span></div>
-    </div>`;
-  });
-  html += '</div>';
-  zone.innerHTML = html;
+  drawEnemyZone();
   const mhp = playerMaxHp();
   $('p-hpfill').style.width = Math.max(0, R.hp/mhp*100)+'%';
   $('p-hptxt').textContent = `${R.hp} / ${mhp}`;
@@ -295,7 +333,17 @@ function renderBattle(){
   // 法力改成第二列的條、護盾改成第三列的固定欄位，這裡只留行動點與咒鈴。
   en.innerHTML = `<span style="color:var(--gold);font-size:13px"><svg class="ic"><use href="#ic-energy"/></svg> ${fmtPts(B.energy)}/${fmtPts(B.maxEnergy)}</span>` + bellHtml;
   const grid = $('skill-grid'); grid.innerHTML='';
-  for(const sid of CLASSES[G.cls].skills){
+  // 六格固定：activeSkills() 已把拆卸與魔符結算進去。只有末尾那 SIGIL_SLOTS 格會是 null
+  // （拆卸格沒裝魔符時本職技會留著），佔位鈕維持版面高度。
+  const _acts = activeSkills(), _buyFrom = _acts.length - SIGIL_SLOTS;
+  _acts.forEach((sid, idx) => {
+    if(!sid){
+      const b = document.createElement('button');
+      b.className = 'skill-btn empty'; b.disabled = true;
+      b.innerHTML = `<div class="sn"><svg class="ic"><use href="#ic-sigil"/></svg> 魔符</div><div class="sd">${sigilSlotHint(idx - _buyFrom)}</div>`;
+      grid.appendChild(b);
+      return;
+    }
     const sk = SK(sid);
     const cost = skillCostU(sk), mc = skillManaC(sk);
     const charging = B.charge && B.charge.sid === sid;
@@ -304,23 +352,17 @@ function renderBattle(){
     const noEnergy = (cost > B.energy && !chargeable) || (chargeable && B.energy <= 0); // 點數不足不可用；可蓄招也需 >0 點才能起蓄
     const b = document.createElement('button'); b.className = 'skill-btn';
     b.disabled = B.over || !!B.charge || noMana || noEnergy;
-    b.innerHTML = `<div class="sn">${sk.n}${sk.upN?'⁺':''}${charging?'（蓄力中 '+fmtPts(B.charge.paid)+'/'+fmtPts(cost)+'）':''}</div>
+    b.innerHTML = `<div class="sn">${sk.sigil?'<svg class="ic"><use href="#ic-sigil"/></svg> ':''}${sk.n}${sk.upN?'⁺':''}${charging?'（蓄力中 '+fmtPts(B.charge.paid)+'/'+fmtPts(cost)+'）':''}</div>
       <div class="sd">${skillDesc(sid)}</div>
       <span class="sc"><svg class="ic"><use href="#ic-energy"/></svg>${fmtPts(cost)}${mc?'｜<svg class="ic"><use href="#ic-mana"/></svg>'+mc:''}${chargeable&&!B.charge?'（蓄）':''}</span>`;
     b.onclick = ()=>useSkill(sid);
     grid.appendChild(b);
-  }
-  // 魔符槽佔位：見 data.js SIGIL_SLOTS。現在就佔住格子，系統上線時版面不會位移。
-  for(let s = 0; s < SIGIL_SLOTS; s++){
-    const b = document.createElement('button');
-    b.className = 'skill-btn empty'; b.disabled = true;
-    b.innerHTML = '<div class="sn">魔符</div><div class="sd">未設定</div>';
-    grid.appendChild(b);
-  }
+  });
   $('btn-end').disabled = B.over || !!B.charge;
   // 行動點耗盡、無招可出 → 自動結束回合（蓄力中或已結束不觸發）
   if(!B.over && !B.charge && !B._autoEnding){
-    const canAct = CLASSES[G.cls].skills.some(sid=>{
+    const canAct = activeSkills().some(sid=>{
+      if(!sid) return false;
       const sk = SK(sid), c = skillCostU(sk), mc = skillManaC(sk);
       if(c > B.maxEnergy) return B.energy > 0;          // 斧大招：有點數就能起蓄
       return c <= B.energy && (mc===0 || (R.mana||0) >= mc);
@@ -332,11 +374,50 @@ function renderBattle(){
   }
 }
 
+/* 未升級時的顯示名。精進畫面要講「A 蛻變為 B」，所以不能用 SK()（那會拿到升級後的）。 */
+function skName(sid){
+  const sg = SIGILS[sid];
+  if(sg) return sg.base ? SKILLS[sg.base].n : sg.n;
+  return SKILLS[sid].n;
+}
+/* 某個 id 的升級分支表。魔符走 SIGIL_UPS；複製版沒有自己的分支，沿用本職技能那一份。
+   回 null＝這支不能升級（疾行、囤積），卷軸候選要據此過濾，否則會取到 undefined。 */
+function upsOf(sid){
+  if(SIGIL_UPS[sid]) return SIGIL_UPS[sid];
+  const sg = SIGILS[sid];
+  if(sg) return sg.base ? (SKILL_UPS[sg.base] || null) : null;
+  return SKILL_UPS[sid] || null;
+}
+/* 殘卷的候選清單，唯一入口。條件三個都要滿足：現在真的能用、這趟還沒精進過、而且有分支可選。
+   最後那個條件是為了疾行與囤積——它們刻意不做升級（見 data.js SIGIL_UPS 的註解），
+   漏掉的話 upsOf 回 null，殘卷畫面會炸在 ups.a 上。 */
+function upgradableSkills(){
+  return activeSkills().filter(sid => sid && !(R && R.skillUps && R.skillUps[sid]) && upsOf(sid));
+}
+/* 技能／魔符的唯一解析入口。
+   複製版魔符不複製數值：從 base 的 SKILLS 讀出來，倍率與各係數乘 SIGIL_PEN，再套 ov。
+   所以之後調本職技能的 mult，魔符版會自動跟著動（規則二）。 */
 function SK(sid){
-  const base = SKILLS[sid];
-  const sk = Object.assign({}, base);
+  const sg = SIGILS[sid];
+  let sk;
+  if(sg && sg.base){
+    sk = Object.assign({}, SKILLS[sg.base]);
+    if(sk.mult !== undefined)       sk.mult       = +(sk.mult * SIGIL_PEN).toFixed(2);
+    if(sk.blockCoef !== undefined)  sk.blockCoef  = +(sk.blockCoef * SIGIL_PEN).toFixed(2);
+    if(sk.hpCoef !== undefined)     sk.hpCoef     = +(sk.hpCoef * SIGIL_PEN).toFixed(3);
+    if(sk.shieldCoef !== undefined) sk.shieldCoef = +(sk.shieldCoef * SIGIL_PEN).toFixed(2);
+    if(sk.manaCoef !== undefined)   sk.manaCoef   = +(sk.manaCoef * SIGIL_PEN).toFixed(3);
+    Object.assign(sk, sg.ov || {});
+    sk.sigil = 1;
+  } else if(sg){
+    sk = Object.assign({}, sg);
+    sk.sigil = 1;
+  } else {
+    sk = Object.assign({}, SKILLS[sid]);
+  }
+  const ups = upsOf(sid);
   const up = R && R.skillUps && R.skillUps[sid];
-  if(up){ SKILL_UPS[sid][up].mod(sk); sk.upN = SKILL_UPS[sid][up].n; }
+  if(up && ups && ups[up]){ ups[up].mod(sk); sk.upN = ups[up].n; }
   return sk;
 }
 function skillCostU(sk){ // 行動點：普攻1／中2／大3（輔招吃 fixed），不再乘武器
@@ -376,16 +457,37 @@ function skillDesc(sid){
   }
   if(sk.blockCoef !== undefined) parts.push(`格擋 ${Math.round(playerMaxHp()*(sk.hpCoef||0) + statTotal('vit')*sk.blockCoef)}`);
   if(sk.shieldCoef !== undefined) parts.push(`護盾 ${Math.round(playerMaxMana()*(sk.manaCoef||0) + statTotal('int')*sk.shieldCoef)}`);
-  if(sk.applyOnly){
-    const nm = {poison:'毒',burn:'燃',weak:'虛弱',vuln:'易傷'};
-    parts.push(Object.entries(sk.applyOnly).map(([k,v])=>`${nm[k]}${v}層`).join('+') + (sk.aoe?'（全體）':''));
-  }
-  if(sk.apply && sk.mult){
-    const nm = {poison:'毒',burn:'燃',weak:'虛弱',vuln:'易傷'};
-    parts.push('附'+Object.entries(sk.apply).map(([k,v])=>`${nm[k]}${v}`).join('、'));
-  }
+  const NM = {poison:'毒',burn:'燃',weak:'虛弱',vuln:'易傷',stun:'暈眩',wound:'重傷'};   // 靜滯會上 stun，漏了會顯示 undefined
+  if(sk.applyOnly)
+    parts.push(Object.entries(sk.applyOnly).map(([k,v])=>`${NM[k]}${v}層`).join('+') + (sk.aoe?'（全體）':''));
+  if(sk.apply && sk.mult)
+    parts.push('附'+Object.entries(sk.apply).map(([k,v])=>`${NM[k]}${v}`).join('、'));
   if(sk.drain) parts.push(`${Math.round(sk.drain*100)}%回血`);
   if(sk.execLine) parts.push(`<${Math.round(sk.execLine*100)}%血 ×${sk.execMult||(sk.mult*1.5).toFixed(1)}`);
+  /* 魔符專用：跟上面的格擋／護盾一樣，一律算成當下的實際數字，不要讓玩家自己換算百分比。 */
+  if(sk.healPct) parts.push(`回血 ${Math.round(playerMaxHp()*sk.healPct)}`);
+  if(sk.cleanse) parts.push('清虛弱易傷重傷');
+  if(sk.apGain)  parts.push(`+${sk.apGain} 行動點`);
+  if(sk.apKeep)  parts.push(`保留至多 ${sk.apKeep} 點`);
+  if(sk.hpCostPct){
+    const pay = Math.round(playerMaxHp()*sk.hpCostPct);
+    parts.push(`付 ${pay} 血換 ${Math.round(playerMaxMana()*(sk.manaGainPct||0))} 魔`);
+    if(sk.bloodBlock) parts.push(`格擋 +${pay}`);
+  }
+  if(sk.grantCrit) parts.push(`必定爆擊 ${sk.grantCrit} 次${sk.markLine?`（限 <${Math.round(sk.markLine*100)}% 血）`:''}`);
+  if(sk.lostAmp){
+    const ratio = sk.invRatio ? (R ? R.hp/playerMaxHp() : 1) : (R ? 1 - R.hp/playerMaxHp() : 0);
+    parts.push(`本回合傷害 +${Math.round(Math.min(sk.lostCap, Math.max(0,ratio)*100*sk.lostAmp)*100)}%`);
+  }
+  if(sk.manaDrain) parts.push(`${Math.round(sk.manaDrain*100)}% 傷害轉魔力${sk.alsoHeal?'並回血':''}`);
+  if(sk.toppleK && B) parts.push(`傾覆 ${Math.max(1, Math.round(((B.block||0)+(B.shield||0))*sk.toppleK))} 傷${sk.aoe?'（全體）':''}`);
+  if(sk.detonate && B && tgt()){
+    const e = tgt();
+    let t = 0;
+    if(e.st.poison) t += dotPreview(e,'poison', Math.ceil(e.maxhp*dotPct('poison',e.st.poison)*dotAmp('poison')*sk.detonate));
+    if(e.st.burn)   t += dotPreview(e,'burn',   Math.ceil(e.maxhp*dotPct('burn',  e.st.burn)  *dotAmp('burn')  *sk.detonate));
+    parts.push(`引爆 ${t} 傷${sk.keepDot?'（不清層）':''}`);
+  }
   return parts.join('｜') || sk.d;
 }
 
@@ -498,12 +600,19 @@ function dotAmp(kind){   // 毒/燃跳傷加成（劇毒/烈焰詞綴、蝕魂�
     ? (sumAffix('vform') ? 1.5 : 1) * (1 + sumAffix('ppyre')/100)
     : (1 + sumAffix('bpyre')/100);
 }
-function dotHitEnemy(e, kind, raw){   // 敵方 DOT 跳傷唯一入口：額度內結算（含催毒），超額部分不造成傷害。禁止在別處另寫閥
+/* 額度內「會打出多少」，但不佔用額度。純顯示用（技能按鈕的預估值）。
+   拆出來是因為 skillDesc 每次重繪都會問一次——直接呼叫 dotHitEnemy 會把首領的承傷額度
+   在渲染階段就吃光，玩家還沒出手傷害就沒了。要結算一律用 dotHitEnemy。 */
+function dotPreview(e, kind, raw){
   const rate = dotCapRate(e);
   if(rate === Infinity) return raw;
-  if(!e._dotUsed) e._dotUsed = {};
   const cap = Math.round(e.maxhp * rate * dotAmp(kind));   // A案：閥吃加成——劇毒/烈焰/蝕魂抬高首領承傷天花板
-  const d = Math.max(0, Math.min(raw, cap - (e._dotUsed[kind]||0)));
+  return Math.max(0, Math.min(raw, cap - ((e._dotUsed && e._dotUsed[kind]) || 0)));
+}
+function dotHitEnemy(e, kind, raw){   // 敵方 DOT 跳傷唯一入口：額度內結算（含催毒），超額部分不造成傷害。禁止在別處另寫閥
+  const d = dotPreview(e, kind, raw);
+  if(dotCapRate(e) === Infinity) return d;
+  if(!e._dotUsed) e._dotUsed = {};
   e._dotUsed[kind] = (e._dotUsed[kind]||0) + d;
   return d;
 }
@@ -523,15 +632,31 @@ function calcPlayerDmg(mult, sk){
   const manaPart = (sk && sk.magic) ? skillManaC(sk) * MANA_DMG_K : 0;   // 法術：消耗魔力轉戰力，讓魔力投資有回報
   let d = (wAtk + mainStat() + manaPart) * weaponType().coef * mult;
   if(sumAffix('fury')) d = Math.round(d*1.4);
+  if(B && B.reso) d = Math.round(d*(1+B.reso));   // 共鳴：本回合加傷（endTurn 清掉）
   if(B && B.potRage) d = Math.round(d*1.5);
   if(B && B.st.weak) d = Math.round(d*0.75);
   if(B && tgt().st.vuln) d = Math.round(d*1.5);
   return Math.max(1, Math.round(d));
 }
 
+/* 出招前的擋下條件，回傳提示字串＝不能用。在扣行動點與魔力「之前」檢查，
+   否則玩家會付了代價卻什麼也沒發生。魔符專用，本職技能不會走到任何一條。 */
+function skillBlocked(sk){
+  if(sk.hpCostPct){                                    // 換血：扣的是生命上限的固定比例，血不夠會直接死
+    const need = Math.round(playerMaxHp() * sk.hpCostPct);
+    if(R.hp <= need) return `生命不足（需要高於 ${need}）`;
+  }
+  if(sk.markLine && tgt() && tgt().hp > tgt().maxhp * sk.markLine)
+    return `目標生命高於 ${Math.round(sk.markLine*100)}%`;
+  if(sk.toppleK && (B.block||0) + (B.shield||0) <= 0) return '沒有格擋或護盾可以消耗';
+  if(sk.detonate && tgt() && !tgt().st.poison && !tgt().st.burn) return '目標身上沒有中毒或燃燒';
+  return null;
+}
 function useSkill(sid){
   if(B.over || B.charge) return;
   const sk = SK(sid);
+  const blocked = skillBlocked(sk);
+  if(blocked){ toast(blocked); return; }
   const cost = skillCostU(sk), mc = skillManaC(sk);
   if(mc > 0 && (R.mana||0) < mc){ toast('法力不足'); return; }
   if(cost > B.maxEnergy){
@@ -567,6 +692,73 @@ function castSkill(sk){
   if(sk.applyOnly){
     const targets = sk.aoe ? aliveEs() : [tgt()];
     for(const e of targets) applyStatus(e.st, sk.applyOnly, sk.n + (sk.aoe?'（'+e.n+'）':''));
+  }
+  /* 魔符專用的輔助效果。擋下條件已在 skillBlocked() 檢查過，這裡不再重複判斷。 */
+  if(sk.healPct){
+    const h = healPlayer(Math.round(playerMaxHp() * sk.healPct));
+    log(`${sk.n}：回復 ${h} 生命${B.st.wound?'（重傷減半）':''}。`,'heal');
+    if(h>0) floatDmg('player-zone','+'+h,'heal');
+  }
+  if(sk.cleanse){                                   // 滌合：清自身減益。中毒燃燒不清，那是淨化藥水的地盤
+    const cleared = ['weak','vuln','wound'].filter(k=>B.st[k]);
+    for(const k of cleared) delete B.st[k];
+    log(cleared.length ? `${sk.n}：清除了 ${cleared.length} 種負面狀態。` : `${sk.n}：身上沒有可清除的負面狀態。`,'sys');
+  }
+  if(sk.apGain){
+    B.energy += sk.apGain;
+    log(`${sk.n}：獲得 ${sk.apGain} 點行動點。`,'sys');
+  }
+  if(sk.apKeep){                                    // 囤積：只登記額度，實際結轉在 endTurn 算剩餘
+    B.apKeep = sk.apKeep;
+    log(`${sk.n}：本回合最多保留 ${sk.apKeep} 點行動點到下回合。`,'sys');
+  }
+  if(sk.hpCostPct){                                 // 換血：自傷不走 damagePlayer，避免觸發荊棘、不屈、脆弱這些「被打」才該有的東西
+    const pay = Math.round(playerMaxHp() * sk.hpCostPct);
+    R.hp -= pay; floatDmg('player-zone','-'+pay,'');
+    const gain = Math.round(playerMaxMana() * (sk.manaGainPct||0));
+    R.mana = Math.min(playerMaxMana(), (R.mana||0) + gain);
+    log(`${sk.n}：付出 ${pay} 生命，回復 ${gain} 魔力。`,'sys');
+    if(sk.bloodBlock){ B.block += pay; log(`血鎧：獲得 ${pay} 格擋。`,'sys'); }
+  }
+  if(sk.grantCrit){
+    B.nextCrit = (B.nextCrit||0) + sk.grantCrit;
+    log(`${sk.n}：接下來 ${sk.grantCrit} 次攻擊必定爆擊。`,'sys');
+  }
+  if(sk.lostAmp){                                   // 共鳴：本回合加傷。invRatio＝逆鳴，改看剩餘而非已損失
+    const ratio = sk.invRatio ? (R.hp / playerMaxHp()) : (1 - R.hp / playerMaxHp());
+    B.reso = Math.min(sk.lostCap, Math.max(0, ratio) * 100 * sk.lostAmp);
+    log(`${sk.n}：本回合傷害 +${Math.round(B.reso*100)}%。`,'sys');
+  }
+  if(sk.toppleK){                                   // 傾覆：格擋與護盾換一次直傷，不吃爆擊也不被敵人格擋（它本來就是轉換）
+    const pool = (B.block||0) + (B.shield||0);
+    B.block = 0; B.shield = 0; B.spike = 0; B.reflect = 0;
+    const dmg = Math.max(1, Math.round(pool * sk.toppleK));
+    for(const e of (sk.aoe ? aliveEs() : [tgt()])){
+      e.hp -= dmg;
+      floatDmg('ez-'+B.es.indexOf(e), '-'+dmg, '');
+      log(`${sk.n}：${e.n} 受到 ${dmg} 傷害。`,'dmg');
+      if(e.hp<=0) onEnemySlain(e);
+    }
+  }
+  if(sk.detonate){                                  // 燃盡：把毒燃層立刻結算成傷害。走 dotHitEnemy，首領承傷閥自動生效
+    for(const e of (sk.aoe ? aliveEs() : [tgt()])){
+      let total = 0;
+      if(e.st.poison){
+        const raw = Math.ceil(e.maxhp * dotPct('poison', e.st.poison) * dotAmp('poison') * sk.detonate);
+        total += dotHitEnemy(e, 'poison', raw);
+      }
+      if(e.st.burn){
+        const raw = Math.ceil(e.maxhp * dotPct('burn', e.st.burn) * dotAmp('burn') * sk.detonate);
+        total += dotHitEnemy(e, 'burn', raw);
+      }
+      if(!sk.keepDot){ delete e.st.poison; delete e.st.burn; }   // 殘燼保留層數，代價是傷害只有 0.7
+      if(total > 0){
+        e.hp -= total;
+        floatDmg('ez-'+B.es.indexOf(e), '-'+total, '');
+        log(`${sk.n}：${e.n} 的毒與燃一次爆開，造成 ${total} 傷害。`,'dmg');
+        if(e.hp<=0) onEnemySlain(e);
+      }
+    }
   }
   /* 攻擊類 */
   if(sk.mult){
@@ -673,6 +865,12 @@ function dealToEnemy(mult, sk, f){
       const g = Math.round(playerMaxMana()*f.manaGain);
       R.mana = Math.min(playerMaxMana(), (R.mana||0)+g);
     }
+    if(f && f.manaDrain && playerMaxMana()>0){   // 奪魔：回魔量看實際打出的傷害，不是最大魔力的固定%
+      const g = Math.max(1, Math.round(d * f.manaDrain));
+      R.mana = Math.min(playerMaxMana(), (R.mana||0)+g);
+      log(`${sk.n}：抽取 ${g} 魔力。`,'sys');
+      if(f.alsoHeal){ const h = leechHeal(g); if(h>0) log(`奪髓：回復 ${h} 生命。`,'heal'); }
+    }
     if(f && f.weakChance && Math.random() < f.weakChance) applyStatus(e.st, {weak:1}, sk.n);
     if(f && f.vulnChance && Math.random() < f.vulnChance) applyStatus(e.st, {vuln:1}, sk.n);
     if(f && f.applyAll) applyStatus(e.st, {weak:1,vuln:1,poison:1,burn:1}, sk.n);   // 輪迴咒：命中附加所有負面（本次不吃自身加成，下次起才滿）
@@ -722,6 +920,11 @@ function onEnemySlain(e){
 
 function endTurn(){
   if(B.over) return;
+  // 囤積：把沒用完的行動點結轉到下回合（上限 apKeep），額度只在登記的那一回合有效。
+  B.carryAp = B.apKeep ? Math.min(B.apKeep, Math.max(0, Math.floor(B.energy))) : 0;
+  if(B.carryAp) log(`囤積：${fmtPts(B.carryAp)} 點行動點結轉到下回合。`,'sys');
+  B.apKeep = 0;
+  B.reso = 0;                                   // 共鳴只吃本回合
   for(const e of aliveEs()) tickBurn(e, 'ez-'+B.es.indexOf(e), e.n);
   if(aliveEs().length===0){ winBattle(); return; }
   enemyTurn();
@@ -922,6 +1125,17 @@ function winBattle(){
   if(R.cycle >= 4 && R.floor > 100) runeCh += Math.floor((R.floor-100)/50) * 0.01;   // 無限 100 層後每 50 層 +1% 符文掉率
   if(Math.random() < runeCh){ const rn = makeRune(R.floor, R.cycle);
     if(rn){ R.runesPending = R.runesPending||[]; R.runesPending.push(rn); toast('<svg class="ic"><use href="#ic-star"/></svg> 拾獲符文：'+rn.name); } }   // 未達里程碑 makeRune 回 null＝不掉（回營才入手）
+  /* 魔符掉落：買過格子才開（沒買＝玩家沒選這個系統，不該被塞東西），本源不掉。
+     跟符文一樣先 pending，成功回營才入帳——死掉就沒有。 */
+  if(sigilSlots() > 0 && R.cycle >= 1 && Math.random() < (B.boss ? SIGIL_DROP.boss : SIGIL_DROP.mob)){
+    const already = ((G.sigils.owned)||[]).concat(R.sigilsPending||[]);
+    const p = Object.keys(SIGILS).filter(k=>!already.includes(k));
+    if(p.length){
+      const sid = pick(p);
+      R.sigilsPending = R.sigilsPending||[]; R.sigilsPending.push(sid);
+      toast('<svg class="ic"><use href="#ic-sigil"/></svg> 拾獲魔符：'+SK(sid).n);
+    }
+  }
   setTimeout(()=>{
     showLoot(drops, gold, B.boss?'<svg class="ic"><use href="#ic-star"/></svg>':'<svg class="ic"><use href="#ic-sword"/></svg>', isFinal?'你打穿了深淵的心臟':(B.boss?'首領倒下了':'戰鬥勝利'),
       `獲得 ${gold} 碎銀` + (potionDrop? `，撿到 ${uiIcon(POTIONS[potionDrop].img,'pi-img',POTIONS[potionDrop].i)}${POTIONS[potionDrop].n}`:'') + (potionOverflow? `，藥水袋滿——折成 ${potionOverflow} 碎銀`:'') + (matDrop? `，拾獲 ${MATS[matDrop].i}${MATS[matDrop].n} ×1`:''), mendHeal? `（急救回復 ${mendHeal} 血）`:'');

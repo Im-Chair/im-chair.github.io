@@ -234,6 +234,13 @@ function openRunStats(){
   }
   if(chemRows.length) html += '<div class="section-title"><svg class="ic"><use href="#ic-flask"/></svg> 詞綴反應</div>' + chemRows.join('');
   html += `<button class="btn" style="margin-top:10px" onclick="openRunes()"><svg class="ic"><use href="#ic-star"/></svg> 符文槽 ${(G.runes||[]).filter(Boolean).length}/3${(G.runeBag||[]).length?'　（持有 '+G.runeBag.length+'）':''}</button>`;
+  // 魔符槽：格數＝職業自帶的拆卸格 ＋ 已購買的格（見 items.js sigilSlotRows）。買格子的入口也在裡面。
+  {
+    const _sg = G.sigils || {equipped:[],owned:[],slots:0};
+    const _open = ((CLASSES[G.cls].swap||[]).length) + sigilSlots();
+    const _on = (_sg.equipped||[]).filter(Boolean).length;
+    html += `<button class="btn" style="margin-top:8px" onclick="openSigils()"><svg class="ic"><use href="#ic-sigil"/></svg> 魔符槽 ${_on}/${_open}${(_sg.owned||[]).length?'　（持有 '+_sg.owned.length+'）':''}</button>`;
+  }
   html += '<div class="section-title">身上裝備</div>';
   for(const sk of ['w','a','t']){
     const it = G.equip[sk];
@@ -298,5 +305,9 @@ function openBagItem(id, back){
   load();
   $('btn-wipe').style.display = (ACC.chars.length>0)? 'block':'none';
   showScreen('s-title');
+  // v446：預載提前到啟動。以前掛在 renderCamp 最後，等於「進了營地才開始抓」——
+  // 選職業畫面在那之前，怎麼樣都來不及。preloadArt 自己有 _preloadDone 擋重入，
+  // 也整段包 try，放在 showScreen 之後不會擋到任何必要流程
+  preloadArt();
 })();
 

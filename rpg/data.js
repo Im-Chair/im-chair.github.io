@@ -2,27 +2,30 @@
 // ============ data.js — 純資料層：職業/技能/敵人/Boss/詞綴/藥水/域/事件常數/平衡參數。
 // 調平衡改這裡：RATE_CAP 三率上限、STAT_DIV 換算分段、CURVE 供需曲線、DOT 毒燃參數、CYC_MULT 輪迴強度 ============
 
+/* swap＝這個職業「可以拆下來換成魔符」的固定技能。
+   拆卸格不用花錢買，是職業自帶的差異：法師 2、制魔師 1、劍士與盜賊 0。
+   買滿兩個魔符格之後，實際能放魔符的格數＝swap.length + SIGIL_SLOTS。 */
 const CLASSES = {
   sword:{name:'劍士', icon:'🛡️', img:'cls_sword', mainStat:'str',
     baseStats:{str:40, int:0, vit:30, agi:0, spi:10},
     baseRates:{dodge:0, crit:5, def:8},
     desc:'高物攻、高防禦。站著換血，把仗打成自己的節奏。',
-    skills:['slash','guard','sunder','execute']},
+    skills:['slash','guard','sunder','execute'], swap:[]},
   assassin:{name:'盜賊', icon:'🗡️', img:'cls_assassin', mainStat:'str',
     baseStats:{str:30, int:0, vit:5, agi:40, spi:15},
     baseRates:{dodge:15, crit:12, def:0},
     desc:'高敏捷、多段觸發。中毒噬敵、以毒回血，死在千百道小傷口裡。',
-    skills:['stab','venom','shadow','garrote']},
+    skills:['stab','venom','shadow','garrote'], swap:[]},
   white:{name:'法師', icon:'🔮', img:'cls_white', mainStat:'int',
     baseStats:{str:0, int:40, vit:0, agi:0, spi:20},
     baseRates:{dodge:3, crit:5, def:0},
     desc:'高魔攻、低血量。法力傾瀉的一輪爆發。',
-    skills:['smite','shield','fireball','oblivion']},
+    skills:['smite','shield','fireball','oblivion'], swap:['shield','fireball']},
   dark:{name:'制魔師', icon:'🕯️', img:'cls_dark', mainStat:'int',
     baseStats:{str:0, int:30, vit:15, agi:0, spi:40},
     baseRates:{dodge:3, crit:5, def:4},
     desc:'增益與詛咒的操盤手。越拖越強的收割者。',
-    skills:['wstrike','hex','siphon','calam']},
+    skills:['wstrike','hex','siphon','calam'], swap:['siphon']},
 };
 /* 全職通用底值：一切從素質長出，這些是不吃素質的硬底 */
 const BASE_HP = 50;    // 基礎生命（再加 體力×2）
@@ -104,6 +107,74 @@ const SKILL_UPS = {
   calam:  {a:{n:'絕望', d:'每種負面 +50%→+80%、魔力 →55%', mod:s=>{s.debuffAmp=0.8; s.manaPct=55;}},
            b:{n:'輪迴咒', d:'倍率 →3.0、每種負面 →+40%、命中附加所有負面、魔力 →70%', mod:s=>{s.mult=3.0; s.debuffAmp=0.4; s.manaPct=70; s.applyAll=true;}}},
 };
+
+/* ===================== 魔符 =====================
+   跨職業共用池，20 支。放進魔符槽即成為戰鬥中的第 5、6 格技能。
+
+   兩種來源，寫法刻意不同：
+   1) 複製版 8 支 —— 只寫 base 指向既有 SKILLS，數值不複製。削弱在 SK() 解析時才乘上
+      SIGIL_PEN，所以之後調本職技能的倍率，魔符版會自動跟著動（規則二：單一來源）。
+      同一支若要蓋掉某個欄位（例如本職不耗魔、魔符版要收魔力），寫在 ov 裡。
+   2) 新增 12 支 —— 沒有本職對應，直接寫完整定義。
+
+   為什麼複製版要削弱：本職技能是職業識別，魔符版必須明顯較弱，否則配裝會抹平職業差異。 */
+const SIGIL_PEN = 0.8;   // 複製版的倍率／係數削弱率。只作用在 mult 與各 Coef，層數類不乘（改用 ov 加收魔力）
+
+const SIGILS = {
+  /* —— 複製版 8 支：base 指既有技能，ov 只寫要蓋掉的欄位 —— */
+  /* guard 與 shield 的 d 必須覆寫：本職那份把係數寫死在字串裡，乘 SIGIL_PEN 之後
+     數字就對不上了，照抄會變成給玩家看的錯誤數值。下面兩行＝base 係數 × 0.8。 */
+  sg_guard:  {base:'guard',    ov:{manaPct:12, d:'獲得格擋（生命×0.04＋體力×0.4）'}},   // 本職不耗魔，魔符版加收
+  sg_sunder: {base:'sunder',   ov:{manaPct:15}},
+  sg_venom:  {base:'venom',    ov:{manaPct:12}},   // 效果是層數、乘 0.8 會變小數，改用加收魔力當代價
+  sg_shadow: {base:'shadow',   ov:{manaPct:15}},
+  sg_shield: {base:'shield',   ov:{d:'獲得護盾（魔力×0.16＋智力×0.96，可疊加）'}},   // 本職已耗魔，維持 15%
+  sg_fireball:{base:'fireball',ov:{}},
+  sg_hex:    {base:'hex',      ov:{manaPct:13}},   // 層數類：10% × 1.25
+  sg_siphon: {base:'siphon',   ov:{}},
+
+  /* —— 新增 12 支：跨職業通用，不吃單一素質就是吃主素質 —— */
+  sg_suture: {n:'縫合', slot:'輔', fixed:1, manaPct:15, healPct:0.12, d:'回復生命上限的 12%'},
+  sg_dash:   {n:'疾行', slot:'輔', fixed:1, manaPct:60, apGain:2, d:'本回合獲得 2 點行動點'},
+  sg_bleed:  {n:'換血', slot:'輔', fixed:0, hpCostPct:0.5, manaGainPct:0.3, d:'消耗生命上限的 50%，回復魔力上限的 30%'},
+  sg_brand:  {n:'灼印', slot:'普', costW:1, manaPct:25, mult:1.0, applyOnly:{burn:2,poison:1}, d:'同時附加燃燒與中毒'},
+  sg_pierce: {n:'洞穿', slot:'中', costW:2, manaPct:30, mult:1.4, magic:true, pierce:true, d:'無視格擋的重擊'},
+  sg_mark:   {n:'標記', slot:'輔', fixed:1, manaPct:40, grantCrit:1, d:'本回合對該目標必定爆擊'},
+  sg_stasis: {n:'靜滯', slot:'輔', fixed:1, manaPct:45, applyOnly:{stun:1}, d:'使目標暈眩 1 回合'},
+  sg_burst:  {n:'燃盡', slot:'中', costW:2, manaPct:30, magic:true, detonate:1.0, d:'引爆目標的中毒與燃燒，立即造成等量傷害並清除'},
+  sg_leech:  {n:'奪魔', slot:'普', costW:1, mult:0.8, manaDrain:0.3, d:'攻擊並將部分傷害轉為魔力'},
+  sg_hoard:  {n:'囤積', slot:'輔', fixed:0, manaPct:20, apKeep:2, d:'本回合未使用的行動點保留到下回合'},
+  sg_reso:   {n:'共鳴', slot:'輔', fixed:1, manaPct:25, lostAmp:0.008, lostCap:0.4, d:'本回合傷害依已損失的生命提升'},
+  sg_topple: {n:'傾覆', slot:'輔', fixed:1, manaPct:25, toppleK:1.0, d:'消耗全部格擋與護盾，轉為一次傷害'},
+};
+
+/* 魔符升級分支：體例同 SKILL_UPS（a＝純強化、b＝弱化主數值換附加效果）。
+   複製版不列在這裡——它們沿用 base 的 SKILL_UPS，由 SK() 解析時查回去。
+   疾行與囤積刻意不做升級：行動點是最容易滾起來的資源，這兩支已經直接產出行動點。
+   沒有分支的魔符不會進卷軸候選清單（見 run.js 的 upgradable 過濾）。 */
+const SIGIL_UPS = {
+  sg_suture:{a:{n:'飽合', d:'回復 12%→18%', mod:s=>{s.healPct=0.18;}},
+             b:{n:'滌合', d:'回復 →8%，額外清除自身虛弱、易傷、重傷', mod:s=>{s.healPct=0.08; s.cleanse=true;}}},
+  sg_bleed: {a:{n:'溢血', d:'回魔 30%→45%', mod:s=>{s.manaGainPct=0.45;}},
+             b:{n:'血鎧', d:'回魔 →20%，並依消耗的生命獲得等量格擋', mod:s=>{s.manaGainPct=0.2; s.bloodBlock=true;}}},
+  sg_brand: {a:{n:'烙印', d:'燃燒 2→4 層', mod:s=>{s.applyOnly={burn:4,poison:1};}},
+             b:{n:'散印', d:'改為對全體各上燃燒 1、中毒 1 層', mod:s=>{s.applyOnly={burn:1,poison:1}; s.aoe=true;}}},
+  sg_pierce:{a:{n:'貫穿', d:'倍率 1.4→1.8', mod:s=>{s.mult=1.8;}},
+             b:{n:'透穿', d:'倍率 →1.0、改為全體且維持無視格擋', mod:s=>{s.mult=1.0; s.aoe=true;}}},
+  sg_mark:  {a:{n:'雙標', d:'必定爆擊 1→2 次', mod:s=>{s.grantCrit=2;}},
+             b:{n:'獵標', d:'魔力 40%→25%，只對生命低於 50% 的目標生效', mod:s=>{s.manaPct=25; s.markLine=0.5;}}},
+  sg_stasis:{a:{n:'滯場', d:'改為全體暈眩、魔力 45%→70%', mod:s=>{s.aoe=true; s.manaPct=70;}},
+             b:{n:'滯緩', d:'改為施加虛弱 3 層與易傷 3 層、魔力 →25%', mod:s=>{s.applyOnly={weak:3,vuln:3}; s.manaPct=25;}}},
+  sg_burst: {a:{n:'爆燃', d:'引爆傷害 ×1.0→×1.5', mod:s=>{s.detonate=1.5;}},
+             b:{n:'殘燼', d:'引爆傷害 →×0.7，不清除層數', mod:s=>{s.detonate=0.7; s.keepDot=true;}}},
+  sg_leech: {a:{n:'奪魂', d:'回魔 30%→50%', mod:s=>{s.manaDrain=0.5;}},
+             b:{n:'奪髓', d:'回魔 →15%，並回復等量生命', mod:s=>{s.manaDrain=0.15; s.alsoHeal=true;}}},
+  sg_reso:  {a:{n:'重鳴', d:'每 10% 生命 +8%→+12%、上限 →+60%', mod:s=>{s.lostAmp=0.012; s.lostCap=0.6;}},
+             b:{n:'逆鳴', d:'改為依剩餘生命計算（每剩 10% +6%、上限 +40%）', mod:s=>{s.lostAmp=0.006; s.lostCap=0.4; s.invRatio=true;}}},
+  sg_topple:{a:{n:'崩覆', d:'傷害 →消耗量的 1.5 倍', mod:s=>{s.toppleK=1.5;}},
+             b:{n:'固覆', d:'傷害 →0.6 倍、改為全體', mod:s=>{s.toppleK=0.6; s.aoe=true;}}},
+};
+
 const ENEMIES = {
   /* 淺穴 1-10 */
   rat:   {n:'岩背豬', img:1, i:'🐀', hp:16, realm:0, pat:[{t:'a',v:4},{t:'a',v:5},{t:'a',v:3,ap:{weak:1},nm:'撕咬'}]},
@@ -424,10 +495,16 @@ const ENEMY_TAGS = {
   heavy:{n:'重甲', i:'<svg class="ic"><use href="#ic-heavy"/></svg>',   d:'常駐格擋外殼，每回合恢復。斧、法術、毒燃能繞過'},
   naked:{n:'脆弱', i:'<svg class="ic"><use href="#ic-blood"/></svg>',   d:'受到的直接傷害 +15%'},
 };
-/* 魔符技能槽：戰鬥畫面固定保留的格數。魔符系統尚未實作，槽位先以停用的佔位鈕呈現。
-   目的是讓版面高度「現在」就等於系統上線後的高度——否則魔符一上線整頁會位移一整列。
-   實作魔符時把佔位鈕換成真的技能即可，版面不用再動。 */
+/* 可購買的魔符格上限。這兩格要花錢：第 1 格 5 萬碎銀（本源通關後），第 2 格 100 鑽。
+   職業自帶的拆卸格（CLASSES.swap）不算在內，也不用買。
+   戰鬥畫面固定六格＝4 固定技 + SIGIL_SLOTS，未購買或未裝備的格子以停用鈕佔位，版面高度不會變。 */
 const SIGIL_SLOTS = 2;
+/* 買格子的價格，依序對應第 1、2 格。這是唯一來源——角色檢視的按鈕文字與扣款都讀這裡，
+   不要在 UI 裡另外寫死 50000／100。 */
+const SIGIL_SLOT_COST = [{gold:50000}, {gems:100}];
+const SIGIL_GEM_PRICE = 50;    // 黑市盲盒單價（四個盲盒同價，內容不顯示）
+const SIGIL_BOXES     = 4;     // 黑市一次上架幾個盲盒
+const SIGIL_DROP      = {mob:0.015, boss:0.05};   // 掉落率。比符文（5%/22%）稀有，因為魔符拿到就是永久的
 
 const HEAVY_SHELL = 0.12;   // 重甲外殼＝血量×此係數
 const LORD_PHASE_TAGS = [   // 域主上/下半場標籤（血線 50% 切換）
