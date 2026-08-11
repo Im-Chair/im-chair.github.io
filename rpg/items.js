@@ -439,27 +439,55 @@ function makeRune(floor, cycle){
   if(cat.mul) affix.mul = true;        // 素質/上限型：乘法套用
   return {id:uid++, isRune:true, rar:ri, name:'符文·'+AFFIXES[k].n, icon:'<svg class="ic"><use href="#ic-star"/></svg>', affixes:[affix]};
 }
+/* 符文槽介面。v450 起與魔符用同一種互動：**點格子 → 選要放哪一支**。
+   舊版是「點持有清單裡的符文 → 自動塞進第一個空槽」，槽滿了只能先取下再裝，
+   也沒辦法指定要換掉哪一格。魔符從一開始就是選格子制（拆卸格會頂掉本職技能，
+   不能自動塞），兩套並存等於同一件事有兩種操作方式。
+   ⚠️ 資料模型維持原樣：符文是在 G.runeBag 與 G.runes 之間「搬移」，
+   魔符是 owned 常駐、equipped 只存 id。統一的是互動，不是儲存方式。 */
 function openRunes(){
-  if(!G.runes) G.runes=[null,null,null]; if(!G.runeBag) G.runeBag=[];
-  let html='<h3>符文</h3><p class="base">符文鑲進符文槽即被動生效，不佔裝備、跨探索永久保留。</p><div class="section-title">符文槽 '+G.runes.filter(Boolean).length+'/3</div><div class="item-list">';
+  if(!G.runes) G.runes=newRuneSlots(); if(!G.runeBag) G.runeBag=[];
+  let html='<h3>符文</h3><p class="base">符文鑲進符文槽即被動生效，不佔裝備、跨探索永久保留。</p>';
+  html+=`<div class="section-title">符文槽 ${G.runes.filter(Boolean).length}/${G.runes.length}</div><div class="item-list">`;
   G.runes.forEach((rn,i)=>{ if(rn){ const a=rn.affixes[0];
-    html+=`<div class="item-row ${RARITIES[rn.rar].b}" onclick="unsocketRune(${i})"><div style="width:100%"><div class="${RARITIES[rn.rar].cls}" style="font-weight:600">${rn.icon} ${rn.name}<span style="float:right;color:var(--red);font-weight:400">取下</span></div><div style="color:var(--dim);font-size:12px;line-height:1.35;margin-top:3px">${runeFmt(a)}</div></div></div>`;
-  } else html+=`<div class="item-row" style="opacity:.6"><span class="in" style="color:var(--dim)"><svg class="ic"><use href="#ic-gem"/></svg> 空符文槽</span></div>`; });
+    html+=`<div class="item-row ${RARITIES[rn.rar].b}" onclick="pickRuneFor(${i})"><div style="width:100%"><div class="${RARITIES[rn.rar].cls}" style="font-weight:600">${rn.icon} ${rn.name}<span style="float:right;color:var(--gold);font-weight:400">更換</span></div><div style="color:var(--dim);font-size:12px;line-height:1.35;margin-top:3px">${runeFmt(a)}</div></div></div>`;
+  } else html+=`<div class="item-row" onclick="pickRuneFor(${i})"><span class="in" style="color:var(--dim)"><svg class="ic"><use href="#ic-star"/></svg> 空符文槽</span><span class="is" style="color:var(--gold)">裝上</span></div>`; });
   html+='</div><div class="section-title">持有符文</div><div class="item-list">';
   if(!G.runeBag.length) html+='<p style="color:var(--dim);font-size:13px">還沒有符文。深淵裡打得到。</p>';
   for(const rn of G.runeBag){ const a=rn.affixes[0];
-    html+=`<div class="item-row ${RARITIES[rn.rar].b}" onclick="socketRune(${rn.id})"><div style="width:100%"><div class="${RARITIES[rn.rar].cls}" style="font-weight:600">${rn.icon} ${rn.name}<span style="float:right;color:var(--gold);font-weight:400">鑲入</span></div><div style="color:var(--dim);font-size:12px;line-height:1.35;margin-top:3px">${runeFmt(a)}</div></div></div>`; }
+    html+=`<div class="item-row ${RARITIES[rn.rar].b}"><div style="width:100%"><div class="${RARITIES[rn.rar].cls}" style="font-weight:600">${rn.icon} ${rn.name}</div><div style="color:var(--dim);font-size:12px;line-height:1.35;margin-top:3px">${runeFmt(a)}</div></div></div>`; }
   html+='</div><button class="btn" style="margin-top:12px" onclick="closeSheet()">關閉</button>';
   openSheet(html);
 }
-function socketRune(id){
-  const i=G.runeBag.findIndex(r=>r.id===id); if(i<0) return;
-  const slot=G.runes.indexOf(null); if(slot<0){ toast('符文槽已滿——先取下一個'); return; }
-  G.runes[slot]=G.runeBag.splice(i,1)[0]; if(R) R.hp=Math.min(R.hp, playerMaxHp());
+/* 點某一格 → 選要放哪一支。與 pickSigilFor 同一個版型 */
+function pickRuneFor(slot){
+  const cur = G.runes[slot];
+  let html = '<h3>選擇符文</h3><div class="item-list">';
+  if(cur) html += `<div class="item-row" onclick="clearRune(${slot})"><span class="in" style="color:var(--red)">取下 ${cur.name}</span></div>`;
+  if(!G.runeBag.length) html += '<p style="color:var(--dim);font-size:13px">沒有可裝的符文。</p>';
+  for(const rn of G.runeBag){ const a=rn.affixes[0];
+    html += `<div class="item-row ${RARITIES[rn.rar].b}" onclick="setRune(${slot},${rn.id})"><div style="width:100%"><div class="${RARITIES[rn.rar].cls}" style="font-weight:600">${rn.icon} ${rn.name}</div><div style="color:var(--dim);font-size:12px;line-height:1.35;margin-top:3px">${runeFmt(a)}</div></div></div>`; }
+  html += '</div><button class="btn" style="margin-top:12px" onclick="openRunes()">返回</button>';
+  openSheet(html);
+}
+function setRune(slot, id){
+  const i = G.runeBag.findIndex(r=>r.id===id); if(i<0) return;
+  const picked = G.runeBag.splice(i,1)[0];          // 先取出再退回，順序反過來會算錯 index
+  if(G.runes[slot]) G.runeBag.push(G.runes[slot]);   // 原本那一顆退回持有清單
+  G.runes[slot] = picked;
+  if(R) R.hp = Math.min(R.hp, playerMaxHp());        // 換掉生命上限詞綴時，現有血量不能超過新上限
   save(); openRunes();
 }
-function unsocketRune(i){ if(!G.runes[i]) return; G.runeBag.push(G.runes[i]); G.runes[i]=null; save(); openRunes(); }
-function runeSellVal(rn){ return 8 + rn.rar*16; }
+function clearRune(slot){
+  if(!G.runes[slot]) return;
+  G.runeBag.push(G.runes[slot]); G.runes[slot] = null;
+  if(R) R.hp = Math.min(R.hp, playerMaxHp());
+  save(); openRunes();
+}
+/* 符文分解價，單位是**鑽石**（不是碎銀）。普1／精良2／稀有3／傳說4。
+   購價是 runeGemPrice() 的 (rar+1)*20，所以回收率固定 5%。
+   三個販售路徑（sellRune 單賣、runeSellPicked 批次、控制列的預覽金額）都讀這一支。 */
+function runeSellVal(rn){ return rn.rar + 1; }
 
 /* 「符文曾取得過的最高數值」唯一登記入口（成就·符文集齊用）。新增取得管道時呼叫這裡，不要另寫。
    記的是數值不是稀有度：集齊判定要拿 RUNE_BAND[cat.band][3][1] 的傳說上限去比，只記稀有度判不出來。
@@ -517,7 +545,7 @@ function openSigils(){
   if(!G.sigils) G.sigils = {equipped:[], owned:[], slots:0};
   const eq = G.sigils.equipped, rows = sigilSlotRows();
   const usable = rows.filter(r=>r.open).length;
-  let html = '<h3>魔符</h3><p class="base">魔符裝進魔符格即成為戰鬥中的技能，跨探索永久保留。點格子可以更換。</p>';
+  let html = '<h3>魔符</h3><p class="base">魔符裝進魔符格即成為戰鬥中的技能，跨探索永久保留。</p>';
   html += `<div class="section-title">魔符格 ${rows.filter(r=>r.open&&eq[r.i]).length}/${usable}</div><div class="item-list">`;
   for(const r of rows){
     const sid = eq[r.i];
@@ -591,8 +619,8 @@ function runeSellPicked(){
   if(!sel.length) return;
   const val = sel.reduce((s,r)=>s+runeSellVal(r), 0);
   G.runeBag = (G.runeBag||[]).filter(r=>!sellSel.has(r.id));
-  G.gold += val; sellSel.clear(); save(); renderGear();
-  toast(`販售 ${sel.length} 符文，得 ${val} 碎銀`);
+  G.gems = (G.gems||0) + val; sellSel.clear(); save(); renderGear();
+  toast(`販售 ${sel.length} 符文，得 ${val} <svg class="ic"><use href="#ic-gem"/></svg>`);
 }
 function renderRuneStash(sl){
   const vis = runeVisible(), all = G.runeBag || [];
@@ -603,7 +631,7 @@ function renderRuneStash(sl){
   $('gear-ctl').innerHTML = `<span class="tick${allOn?' on':''}" onclick="runePickAll()"></span>
     <select class="gsel grow" onchange="gearRarityTo(this.value)">${opt(
       [['all','稀有：全部 '+all.length],['0','稀有：普通'],['1','稀有：精良'],['2','稀有：稀有'],['3','稀有：傳說']])}</select>
-    <button class="gsell${nsel?' on':''}" ${nsel?'':'disabled'} onclick="runeSellPicked()">${nsel?'販售 +'+val:'販售'}</button>`;
+    <button class="gsell${nsel?' on':''}" ${nsel?'':'disabled'} onclick="runeSellPicked()">${nsel?'販售 +'+val+'<svg class="ic"><use href="#ic-gem"/></svg>':'販售'}</button>`;
   sl.innerHTML = vis.length ? vis.map(rn=>{
     const a = rn.affixes[0], r = RARITIES[rn.rar], on = sellSel.has(rn.id);
     return `<div class="item-row ${r.b}${on?' picked':''}" onclick="openRuneSheet(${rn.id})">
@@ -622,13 +650,13 @@ function openRuneSheet(id){
   const rn = (G.runeBag||[]).find(r=>r.id===id); if(!rn) return;
   const a=rn.affixes[0], r=RARITIES[rn.rar], val=runeSellVal(rn);
   openSheet(`<h3 class="${r.cls}">${rn.icon} ${rn.name}</h3><div class="base">${r.n}符文｜${runeFmt(a)}</div>
-    <div class="row" style="margin-top:16px"><button class="btn primary" onclick="socketRune(${rn.id})">鑲入符文槽</button><button class="btn danger" onclick="sellRune(${rn.id})">分解 +${val}<svg class="ic"><use href="#ic-gold"/></svg></button></div>
+    <div class="row" style="margin-top:16px"><button class="btn primary" onclick="openRunes()">前往符文槽</button><button class="btn danger" onclick="sellRune(${rn.id})">分解 +${val}<svg class="ic"><use href="#ic-gem"/></svg></button></div>
     <button class="btn" style="margin-top:8px" onclick="openGear()">關閉</button>`);
 }
 function sellRune(id){
   const i=G.runeBag.findIndex(r=>r.id===id); if(i<0) return;
   const val=runeSellVal(G.runeBag[i]);
-  G.runeBag.splice(i,1); G.gold+=val; closeSheet(); renderGear(); save(); toast(`分解得 ${val} 碎銀`);
+  G.runeBag.splice(i,1); G.gems=(G.gems||0)+val; closeSheet(); renderGear(); save(); toast(`分解得 ${val} <svg class="ic"><use href="#ic-gem"/></svg>`);
 }
 
 /* 目前分頁實際看得到的清單（已套用部位與稀有度篩選、已排序）。

@@ -202,6 +202,20 @@ function floatDmg(zone, txt, cls){
   z.appendChild(d); setTimeout(()=>d.remove(), 800);
 }
 
+/* 回魔唯一入口。回傳實際回了多少（0 表示無魔力職業或已滿）。
+   ⚠️ 呼叫點有兩個，不要在別處另寫一次 Math.round(mm*manaRegenPct()/100)：
+     - startPlayerTurn(!first)：正常的每回合回魔
+     - winBattle()：技能把敵人清光時，endTurn→enemyTurn→startPlayerTurn 整條都不會跑，
+       那一回合的回魔本來會整個消失。速殺反而比慢慢打更缺魔，跟「回魔率＝施法頻率」
+       的設計方向相反，所以戰鬥結束時補結算一次。 */
+function regenMana(){
+  const mm = playerMaxMana();
+  if(mm <= 0) return 0;
+  const before = R.mana || 0;
+  R.mana = Math.min(mm, before + Math.round(mm * manaRegenPct()/100));
+  return R.mana - before;
+}
+
 function startPlayerTurn(first){
   if(B.over) return;
   if(!first){ B.energy = B.maxEnergy + (B.carryAp||0); B.carryAp = 0; if(!sumAffix('wall')) B.block = 0; }
@@ -212,10 +226,7 @@ function startPlayerTurn(first){
   for(const e of B.es) e._dotUsed = null;        // A閥：敵方毒燃承傷額度重置（週期＝玩家回合起手）
   const rg = sumAffix('regen');
   if(rg && !first){ const h = healPlayer(Math.ceil(playerMaxHp()*0.06)); if(h>0) log(`血甲：回復 ${h} 生命。`,'heal'); }
-  if(playerMaxMana() > 0 && !first){
-    const mm = playerMaxMana();
-    R.mana = Math.min(mm, (R.mana||0) + Math.round(mm * manaRegenPct()/100));
-  }
+  if(!first) regenMana();
   if(B.st.poison){ const d = Math.ceil(playerMaxHp() * dotPct('poison', B.st.poison)); damagePlayer(d, '中毒');
     log(`中毒發作，你受到 ${d} 點傷害（${B.st.poison} 層）。`,'dmg'); floatDmg('player-zone','-'+d,''); B.st.poison = Math.floor(B.st.poison/2); if(B.st.poison<=0) delete B.st.poison;
     if(R.hp<=0){ playerDie(); return; } }
@@ -1069,6 +1080,7 @@ function winBattle(){
   }
   // 文案不提「圖鑑」——圖鑑入口關著時，提一個玩家點不進去的東西只會製造困惑
   if(firstKillBonus){ R.gold += firstKillBonus; toast((CODEX_ENABLED?'圖鑑首錄':'首次擊殺')+' +'+firstKillBonus+' <svg class="ic"><use href="#ic-gold"/></svg>'); }
+  regenMana();   // 見 regenMana 的註解：速殺會整個跳過該回合的回魔，在這裡補結算
   const mend = sumAffix('mend');
   let mendHeal = 0;
   if(mend){ mendHeal = Math.min(Math.round(playerMaxHp()*mend/100), playerMaxHp()-R.hp); if(mendHeal>0) R.hp += mendHeal; }

@@ -47,7 +47,7 @@ const $ = id=>document.getElementById(id);
 
 function newSave(){ return {v3:1, cls:null, gold:0, stash:[], equip:{w:null,a:null,t:null},
   rec:{deep:0,cert:null,runs:0,boss:0}, mats:{iron:0,steel:0}, codex:{}, cyc:{unlocked:0},
-  orig:{deep:0,cp:0,done:false}, cycData:{}, bounties:[], runes:[null,null,null], runeBag:[], gems:0, run:null, uid:1,
+  orig:{deep:0,cp:0,done:false}, cycData:{}, bounties:[], runes:newRuneSlots(), runeBag:[], gems:0, run:null, uid:1,
   // v424 四個新系統的欄位。這裡與 migrateChar 必須一模一樣，只改一邊會讓新舊角色分岔。
   statBuy:{str:0,int:0,spi:0,vit:0,agi:0},   // 素質提升：各素質已購點數（0～40）
   runeSeen:{},                                // 成就：各詞綴「曾取得過」的最高數值（見 seenRune）

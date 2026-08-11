@@ -499,6 +499,11 @@ const ENEMY_TAGS = {
    職業自帶的拆卸格（CLASSES.swap）不算在內，也不用買。
    戰鬥畫面固定六格＝4 固定技 + SIGIL_SLOTS，未購買或未裝備的格子以停用鈕佔位，版面高度不會變。 */
 const SIGIL_SLOTS = 2;
+/* 符文槽數。v450 之前這個 3 寫死在四個地方（core.js 新角色、account.js 遷移、
+   items.js openRunes 的補建、run.js 懸賞板的「N/3」），改一處就會漏三處。
+   要調格數只改這裡；新增讀取點一律讀這個常數，不要再寫字面值。 */
+const RUNE_SLOTS = 3;
+const newRuneSlots = () => new Array(RUNE_SLOTS).fill(null);
 /* 買格子的價格，依序對應第 1、2 格。這是唯一來源——角色檢視的按鈕文字與扣款都讀這裡，
    不要在 UI 裡另外寫死 50000／100。 */
 const SIGIL_SLOT_COST = [{gold:50000}, {gems:100}];

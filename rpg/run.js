@@ -289,7 +289,7 @@ function renderDoorCells(){
   const cells = [
     {k:'碎銀', v:R.gold, cls:'gold'},
     {k:'行囊', v:R.bag.length + ' 件', cls:'tap', on:'openBag()'},
-    hasRune ? {k:'符文', v:socketed + '/3'} : {k:'符文', v:'輪迴I 50 層', cls:'locked'},
+    hasRune ? {k:'符文', v:socketed + '/' + RUNE_SLOTS} : {k:'符文', v:'輪迴I 50 層', cls:'locked'},
     {k:'魔符', v:'未開放', cls:'locked'},
   ];
   el.innerHTML = cells.map(c =>

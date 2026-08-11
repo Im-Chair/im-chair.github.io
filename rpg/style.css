@@ -398,8 +398,12 @@ h1.title{
 .st.trait{color:#c9b38a;border-color:#4a3c28;background:#181310;}
 /* 敵人血條放在怪物頭頂（獨立一列，不疊圖——疊在深色 sprite 上會糊）。
    收窄到左右各留 40px，視覺重量才不會壓過怪物本身。 */
+/* 單怪血量字 14 → 17px。條寬＝畫面寬 −.screen 內距 32 −.e-block 內距 4 −.e-hp 左右各 40
+   ＝ 390px 手機上 274px。DM Mono 是等寬、字元advance 0.6em，最壞情況
+   「154017 / 154017（盾9999）」約 23 字元＋一個 17px 圖示 ≒ 252px，還剩 22px。
+   高度不動（條高仍 20px），所以版面沒有任何一列會移動。 */
 .e-hp{margin:0 40px 6px;height:20px;flex:none;}
-.e-hp .txt{line-height:20px;font-size:14px;}
+.e-hp .txt{line-height:20px;font-size:17px;}
 .e-wrap.duo .e-hp{margin:0 6px 4px;height:18px;}
 .e-wrap.duo .e-hp .txt{line-height:18px;font-size:12px;}
 .e-wrap.duo .e-block{cursor:pointer;}
@@ -452,7 +456,9 @@ h1.title{
 /* 門圖走「橫幅」而不是正方形：門卡本來就有 26px 上留白與頂部裝飾線，正方形會把卡片撐得太高 */
 .pi-img{width:24px;height:24px;border-radius:5px;display:inline-block;vertical-align:middle;}
 .pi-row{width:38px;height:38px;margin-right:9px;flex:0 0 auto;border:1px solid var(--line);}
-.res-img{width:min(70%,220px);margin:0 auto;border-radius:12px;}
+/* 同 .ev-img：沒有 aspect-ratio 的話，圖解碼前高度是 0，結算頁的文字與按鈕會先往上跳再跳回來。
+   走這個 class 的只有 res_death.webp（448×574），比例直接寫死。 */
+.res-img{width:min(70%,220px);aspect-ratio:448/574;margin:0 auto;border-radius:12px;}
 /* aspect-ratio 是為了「圖還沒解碼完，容器就先佔好高度」。沒有它的話高度會塌成 0，
    下面的標題／內文／選項整批往上跳、圖出現時再跳回來——事件頁每次操作的上下抖動就是這個。
    量過才敢寫死：走 .ev-img 的 21 張全是正方形（ev_* 與 door_* 18 張 192×192、3 張 200×200）。 */
@@ -505,7 +511,9 @@ h1.title{
 .hpbar{height:14px;border-radius:7px;background:#22161a;border:1px solid #3a2530;overflow:hidden;margin-top:8px;position:relative;}
 .hpbar .fill{height:100%;background:linear-gradient(90deg,#a83a3a,#d05252);transition:width .3s;border-radius:7px;}
 .hpbar.player .fill{background:linear-gradient(90deg,#3f7a58,#6fbf8f);}
-.hpbar .txt{position:absolute;inset:0;text-align:center;font-size:10px;line-height:14px;color:#fff;text-shadow:0 1px 2px #000;}
+/* nowrap 是保險絲：血量字級被調大時，萬一某天真的塞不下，寧可溢出也不要換行——
+   換行會把 .txt 撐成兩列，整條血條的高度跟著跑，版面就固定不住了 */
+.hpbar .txt{position:absolute;inset:0;text-align:center;font-size:10px;line-height:14px;color:#fff;text-shadow:0 1px 2px #000;white-space:nowrap;}
 .status-row{display:flex;gap:6px;justify-content:center;margin-top:6px;min-height:22px;flex-wrap:wrap;}
 .st{font-size:11px;border-radius:6px;padding:1px 7px;border:1px solid var(--line);background:var(--panel);}
 .st.bad{color:#e09090;border-color:#4a2a2a;} .st.good{color:#9fd8b4;border-color:#2a4a36;}
