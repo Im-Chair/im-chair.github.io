@@ -282,7 +282,7 @@ function renderDoorBounty(){
    資料在 R.runesPending / R.sigilsPending，成功回營（bankRun）才進 G。 */
 function runLootHtml(){
   const rp = (R && R.runesPending) || [], sp = (R && R.sigilsPending) || [];
-  if(!rp.length && !sp.length) return '<p style="color:var(--dim);font-size:13px">這趟還沒撿到符文或魔符。</p>';
+  if(!rp.length && !sp.length) return '';   // 空的就不做空狀態文案——資源格在 0 件時本來就點不開
   let h = '<div class="item-list">';
   for(const rn of rp){
     const a = rn.affixes[0];
@@ -294,7 +294,7 @@ function runLootHtml(){
   return h + '</div>';
 }
 function openRunLoot(){
-  openSheet('<h3>這趟撿到</h3><p class="base">成功撤退回營才會入帳。</p>' + runLootHtml()
+  openSheet('<h3>這趟撿到</h3>' + runLootHtml()
     + '<button class="btn" style="margin-top:12px" onclick="closeSheet()">關閉</button>');
 }
 /* 資源四格（v437）：碎銀／行囊／符文／魔符，恆定四格。
@@ -317,9 +317,10 @@ function renderDoorCells(){
   const cells = [
     {k:'碎銀', v:R.gold, cls:'gold'},
     {k:'行囊', v:R.bag.length + ' 件', cls:'tap', on:'openBag()'},
-    hasRune ? {k:'符文', v:rp + ' 件', cls:'tap', on:'openRunLoot()'}
+    // 0 件時不給點：點開只會是一張空清單，那就是一個什麼都沒說的浮層
+    hasRune ? {k:'符文', v:rp + ' 件', cls:rp?'tap':'', on:rp?'openRunLoot()':null}
             : {k:'符文', v:'輪迴I 50 層', cls:'locked'},
-    sigilSlots() > 0 ? {k:'魔符', v:sp + ' 件', cls:'tap', on:'openRunLoot()'}
+    sigilSlots() > 0 ? {k:'魔符', v:sp + ' 件', cls:sp?'tap':'', on:sp?'openRunLoot()':null}
             : {k:'魔符', v:'未開放', cls:'locked'},
   ];
   el.innerHTML = cells.map(c =>

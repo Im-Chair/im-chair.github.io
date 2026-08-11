@@ -402,12 +402,19 @@ h1.title{
    ＝ 390px 手機上 274px。DM Mono 是等寬、字元advance 0.6em，最壞情況
    「154017 / 154017（盾9999）」約 23 字元＋一個 17px 圖示 ≒ 252px，還剩 22px。
    高度不動（條高仍 20px），所以版面沒有任何一列會移動。 */
-.e-hp{margin:0 40px 6px;height:20px;flex:none;}
-/* ⚠️ 選擇器一定要寫成 .hpbar.e-hp（0,3,0），不能只寫 .e-hp .txt（0,2,0）。
-   下面第 516 行的 .hpbar .txt 也是 0,2,0，而且行號在後面——同分後到者勝，
-   單怪血量字會被打回 10px。v448 與 v450 兩次調字級對單怪都沒生效就是這個原因，
-   雙怪之所以有效，是因為 .e-wrap.duo .e-hp .txt 剛好是 0,3,0。 */
-.hpbar.e-hp .txt{line-height:20px;font-size:17px;}
+/* 同樣要寫 .hpbar.e-hp（0,2,0）。寫 .e-hp（0,1,0）會被下面的 .hpbar{height:14px;margin-top:8px}
+   （同為 0,1,0、行號更後面）整條蓋掉——敵人血條其實一直是 14px 高、還多了 8px 上緣留白，
+   v448 記的「條高 18 → 20」對單怪從來沒生效過。字被切掉的直接原因就是這個：
+   17px 的字塞進實際只有 14px 的框。 */
+.hpbar.e-hp{margin:0 40px 6px;height:20px;flex:none;}
+/* ⚠️ 兩個坑，都踩過：
+   1. 選擇器一定要寫 .hpbar.e-hp（0,3,0）。只寫 .e-hp .txt 是 0,2,0，
+      會被下面的 .hpbar .txt（同為 0,2,0、行號更後面）壓回 10px。
+   2. 字級上限由 .hpbar 的 height:20px ＋ overflow:hidden 決定，不是由條寬決定。
+      v452 設 17px 時只算了「橫向會不會換行」，沒算縱向——17px 的字框超過 20px，
+      被 overflow 切掉上下緣。字級要大於 15px 就得同時把 .e-hp 的 height 加大，
+      而那會讓整個敵人區往下推。 */
+.hpbar.e-hp .txt{line-height:20px;font-size:15px;}
 .e-wrap.duo .e-hp{margin:0 6px 4px;height:18px;}
 .e-wrap.duo .e-hp .txt{line-height:18px;font-size:12px;}
 .e-wrap.duo .e-block{cursor:pointer;}

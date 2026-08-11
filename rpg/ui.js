@@ -239,8 +239,7 @@ function openRunStats(){
      只在探索中顯示：回營後它們已經入帳，再列一次就是重複資訊。 */
   // 清單本體走 run.js 的 runLootHtml()——門畫面的資源格也讀同一支，不要在這裡重寫一份
   if(R && ((R.runesPending||[]).length || (R.sigilsPending||[]).length)){
-    html += '<div class="section-title"><svg class="ic"><use href="#ic-chest"/></svg> 這趟撿到</div>'
-          + '<p class="base">成功撤退回營才會入帳。</p>' + runLootHtml();
+    html += '<div class="section-title"><svg class="ic"><use href="#ic-chest"/></svg> 這趟撿到</div>' + runLootHtml();
   }
   html += `<button class="btn" style="margin-top:10px" onclick="openRunes()"><svg class="ic"><use href="#ic-star"/></svg> 符文槽 ${(G.runes||[]).filter(Boolean).length}/${RUNE_SLOTS}${(G.runeBag||[]).length?'　（持有 '+G.runeBag.length+'）':''}</button>`;
   // 魔符槽：格數＝職業自帶的拆卸格 ＋ 已購買的格（見 items.js sigilSlotRows）。買格子的入口也在裡面。
