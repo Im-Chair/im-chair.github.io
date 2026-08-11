@@ -237,20 +237,10 @@ function openRunStats(){
      成功回營（run.js bankRun）才入帳，死掉就沒有——所以探索途中在符文槽／魔符槽
      一定看不到，玩家會以為根本沒掉。這一段就是把「已經撿到、但還沒進倉庫」的東西攤出來。
      只在探索中顯示：回營後它們已經入帳，再列一次就是重複資訊。 */
-  if(R){
-    const _rp = R.runesPending || [], _sp = R.sigilsPending || [];
-    if(_rp.length || _sp.length){
-      html += '<div class="section-title"><svg class="ic"><use href="#ic-chest"/></svg> 這趟撿到</div>';
-      html += '<p class="base">成功撤退回營才會入帳。</p><div class="item-list">';
-      for(const rn of _rp){
-        const a = rn.affixes[0];
-        html += `<div class="item-row ${RARITIES[rn.rar].b}"><div style="width:100%"><div class="${RARITIES[rn.rar].cls}" style="font-weight:600">${rn.icon} ${rn.name}</div><div style="color:var(--dim);font-size:12px;line-height:1.35;margin-top:3px">${runeFmt(a)}</div></div></div>`;
-      }
-      for(const sid of _sp){
-        html += `<div class="item-row"><div style="width:100%"><div style="font-weight:600"><svg class="ic"><use href="#ic-sigil"/></svg> ${SK(sid).n}</div><div style="color:var(--dim);font-size:12px;line-height:1.35;margin-top:3px">${SK(sid).d}</div></div></div>`;
-      }
-      html += '</div>';
-    }
+  // 清單本體走 run.js 的 runLootHtml()——門畫面的資源格也讀同一支，不要在這裡重寫一份
+  if(R && ((R.runesPending||[]).length || (R.sigilsPending||[]).length)){
+    html += '<div class="section-title"><svg class="ic"><use href="#ic-chest"/></svg> 這趟撿到</div>'
+          + '<p class="base">成功撤退回營才會入帳。</p>' + runLootHtml();
   }
   html += `<button class="btn" style="margin-top:10px" onclick="openRunes()"><svg class="ic"><use href="#ic-star"/></svg> 符文槽 ${(G.runes||[]).filter(Boolean).length}/${RUNE_SLOTS}${(G.runeBag||[]).length?'　（持有 '+G.runeBag.length+'）':''}</button>`;
   // 魔符槽：格數＝職業自帶的拆卸格 ＋ 已購買的格（見 items.js sigilSlotRows）。買格子的入口也在裡面。

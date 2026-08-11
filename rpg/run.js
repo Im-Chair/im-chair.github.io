@@ -277,20 +277,50 @@ function renderDoorBounty(){
   }
   el.innerHTML = h;
 }
+/* 這一趟撿到、但還沒入帳的符文與魔符。**唯一渲染入口**——
+   門畫面的資源格（openRunLoot）與角色檢視的「這趟撿到」都讀這一支，不要各寫一份。
+   資料在 R.runesPending / R.sigilsPending，成功回營（bankRun）才進 G。 */
+function runLootHtml(){
+  const rp = (R && R.runesPending) || [], sp = (R && R.sigilsPending) || [];
+  if(!rp.length && !sp.length) return '<p style="color:var(--dim);font-size:13px">這趟還沒撿到符文或魔符。</p>';
+  let h = '<div class="item-list">';
+  for(const rn of rp){
+    const a = rn.affixes[0];
+    h += `<div class="item-row ${RARITIES[rn.rar].b}"><div style="width:100%"><div class="${RARITIES[rn.rar].cls}" style="font-weight:600">${rn.icon} ${rn.name}</div><div style="color:var(--dim);font-size:12px;line-height:1.35;margin-top:3px">${runeFmt(a)}</div></div></div>`;
+  }
+  for(const sid of sp){
+    h += `<div class="item-row"><div style="width:100%"><div style="font-weight:600"><svg class="ic"><use href="#ic-sigil"/></svg> ${SK(sid).n}</div><div style="color:var(--dim);font-size:12px;line-height:1.35;margin-top:3px">${SK(sid).d}</div></div></div>`;
+  }
+  return h + '</div>';
+}
+function openRunLoot(){
+  openSheet('<h3>這趟撿到</h3><p class="base">成功撤退回營才會入帳。</p>' + runLootHtml()
+    + '<button class="btn" style="margin-top:12px" onclick="closeSheet()">關閉</button>');
+}
 /* 資源四格（v437）：碎銀／行囊／符文／魔符，恆定四格。
    碎銀讀 R.gold ——本趟撿到的，不是倉庫的 G.gold，所以不能掛進 WALLET（那張表從 G 讀）。
-   符文格的「有沒有」不用 runeMaxRar() 判：那支回答的是「這一層會不會掉符文」，
-   而符文是跨探索永久保留的，拿舊符文的人在本源第 1 層也該看得到自己的槽。
-   所以條件是「手上真的有符文」，沒有才顯示解鎖里程碑（輪迴I 50 層，同樣出自 runeMaxRar 的定義）。 */
+
+   v452：符文格本來顯示「已鑲入 N/3」，魔符格是寫死的「未開放」（從來沒接上）。
+   兩格改成與碎銀、行囊一致的口徑——**都報這一趟的收穫**，而不是永久資產；
+   永久的槽位狀態在營地的角色檢視看得到，探索途中要知道的是「這趟賺到什麼」。
+
+   鎖定條件各有出處，不要就地判斷：
+     符文——手上真的有符文才算解鎖（跨探索永久保留，拿舊符文的人在本源第 1 層也該看得到）；
+            沒有就顯示里程碑，文案出自 runeMaxRar 的定義。
+            刻意不用 runeMaxRar() 判：那支回答的是「這一層會不會掉」，不是「解鎖了沒」。
+     魔符——sigilSlots() 是已購買格數的唯一入口。沒買格子就不會掉（見 v445），
+            所以「沒買」與「這趟掉 0 個」是兩種狀態，不能混成同一格。 */
 function renderDoorCells(){
   const el = $('dr-cells'); if(!el) return;
-  const socketed = (G.runes || []).filter(Boolean).length;
-  const hasRune = socketed > 0 || (G.runeBag || []).length > 0;
+  const hasRune = (G.runes || []).filter(Boolean).length > 0 || (G.runeBag || []).length > 0;
+  const rp = (R.runesPending || []).length, sp = (R.sigilsPending || []).length;
   const cells = [
     {k:'碎銀', v:R.gold, cls:'gold'},
     {k:'行囊', v:R.bag.length + ' 件', cls:'tap', on:'openBag()'},
-    hasRune ? {k:'符文', v:socketed + '/' + RUNE_SLOTS} : {k:'符文', v:'輪迴I 50 層', cls:'locked'},
-    {k:'魔符', v:'未開放', cls:'locked'},
+    hasRune ? {k:'符文', v:rp + ' 件', cls:'tap', on:'openRunLoot()'}
+            : {k:'符文', v:'輪迴I 50 層', cls:'locked'},
+    sigilSlots() > 0 ? {k:'魔符', v:sp + ' 件', cls:'tap', on:'openRunLoot()'}
+            : {k:'魔符', v:'未開放', cls:'locked'},
   ];
   el.innerHTML = cells.map(c =>
     `<div class="dr-cell ${c.cls || ''}"${c.on ? ` onclick="${c.on}"` : ''}>

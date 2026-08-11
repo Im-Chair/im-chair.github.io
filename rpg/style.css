@@ -403,7 +403,11 @@ h1.title{
    「154017 / 154017（盾9999）」約 23 字元＋一個 17px 圖示 ≒ 252px，還剩 22px。
    高度不動（條高仍 20px），所以版面沒有任何一列會移動。 */
 .e-hp{margin:0 40px 6px;height:20px;flex:none;}
-.e-hp .txt{line-height:20px;font-size:17px;}
+/* ⚠️ 選擇器一定要寫成 .hpbar.e-hp（0,3,0），不能只寫 .e-hp .txt（0,2,0）。
+   下面第 516 行的 .hpbar .txt 也是 0,2,0，而且行號在後面——同分後到者勝，
+   單怪血量字會被打回 10px。v448 與 v450 兩次調字級對單怪都沒生效就是這個原因，
+   雙怪之所以有效，是因為 .e-wrap.duo .e-hp .txt 剛好是 0,3,0。 */
+.hpbar.e-hp .txt{line-height:20px;font-size:17px;}
 .e-wrap.duo .e-hp{margin:0 6px 4px;height:18px;}
 .e-wrap.duo .e-hp .txt{line-height:18px;font-size:12px;}
 .e-wrap.duo .e-block{cursor:pointer;}
