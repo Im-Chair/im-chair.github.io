@@ -16,7 +16,7 @@ function potPower(k){
 
 function pdesc(k){
   const p = POTIONS[k];
-  if(k==='heal') return `回復 ${potPower(k)} 點生命＋30% 法力`;
+  if(k==='heal') return `回復 ${potPower(k)} 點生命＋${Math.round(POT_MANA_PCT*100)}% 法力`;
   if(k==='bomb') return `對敵人造成 ${potPower(k)} 點傷害，易傷 2 回合`;
   if(k==='stone') return `獲得 ${potPower(k)} 點格擋`;
   if(k==='holy') return `對所有敵人 ${potPower(k)} 傷害，清除自身異常`;
@@ -67,7 +67,7 @@ function recordCert(cycle, floor){ // 只保留最難的認證成就
 }
 function certifyDepth(cycle, floor){ // 唯一入口：只在「逃脫」或「通關」呼叫——認證＋解鎖該深度傳送點一起做
   recordCert(cycle, floor);
-  if(cycle === 0) G.orig.cp = Math.max(G.orig.cp, Math.min(floor, 41)); // 本源傳送點上限 41
+  if(cycle === 0) G.orig.cp = Math.max(G.orig.cp, Math.min(floor, TP.origCap)); // 本源傳送點上限見 data.js TP.origCap
   else { const c = cd(cycle); c.cp = Math.max(c.cp, floor); }           // 輪迴無傳送上限（樓層本身封 100）
 }
 function certGearCtx(){ // 營地生裝備的唯一難度來源：直接綁認證的「樓層＋輪迴」（無認證則回退最深樓層）
@@ -79,7 +79,7 @@ function certGearCtx(){ // 營地生裝備的唯一難度來源：直接綁認�
    否則踏進輪迴III 逃脫第1層就會蓋掉輪迴II 100，營地整個崩掉（certScore 用 cycle*1000+floor 編碼，階級碾壓樓層）。
    eq = 等效樓層 = floor × cycK(cycle)，這是跨輪迴比較強度的唯一正確基準。 */
 /* 該輪迴的「認證深度」＝成功回營過的最深樓層。
-   ⚠️ 不可以用 cp（傳送點）代替:本源的 cp 被刻意封在 41(不讓你傳送過 50 層首領),
+   ⚠️ 不可以用 cp（傳送點）代替:本源的 cp 被刻意封在 TP.origCap(不讓你傳送過 50 層首領),
       拿 cp 當認證會讓打穿本源 50 的玩家只買得到 31–41 層的貨。cycle 1+ 兩者才碰巧相等。
    deep 與 cp 同樣只在 bankRun(逃脫/通關) 推進,規則一致;取 max 是為了相容任何 cp>deep 的舊檔。 */
 function certDepthOf(cyc){
@@ -103,13 +103,29 @@ function certPool(){
 }
 function certText(cert){ // 認證成就顯示文字
   if(!cert) return '—';
-  if(cert.cycle === 0) return '本源 '+cert.floor+(cert.floor>=50?'✓':'');
+  if(cert.cycle === 0) return '本源 '+cert.floor+(cert.floor>=ORIG_DEPTH?'✓':'');
   if(cert.cycle >= 4) return '無限 '+cert.floor;
   return '輪迴'+'I'.repeat(cert.cycle)+' '+cert.floor;
 }
 function realmFor(floor){ return REALMS[realmIdx(floor)]; }   // 依 realmIdx 取域（過 50 層後 5 域循環，規則跟著繞回）
 
 function healMult(){ const z = R? realmFor(R.floor):null; return (z && z.rule==='heal75')? 0.75 : 1; }
+
+/* 回血管線的唯一入口：基礎值 A → 域折扣（healMult）→ 後續加成（目前只有重傷減半）。
+   順序不可對調：域規則寫的是「一切回復效果 −25%」，折扣要作用在基礎值上，
+   後面的加成再吃打折後的結果。
+
+   任何算「會回多少血」的地方都必須走這裡：
+   - 真的要加血 → healPlayer(raw)（battle.js，內含上限夾值，回傳實際回了多少）
+   - 只是要顯示預告（按鈕上的「回復 N 血」）→ healAmount(raw)
+
+   v457 以前四條回血路徑只有兩條吃 healMult，同樣是「回 30% 血」，
+   在無光通道裡營火打 75 折、繩降平台回滿額、藥水看你在不在戰鬥中。 */
+function healAmount(raw){
+  let h = Math.floor(raw * healMult());
+  if(B && B.st.wound) h = Math.floor(h/2);
+  return h;
+}
 
 /* 異常狀態 (§8)：毒/燃分段傷害＋職業專精上限 */
 function dotPct(kind, layers){   // 該回合傷害佔目標最大生命的比例（前10層各1.5%；尾段 毒0.5%/燃1%）
@@ -124,9 +140,14 @@ function dotCap(kind, onEnemy){   // 層數上限：對敵人吃職業專精（�
   return DOT.baseCap;
 }
 
-function blessMult(){   // 數值型祝福隨深度/輪迴縮放（見 data.js BLESS_SCALE_KEYS）；率型/吸血維持固定
-  const f = R ? R.floor : 1, c = R ? (R.cycle||0) : 0;
-  return 1 + (f-1)*0.05 + blessCyc(c)*0.5;   // 每層 +5%、每重輪迴再加 blessCyc×0.5（起點值，可調）
+/* 祝福顯示的唯一入口：把 BLESSINGS[].n 模板的 {v} 換成這一次實際授予的值。
+   v 省略時取表定值（給「還沒獲得、只是點開看說明」的祝福磚用）。
+   任何要把祝福講給玩家聽的地方都必須走這裡，不要自己寫數字——
+   v455 以前烹食／岩漿池／祝福磚各寫一份，於是同一個祝福在四個畫面報四種數字。 */
+function blessText(k, v){
+  const bs = BLESSINGS.find(b => b.k === k);
+  if(!bs) return '祝福';
+  return bs.n.replace('{v}', v != null ? v : bs.v);
 }
 
 /* 貨幣顯示的唯一入口。
@@ -231,7 +252,7 @@ function sumAffix(key){
     for(const a of it.affixes) if(a.k===key && !AFFIXES[a.k].curse) v += a.v;
   }
   if(G.runes) for(const rn of G.runes){ if(rn) for(const a of rn.affixes) if(a.k===key && !AFFIXES[a.k].curse && !a.mul) v += a.v; } // 符文被動（乘法型 mul 另由 runeMul 計）
-  if(R && R.bless) for(const b of R.bless) if(b.k===key && !BLESS_NOT_AFFIX[b.k]) v += (BLESS_SCALE_KEYS[b.k] ? Math.round(b.v * blessMult()) : b.v);
+  if(R && R.bless) for(const b of R.bless) if(b.k===key && !BLESS_NOT_AFFIX[b.k]) v += b.v;   // 剩下的祝福都是率型死值，不縮放（str/hp 走各自的乘率入口）
   if(R && R.quench && R.quench.battles>0 && R.quench.k===key) v += R.quench.v;
   return v;
 }
@@ -268,7 +289,7 @@ function playerDef(){ // 防禦力（點數）：全職通用底＋護甲面板
   return BASE_DEF + eqStat(a);
 }
 function playerMaxHp(){
-  let hp = Math.round((BASE_HP + statTotal('vit')*2 + sumAffix('hp')) * runeMul('hp'));
+  let hp = Math.round((BASE_HP + statTotal('vit')*2 + sumAffix('hp')) * runeMul('hp') * blessHpMult());
   if(sumAffix('fury')) hp = Math.round(hp*0.7);
   if(R && R.hpCut) hp = Math.round(hp * (1 - R.hpCut)); // 殘卷血契 (§10)
   return Math.max(1, hp);
@@ -317,6 +338,15 @@ function blessWpnMult(){
   if(R && R.bless) for(const b of R.bless) if(b.k === 'str') p += b.v;
   return 1 + p/100;
 }
+/* 堅韌祝福＝最大生命乘率，唯一入口（v455）。理由同 blessWpnMult：
+   舊制是死值 +15 進 sumAffix('hp')，靠 blessMult() 隨層數放大，畫面卻永遠印表定的 15。
+   改成百分比後顯示即結算，而且不必再維護一條縮放曲線。
+   兩層祝福是相加（1+0.15+0.15）不是相乘，跟 str 的處理一致。 */
+function blessHpMult(){
+  let p = 0;
+  if(R && R.bless) for(const b of R.bless) if(b.k === 'hp') p += b.v;
+  return 1 + p/100;
+}
 function wpnAtk(){ return Math.round(eqStat(G.equip.w) * blessWpnMult()); }   // 顯示用武器攻擊（含祝福）
 function playerAtk(){ // 顯示用：武器攻擊＋主素質
   return wpnAtk() + mainStat();
@@ -352,7 +382,7 @@ function cycMult(c){ if(c<=0) return 1; return c<=3 ? CYC_MULT[c-1] : CYC_MULT[2
 
 function cycK(c){ if(c<=0) return 1; return c<=3 ? CYC_K[c-1] : CYC_K[2]*Math.pow(2.3, c-3); } // 裝備樓層成長倍率：只乘樓層項（基礎值/詞綴同軸），無限段 ×2.3/重
 
-function blessCyc(c){ if(c<=0) return 0; return c<=3 ? BLESS_CYC[c-1] : (1+BLESS_CYC[2])*Math.pow(2.3, c-3) - 1; } // 祝福縮放專用（凍結舊 cycVal 曲線）
+// blessCyc() 於 v455 隨 blessMult()／BLESS_CYC 一併刪除：祝福全改百分比後沒有死值需要縮放。
 
 /* ⚠️ 死程式（保留不刪）：scaleMult 目前全域無人呼叫，怪物成長改由別處處理。
    接上會讓怪物在線性成長之外再吃一層指數，直接打壞平衡；刪掉則失去這條曲線的紀錄。

@@ -422,9 +422,9 @@ function equipFromShared(id){
 function runeMaxRar(cycle, floor){   // 符文里程碑：本源不掉；輪迴I50→普通、II50→精良、III50→稀有、III100→傳說；無限→傳說。回 -1＝不解鎖
   if(cycle>=4) return 3;
   if(cycle<=0) return -1;                        // 本源不掉符文
-  if(cycle===1) return floor>=50 ? 0 : -1;       // 輪迴I 50 起：普通
-  if(cycle===2) return floor>=50 ? 1 : 0;        // 輪迴II 50 起：精良（<50 仍普通）
-  return floor>=100 ? 3 : (floor>=50 ? 2 : 1);   // 輪迴III：<50精良、≥50稀有、100傳說
+  if(cycle===1) return floor>=RUNE_TIER.mid ? 0 : -1;   // 輪迴I mid 起：普通
+  if(cycle===2) return floor>=RUNE_TIER.mid ? 1 : 0;    // 輪迴II mid 起：精良（未達仍普通）
+  return floor>=RUNE_TIER.high ? 3 : (floor>=RUNE_TIER.mid ? 2 : 1);   // 輪迴III：未達 mid 精良、mid 稀有、high 傳說
 }
 function makeRune(floor, cycle){
   const maxR = runeMaxRar(cycle||0, floor);
@@ -774,8 +774,17 @@ function itemDiff(it){
   if(!cur || cur.id === it.id) return null;
   return m.v - eqStat(cur);
 }
-/* 裝備清單列的唯一渲染器——倉庫與行囊共用，差別只在 o 的開關。
-   o = {tick:是否顯示勾選圈, checked, onTick:勾圈的 onclick, onOpen:整列的 onclick} */
+/* 裝備清單列的唯一渲染器。倉庫、行囊、角色檢視的身上裝備，
+   以及事件選項按鈕（殘卷獻祭／密室寶箱／營火拆裝／商人）全部共用這一支。
+   v459 以前那些地方各寫一套純文字，最極端的是殘卷獻祭——要玩家「選一件真的痛的」，
+   畫面上卻連稀有度和攻防都沒有，只有裝備名，等於盲選。
+
+   o = {
+     tick:是否顯示勾選圈, checked, onTick:勾圈的 onclick, onOpen:整列的 onclick,
+     compact:給事件選項按鈕用（外層 <button> 負責點擊，所以不掛 onclick、不畫勾選圈），
+     name:上行改印裝備全名而不是類型名（身上裝備與商人貨品要認得出是「哪一把」），
+     extra:右下角追加一段（價格、拆解值、未保管標記），沒給就不佔位
+   } */
 function itemRowHtml(it, o){
   o = o || {};
   const r = RARITIES[it.rar];
@@ -793,15 +802,17 @@ function itemRowHtml(it, o){
   const m = itemMain(it), df = itemDiff(it);
   const dh = df === null ? ''
     : `<div class="ir-diff ${df>0?'up':df<0?'dn':''}">${df>0?'▲ +'+df:df<0?'▼ '+df:'—'}</div>`;
-  const tk = o.tick
+  const tk = (o.tick && !o.compact)
     ? `<span class="tick${o.checked?' on':''}" onclick="event.stopPropagation();${o.onTick}"></span>` : '';
-  return `<div class="item-row ${r.b}${o.checked?' picked':''}"${o.onOpen?` onclick="${o.onOpen}"`:''}>
+  const head = (o.name ? it.name : itemTypeName(it)) + (it.up ? '+'+it.up : '');
+  const ex = o.extra ? `<div class="ir-extra">${o.extra}</div>` : '';
+  return `<div class="item-row ${r.b}${o.checked?' picked':''}${o.compact?' compact':''}"${(o.onOpen && !o.compact)?` onclick="${o.onOpen}"`:''}>
     ${tk}${itemIcon(it)}
     <div class="ir-main">
-      <div class="ir-top"><span class="ir-type ${r.cls}">${itemTypeName(it)}${it.up?'+'+it.up:''}</span>${chips}</div>
+      <div class="ir-top"><span class="ir-type ${r.cls}">${head}</span>${chips}</div>
       <div class="ir-affix">${affx}</div>
     </div>
-    <div class="ir-right"><div class="ir-stat">${m.t}</div>${dh}</div>
+    <div class="ir-right"><div class="ir-stat">${m.t}</div>${dh}${ex}</div>
   </div>`;
 }
 
@@ -905,6 +916,9 @@ function tryUpgrade(sl){
 }
 
 function reforgeCost(it){ return Math.round((60 + it.rar*40) * Math.pow(1.5, it.rf||0)); }
+/* 含鎖定加成的實際費用：扣款、按鈕顯示、提示文字三處以前各算一份，
+   REFORGE_LOCK_ADD 還被寫成 0.5 與 50% 兩種面貌，改係數必漏。 */
+function reforgeCostWithLocks(it, locks){ return Math.round(reforgeCost(it) * (1 + (locks||[]).length * REFORGE_LOCK_ADD)); }
 
 var pendingReforge = null;
 
@@ -927,7 +941,7 @@ function reforgeCtx(it){   // 重鑄用的強度情境：新裝備讀出身；�
 }
 function doReforge(){
   const slot = reforgeSlot, it = G.equip[slot]; if(!it) return;
-  const cost = Math.round(reforgeCost(it) * (1 + reforgeLocks.length*0.5)); if(G.gold < cost){ toast('碎銀不夠'); return; }
+  const cost = reforgeCostWithLocks(it, reforgeLocks); if(G.gold < cost){ toast('碎銀不夠'); return; }
   G.gold -= cost; it.rf = (it.rf||0) + 1;
   const ctx = reforgeCtx(it);
   const legs = it.affixes.filter(a=>AFFIXES[a.k].leg);
@@ -1038,7 +1052,7 @@ function renderSmith(){
     const cur = it.affixes.find(a=>AFFIXES[a.k].curse);
     /* 這個 normals 的順序必須與 doReforge() 內的 filter 一致，reforgeLocks 存的是它的索引 */
     const normals = it.affixes.filter(a=>!AFFIXES[a.k].leg && !AFFIXES[a.k].curse);
-    const rc = Math.round(reforgeCost(it) * (1 + reforgeLocks.length*0.5));
+    const rc = reforgeCostWithLocks(it, reforgeLocks);
     h += `<div class="rf-grid">`;
     h += leg
       ? `<div class="rf-cell leg rf-wide"><span class="tx">${AFFIXES[leg.k].n}：${AFFIXES[leg.k].fmt(leg.v)}<small>傳說</small></span><span class="lk">自動保留</span></div>`
@@ -1056,9 +1070,10 @@ function renderSmith(){
       ? `<div class="rf-cell cur rf-wide"><span class="tx">${AFFIXES[cur.k].n}：${AFFIXES[cur.k].fmt(cur.v)}<small>詛咒</small></span><span class="lk">自動保留</span></div>`
       : `<div class="rf-cell void rf-wide">無詛咒詞綴</div>`;
     h += `</div>`;
+    const lockPct = Math.round(REFORGE_LOCK_ADD * 100);   // 提示文字以前寫死 50，與扣款用的 0.5 是同一個係數的兩種面貌
     h += `<div class="rf-hint">${reforgeLocks.length
-        ? '鎖定 ' + reforgeLocks.length + ' 條，費用 +' + (reforgeLocks.length*50) + '%'
-        : '點詞綴可鎖定，每鎖一條 +50%'}</div>`;
+        ? '鎖定 ' + reforgeLocks.length + ' 條，費用 +' + (reforgeLocks.length * lockPct) + '%'
+        : '點詞綴可鎖定，每鎖一條 +' + lockPct + '%'}</div>`;
     h += `<button class="btn${G.gold < rc ? ' lack' : ''}" onclick="doReforge()">重鑄\u3000`
        + `<span class="bc"><svg class="ic"><use href="#ic-gold"/></svg> ${rc}</span></button>`;
   }

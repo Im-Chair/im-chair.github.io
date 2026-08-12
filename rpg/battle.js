@@ -105,7 +105,7 @@ function classLabel(clsKey){
 }
 
 function bossFor(floor){
-  if(floor % 50 === 0) return FINAL_BOSS;
+  if(floor % FINAL_BOSS_EVERY === 0) return FINAL_BOSS;
   if(floor % 10 === 0) return LORD_BOSSES[((floor/10 - 1) % 4 + 4) % 4] || LORD_BOSSES[(floor/10-1)%4];
   return MINI_BOSSES[(Math.floor(floor/10)) % 5];
 }
@@ -119,7 +119,7 @@ function makeBoss(floor){
       mult: CURVE.mobDMG(floor) * CURVE.bossDMG * cm / patMean(b.pat),
       elite:2, boss:true, intro:b.intro}, extra||{});
   };
-  if(floor % 50 === 0){
+  if(floor % FINAL_BOSS_EVERY === 0){
     const e = mk(FINAL_BOSS, CURVE.finalHP, 'final', {pat2:FINAL_BOSS.pat2, p2:false, final:true});
     return e;
   }
@@ -133,18 +133,34 @@ function makeBoss(floor){
   const b = MINI_BOSSES[(Math.floor(floor/10)) % 5];
   return mk(b, CURVE.miniHP, b.key);
 }
+/* 狂怒倍率的唯一入口。B.rageAt 由 startBattle 依域規則設定（熔獄提前）。 */
+function rageMulOf(turn){
+  const a = (B && B.rageAt) || RAGE.at;
+  return turn >= a ? 1 + (turn - (a-1)) * RAGE.growth : 1;
+}
+
+/* 敵人招式數值的唯一入口，預告（intentText）與結算（enemyTurn）都走這裡。
+   回傳兩個值：hit＝攻擊型的傷害（吃虛弱）、block＝防禦型的格擋量（不吃虛弱）。
+
+   為什麼要回傳兩個、而且各自只捨入一次：
+   v458 以前預告算 round(raw × weak)、結算算 round(round(raw) × weak)，
+   敵人帶虛弱時兩者會差 1 點——常數同不同步都一樣會差。
+   而防禦型更慘：預告把 weak 也乘進去了，實際加的格擋卻沒有，虛弱時預告直接偏低。 */
+function moveVal(e, mv, turn){
+  const raw = mv.v ? mv.v * e.mult * rageMulOf(turn) * (e.dmgMul||1) : 0;
+  return { hit: Math.round(raw * (e.st.weak ? WEAK_MUL : 1)), block: Math.round(raw) };
+}
+
 function intentText(e){
   const mv = enemyMove(e);
-  const _ra = (B && B.rageAt) || 8;
-  const rageMul = (B && B.turn >= _ra) ? 1 + (B.turn - (_ra-1)) * 0.15 : 1;
-  const weakMul = e.st.weak ? 0.75 : 1;
-  const v = mv.v ? Math.round(mv.v * e.mult * rageMul * (e.dmgMul||1) * weakMul) : 0;
+  const mval = moveVal(e, mv, (B && B.turn) || 1);
+  const v = mval.hit;
   const wm = e.st.weak && mv.v ? '↓' : '';
   switch(mv.t){
     case 'a': return ['<svg class="ic"><use href="#ic-sword"/></svg>', (mv.nm||'攻擊')+' '+v+wm];
     case 'h': return ['<svg class="ic"><use href="#ic-crit"/></svg>', (mv.nm||'重擊')+' '+v+wm];
     case 'm': return ['<svg class="ic"><use href="#ic-multi"/></svg>', (mv.nm||'連擊')+' '+v+wm+'×'+mv.x];
-    case 'd': return ['<svg class="ic"><use href="#ic-shield"/></svg>', '防禦 '+v];
+    case 'd': return ['<svg class="ic"><use href="#ic-shield"/></svg>', '防禦 '+mval.block];
     case 'c': return ['<svg class="ic"><use href="#ic-curse"/></svg>', mv.nm||'詛咒'];
     case 'v': return ['<svg class="ic"><use href="#ic-vamp"/></svg>', (mv.nm||'吸血')+' '+v+wm];
     case 's': return ['<svg class="ic"><use href="#ic-gold"/></svg>', (mv.nm||'偷竊')+' '+v+wm];
@@ -163,7 +179,7 @@ function startBattle(enemies, opt){
        over:false, sparkN:0, rageWarned:false, charge:null, noHit:true,
        boss:enemies.some(e=>e.boss), elite:Math.max(...enemies.map(e=>e.elite||0)), duo:enemies.length>1};
   const _zrule = realmFor(R.floor) && realmFor(R.floor).rule;
-  B.rageAt = _zrule==='rage5' ? 5 : 8;                       // 心室：狂怒提前到第 5 回合
+  B.rageAt = _zrule==='rage5' ? RAGE.atRage5 : RAGE.at;                       // 心室：狂怒提前到第 5 回合
   if(_zrule==='drain1') B.energy = Math.max(1, B.energy-1);  // 沉沒王國：首回合行動點 −1
   if(R.pendingStatus){ B.st = Object.assign({}, R.pendingStatus); R.pendingStatus = null; }
   if(opt && opt.ambush){ B.energy = Math.max(1, B.energy-1); }
@@ -505,7 +521,7 @@ function skillDesc(sid){
 const STATUS_INFO = {
   poison:'<svg class="ic"><use href="#ic-poison"/></svg> 中毒：每回合失去（前10層各1.5%、之後各0.5% 最大生命），每回合層數減半。無視防禦與格擋。首領與精英每回合承受的中毒跳傷有上限（精英/小王 8%、域主/最終王 5% 生命上限）——灰字層數為本回合超出上限的部分，仍會餵絞殺與腐燃、並延長受頂的回合數。「劇毒」與「蝕魂」會**同步抬高這個上限**，對首領仍然全額有效。',
   burn:'<svg class="ic"><use href="#ic-fire"/></svg> 燃燒：每回合失去（前10層各1.5%、之後各1% 最大生命），每回合層數減半。無視防禦與格擋。首領與精英每回合承受的燃燒跳傷有上限（精英/小王 8%、域主/最終王 5% 生命上限）——灰字層數為本回合超出上限的部分。「烈焰」會**同步抬高這個上限**，對首領仍然全額有效。',
-  weak:'<svg class="ic"><use href="#ic-weak"/></svg> 虛弱：造成的傷害 ×0.75。',
+  weak:`<svg class="ic"><use href="#ic-weak"/></svg> 虛弱：造成的傷害 ×${WEAK_MUL}。`,
   vuln:'<svg class="ic"><use href="#ic-vuln"/></svg> 易傷：受到的傷害 ×1.5。',
   stun:'<svg class="ic"><use href="#ic-stun"/></svg> 暈眩：跳過整個回合。結束後獲得 2 回合暈眩抵抗。',
   stunImm:'<svg class="ic"><use href="#ic-stunimm"/></svg> 暈眩抵抗：期間不會再被暈眩。',
@@ -581,8 +597,7 @@ function damagePlayer(d, src){
 }
 
 function healPlayer(amount){
-  let h = Math.floor(amount * healMult());
-  if(B && B.st.wound) h = Math.floor(h/2);
+  const h = healAmount(amount);   // 管線在 core.js 的 healAmount()：A → 域折扣 → 後續加成
   const real = Math.min(h, playerMaxHp() - R.hp);
   if(real > 0) R.hp += real;
   return real;
@@ -645,7 +660,7 @@ function calcPlayerDmg(mult, sk){
   if(sumAffix('fury')) d = Math.round(d*1.4);
   if(B && B.reso) d = Math.round(d*(1+B.reso));   // 共鳴：本回合加傷（endTurn 清掉）
   if(B && B.potRage) d = Math.round(d*1.5);
-  if(B && B.st.weak) d = Math.round(d*0.75);
+  if(B && B.st.weak) d = Math.round(d*WEAK_MUL);
   if(B && tgt().st.vuln) d = Math.round(d*1.5);
   return Math.max(1, Math.round(d));
 }
@@ -892,7 +907,7 @@ function dealToEnemy(mult, sk, f){
   }
   if(f && f.apply) applyStatus(e.st, f.apply);
   if(f && f.poisonProc && e.st.poison && e.hp > 0){
-    const pd = Math.ceil(e.maxhp * dotPct('poison', e.st.poison) * (sumAffix('vform')?1.5:1) * (1 + sumAffix('ppyre')/100));   // 催毒：不計入首領承傷閥額度（否則對王邊際為 0）
+    const pd = Math.ceil(e.maxhp * dotPct('poison', e.st.poison) * dotAmp('poison'));   // 催毒：不計入首領承傷閥額度（否則對王邊際為 0）
     e.hp -= pd; floatDmg(zone, '-'+pd, '');
     log(`催毒——${e.n} 的毒立即發作 ${pd} 傷害。`,'dmg');
   }
@@ -945,7 +960,7 @@ function tickBurn(who, zone, name){
   if(who.st && who.st.burn){
     const isEnemy = who.maxhp !== undefined;
     const maxhp = isEnemy ? who.maxhp : playerMaxHp();
-    const pyre = isEnemy ? (1 + sumAffix('bpyre')/100) : 1;   // 烈焰：對敵燃傷加成
+    const pyre = isEnemy ? dotAmp('burn') : 1;   // 烈焰只對敵人生效，玩家身上的燃燒不吃加成
     let d = Math.ceil(maxhp * dotPct('burn', who.st.burn) * pyre);
     if(isEnemy){
       d = dotHitEnemy(who, 'burn', d);
@@ -965,17 +980,14 @@ function tickBurn(who, zone, name){
 
 function enemyTurn(){
   setTimeout(()=>{
-    const _ra = B.rageAt || 8;
-    let rageMul = 1;
-    if(B.turn >= _ra){
-      rageMul = 1 + (B.turn - (_ra-1)) * 0.15;
-      if(!B.rageWarned){ B.rageWarned = true; log('深淵不耐煩了——敵人陷入狂怒，傷害開始遞增！','sys'); }
-    }
+    // _ra 只用來判斷「要不要跳提示」與狀態條的層數；倍率本身由 moveVal() → rageMulOf() 算，不要在這裡再乘一次
+    const _ra = B.rageAt || RAGE.at;
+    if(B.turn >= _ra && !B.rageWarned){ B.rageWarned = true; log('深淵不耐煩了——敵人陷入狂怒，傷害開始遞增！','sys'); }
     for(const e of B.es){
       if(e.hp<=0) continue;
       if(B.turn >= _ra) e.st.rage = B.turn - (_ra-1);
-      if(e.st.poison){ const vf = sumAffix('vform') ? 1.5 : 1; // 蝕魂：中毒傷害 +50%
-        const d = dotHitEnemy(e, 'poison', Math.ceil(e.maxhp * dotPct('poison', e.st.poison) * vf * (1 + sumAffix('ppyre')/100))); e.hp -= d;
+      if(e.st.poison){
+        const d = dotHitEnemy(e, 'poison', Math.ceil(e.maxhp * dotPct('poison', e.st.poison) * dotAmp('poison'))); e.hp -= d;
         log(`${e.n} 中毒受到 ${d} 傷害（${e.st.poison} 層）。`,'dmg'); floatDmg('ez-'+B.es.indexOf(e),'-'+d,'');
         if(sumAffix('symbio')){ const h = leechHeal(Math.ceil(d*0.5));
           if(h>0){ log(`腐生：回復 ${h} 生命。`,'heal'); } }
@@ -998,15 +1010,15 @@ function enemyTurn(){
       if(e.autoblock){ e.block += e.autoblock; }
       const mv = enemyMove(e);
       e.pi++;
-      const val = mv.v ? Math.round(mv.v * e.mult * rageMul * (e.dmgMul||1)) : 0;
-      const weakMul = e.st.weak ? 0.75 : 1;
+      const mval = moveVal(e, mv, B.turn);   // 與 intentText 同一支，捨入次序一致
+      const val = mval.block;
       switch(mv.t){
         case 'a': case 'h': case 'v': case 's': case 'm': {
           const times = mv.x || 1;
           let totalDealt = 0;
           for(let i=0;i<times;i++){
             if(R.hp<=0) break;
-            let d = Math.round(val*weakMul);
+            let d = mval.hit;
             if(B.st.vuln) d = Math.round(d*1.5);
             if(Math.random()*100 < dodgeRate()){
               log('你閃過了'+e.n+'的攻擊。','sys'); floatDmg('player-zone','閃避','blocked');
@@ -1083,7 +1095,7 @@ function winBattle(){
   regenMana();   // 見 regenMana 的註解：速殺會整個跳過該回合的回魔，在這裡補結算
   const mend = sumAffix('mend');
   let mendHeal = 0;
-  if(mend){ mendHeal = Math.min(Math.round(playerMaxHp()*mend/100), playerMaxHp()-R.hp); if(mendHeal>0) R.hp += mendHeal; }
+  if(mend) mendHeal = healPlayer(Math.round(playerMaxHp()*mend/100));   // v457：改走管線，戰後回復也吃域折扣
   if(R.quench && R.quench.battles>0){ R.quench.battles--; }
   let gold = Math.round((8 + R.floor*2.4 + rnd(0,6)) * (B.boss?4 : B.elite?2 : 1) * (B.duo?1.6:1) * (1 + (R.cycle||0)*0.2) * 0.5);   // 戰鬥碎銀減半（原掉太多）
   gold = Math.round(gold * (1 + sumAffix('greed')/100));
@@ -1221,11 +1233,10 @@ function afterLoot(){
 
 function usePotion(k, inBattle){
   if(!R.pots || !R.pots[k]) return;
-  if(k==='heal'){ const v = potPower(k); const h = inBattle? healPlayer(v) : Math.min(v, playerMaxHp()-R.hp);
-    if(!inBattle) R.hp += h;
+  if(k==='heal'){ const v = potPower(k); const h = healPlayer(v);   // v457：戰鬥外以前繞過管線，同一瓶藥在同一層會回不同的血
     const mm = playerMaxMana();
-    if(mm > 0){ R.mana = Math.min(mm, (R.mana||0) + Math.round(mm*0.3)); }
-    toast(`回復 ${h} 血${mm>0?'＋30%法力':''}`); if(inBattle){ log(`喝下治療藥水，回復 ${h} 血${B&&B.st.wound?'（重傷減半）':''}。`,'heal'); floatDmg('player-zone','+'+h,'heal'); } }
+    if(mm > 0){ R.mana = Math.min(mm, (R.mana||0) + Math.round(mm*POT_MANA_PCT)); }
+    toast(`回復 ${h} 血${mm>0?`＋${Math.round(POT_MANA_PCT*100)}%法力`:''}`); if(inBattle){ log(`喝下治療藥水，回復 ${h} 血${B&&B.st.wound?'（重傷減半）':''}。`,'heal'); floatDmg('player-zone','+'+h,'heal'); } }
   else if(k==='energy'){ if(!inBattle) return toast('只能在戰鬥中用'); B.energy += 2; log('灌下烈酒，+2 行動點。','sys'); }
   else if(k==='bomb'){ if(!inBattle) return toast('只能在戰鬥中用'); const v = potPower(k); const e = tgt(); e.hp -= v; applyStatus(e.st, {vuln:2}); log(`火油瓶對 ${e.n} 炸出 ${v} 傷害，火光中破綻畢露（易傷 2）。`,'dmg'); floatDmg('ez-'+B.ti,'-'+v,''); }
   else if(k==='purge'){ B ? (B.st = {}) : null; toast('負面狀態已清除'); if(inBattle) log('淨化藥水洗去了所有異常。','sys'); }

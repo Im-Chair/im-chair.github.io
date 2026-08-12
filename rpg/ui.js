@@ -253,15 +253,15 @@ function openRunStats(){
   for(const sk of ['w','a','t']){
     const it = G.equip[sk];
     if(!it){ html += `<div class="base">${slotName(sk)}：—</div>`; continue; }
-    html += `<div class="loot-card ${RARITIES[it.rar].b}" style="margin:8px 0;padding:10px">
-      <div class="${RARITIES[it.rar].cls}" style="font-size:15px">${it.name}${it.up?' +'+it.up:''}
-        <span style="font-size:11px">${RARITIES[it.rar].n}${it.banked===false?'・<span style="color:var(--orange)">未保管</span>':''}</span></div>
-      <div style="font-size:12px;color:var(--dim)">${slotName(sk)}｜${itemStatLine(it)}</div>
-      ${affixHtml(it)}</div>`;
+    // v459：改與倉庫／行囊同一支渲染器。name:true 是因為這裡只有三件、要認得出是「哪一把」，
+    // 不像倉庫在翻一長串、用類型辨識就夠。
+    html += itemRowHtml(it, {name:true, compact:true,
+      extra: it.banked===false ? '<span style="color:var(--orange)">未保管</span>' : ''});
   }
   if(R && R.bless.length){
     html += '<div class="section-title">本次祝福</div>';
-    html += R.bless.map(b=>`<div class="affix"><svg class="ic"><use href="#${BLESS_ICON[b.k]||'ic-bless'}"/></svg> ${BLESS_NAME[b.k]||b.k} +${BLESS_SCALE_KEYS[b.k] ? Math.round(b.v*blessMult()) : b.v}</div>`).join('');
+    // 單位跟著 BLESSINGS[].u 走：五個祝福現在全是百分比，寫死 + 不帶單位會變成「堅韌 +15」
+    html += R.bless.map(b=>`<div class="affix"><svg class="ic"><use href="#${BLESS_ICON[b.k]||'ic-bless'}"/></svg> ${BLESS_NAME[b.k]||b.k} +${b.v}${(BLESSINGS.find(x=>x.k===b.k)||{}).u||''}</div>`).join('');
   }
   html += bagListHtml('stats');
   html += '<button class="btn" style="margin-top:14px" onclick="closeSheet()">關閉</button>';
@@ -288,9 +288,10 @@ function bagListHtml(back){
 function openBlessInfo(k){
   const bs = BLESSINGS.find(b => b.k === k); if(!bs) return;
   const own = (R && R.bless) ? R.bless.filter(b => b.k === k) : [];
-  const sum = own.reduce((a, b) => a + (BLESS_SCALE_KEYS[k] ? Math.round(b.v * blessMult()) : b.v), 0);
+  const sum = own.reduce((a, b) => a + b.v, 0);
+  const desc = blessText(k);   // 模板內插後才拆冒號，否則說明會印出 {v}
   openSheet(`<h3>${BLESS_NAME[k]}的祝福</h3>
-    <p class="base">${bs.n.split('：')[1] || bs.n}</p>
+    <p class="base">${desc.split('：')[1] || desc}</p>
     <div class="section-title">這趟</div>
     <div class="base">${own.length ? own.length + '/' + BLESS_MAX + ' 層　合計 +' + sum + (bs.u || '') : '尚未獲得'}</div>
     <button class="btn" style="margin-top:14px" onclick="closeSheet()">關閉</button>`);

@@ -15,8 +15,8 @@ function migrateChar(c){
   if(!c.codex) c.codex = {};
   if(!c.cyc) c.cyc = {unlocked: c.rec.clear? 1:0};
   if(!c.orig){
-    const dp = Math.min(c.rec.deep||0, 50);
-    c.orig = {deep:dp, cp:Math.min(41, dp), done:false};
+    const dp = Math.min(c.rec.deep||0, ORIG_DEPTH);
+    c.orig = {deep:dp, cp:Math.min(TP.origCap, dp), done:false};
     c.cycData = {};
     const map = {boss0:'bb0', boss1:'bb2', boss2:'mb2'};
     for(const [ok,nk] of Object.entries(map)){ if(c.codex[ok]){ c.codex[nk] = (c.codex[nk]||0) + c.codex[ok]; delete c.codex[ok]; } }

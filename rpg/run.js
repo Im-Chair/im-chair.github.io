@@ -3,27 +3,49 @@
 
 /* 祝福授予唯一入口：同種祝福上限 2 次。全部滿了回哨兵物件（不入帳，n 即「施歪了」訊息，
    現有 '...'+b.n 的顯示不用改；b.k=null 讓 if(b.k==='hp') 這類分支自然跳過）。
-   pk/pv：指定 key 的硬編祝福（如烹食 hp:8）用，未指定則隨機挑「未滿」的一種。 */
+   pk/pv：指定 key 的硬編祝福（如烹食 hp:8）用，未指定則隨機挑「未滿」的一種。
+
+   回傳的 n 已經內插好實際值（走 blessText），呼叫端一律用 b.n 組文字、不要自己寫數字。
+   v455 以前烹食／樹根／岩漿池三處直接 push 繞過這裡，於是同時繞過了顯示與補血兩件事。 */
 const BLESS_MAX = 2;
 function blessCount(k){ return R.bless.filter(b=>b.k===k).length; }
+const BLESS_FULL = {k:null, v:0, full:true, n:'神父被你身上的祝福聖光閃瞎，祝福施歪了，你沒有得到祝福'};
 function grantBless(pk, pv){
   let cand = null;
-  if(pk){ if(blessCount(pk) < BLESS_MAX){ const src = BLESSINGS.find(b=>b.k===pk); cand = {k:pk, v:(pv!=null?pv:(src?src.v:0)), n:src?src.n:'祝福'}; } }
-  if(!cand){ const avail = BLESSINGS.filter(b=>blessCount(b.k) < BLESS_MAX); if(avail.length) cand = pick(avail); }
-  if(!cand) return {k:null, v:0, full:true, n:'神父被你身上的祝福聖光閃瞎，祝福施歪了，你沒有得到祝福'};
+  if(pk){
+    // 指定 key 滿層時「不」隨機替補。舊寫法會掉進下面的隨機分支，於是按鈕寫著
+    // 「烹食（生命上限 +8%）」、實際拿到銳利——那正是這一批要消滅的顯示≠結算。
+    // 滿層改回哨兵，由呼叫端自己決定怎麼補償（烹食改給回血、岩漿池只留回血）。
+    if(blessCount(pk) >= BLESS_MAX) return BLESS_FULL;
+    const src = BLESSINGS.find(b=>b.k===pk); const v = (pv!=null ? pv : (src?src.v:0));
+    cand = {k:pk, v, n:blessText(pk, v)};
+  }
+  if(!cand){ const avail = BLESSINGS.filter(b=>blessCount(b.k) < BLESS_MAX); if(avail.length){ const s = pick(avail); cand = {k:s.k, v:s.v, n:blessText(s.k, s.v)}; } }
+  if(!cand) return BLESS_FULL;
+  // 上限漲了卻不補血，玩家會在「獲得祝福」的當下看到血條反而變空一截。
+  // 同額補滿漲幅，血條比例不變。差額用量的（前後各問一次 playerMaxHp），不照祝福值推算——
+  // 這樣重傷/血契/符文那些乘除都算進去了，而且非 hp 祝福的漲幅自然是 0，這兩行不必加條件。
+  // 刻意「不」走 healPlayer：這不是回復，是上限變動的等額補償，不該被域折扣或重傷減半吃掉。
+  const before = playerMaxHp();
   R.bless.push({k:cand.k, v:cand.v});
+  R.hp = Math.min(playerMaxHp(), R.hp + Math.max(0, playerMaxHp() - before));
   return cand;
 }
 
+/* 傳送費與補給的唯一入口。選單顯示與實際扣款都只准走這兩支——
+   以前兩邊各寫一份 floor*10 / floor*12，改費率時很容易只改到一邊。 */
+function tpFee(floor, mode){
+  const key = mode === 'orig' ? 'orig' : (mode >= 4 ? 'inf' : 'c' + mode);   // 輪迴 ≥4 一律走無限檔
+  return floor * (TP.fee[key] != null ? TP.fee[key] : TP.fee.inf);
+}
+function tpSupply(floor){ return floor * TP.supply; }
+
 function startOptions(mode){
-  // 回傳 [{floor, fee}]；傳送點以「成功逃脫的最深層」解鎖，每 10 層一階（1,11,21,31,41…）
+  // 回傳 [{floor, fee}]；傳送點以「成功逃脫的最深層」解鎖，每 TP.step 層一階（1,11,21,31,41…）
   const opts = [{floor:1, fee:0}];
-  if(mode === 'orig'){
-    for(let s = 11; s <= Math.min(G.orig.cp, 41); s += 10) opts.push({floor:s, fee:s*10}); // 本源最深傳送點 41（打穿50王不再多開一階）
-  } else {
-    const c = cd(mode);
-    for(let s = 11; s <= c.cp; s += 10) opts.push({floor:s, fee:s*12});                     // 輪迴無上限
-  }
+  // 本源封在 TP.origCap（打穿 50 王不再多開一階）；輪迴吃該輪自己的認證深度，不另外封頂
+  const cap = mode === 'orig' ? Math.min(G.orig.cp, TP.origCap) : cd(mode).cp;
+  for(let s = TP.first; s <= cap; s += TP.step) opts.push({floor:s, fee:tpFee(s, mode)});
   return opts;
 }
 
@@ -31,7 +53,7 @@ var pendingMode = 'orig';
 
 function openDivePicker(){
   const cu = cyclesUnlocked();
-  if(cu === 0 && G.orig.cp < 11){ startRun(1, 0); return; }
+  if(cu === 0 && G.orig.cp < TP.first){ startRun(1, 0); return; }
   if(pendingMode !== 'orig' && pendingMode > cu) pendingMode = 'orig';
   let html = '<h3>下潛</h3>';
   // 模式列
@@ -60,20 +82,20 @@ function openDivePicker(){
     if(o.fee === 0){
       html += `<div class="item-row" onclick="tryStart(1)"><span class="in">🕳 從第 1 層</span><span class="is">免費</span></div>`;
     } else {
-      html += `<div class="item-row" onclick="tryStart(${o.floor})"><span class="in"><svg class="ic"><use href="#ic-rope"/></svg> 傳送至第 ${o.floor} 層</span><span class="is">${o.fee}<svg class="ic"><use href="#ic-gold"/></svg>｜補給:${o.floor*5}<svg class="ic"><use href="#ic-gold"/></svg>+藥水</span></div>`;
+      html += `<div class="item-row" onclick="tryStart(${o.floor})"><span class="in"><svg class="ic"><use href="#ic-rope"/></svg> 傳送至第 ${o.floor} 層</span><span class="is">${o.fee}<svg class="ic"><use href="#ic-gold"/></svg>｜補給:${tpSupply(o.floor)}<svg class="ic"><use href="#ic-gold"/></svg>+藥水</span></div>`;
     }
   }
   html += '</div>';
   let nextCp = '';
   if(pendingMode==='orig'){
-    const ds = G.orig.cp>=11 ? Math.min(41, Math.floor((G.orig.cp-1)/10)*10+1) : 1;
-    const nxt = ds<41 ? (ds===1?11:ds+10) : 0;   // 本源到 41 就不再開下一階
+    const ds = G.orig.cp>=TP.first ? Math.min(TP.origCap, Math.floor((G.orig.cp-1)/TP.step)*TP.step+1) : 1;
+    const nxt = ds<TP.origCap ? (ds===1?TP.first:ds+TP.step) : 0;   // 本源到 TP.origCap 就不再開下一階
     if(nxt) nextCp = '活著逃脫到第 '+nxt+' 層並拉繩，解鎖傳送至該層';
   } else {
     const cp = cd(pendingMode).cp;
-    const ds = cp>=11 ? Math.floor((cp-1)/10)*10+1 : 1;
-    const capped = pendingMode < 4;                       // 輪迴 I–III 封 100，最深傳送階 91；無限(≥4)不封頂
-    const nxt = (!capped || ds < 91) ? (ds===1?11:ds+10) : 0;
+    const ds = cp>=TP.first ? Math.floor((cp-1)/TP.step)*TP.step+1 : 1;
+    const capped = pendingMode < 4;                       // 輪迴 I–III 封 100，最深傳送階 TP.cycCap；無限(≥4)不封頂
+    const nxt = (!capped || ds < TP.cycCap) ? (ds===1?TP.first:ds+TP.step) : 0;
     if(nxt) nextCp = '活著逃脫到第 '+nxt+' 層並拉繩，解鎖傳送至該層';
   }
   if(nextCp) html += `<p style="color:var(--dim);font-size:12px;margin-top:8px"><svg class="ic"><use href="#ic-lock"/></svg> ${nextCp}。</p>`;
@@ -87,7 +109,7 @@ function setMode(m){ pendingMode = m; openDivePicker(); }
 function tryStart(floor){
   const cycle = pendingMode==='orig' ? 0 : pendingMode;
   if(floor > 1){
-    const fee = pendingMode==='orig' ? floor*10 : floor*12;
+    const fee = tpFee(floor, pendingMode);   // 與選單顯示同一支，不要在這裡重算
     if(G.gold < fee){ toast('傳送費不夠（需 '+fee+' <svg class="ic"><use href="#ic-gold"/></svg>）'); return; }
     G.gold -= fee;
   }
@@ -103,7 +125,7 @@ function startRun(startFloor, cycle){
        doors:null, phase:'doors', kills:0};
   R.cycle = cycle || 0;
   if(startFloor > 1){
-    R.gold = startFloor*5;
+    R.gold = tpSupply(startFloor);   // 與選單「補給:N」同一支
     potAdd('heal');
     R.deepStart = true;
   }
@@ -141,10 +163,10 @@ function enterFloor(){
   if(R.floor===1){ startBattle(makeEnemy(1,0)); return; }
   if(R.deepStart){
     R.deepStart = false;
-    const heal = Math.round(playerMaxHp()*0.3);
+    const heal = healAmount(playerMaxHp()*REST_HEAL_PCT);   // 與營火同一個休息值、同一條管線
     showEventScreen('🪢','繩降平台','守繩人把你放到了第 '+R.floor+' 層的一座木造平台。平台上有一堆沒熄的營火——上一個租繩子的人留下的。他沒有回來還繩。',
       [{n:'<svg class="ic"><use href="#ic-heal"/></svg> 在火邊休息（回復 '+heal+' 血）', f:()=>{
-        R.hp = Math.min(playerMaxHp(), R.hp + heal); nextFloorSame();
+        healPlayer(playerMaxHp()*REST_HEAL_PCT); nextFloorSame();
       }, primary:true},
       {n:'<svg class="ic"><use href="#ic-anvil"/></svg> 借火光精進一招', f:()=>{
         showSkillUpScreen('🪢','繩降平台・精進','借著別人的火，練自己的刀。',
@@ -430,10 +452,10 @@ function nextFloor(){
 }
 
 function doRest(){
-  const heal = Math.round(playerMaxHp()*0.3*healMult());
+  const heal = healAmount(playerMaxHp()*REST_HEAL_PCT);
   const choices = [{n:`<svg class="ic"><use href="#ic-heal"/></svg> 休息（回復 ${heal} 血）`, f:()=>{
-    R.hp = Math.min(playerMaxHp(), R.hp + heal);
-    showEventScreen('🕯️','營火','火光照不遠，但夠暖。\n\n回復了 '+heal+' 點生命。',
+    const got = healPlayer(playerMaxHp()*REST_HEAL_PCT);
+    showEventScreen('🕯️','營火','火光照不遠，但夠暖。\n\n回復了 '+got+' 點生命。',
       [{n:'繼續前進', f:()=>nextFloor(), primary:true}]);
   }, primary:true}];
   choices.push(fireExtra());
@@ -448,12 +470,14 @@ function fireExtra(){
   const k = pick(pool);
   if(k==='cook'){
     const pk = Object.keys(R.pots)[0];
-    return {n:`<svg class="ic"><use href="#ic-flask"/></svg> 烹食（熬掉一瓶${POTIONS[pk].n}，生命上限 +8）`, f:()=>{
+    return {n:`<svg class="ic"><use href="#ic-flask"/></svg> 烹食（熬掉一瓶${POTIONS[pk].n}，${blessText('hp', BLESS_EV.cook).split('：')[1]}）`, f:()=>{
       R.pots[pk]--; if(!R.pots[pk]) delete R.pots[pk];
-      if(blessCount('hp') < BLESS_MAX) R.bless.push({k:'hp', v:8});   // 上限2；滿了仍給回血
-      R.hp = Math.min(playerMaxHp(), R.hp + 8);
-      showEventScreen('🕯️','烹食','你把藥水倒進鍋裡，加了些說不上來的東西。味道意外地好。\n\n生命上限 +8（本次探索有效）。',
+      const b = grantBless('hp', BLESS_EV.cook);   // 補血由 grantBless 一併處理
+      showEventScreen('🕯️','烹食','你把藥水倒進鍋裡，加了些說不上來的東西。味道意外地好。\n\n'
+        + (b.full ? '身體已經吃不下更多祝福，但這鍋確實補了元氣。' : b.n + '（本次探索有效）。'),
         [{n:'繼續前進', f:()=>nextFloor(), primary:true}]);
+      // 祝福滿了仍給回血，維持 v455 以前的行為：這一格是穩拿選項，滿層時不該變成純浪費一瓶藥水
+      if(b.full) healPlayer(playerMaxHp()*BLESS_EV.cook/100);
     }};
   }
   if(k==='scrap'){
@@ -484,8 +508,8 @@ function fireExtra(){
 function scrapFire(){
   if(!R.bag.length){ nextFloor(); return; }
   const c = R.bag.slice(0,6).map(it=>{
-    const v = 6 + it.rar*10 + Math.floor(it.base/2);
-    return {n:`熔掉 ${it.name}（+${v}<svg class="ic"><use href="#ic-gold"/></svg>）`, f:()=>{
+    const v = salvageVal(it);   // 營火拆裝是四個分解入口裡唯一手抄過公式的，改分解價時會漏掉
+    return {cls:'itembtn', n: itemRowHtml(it, {compact:true, extra:`熔 +${v}<svg class="ic"><use href="#ic-gold"/></svg>`}), f:()=>{
       const i = R.bag.findIndex(x=>x.id===it.id);
       if(i>=0){ R.bag.splice(i,1); R.gold += v; }
       scrapFire();
@@ -542,10 +566,12 @@ function showEventScreen(icon,title,text,choices){
   $('ev-gold').textContent = R.gold;
   setEventIcon(icon);
   $('ev-title').textContent = title;
-  $('ev-text').textContent = text;
+  // 選項按鈕（v393）與 loot-sub（v414）都已改吃 HTML，只有這個消費端還停在 textContent，
+  // 導致 uiIcon() 產生的 <img> 被當純文字印出來。文字全部是內部組字串，沒有玩家輸入來源。
+  $('ev-text').innerHTML = text;
   const c = $('ev-choices'); c.innerHTML='';
   for(const ch of choices){
-    const b = document.createElement('button'); b.className='btn'+(ch.primary?' primary':'');
+    const b = document.createElement('button'); b.className='btn'+(ch.primary?' primary':'')+(ch.cls?' '+ch.cls:'');   // cls：讓裝備列選項拿掉按鈕自己的框（.itembtn），否則會雙層框
     b.innerHTML = ch.n; b.onclick = ch.f; c.appendChild(b);   // v393：改吃 HTML，選項標籤才能放 SVG 圖示
   }
   save(); showScreen('s-event');
@@ -557,7 +583,7 @@ function showSkillUpScreen(icon, title, text, onPick, extraChoices){
   $('ev-gold').textContent = R.gold;
   setEventIcon(icon);
   $('ev-title').textContent = title;
-  $('ev-text').textContent = text;
+  $('ev-text').innerHTML = text;   // 與 showEventScreen 同一個 ev-text 節點，兩支必須同步，否則同一段文字在兩個畫面表現不同
   const c = $('ev-choices'); c.innerHTML='';
   const upgradable = upgradableSkills();
   const grid = document.createElement('div'); grid.className='su-grid';
@@ -577,7 +603,7 @@ function showSkillUpScreen(icon, title, text, onPick, extraChoices){
   }
   c.appendChild(grid);
   for(const ch of (extraChoices||[])){
-    const b = document.createElement('button'); b.className='btn'+(ch.primary?' primary':'');
+    const b = document.createElement('button'); b.className='btn'+(ch.primary?' primary':'')+(ch.cls?' '+ch.cls:'');   // cls：讓裝備列選項拿掉按鈕自己的框（.itembtn），否則會雙層框
     b.innerHTML = ch.n; b.onclick = ch.f; c.appendChild(b);   // v393：改吃 HTML，選項標籤才能放 SVG 圖示
   }
   save(); showScreen('s-event');
@@ -591,8 +617,7 @@ function walkAway(icon, title){
     showEventScreen(icon, title, '你繞開了它。腳邊的碎石堆裡閃著幾枚前人掉的碎銀。\n\n獲得 '+g+' 碎銀。',
       [{n:'繼續前進', f:()=>nextFloor(), primary:true}]);
   } else if(r < 0.72){
-    const h = Math.min(Math.round(playerMaxHp()*0.06), playerMaxHp()-R.hp);
-    if(h>0) R.hp += h;
+    const h = healPlayer(playerMaxHp()*0.06);
     showEventScreen(icon, title, '你繞開了它，順便在轉角喘了口氣。\n\n回復 '+h+' 點生命。',
       [{n:'繼續前進', f:()=>nextFloor(), primary:true}]);
   } else {
@@ -648,8 +673,7 @@ function treasureRoll(bonus, icon, title){
         [{n:'收下，繼續前進', f:()=>nextFloor(), primary:true}]);
     }
   } else {
-    const b = grantBless();
-    if(b.k==='hp') R.hp = Math.min(playerMaxHp(), R.hp);
+    const b = grantBless();   // v455：這裡原本有一行 R.hp 重新夾值，改成上限漲多少就補多少之後由 grantBless 處理，不再需要
     showEventScreen(icon, title, '你摸到的不是東西，是一段殘留的祝福。\n\n'+b.n+'（本次探索有效）',
       [{n:'繼續前進', f:()=>nextFloor(), primary:true}]);
   }
@@ -667,7 +691,6 @@ const EVENTS = {
           return;
         }
         R.hp = Math.max(1, R.hp - cost);
-        if(b.k==='hp') R.hp = Math.min(playerMaxHp(), R.hp + b.v);
         showEventScreen('⛩️','無名神龕','神像的眼窩亮了一瞬。\n\n'+b.n+'（本次探索有效）',
           [{n:'繼續前進', f:()=>nextFloor(), primary:true}]);
       }},
@@ -705,10 +728,10 @@ const EVENTS = {
     renderMerchant();
   },
   spring(){
-    const heal = Math.round(playerMaxHp()*0.35*healMult());
+    const heal = healAmount(playerMaxHp()*0.35);
     showEventScreen('⛲','幽光泉水','岩縫間湧出泛著微光的泉水，看起來乾淨得不像這裡的東西。',
-      [{n:'喝下（回復 '+heal+' 血）', f:()=>{ R.hp=Math.min(playerMaxHp(),R.hp+heal);
-        showEventScreen('⛲','幽光泉水','冰涼，微甜，喝完之後傷口不那麼疼了。\n\n回復 '+heal+' 點生命。',[{n:'繼續前進',f:()=>nextFloor(),primary:true}]); }},
+      [{n:'喝下（回復 '+heal+' 血）', f:()=>{ const got = healPlayer(playerMaxHp()*0.35);
+        showEventScreen('⛲','幽光泉水','冰涼，微甜，喝完之後傷口不那麼疼了。\n\n回復 '+got+' 點生命。',[{n:'繼續前進',f:()=>nextFloor(),primary:true}]); }},
       {n:'太可疑了，不喝', f:()=>walkAway('⛲', '幽光泉水')}]);
   },
   can(){
@@ -833,7 +856,7 @@ const EVENTS = {
         const r = Math.random();
         if(r < 0.30){
           const its = [makeItem(R.floor,1), makeItem(R.floor,1), makeItem(R.floor,1)];
-          const c = its.map(it=>({n:`${RARITIES[it.rar].n}｜${it.name}（${itemStatLine(it)}）`, f:()=>{
+          const c = its.map(it=>({cls:'itembtn', n: itemRowHtml(it, {compact:true}), f:()=>{
             R.bag.push(it); showLoot([it], 0, '🚪', '密室', '你拿走了一件，門在身後消失了。');
           }}));
           c.push({n:'都不拿', f:()=>nextFloor()});
@@ -882,7 +905,7 @@ const EVENTS = {
         else if(r<0.75){ const e = makeEnemy(R.floor,0);
           showEventScreen('🔥','灰燼','火堆的主人回來了。他不覺得你是客人。',
             [{n:'<svg class="ic"><use href="#ic-sword"/></svg> 迎戰', f:()=>startBattle(e), primary:true}]); }
-        else { const h = Math.min(Math.round(playerMaxHp()*0.15), playerMaxHp()-R.hp); R.hp += h;
+        else { const h = healPlayer(playerMaxHp()*0.15);
           showEventScreen('🔥','灰燼','什麼都沒埋。你借火烤了烤手，回復 '+h+' 點生命。',
             [{n:'繼續前進', f:()=>nextFloor(), primary:true}]); }
       }},
@@ -939,10 +962,11 @@ const EVENTS = {
     showEventScreen('🌿','裸露的樹根','一條手臂粗的氣根從黑暗裡垂下來，斷口滲著溫熱的汁液。喝的人聽說會變強。也聽說會變別的。',
       [{n:'喝一口', f:()=>{
         const r = Math.random();
-        // v436：力量祝福改為武器攻擊乘率後，這裡的 v 也是百分點。舊值 3 在新制下比常規授予(5)還差，
-        // 故拉齊為 5；這個事件的「更好」由額外回血提供，不再靠祝福值加碼（避免超過每層 5% 的難度上限）。
-        if(r<0.5){ if(blessCount('str') < BLESS_MAX) R.bless.push({k:'str',v:5}); const h = Math.min(Math.round(playerMaxHp()*0.2), playerMaxHp()-R.hp); R.hp += h;
-          showEventScreen('🌿','樹根','樹汁在你血管裡燒。武器攻擊 +5%（本次探索），回復 '+h+' 點生命。',
+        // v436：力量祝福改為武器攻擊乘率後，這裡的 v 也是百分點，並拉齊為表定值；
+        // 這個事件的「更好」由額外回血提供，不再靠祝福值加碼（避免超過每層 5% 的難度上限）。
+        // v455：改走 grantBless() 不帶 pv，值直接跟著 BLESSINGS 走，調表就不會漏掉這裡。
+        if(r<0.5){ const b = grantBless('str'); const h = healPlayer(playerMaxHp()*0.2);
+          showEventScreen('🌿','樹根','樹汁在你血管裡燒。'+(b.full?'':b.n.split('：')[1]+'（本次探索），')+'回復 '+h+' 點生命。',
             [{n:'繼續前進', f:()=>nextFloor(), primary:true}]); }
         else { R.pendingStatus = {wound:3};
           showEventScreen('🌿','樹根','汁液是甜的——太甜了。你的傷口開始不肯癒合（下場戰鬥重傷 3）。',
@@ -960,7 +984,7 @@ const EVENTS = {
             if(it && it.cursed){ it.affixes = it.affixes.filter(a=>!AFFIXES[a.k].curse); it.cursed = false; it.name = it.name.replace('詛咒的',''); break; } }
           showEventScreen('🕳','懺悔室','簾後的聲音聽完，嘆了口氣。你身上有什麼東西鬆開了。\n\n一件裝備的詛咒被赦免了。',
             [{n:'繼續前進', f:()=>nextFloor(), primary:true}]); }
-        else if(r<0.55){ const h = Math.min(Math.round(playerMaxHp()*0.25), playerMaxHp()-R.hp); R.hp += h;
+        else if(r<0.55){ const h = healPlayer(playerMaxHp()*0.25);
           showEventScreen('🕳','懺悔室','你把一路的殺孽都說了。簾後只回了一句：「不重。」\n\n回復 '+h+' 點生命。',
             [{n:'繼續前進', f:()=>nextFloor(), primary:true}]); }
         else { const d = Math.max(5, Math.round(playerMaxHp()*0.08)); R.hp = Math.max(1, R.hp-d);
@@ -983,8 +1007,8 @@ const EVENTS = {
     showEventScreen('🌋','岩漿池','一池岩漿緩緩翻滾，熱得不像會傷人，倒像在呼吸——和你的心跳同一個頻率。',
       [{n:'浸入手臂', f:()=>{
         const r = Math.random();
-        if(r<0.6){ if(blessCount('hp') < BLESS_MAX) R.bless.push({k:'hp',v:12}); const h = Math.min(Math.round(playerMaxHp()*0.35), playerMaxHp()-R.hp); R.hp += h;
-          showEventScreen('🌋','岩漿池','你把手浸進去。它認得你——你一路燒掉的東西，有一部分沉在這裡。\n\n肉身受了一次淬煉：生命上限 +12（本次探索），回復 '+h+' 點生命。',
+        if(r<0.6){ const b = grantBless('hp', BLESS_EV.lava); const h = healPlayer(playerMaxHp()*0.35);
+          showEventScreen('🌋','岩漿池','你把手浸進去。它認得你——你一路燒掉的東西，有一部分沉在這裡。\n\n肉身受了一次淬煉：'+(b.full?'':b.n.split('：')[1]+'（本次探索），')+'回復 '+h+' 點生命。',
             [{n:'繼續前進', f:()=>nextFloor(), primary:true}]); }
         else { R.pendingStatus = {wound:2, weak:2};
           showEventScreen('🌋','岩漿池','它認得你，但不喜歡你。（下場戰鬥重傷 2、虛弱 2）',
@@ -1018,7 +1042,7 @@ const EVENTS = {
     ];
     if(R.bag.length){
       choices.push({n:'🔥 以物立契（熔掉行囊中一件裝備）', f:()=>{
-        const c = R.bag.slice(0,6).map(it=>({n:`熔掉 ${it.name}`, f:()=>{
+        const c = R.bag.slice(0,6).map(it=>({cls:'itembtn', n: itemRowHtml(it, {compact:true}), f:()=>{
           const i = R.bag.findIndex(x=>x.id===it.id);
           if(i>=0) R.bag.splice(i,1);
           sacrifice(()=>{}, '物契');
@@ -1052,7 +1076,7 @@ const EVENTS = {
 
 function merchantLabel(st){
   if(st.sold) return '（已售出）';
-  if(st.kind==='gear'){ const r = RARITIES[st.it.rar]; return `${r.n}裝備｜${st.it.name}（${itemStatLine(st.it)}）— ${st.price}<svg class="ic"><use href="#ic-gold"/></svg>`; }
+  if(st.kind==='gear') return itemRowHtml(st.it, {compact:true, name:true, extra:`${st.price}<svg class="ic"><use href="#ic-gold"/></svg>`});
   if(st.kind==='oil') return `<svg class="ic"><use href="#ic-bless"/></svg> 祝福油（隨機一項本次探索祝福）— ${st.price}<svg class="ic"><use href="#ic-gold"/></svg>`;
   if(st.kind==='quench') return `<svg class="ic"><use href="#ic-dagger"/></svg> 淬毒服務（攻擊附 3 中毒，3 場戰鬥）— ${st.price}<svg class="ic"><use href="#ic-gold"/></svg>`;
   if(st.kind==='mat') return `${MATS[st.mat].i} ${MATS[st.mat].n} ×1 — ${st.price}<svg class="ic"><use href="#ic-gold"/></svg>`;
@@ -1089,7 +1113,10 @@ function viewMerchantGear(idx){   // 商人裝備:先跟身上比較再決定買
     ${st.sold?'<p class="base" style="color:var(--dim)">已售出</p>':(R.gold<st.price?'<p class="base" style="color:var(--red)">碎銀不夠</p>':'')}`);
 }
 function renderMerchant(){
-  const choices = R.shop.map((st, i)=>({ n:merchantLabel(st), f:()=> (st.kind==='gear' && !st.sold) ? viewMerchantGear(i) : buyMerchant(i) }));
+  const choices = R.shop.map((st, i)=>{
+    const gear = st.kind==='gear' && !st.sold;
+    return { n:merchantLabel(st), cls: gear ? 'itembtn' : '', f:()=> gear ? viewMerchantGear(i) : buyMerchant(i) };
+  });
   choices.push({n:'不買了，繼續前進', f:()=>nextFloor(), primary:true});
   showEventScreen('🏮','迷路的商人','一盞紅燈籠下，商人縮在貨擔後面：「客人，深處的東西不收碎銀，趁現在換點有用的吧。」',choices);
 }

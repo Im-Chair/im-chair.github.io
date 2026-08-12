@@ -222,6 +222,15 @@ h1.title{
    詛咒與傳說排在最前面，截斷時被砍掉的才會是一般詞綴。 */
 .item-row{gap:9px;padding:6px 12px;}
 .item-row.picked{border-color:var(--gold);background:#221c0e;}
+/* 事件選項按鈕裡放一整列裝備（殘卷獻祭／密室寶箱／營火拆裝／商人）。
+   .btn 與 .item-row 各自有一層邊框與背景，不拆掉會變成雙框——
+   所以按鈕退成純點擊區，框與底色一律交給 .item-row 畫。
+   ⚠️ .btn 定義在第 29 行、比這裡早，同分時後到者勝，所以這幾條贏得過它（v452/v453 的教訓）。 */
+.btn.itembtn{padding:0;border:0;background:none;text-align:left;}
+.btn.itembtn .item-row{width:100%;}
+.btn.itembtn:active{transform:scale(.97);}
+.item-row.compact{cursor:pointer;}
+.ir-extra{font-size:11px;color:var(--gold);white-space:nowrap;margin-top:2px;}
 /* ⚠️ 不要叫 .ir-body：那個名字已經被藥水列(battle.js)與圖鑑擊殺列(ui.js)用著，
    而且它是 display:flex（水平）。v440 第一版重用了同名 class，結果後面那條舊規則覆蓋掉新的，
    「類型排」與「詞綴排」變成左右並排而不是上下兩排。 */
