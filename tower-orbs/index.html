@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
+<link rel="manifest" href="manifest.json">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>轉珠之塔 · 神魔之塔致敬版</title>
@@ -250,7 +251,7 @@ b{font-weight:800}
       <div class="lvb">LV<b id="h-lv">1</b></div>
       <div class="grow">
         <div class="expbar"><i id="h-exp"></i></div>
-        <div class="stam"><i class="ico" style="--ii:2"></i> 體力 <b id="h-st"></b> <span id="h-stt"></span></div>
+        <div class="stam" data-act="hudStam" style="cursor:pointer"><i class="ico" style="--ii:2"></i> 體力 <b id="h-st"></b> <span id="h-stt"></span></div>
       </div>
     </div>
     <div class="res"><span><i class="ico" style="--ii:0"></i> <b id="h-co"></b></span><span><i class="ico" style="--ii:1"></i> <b id="h-ge"></b></span><span><i class="ico" style="--ii:3"></i> <b id="h-fp"></b></span><span><i class="ico" style="--ii:4"></i> <b id="h-bag"></b></span></div>
@@ -616,7 +617,7 @@ function rDex(){
 }
 function rMore(){
   return `<div class="panel"><h3>🛒 商店</h3>
-  <div class="row" style="margin-top:0"><button class="btn gold" data-act="shop" data-v="stam">回復體力<br><small>${ico('gem')}3</small></button><button class="btn gold" data-act="shop" data-v="bag">背包 +5 格<br><small>${ico('gem')}5（現有 ${S.bagCap}）</small></button></div></div>
+  <div class="row" style="margin-top:0"><button class="btn gold" data-act="shop" data-v="stam">回復體力<br><small>${ico('gem')}1</small></button><button class="btn gold" data-act="shop" data-v="bag">背包 +5 格<br><small>${ico('gem')}1（現有 ${S.bagCap}）</small></button></div></div>
   <div class="panel"><h3>📖 遊戲說明</h3><div class="row" style="margin-top:0"><button class="btn" data-act="help">查看玩法與規則</button></div></div>
   <div class="panel"><h3>⚙️ 設定</h3><div class="row" style="margin-top:0"><button class="btn ghost" data-act="snd">音效：${S.snd?'開':'關'}</button><button class="btn ghost" data-act="exportSave">匯出存檔</button><button class="btn ghost" data-act="importSave">匯入存檔</button></div><div class="row"><button class="btn red" data-act="reset">重置存檔</button></div><div class="hint">進度只存在這個瀏覽器中，建議定期匯出備份。</div></div>
   <div class="panel"><h3>📊 紀錄</h3><div class="hint" style="margin:0">最高層數：${S.floor}　召喚次數：${S.pulls}<br>圖鑑：${Object.keys(S.seen).length} / ${CLIST.length}　隊伍上限 COST：${costCap()}</div></div>
@@ -736,9 +737,9 @@ function renderStageModal(){
   <div style="margin:10px 0 2px;font-size:13px;font-weight:800">選擇好友隊長（好友隊長技同時生效，通關 +10 ${ico('friend')}）</div>
   ${fr.list.map((f,i)=>{const d=CARD[f.id];return `<div class="fr ${fr.sel===i?'on':''}" data-act="pickFr" data-i="${i}">${miniD(d,{lv:f.lv})}<div class="ft"><b>${f.name}</b> · ${d.name}<br><small style="color:var(--muted)">${ls(d)}</small></div></div>`}).join('')}
   <div class="fr ${fr.sel===-1?'on':''}" data-act="pickFr" data-i="-1"><div class="ft" style="text-align:center">不使用好友</div></div>
-  ${bagFree()<5?`<div class="hint" style="color:var(--bad);margin-top:8px">⚠ 背包空間只剩 ${bagFree()} 格，多出的掉落卡會自動換成金幣。</div>`:''}
+  ${bagFree()<5?`<div class="hint" style="color:var(--bad);margin-top:8px">⚠ 背包空間只剩 ${bagFree()} 格，多出的掉落卡會自動換成金幣。</div><button class="btn full" style="margin-top:6px" data-act="stageBag">${ico('gem')} 1 魔石擴充背包 +5 格（現有 ${S.bagCap}）</button>`:''}
   ${err?`<div class="hint" style="color:var(--bad);margin-top:8px">⚠ ${err}</div>`:''}
-  ${err&&err.startsWith('體力')?`<button class="btn full" style="margin-top:6px" data-act="stageStam">${ico('gem')} 3 魔石補滿體力（持有 ${S.gems}）</button>`:''}
+  ${err&&err.startsWith('體力')?`<button class="btn full" style="margin-top:6px" data-act="stageStam">${ico('gem')} 1 魔石補滿體力（持有 ${S.gems}）</button>`:''}
   <div class="row sticky"><button class="btn ghost" data-act="close">返回</button><button class="btn gold ${err?'dis':''}" data-act="fight">出戰！</button></div>`);
 }
 
@@ -751,7 +752,7 @@ function rollGacha(kind){
 function doPull(kind,n){
   const cost=kind==='gem'?(n===1?5:50):(n===1?10:100);
   if((kind==='gem'?S.gems:S.fp)<cost)return toast(kind==='gem'?'魔石不足':'友情點不足');
-  if(bagFree()<n)return toast(`背包空間不足（需要 ${n} 格）`);
+  if(bagFree()<n){return confirmBox(`背包空間不足（需要 ${n} 格，剩 ${bagFree()} 格）。花 1 魔石擴充 5 格？（持有 ${S.gems}）`,()=>{if(S.gems<1)return toast('魔石不足');if(S.bagCap>=400)return toast('背包已達上限');S.gems-=1;S.bagCap+=5;save();hud();render(true);toast('背包 +5 格')},'擴充')}
   if(kind==='gem')S.gems-=cost;else S.fp-=cost;
   const res=[];for(let i=0;i<n;i++)res.push(rollGacha(kind));
   if(kind==='gem'&&n===10&&!res.some(id=>CARD[id].rarity>=5)){const r=wpick([5,6,7],k=>({5:80,6:16,7:4})[k]);res[9]=pick(POOL[r])}
@@ -892,11 +893,13 @@ ACT.evoGo=t=>{
 ACT.pull=t=>doPull(t.dataset.k,+t.dataset.n);
 ACT.pullAgain=t=>{closeModal();doPull(t.dataset.k,+t.dataset.n)};
 ACT.shop=t=>{
-  if(t.dataset.v==='stam'){if(S.gems<3)return toast('魔石不足');S.gems-=3;S.stam=Math.max(S.stam,stamMax());S.stamT=Date.now();toast('體力已回復')}
-  else{if(S.gems<5)return toast('魔石不足');if(S.bagCap>=400)return toast('背包已達上限');S.gems-=5;S.bagCap+=5;toast('背包 +5 格')}
+  if(t.dataset.v==='stam'){if(S.gems<1)return toast('魔石不足');S.gems-=1;S.stam=Math.max(S.stam,stamMax());S.stamT=Date.now();toast('體力已回復')}
+  else{if(S.gems<1)return toast('魔石不足');if(S.bagCap>=400)return toast('背包已達上限');S.gems-=1;S.bagCap+=5;toast('背包 +5 格')}
   save();render(true);
 };
-ACT.stageStam=()=>{if(S.gems<3)return toast('魔石不足');S.gems-=3;S.stam=Math.max(S.stam,stamMax());S.stamT=Date.now();save();hud();toast('體力已回復');renderStageModal()};
+ACT.stageBag=()=>{if(S.gems<1)return toast('魔石不足');if(S.bagCap>=400)return toast('背包已達上限');S.gems-=1;S.bagCap+=5;save();hud();toast('背包 +5 格');renderStageModal()};
+ACT.hudStam=()=>{tickStam();if(S.stam>=stamMax())return toast('體力已滿');confirmBox(`花 1 魔石補滿體力？（持有 ${S.gems}）`,()=>{S.gems-=1;S.stam=Math.max(S.stam,stamMax());S.stamT=Date.now();save();hud();toast('體力已回復')},'補滿')};
+ACT.stageStam=()=>{if(S.gems<1)return toast('魔石不足');S.gems-=1;S.stam=Math.max(S.stam,stamMax());S.stamT=Date.now();save();hud();toast('體力已回復');renderStageModal()};
 ACT.exportSave=()=>{const txt=btoa(unescape(encodeURIComponent(JSON.stringify(S))));
   openModal(`<h3>匯出存檔</h3><div class="hint">複製下面整段文字並妥善保存；換裝置或清除瀏覽器資料後，可用「匯入存檔」還原。</div><textarea id="sv-txt" readonly style="width:100%;height:120px;background:#0c1130;color:#cfd6ff;border:1px solid var(--line);border-radius:8px;font-size:11px;word-break:break-all">${txt}</textarea><div class="row"><button class="btn ghost" data-act="close">關閉</button><button class="btn gold" data-act="copySave">複製</button></div>`)};
 ACT.copySave=()=>{const t=$('#sv-txt');t.select();try{navigator.clipboard.writeText(t.value).then(()=>toast('已複製'),()=>{document.execCommand('copy');toast('已複製')})}catch(e){try{document.execCommand('copy');toast('已複製')}catch(_){toast('請手動複製')}}};
@@ -1289,6 +1292,7 @@ function init(){
   setInterval(()=>{if(!B){tickStam();hud()}},1000);
 }
 init();
+try{if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js').catch(()=>{})}catch(e){}
 </script>
 </body>
 </html>
