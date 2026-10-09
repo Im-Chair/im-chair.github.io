@@ -225,7 +225,7 @@ b{font-weight:800}
 .mc.big{width:118px;margin:16px 18px 16px 10px;flex:none;cursor:default}
 .mc.big>.abg{width:27%}
 .mc.ghost .art{color:#9aa;font-size:22px}
-.g5{gap:14px 10px;padding:6px}.slots{gap:16px 12px;padding:6px 8px 2px}.slot .sl{margin-top:10px;font-size:11px}.slot .mc i.nw{display:none}button,.floor,.mc{touch-action:manipulation}
+.g5,.g4{gap:14px 10px;padding:6px}.slots{gap:16px 12px;padding:6px 8px 2px}.slot .sl{margin-top:10px;font-size:11px}.slot .mc i.nw{display:none}button,.floor,.mc{touch-action:manipulation}
 #bt-team{gap:6px;padding:10px 10px 2px}
 .tm .tl{left:-4px;top:-10px;width:auto;font-size:12px;z-index:3}
 .tm .sk{left:9%;right:9%;bottom:7%;border-radius:4px;z-index:3}
@@ -391,7 +391,7 @@ function skText(s){
 
 /* ================= state ================= */
 const KEY='tower_orbs_save_v1';
-function fresh(){return{started:false,lv:1,exp:0,stam:26,stamT:Date.now(),coins:1000,gems:50,fp:50,bagCap:80,cards:[],uid:1,teams:[[],[],[]],at:0,floor:0,login:'',pulls:0,seen:{},snd:true,tut:0}}
+function fresh(){return{started:false,lv:1,exp:0,stam:26,stamT:Date.now(),coins:1000,gems:50,fp:50,bagCap:80,cards:[],uid:1,teams:[[],[],[]],at:0,floor:0,login:'',pulls:0,seen:{},snd:true,tut:0,sfirst:{}}}
 let S;
 try{S=Object.assign(fresh(),JSON.parse(localStorage.getItem(KEY)||'null')||{})}catch(e){S=fresh()}
 function sanitize(){
@@ -474,19 +474,33 @@ function hud(){
 }
 
 /* ================= stages ================= */
+const T2=[{n:'初級',f:10,u:10},{n:'中級',f:20,u:20},{n:'高級',f:30,u:30}];
 const SPS=[
   {k:'spirit',n:'元素精靈之巢',e:'🧚',d:'必掉元素精靈，強化與進化的好材料',cost:6,attr:'wood'},
   {k:'gold',n:'黃金洞窟',e:'💰',d:'大量金幣獎勵',cost:6,attr:'light'},
-  {k:'exp',n:'經驗試煉場',e:'🧪',d:'高額玩家經驗值',cost:10,attr:'dark'}
+  {k:'exp',n:'經驗試煉場',e:'🧪',d:'高額玩家經驗值',cost:10,attr:'dark'},
+  {k:'elem',n:'屬性試煉',e:'🌈',d:'依星期輪替的屬性關卡，掉落該屬性的高階卡片',cost:8,attr:'water',T:T2},
+  {k:'rush',n:'魔王連戰',e:'👹',d:'連續挑戰五屬性魔王，每隻必掉 1 張卡，首次通關送魔石',cost:12,attr:'dark',T:T2},
+  {k:'swift',n:'極速挑戰',e:'⚡',d:'轉珠時間縮短為 3 秒，經驗與金幣加倍，首次通關送魔石',cost:8,attr:'light'}
 ];
+const SPM={spirit:[.5,.5],gold:[.5,5],exp:[3,.5],elem:[1.2,1.2],rush:[2,2],swift:[2,2]};
+const SFG={rush:[5,10,20],swift:[2,3,5]};
+const DAYA=[null,'water','fire','wood','light','dark',null];
+const DAYN={water:'週一',fire:'週二',wood:'週三',light:'週四',dark:'週五'};
+const elemOpen=a=>{const d=DAYA[new Date().getDay()];return !d||d===a};
 const TIERS=[{n:'初級',f:8,u:2},{n:'中級',f:20,u:12},{n:'高級',f:35,u:25}];
 function stageInfo(s){
   if(s.kind==='tower'){
     const f=s.f,a=ATTRS[(f-1)%5];
     return{f,name:`第 ${f} 層`,sub:`${ZONE[(f-1)%5]}迴廊${f%10===0?' · 魔王層':''}`,attr:a,cost:4+Math.floor(f/4),exp:40+f*12,coins:80+f*20,first:S.floor>=f?0:firstGems(f)};
   }
-  const sp=SPS.find(x=>x.k===s.k),tr=TIERS[s.t-1],f=tr.f;
-  return{f,name:`${sp.n}·${tr.n}`,sub:sp.d,attr:sp.attr,cost:sp.cost+(s.t-1)*2,exp:Math.round((40+f*12)*(s.k==='exp'?3:.5)),coins:Math.round((80+f*20)*(s.k==='gold'?5:.5)),first:0};
+  const sp=SPS.find(x=>x.k===s.k),tr=(sp.T||TIERS)[s.t-1],f=tr.f,m=SPM[s.k];
+  const attr=s.k==='elem'?(s.a||'water'):sp.attr;
+  let lock='';
+  if(S.floor<tr.u)lock=`需先通關塔第 ${tr.u} 層`;
+  else if(s.k==='elem'&&!elemOpen(attr))lock=`${AN[attr]}屬性試煉僅在${DAYN[attr]}與週末開放`;
+  const first=SFG[s.k]&&!(S.sfirst||{})[s.k+s.t]?SFG[s.k][s.t-1]:0;
+  return{f,name:s.k==='elem'?`${AN[attr]}屬性試煉·${tr.n}`:`${sp.n}·${tr.n}`,sub:sp.d,attr,cost:sp.cost+(s.t-1)*2,exp:Math.round((40+f*12)*m[0]),coins:Math.round((80+f*20)*m[1]),first,lock,tb:s.k==='swift'?3:6};
 }
 const BOSSN={water:'滄海龍王·瀾淵',fire:'煉獄炎龍·赤焰',wood:'古樹魔王·翠根',light:'熾天使長·拉斐',dark:'暗淵魔王·諾斯'};
 function mkEnemy(f,attr,boss,m={}){
@@ -518,6 +532,14 @@ function dropTable(s,info){
   };
   return{normal:draw(nMin,nMax,3),boss:draw(bMin,bMax,3),spirits:true};
 }
+function drawPool(a,lo,hi,n,rng){
+  const cand=CLIST.filter(d=>!d.spirit&&d.attr===a&&d.rarity>=lo&&d.rarity<=hi).map(d=>d.id);
+  const top=cand.filter(id=>CARD[id].rarity===hi),out=[];
+  if(top.length)out.push(top[Math.floor(rng()*top.length)]);
+  cand.filter(id=>!out.includes(id)).map(id=>[rng(),id]).sort((x,y)=>x[0]-y[0]).forEach(([,id])=>{if(out.length<n)out.push(id)});
+  return out.sort((x,y)=>CARD[x].rarity-CARD[y].rarity);
+}
+function sPool(a,t){const rng=rngSeed(ATTRS.indexOf(a)*131+t*17+5),mx=[4,5,6][t-1];return{normal:drawPool(a,Math.max(2,mx-2),mx-1,3,rng),boss:drawPool(a,mx-1,mx,3,rng)}}
 function genWaves(s,info){
   const f=info.f,waves=[];
   if(s.kind==='tower'){
@@ -532,12 +554,19 @@ function genWaves(s,info){
       if(!e.boss&&Math.random()<.12)e.drops.push(pick(dt.normal));
       if(e.boss){e.drops.push(pick(dt.boss));if(Math.random()<.5)e.drops.push('sp_'+e.attr);if(Math.random()<.25)e.drops.push('cr_'+e.attr)}
     });
+  }else if(s.k==='elem'){
+    const a=info.attr,p=sPool(a,s.t);
+    for(let w=0;w<3;w++)waves.push(w<2?Array.from({length:ri(2,3)},()=>mkEnemy(f,a,false)):[mkEnemy(f,a,true)]);
+    waves.flat().forEach(e=>{e.coin=ri(20,40)+f*4;if(Math.random()<.4)e.drops.push('sp_'+a);if(!e.boss&&Math.random()<.15)e.drops.push(pick(p.normal));if(e.boss){e.drops.push(pick(p.boss));if(Math.random()<.4)e.drops.push('cr_'+a)}});
+  }else if(s.k==='rush'){
+    ATTRS.forEach(a=>{const e=mkEnemy(f,a,true,{hp:.6,atk:.8});e.coin=ri(40,70)+f*6;e.drops.push(pick(sPool(a,s.t).boss));if(Math.random()<.3)e.drops.push('cr_'+a);waves.push([e])});
   }else{
     for(let w=0;w<3;w++)waves.push(Array.from({length:3},()=>{
       const a=pick(ATTRS),e=mkEnemy(f,a,false,{hp:.5,atk:.4});
       e.cd=e.cdMax=ri(3,4);
       if(s.k==='spirit'){e.name=AN[a]+'元素精靈';e.emo=AE[a];e.spr={a,r:0,c:0};e.drops=['sp_'+a];if(Math.random()<.2)e.drops.push('cr_'+a);if(Math.random()<.5)e.drops.push('sp_'+pick(ATTRS));e.coin=ri(10,20)}
       else if(s.k==='gold'){e.name='黃金哥布林';e.emo='🤑';e.spr=null;e.bi=5;e.coin=ri(60,100)+f*10}
+      else if(s.k==='swift'){e.coin=ri(20,40)+f*3;e.drops=[];if(Math.random()<.4)e.drops.push('sp_'+a);if(Math.random()<.15)e.drops.push('cr_'+a)}
       else{e.name='經驗史萊姆';e.emo='🟢';e.spr=null;e.bi=6;e.coin=ri(10,30)}
       return e;
     }));
@@ -563,9 +592,14 @@ function rTower(){
       h+=`<div class="floor a-${a}${locked?' lock':''}${f===S.floor+1?' cur':''}${f<=S.floor?' done':''}" ${locked?'':`data-act="stage" data-k="tower" data-f="${f}"`}><div class="fn">${sprHTML(a,0,2)}<b>${f}</b></div><div class="fi"><b>第 ${f} 層 ${AE[a]}</b><div>${ZONE[(f-1)%5]}迴廊${f%10===0?' · 魔王層 '+ico('crown'):''}</div></div><div class="fc">${ico('stam')}${cost}${f>S.floor&&!locked?`<div style="font-size:11px">首通 ${ico('gem')}${firstGems(f)}</div>`:''}</div></div>`;
     }
   }else{
-    h+=`<div class="hint">特殊關卡可無限挑戰，用來補充精靈素材、金幣與經驗。通關塔層後解鎖更高難度。</div>`;
+    h+=`<div class="hint">特殊關卡可無限挑戰：補充精靈、金幣、經驗，或挑戰屬性試煉（依星期輪替、週末全開）、魔王連戰、極速挑戰拿高階卡與魔石。各難度需通關對應塔層解鎖。</div>`;
     SPS.forEach(sp=>{
-      h+=`<div class="panel"><h3>${sp.e} ${sp.n}</h3><div class="hint" style="margin:0 0 8px">${sp.d}</div><div class="row" style="margin-top:0">${TIERS.map((tr,i)=>`<button class="btn ${S.floor>=tr.u?'':'dis'}" data-act="stage" data-k="sp" data-sk="${sp.k}" data-t="${i+1}">${tr.n}<br><small>${ico('stam')}${sp.cost+i*2}${S.floor>=tr.u?'':` ${ico('lock')}${tr.u}層`}</small></button>`).join('')}</div></div>`;
+      const T=sp.T||TIERS;let extra='',ea='';
+      if(sp.k==='elem'){
+        UI.ea=UI.ea||DAYA[new Date().getDay()]||'water';ea=UI.ea;
+        extra=`<div class="tabs" style="margin-bottom:8px">${ATTRS.map(a=>`<button class="${ea===a?'on':''}" data-act="elemA" data-v="${a}" style="padding:6px 0;line-height:1.2">${AE[a]}<br><small style="font-size:10px">${elemOpen(a)?'開放中':DAYN[a]}</small></button>`).join('')}</div>`;
+      }
+      h+=`<div class="panel"><h3>${sp.e} ${sp.n}</h3><div class="hint" style="margin:0 0 8px">${sp.d}</div>${extra}<div class="row" style="margin-top:0">${T.map((tr,i)=>{const ok=S.floor>=tr.u&&(sp.k!=='elem'||elemOpen(ea));return `<button class="btn ${ok?'':'dis'}" data-act="stage" data-k="sp" data-sk="${sp.k}" data-t="${i+1}" data-a="${ea}">${tr.n}<br><small>${ico('stam')}${sp.cost+i*2}${S.floor>=tr.u?'':` ${ico('lock')}${tr.u}層`}</small></button>`}).join('')}</div></div>`;
     });
   }
   return h;
@@ -708,6 +742,7 @@ function openStage(spec){
 }
 function stageErr(info){
   const t=S.teams[S.at];
+  if(info.lock)return info.lock;
   if(!t[0]||!byUid(t[0]))return '請先到「隊伍」設定隊長';
   if(teamCost(t)>costCap())return `隊伍 COST 超過上限（${teamCost(t)}/${costCap()}）`;
   tickStam();
@@ -717,6 +752,10 @@ function stageErr(info){
 function dropSection(spec,info){
   const dt=dropTable(spec,info);
   const grid=(ids)=>`<div class="grid g5">${ids.map(id=>miniD(CARD[id],{lv:0,act:'defc',id,nw:!S.seen[id]})).join('')}</div>`;
+  if(spec.k==='elem'){const p=sPool(info.attr,spec.t),H='<div style="margin:10px 0 2px;font-size:13px;font-weight:800">🎁 可能掉落（點卡片看詳情，NEW＝尚未擁有）</div>';
+    return H+`<div class="hint" style="margin:0 0 4px"><b style="color:var(--gold)">Boss 必掉其中 1 張</b>（各 ${Math.round(100/p.boss.length)}%），另有 40% 機率掉${AN[info.attr]}之結晶</div>${grid(p.boss)}<div class="hint" style="margin:8px 0 4px">一般敵人各有 15% 機率掉下列其中 1 張（各 ${(15/p.normal.length).toFixed(1)}%）</div>${grid(p.normal)}`}
+  if(spec.k==='rush'){return `<div style="margin:10px 0 2px;font-size:13px;font-weight:800">🎁 可能掉落（依序挑戰水、火、木、光、暗五隻魔王）</div><div class="hint" style="margin:0 0 4px">每隻魔王必掉其下其中 1 張（各 ${Math.round(100/3)}%），30% 機率另掉結晶。中途戰敗不保留掉落，但已消耗體力。</div>${ATTRS.map(a=>`<div class="grid g4" style="margin-bottom:6px"><div style="display:grid;place-items:center;font-size:26px">${AE[a]}</div>${sPool(a,spec.t).boss.map(id=>miniD(CARD[id],{lv:0,act:'defc',id,nw:!S.seen[id]})).join('')}</div>`).join('')}`}
+  if(spec.k==='swift'){return `<div style="margin:10px 0 2px;font-size:13px;font-weight:800">🎁 可能掉落</div><div class="hint">敵人較弱但轉珠時間只有 3 秒。掉落元素精靈（40%）與元素結晶（15%），不掉卡片。經驗與金幣為一般特殊關卡的 4 倍，首次通關另送魔石。</div>`}
   if(spec.kind!=='tower'){
     if(spec.k==='spirit')return `<div style="margin:10px 0 2px;font-size:13px;font-weight:800">🎁 可能掉落</div><div class="hint" style="margin:0 0 6px">每隻敵人必掉對應屬性的元素精靈（有機會再多一顆），另有 20% 機率掉元素結晶（強化用，EXP 600）。</div>${grid(ATTRS.map(a=>'sp_'+a).concat(ATTRS.map(a=>'cr_'+a)))}`;
     return `<div style="margin:10px 0 2px;font-size:13px;font-weight:800">🎁 可能掉落</div><div class="hint">此關卡不掉落卡片，獎勵為${spec.k==='gold'?'大量金幣':'大量經驗值'}。</div>`;
@@ -770,10 +809,11 @@ const ACT={};
 ACT.close=()=>closeModal();
 ACT.cbyes=()=>{const f=CB;CB=null;closeModal();f&&f()};
 ACT.nav=t=>{UI.tab=t.dataset.v;render()};
+ACT.elemA=t=>{UI.ea=t.dataset.v;render(true)};
 ACT.sub=t=>{UI.sub=t.dataset.v;render()};
 ACT.stage=t=>{
   if(!S.started)return;
-  const spec=t.dataset.k==='tower'?{kind:'tower',f:+t.dataset.f}:{kind:'sp',k:t.dataset.sk,t:+t.dataset.t};
+  const spec=t.dataset.k==='tower'?{kind:'tower',f:+t.dataset.f}:{kind:'sp',k:t.dataset.sk,t:+t.dataset.t,a:t.dataset.a||undefined};
   openStage(spec);
 };
 ACT.pickFr=t=>{UI.fr.sel=+t.dataset.i;renderStageModal()};
@@ -945,7 +985,7 @@ function startBattle(spec,fr){
   const info=stageInfo(spec),waves=genWaves(spec,info),team=buildTeam(fr);
   const lead=applyLeaders(team,[team[0],fr?team[team.length-1]:null]);
   const max=team.reduce((s,m)=>s+m.hp,0);
-  B={spec,info,waves,wave:0,team,enemies:[],hp:max,max,target:0,phase:'idle',combos:[],guard:{pct:0,turns:0},drops:[],coins:0,over:false,fr,lead,turns:0,timeMax:6+lead.time};
+  B={spec,info,waves,wave:0,team,enemies:[],hp:max,max,target:0,phase:'idle',combos:[],guard:{pct:0,turns:0},drops:[],coins:0,over:false,fr,lead,turns:0,timeMax:(info.tb||6)+lead.time};
   const el=$('#battle');el.hidden=false;
   el.innerHTML=`<div class="bt-top"><div class="nm">${AE[info.attr]} ${info.name}</div><div id="bt-wave"></div><div id="bt-dropn">🎁0</div><button class="btn sm ghost" data-act="giveup">放棄</button></div>
   <div class="bt-field a-${info.attr} bgs-${info.attr}" id="bt-field"><div id="bt-enemies"></div><div id="bt-banner"></div><div class="flashr" id="bt-flash"></div></div>
@@ -1005,7 +1045,7 @@ ACT.target=t=>{if(!B||B.over)return;B.target=+t.dataset.i;refreshTargets()};
 function spawnWave(){
   B.enemies=B.waves[B.wave];B.enemies.forEach(e=>{e.cd=e.cdMax});B.target=0;mountEnemies();
   $('#bt-wave').textContent=`WAVE ${B.wave+1}/${B.waves.length}`;
-  banner(B.wave===B.waves.length-1&&B.spec.kind==='tower'?'BOSS!':`WAVE ${B.wave+1}`);
+  banner(B.spec.k==='rush'?`魔王 ${B.wave+1}/5`:B.wave===B.waves.length-1&&(B.spec.kind==='tower'||B.spec.k==='elem')?'BOSS!':`WAVE ${B.wave+1}`);
 }
 function banner(t){const b=$('#bt-banner');b.textContent=t;b.classList.remove('on');void b.offsetWidth;b.classList.add('on')}
 function popOn(el,txt,cls){
@@ -1263,6 +1303,7 @@ function win(){
   const fp=B.fr?10:0;S.fp+=fp;
   let gems=0;
   if(spec.kind==='tower'&&spec.f>S.floor){S.floor=spec.f;gems=info.first;S.gems+=gems}
+  else if(spec.kind==='sp'&&info.first){S.sfirst=S.sfirst||{};S.sfirst[spec.k+spec.t]=1;gems=info.first;S.gems+=gems}
   const got=[];let soldCoins=0;
   B.drops.forEach(id=>{
     if(bagFree()>0){const isNew=!S.seen[id];got.push({c:addCard(id),isNew})}
