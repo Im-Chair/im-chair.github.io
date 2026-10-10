@@ -58,6 +58,8 @@
       transition: all 0.15s;
     }
     .diff-btn.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+    .diff-btn .sub { font-size: 10px; color: inherit; opacity: 0.6; white-space: nowrap; }
+    @media (max-width: 360px) { .diff-btn .sub { font-size: 8.5px; letter-spacing: -0.2px; } }
     .diff-btn .best { display: block; font-size: 10px; margin-top: 2px; opacity: 0.8; }
     .diff-btn .best:empty { display: none; }
     .new-record { color: var(--accent); font-weight: 700; }
@@ -197,10 +199,10 @@
   </div>
 
   <div class="difficulty">
-    <button class="diff-btn active" data-level="easy">簡單<br><span style="font-size:10px;color:inherit;opacity:0.6">9×9 · 10雷</span><span class="best" id="best-easy"></span></button>
-    <button class="diff-btn" data-level="medium">中等<br><span style="font-size:10px;color:inherit;opacity:0.6">16×16 · 40雷</span><span class="best" id="best-medium"></span></button>
-    <button class="diff-btn" data-level="hard">困難<br><span style="font-size:10px;color:inherit;opacity:0.6">30×16 · 99雷</span><span class="best" id="best-hard"></span></button>
-    <button class="diff-btn daily-btn" id="daily-btn">📅 每日<br><span style="font-size:10px;color:inherit;opacity:0.6">16×16 · 40雷</span><span class="best" id="daily-status"></span></button>
+    <button class="diff-btn active" data-level="easy">簡單<br><span class="sub">9×9 · 10雷</span><span class="best" id="best-easy"></span></button>
+    <button class="diff-btn" data-level="medium">中等<br><span class="sub">16×16 · 40雷</span><span class="best" id="best-medium"></span></button>
+    <button class="diff-btn" data-level="hard">困難<br><span class="sub">30×16 · 99雷</span><span class="best" id="best-hard"></span></button>
+    <button class="diff-btn daily-btn" id="daily-btn">📅 每日<br><span class="sub">16×16 · 40雷</span><span class="best" id="daily-status"></span></button>
   </div>
 
   <div class="info-row">

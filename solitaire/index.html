@@ -53,6 +53,15 @@
     .header-left .home-btn { padding: 6px 9px; }
     /* 手機寬度 header 放不下：藏標題，讓計時／步數／按鈕有空間 */
     @media (max-width: 420px) { .header-left .logo { display: none; } }
+    .header-left { flex-shrink: 0; } /* 不讓左側被壓扁，否則回大廳會溢出去蓋住計時器 */
+    /* 加 .header 前綴：這段寫在 .hbtn 等原始規則之前，同權重會被後面的蓋掉 */
+    @media (max-width: 380px) {
+      .header .header-center { gap: 5px; }
+      .header .header-btns { gap: 4px; }
+      .header .hbtn { padding: 5px 7px; font-size: 11px; }
+      .header .score-badge { padding: 4px 7px; font-size: 12px; }
+      .header .timer { font-size: 13px; letter-spacing: 0; }
+    }
     .score-badge, .timer { white-space: nowrap; }
     .logo em { color: var(--accent); font-style: normal; }
     .header-center { display: flex; gap: 8px; align-items: center; }

@@ -95,6 +95,12 @@
       border-color: var(--accent);
       color: var(--accent);
     }
+    /* 五顆擠一排，320px 寬時每顆約 51px：圖示縮小、不留空格才放得下 */
+    .daily-btn { white-space: nowrap; }
+    .daily-ico { font-size: 0.85em; margin-right: 1px; }
+    .diff-btn .best { display: block; font-size: 10px; margin-top: 2px; opacity: 0.8; }
+    .diff-btn .best:empty { display: none; }
+    .new-record { color: var(--accent); font-weight: 700; }
 
     /* ── Board ── */
     .board-wrap {
@@ -103,9 +109,13 @@
       border-radius: 16px;
       padding: 12px;
     }
+    /* 9 格之間插兩條 4px 的「宮隔線」軌道，每格用 grid-column/row 指定位置（見 buildBoard）。
+       原本用 margin 留宮距，margin 會吃掉該格寬度，第 3/6/9 欄、列會比較窄而對不齊。 */
     .board {
+      --tracks: 1fr 1fr 1fr 4px 1fr 1fr 1fr 4px 1fr 1fr 1fr;
       display: grid;
-      grid-template-columns: repeat(9, 1fr);
+      grid-template-columns: var(--tracks);
+      grid-template-rows: var(--tracks);   /* 列高固定，筆記不會把某一列撐高 */
       gap: 2px;
       aspect-ratio: 1;
     }
@@ -122,10 +132,8 @@
       color: var(--text);
       background: var(--surface2);
       border: 0.5px solid transparent;
+      min-width: 0; min-height: 0; overflow: hidden;
     }
-    /* Box borders (3x3 groups) */
-    .cell[data-col="2"], .cell[data-col="5"] { margin-right: 4px; }
-    .cell[data-row="2"], .cell[data-row="5"] { margin-bottom: 4px; }
 
     .cell.given { color: var(--given); font-weight: 600; }
     .cell.selected { background: var(--accent-dim); border-color: var(--accent); }
@@ -196,15 +204,19 @@
     .numpad {
       display: grid;
       grid-template-columns: repeat(9, 1fr);
-      gap: 6px;
+      gap: 5px;
     }
+    /* 數字鍵加高（原本是正方形，手機上約 36px 太小），剩餘數量改放在數字下方 */
     .num-btn {
-      aspect-ratio: 1;
+      height: 58px;
+      flex-direction: column;
+      gap: 2px;
+      touch-action: manipulation;
       border-radius: 10px;
       border: 0.5px solid var(--border);
       background: var(--surface);
       color: var(--text);
-      font-size: clamp(16px, 4.5vw, 22px);
+      font-size: clamp(20px, 6vw, 26px);
       font-weight: 600;
       cursor: pointer;
       display: flex;
@@ -214,12 +226,10 @@
       position: relative;
     }
     .num-btn:active { transform: scale(0.90); background: var(--accent-dim); }
-    .num-btn.used { color: var(--muted); }
+    .num-btn.used { color: var(--muted); opacity: 0.35; }
     .num-btn .count {
-      position: absolute;
-      top: 2px;
-      right: 3px;
-      font-size: 8px;
+      font-size: 10px;
+      line-height: 1;
       color: var(--muted);
       font-weight: 400;
     }
@@ -270,6 +280,8 @@
     .win-title { font-size: 24px; font-weight: 700; margin-bottom: 8px; }
     .win-stats { color: var(--muted); font-size: 15px; margin-bottom: 28px; line-height: 1.7; }
     .win-stats b { color: var(--text); }
+    .win-btn.secondary { margin-bottom: 10px; background: transparent; color: var(--accent); border: 1px solid var(--accent); }
+    .win-btn[hidden] { display: none; }
     .win-btn {
       width: 100%;
       padding: 13px;
@@ -295,11 +307,11 @@
     }
     #install-banner b { color: var(--text); display: block; margin-bottom: 2px; }
 
+    /* 回大廳：放進 header 左側的一般排版流，不再 fixed 蓋住標題 */
+    .header-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
     .home-btn {
-      position: fixed;
-      top: max(12px, env(safe-area-inset-top));
-      left: 12px;
-      z-index: 999;
+      display: inline-flex; align-items: center; flex-shrink: 0;
+      white-space: nowrap;
       background: rgba(0,0,0,0.55);
       backdrop-filter: blur(8px);
       border: 0.5px solid rgba(255,255,255,0.15);
@@ -315,18 +327,21 @@
   </style>
 </head>
 <body>
-<a class="home-btn" href="/">🏠 回大廳</a>
 <div id="app">
   <div class="header">
-    <div class="logo">數<em>獨</em></div>
+    <div class="header-left">
+      <a class="home-btn" href="/">🏠 回大廳</a>
+      <div class="logo">數<em>獨</em></div>
+    </div>
     <div class="timer" id="timer">00:00</div>
   </div>
 
   <div class="difficulty">
-    <button class="diff-btn" data-level="easy">簡單</button>
-    <button class="diff-btn active" data-level="medium">中等</button>
-    <button class="diff-btn" data-level="hard">困難</button>
-    <button class="diff-btn" data-level="expert">專家</button>
+    <button class="diff-btn" data-level="easy">簡單<span class="best" id="best-easy"></span></button>
+    <button class="diff-btn active" data-level="medium">中等<span class="best" id="best-medium"></span></button>
+    <button class="diff-btn" data-level="hard">困難<span class="best" id="best-hard"></span></button>
+    <button class="diff-btn" data-level="expert">專家<span class="best" id="best-expert"></span></button>
+    <button class="diff-btn daily-btn" id="daily-btn"><span class="daily-ico">📅</span>每日<span class="best" id="daily-status"></span></button>
   </div>
 
   <div class="board-wrap">
@@ -369,22 +384,57 @@
 
 <div id="win-screen">
   <div class="win-card">
-    <div class="win-emoji">🎉</div>
-    <div class="win-title">完成！</div>
+    <div class="win-emoji" id="win-emoji">🎉</div>
+    <div class="win-title" id="win-title">完成！</div>
     <div class="win-stats" id="win-stats"></div>
+    <button class="win-btn secondary" id="share-btn" hidden>📋 複製成績</button>
     <button class="win-btn" id="win-new-btn">再來一局</button>
   </div>
 </div>
 
 <script>
+// ── 音效（WebAudio 即時合成，不用音檔）──
+// 總開關在首頁（localStorage arcade-sound = 'off' 為關），每次出聲前都重讀，所以首頁切換後回來馬上生效。
+const SFX = (() => {
+  let ctx = null;
+  function on() { try { return localStorage.getItem('arcade-sound') !== 'off'; } catch { return true; } }
+  // freq：Hz；dur：秒；slide：結束時頻率倍率（<1 下滑、>1 上揚）；delay：延後秒數
+  function tone(freq, { dur = 0.07, type = 'triangle', vol = 0.06, slide = 0, delay = 0 } = {}) {
+    if (!on()) return;
+    try {
+      ctx = ctx || new (window.AudioContext || window.webkitAudioContext)();
+      if (ctx.state === 'suspended') ctx.resume(); // iOS：要在點擊當下 resume 才會出聲
+      const t = ctx.currentTime + delay;
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = type;
+      o.frequency.setValueAtTime(freq, t);
+      if (slide) o.frequency.exponentialRampToValueAtTime(freq * slide, t + dur);
+      g.gain.setValueAtTime(vol, t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g).connect(ctx.destination);
+      o.start(t); o.stop(t + dur + 0.02);
+    } catch {}
+  }
+  return {
+    tone,
+    tap:  () => tone(520, { dur: 0.04, vol: 0.04 }),
+    soft: () => tone(330, { dur: 0.05, vol: 0.035 }),
+    good: () => tone(784, { dur: 0.09 }),
+    bad:  () => tone(150, { dur: 0.16, type: 'square', vol: 0.035, slide: 0.7 }),
+    win:  () => [523, 659, 784, 1047].forEach((f, i) => tone(f, { dur: i === 3 ? 0.3 : 0.12, delay: i * 0.1 })),
+    lose: () => tone(330, { dur: 0.5, type: 'sawtooth', vol: 0.05, slide: 0.35 }),
+  };
+})();
+
 // ── Sudoku Generator & Solver ──
-function generateSudoku(level) {
+// rnd：亂數來源（每日挑戰傳入以日期為種子的 seededRng，同一天大家同一題）
+function generateSudoku(level, rnd = Math.random) {
   const clues = { easy: 46, medium: 36, hard: 28, expert: 22 };
   const base = 3, side = 9;
 
   function shuffle(arr) {
     for (let i = arr.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
+      const j = Math.floor(rnd() * (i + 1));
       [arr[i], arr[j]] = [arr[j], arr[i]];
     }
     return arr;
@@ -428,6 +478,7 @@ let state = {
   hints: 3,
   history: [],
   level: 'medium',
+  daily: null,      // 每日挑戰的日期字串；一般局為 null
   startTime: 0,
   elapsed: 0,
   timerActive: false,
@@ -435,8 +486,129 @@ let state = {
   complete: false,
 };
 
-function newGame(level) {
-  const { puzzle, solution } = generateSudoku(level);
+// ── 存檔與紀錄（localStorage）──
+// save：進行中的盤面（含筆記），重新整理後可接著解；stats：各難度的局數、勝場、最佳時間
+const SAVE_KEY = 'arcade-sudoku-save', STATS_KEY = 'arcade-sudoku-stats';
+const LEVEL_NAMES = { easy:'簡單', medium:'中等', hard:'困難', expert:'專家' };
+function lsGet(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } }
+function lsSet(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+// 記一局結果；metrics 越小越好，回傳 { r, newBest: [破紀錄的 key] }
+function recordResult(mode, won, metrics = {}) {
+  const all = lsGet(STATS_KEY) || {};
+  const r = all[mode] || (all[mode] = { plays: 0, wins: 0, best: {} });
+  r.plays++;
+  const newBest = [];
+  if (won) {
+    r.wins++;
+    for (const k in metrics) if (r.best[k] == null || metrics[k] < r.best[k]) { r.best[k] = metrics[k]; newBest.push(k); }
+  }
+  lsSet(STATS_KEY, all);
+  return { r, newBest };
+}
+
+// ── 每日挑戰 ──
+// 用日期當亂數種子：同一天所有人拿到同一題，可以互相比。一天一次（贏或輸都算數），
+// 天天過關才會累積連續天數。數獨版：難度依星期輪替（一 簡單、二三 中等、四五 困難、六日 專家），錯三次算當天失敗。
+//進度與一般模式分開存（DAILY_SAVE_KEY），切換模式不會互相覆蓋。
+function dateStr(d = new Date()) {
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+function dayBefore(s) { const d = new Date(s + 'T12:00'); d.setDate(d.getDate() - 1); return dateStr(d); }
+// 字串 → 可重現的亂數（FNV-1a 雜湊當種子 + mulberry32），用法同 Math.random
+function seededRng(str) {
+  let a = 2166136261;
+  for (let i = 0; i < str.length; i++) a = Math.imul(a ^ str.charCodeAt(i), 16777619);
+  return () => {
+    a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+// daily：{ last: { date, won, ...成績 }, streak, best, lastWin }
+function dailyInfo() { return lsGet(DAILY_KEY) || { streak: 0, best: 0 }; }
+function dailyStreak(d = dailyInfo()) {
+  const today = dateStr();
+  return d.lastWin === today || d.lastWin === dayBefore(today) ? d.streak : 0; // 漏掉一天就歸零
+}
+function finishDaily(date, won, result) {
+  const d = dailyInfo();
+  if (d.last?.date === date) return d; // 同一天只記第一次
+  d.streak = won ? (d.lastWin === dayBefore(date) ? d.streak + 1 : 1) : 0;
+  if (won) d.lastWin = date;
+  d.best = Math.max(d.best || 0, d.streak);
+  d.last = { date, won, ...result };
+  lsSet(DAILY_KEY, d);
+  return d;
+}
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); return true; } catch {}
+  try { // 舊瀏覽器／非 https 的退路
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.style.cssText = 'position:fixed;opacity:0';
+    document.body.appendChild(ta); ta.select();
+    const ok = document.execCommand('copy'); ta.remove(); return ok;
+  } catch { return false; }
+}
+
+const DAILY_KEY = 'arcade-sudoku-daily', DAILY_SAVE_KEY = 'arcade-sudoku-daily-save';
+const DAILY_LEVELS = ['expert', 'easy', 'medium', 'medium', 'hard', 'hard', 'expert']; // 依 getDay()：日、一…六
+function dailyLevel(date) { return DAILY_LEVELS[new Date(date + 'T12:00').getDay()]; }
+let normalLevel = 'medium'; // 從每日挑戰回一般模式時用
+
+function curElapsed() {
+  return state.timerActive ? Math.floor((Date.now() - state.startTime) / 1000) : state.elapsed;
+}
+function hasProgress() {
+  return state.board.some((v, i) => v !== state.puzzle[i]) || state.notes.some(n => n.size);
+}
+
+// 盤面一有變動（renderBoard）就存；整局結束就清掉。悔棋紀錄不存，讀檔後從頭累積。
+function saveGame() {
+  const key = state.daily ? DAILY_SAVE_KEY : SAVE_KEY;
+  if (state.complete || !state.puzzle.length || !hasProgress()) { lsSet(key, null); return; } // 還沒動過就不算進行中
+  const { level, daily, puzzle, solution, board, mistakes, hints } = state;
+  lsSet(key, { level, daily, puzzle, solution, board, mistakes, hints,
+    notes: state.notes.map(n => [...n]), elapsed: curElapsed() });
+}
+
+function loadGame(key = SAVE_KEY) {
+  const d = lsGet(key);
+  if (!d || !LEVEL_NAMES[d.level] || !Array.isArray(d.board) || d.board.length !== 81) return false;
+  if (d.daily && d.daily !== dateStr()) { lsSet(key, null); return false; } // 昨天沒解完的每日題作廢
+  newGame(d.level, d.daily || null);
+  stopTimer();
+  Object.assign(state, {
+    puzzle: d.puzzle, solution: d.solution, board: d.board,
+    notes: d.notes.map(n => new Set(n)), given: d.puzzle.map(v => v !== 0),
+    mistakes: d.mistakes, hints: d.hints, elapsed: d.elapsed || 0,
+  });
+  startTimer();
+  updateUI();
+  return true;
+}
+
+function renderBest() {
+  const all = lsGet(STATS_KEY) || {};
+  for (const lv in LEVEL_NAMES) {
+    const t = all[lv]?.best?.time;
+    document.getElementById('best-' + lv).textContent = t != null ? '🏆 ' + formatTime(t) : '';
+  }
+  document.querySelectorAll('.diff-btn[data-level]').forEach(b => b.classList.toggle('active', !state.daily && b.dataset.level === state.level));
+  document.getElementById('daily-btn').classList.toggle('active', !!state.daily);
+  // 每日按鈕：今天做完打勾，否則顯示今天的難度與連續天數
+  const info = dailyInfo(), streak = dailyStreak(info), today = dateStr();
+  document.getElementById('daily-status').textContent = info.last?.date === today
+    ? (info.last.won ? '✓ 完成' : '✗ 失敗')
+    : LEVEL_NAMES[dailyLevel(today)] + (streak ? ` 🔥${streak}` : '');
+}
+
+function newGame(level, daily = null) {
+  // 一般局換一般局：舊局算放棄。牽涉每日挑戰的切換不記（兩邊進度各自存）
+  if (!state.daily && !daily && !state.complete && state.puzzle.length && hasProgress()) recordResult(state.level, false);
+  if (!daily) normalLevel = level;
+  state.daily = daily;
+  const { puzzle, solution } = generateSudoku(level, daily ? seededRng('sudoku-' + daily) : Math.random);
   state.puzzle = puzzle;
   state.solution = solution;
   state.board = [...puzzle];
@@ -451,13 +623,15 @@ function newGame(level) {
   state.complete = false;
   stopTimer();
   state.elapsed = 0;
-  state.startTime = Date.now();
   startTimer();
   updateUI();
+  renderBest();
 }
 
 // ── Timer ──
 function startTimer() {
+  state.startTime = Date.now() - state.elapsed * 1000; // 讀檔時從已過秒數接續
+  document.getElementById('timer').textContent = formatTime(state.elapsed);
   state.timerActive = true;
   state.timerInterval = setInterval(() => {
     state.elapsed = Math.floor((Date.now() - state.startTime) / 1000);
@@ -465,6 +639,7 @@ function startTimer() {
   }, 1000);
 }
 function stopTimer() {
+  state.elapsed = curElapsed();
   state.timerActive = false;
   clearInterval(state.timerInterval);
 }
@@ -489,6 +664,7 @@ function inputNumber(num) {
   if (state.noteMode) {
     const snap = snapshot();
     if (state.board[idx] === 0) {
+      SFX.soft();
       if (state.notes[idx].has(num)) state.notes[idx].delete(num);
       else state.notes[idx].add(num);
       state.history.push(snap);
@@ -502,14 +678,24 @@ function inputNumber(num) {
   state.board[idx] = num;
 
   if (num !== 0 && num !== state.solution[idx]) {
+    SFX.bad();
     state.mistakes++;
     document.getElementById('mistake-count').textContent = state.mistakes;
     if (state.mistakes >= state.maxMistakes) {
       stopTimer();
-      setTimeout(() => alert('遊戲結束！錯誤達到上限。'), 100);
       state.complete = true;
+      SFX.lose();
+      if (state.daily) {
+        recordResult('daily', false);
+        finishDaily(state.daily, false, { time: state.elapsed, mistakes: state.mistakes, hints: 3 - state.hints });
+        setTimeout(showDailyResult, 400);
+      } else {
+        recordResult(state.level, false);
+        setTimeout(() => alert('遊戲結束！錯誤達到上限。'), 100);
+      }
     }
   }
+  if (num === state.solution[idx]) SFX.tap();
   state.history.push(snap);
   renderBoard();
   renderNumpad();
@@ -522,6 +708,7 @@ function eraseCell() {
   const snap = snapshot();
   state.board[idx] = 0;
   state.notes[idx].clear();
+  SFX.soft();
   state.history.push(snap);
   renderBoard();
   renderNumpad();
@@ -535,6 +722,7 @@ function useHint() {
   state.board[idx] = state.solution[idx];
   state.notes[idx].clear();
   state.hints--;
+  SFX.good();
   state.history.push(snap);
   document.getElementById('hint-count').textContent = state.hints;
   renderBoard();
@@ -545,6 +733,7 @@ function useHint() {
 function undo() {
   if (!state.history.length) return;
   const prev = state.history.pop();
+  SFX.soft();
   state.board = prev.board;
   state.notes = prev.notes;
   state.mistakes = prev.mistakes;
@@ -568,11 +757,50 @@ function checkComplete() {
   if (state.board.every((v, i) => v === state.solution[i])) {
     stopTimer();
     state.complete = true;
-    const lvlMap = { easy:'簡單', medium:'中等', hard:'困難', expert:'專家' };
+    SFX.win();
+    if (state.daily) {
+      lsSet(DAILY_SAVE_KEY, null);
+      recordResult('daily', true, { time: state.elapsed });
+      finishDaily(state.daily, true, { time: state.elapsed, mistakes: state.mistakes, hints: 3 - state.hints });
+      renderBest();
+      showDailyResult();
+      return;
+    }
+    lsSet(SAVE_KEY, null);
+    const { r, newBest } = recordResult(state.level, true, { time: state.elapsed });
+    renderBest();
     document.getElementById('win-stats').innerHTML =
-      `難度：<b>${lvlMap[state.level]}</b><br>時間：<b>${formatTime(state.elapsed)}</b><br>錯誤：<b>${state.mistakes}</b> 次`;
+      `難度：<b>${LEVEL_NAMES[state.level]}</b><br>時間：<b>${formatTime(state.elapsed)}</b>` +
+      (newBest.length ? ' <span class="new-record">新紀錄！</span>' : '') +
+      `<br>錯誤：<b>${state.mistakes}</b> 次` +
+      `<br>最佳：<b>${formatTime(r.best.time)}</b> · 過關 <b>${r.wins}</b> / ${r.plays} 局`;
+    document.getElementById('win-emoji').textContent = '🎉';
+    document.getElementById('win-title').textContent = '完成！';
+    document.getElementById('share-btn').hidden = true;
+    document.getElementById('win-new-btn').textContent = '再來一局';
     document.getElementById('win-screen').classList.add('show');
   }
+}
+
+// 每日挑戰結果（剛解完、或今天已經玩過再點「每日」都走這裡）
+function showDailyResult() {
+  const info = dailyInfo(), last = info.last;
+  document.getElementById('win-emoji').textContent = last.won ? '📅' : '💥';
+  document.getElementById('win-title').textContent = last.won ? '每日挑戰完成！' : '每日挑戰失敗';
+  document.getElementById('win-stats').innerHTML =
+    `${last.date}・${LEVEL_NAMES[dailyLevel(last.date)]}<br>時間：<b>${formatTime(last.time)}</b>` +
+    `<br>錯誤 <b>${last.mistakes}</b> 次・提示 <b>${last.hints}</b> 次` +
+    `<br>🔥 連續過關：<b>${dailyStreak(info)}</b> 天（最高 ${info.best || 0}）<br>明天會有新的一題`;
+  document.getElementById('share-btn').hidden = false;
+  document.getElementById('share-btn').textContent = '📋 複製成績';
+  document.getElementById('win-new-btn').textContent = '回一般模式';
+  document.getElementById('win-screen').classList.add('show');
+}
+function dailyShareText() {
+  const info = dailyInfo(), last = info.last;
+  return `ARCADE 數獨・每日挑戰 ${last.date}（${LEVEL_NAMES[dailyLevel(last.date)]}）\n` +
+    (last.won ? `✅ ${formatTime(last.time)}` : `💥 失敗`) +
+    `・錯誤 ${last.mistakes}・提示 ${last.hints}・🔥連續 ${dailyStreak(info)} 天\n${location.origin}/sudoku/`;
 }
 
 // ── Render ──
@@ -621,6 +849,7 @@ function renderBoard() {
       cell.textContent = '';
     }
   });
+  saveGame();
 }
 
 function buildBoard() {
@@ -629,8 +858,12 @@ function buildBoard() {
   for (let i = 0; i < 81; i++) {
     const cell = document.createElement('div');
     cell.className = 'cell';
-    cell.dataset.row = Math.floor(i / 9);
-    cell.dataset.col = i % 9;
+    const row = Math.floor(i / 9), col = i % 9;
+    cell.dataset.row = row;
+    cell.dataset.col = col;
+    // 跳過宮隔線軌道：第 c 欄放在第 c + floor(c/3) + 1 條軌道
+    cell.style.gridColumn = col + Math.floor(col / 3) + 1;
+    cell.style.gridRow = row + Math.floor(row / 3) + 1;
     cell.addEventListener('click', () => selectCell(i));
     boardEl.appendChild(cell);
   }
@@ -687,19 +920,25 @@ document.getElementById('note-btn').addEventListener('click', () => {
 });
 
 // ── Difficulty ──
-document.querySelectorAll('.diff-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    newGame(btn.dataset.level);
-  });
+document.querySelectorAll('.diff-btn[data-level]').forEach(btn => {
+  btn.addEventListener('click', () => newGame(btn.dataset.level));
+});
+document.getElementById('daily-btn').addEventListener('click', () => {
+  const today = dateStr();
+  if (dailyInfo().last?.date === today) { showDailyResult(); return; } // 今天玩過了
+  if (state.daily === today && !state.complete) return;               // 已經在解
+  if (!loadGame(DAILY_SAVE_KEY)) newGame(dailyLevel(today), today);
 });
 
-// ── New game ──
-document.getElementById('new-game-btn').addEventListener('click', () => newGame(state.level));
+// ── New game ──（每日挑戰中＝回一般模式，每日題不能重來）
+document.getElementById('new-game-btn').addEventListener('click', () => newGame(state.daily ? normalLevel : state.level));
 document.getElementById('win-new-btn').addEventListener('click', () => {
   document.getElementById('win-screen').classList.remove('show');
-  newGame(state.level);
+  newGame(state.daily ? normalLevel : state.level);
+});
+document.getElementById('share-btn').addEventListener('click', async () => {
+  const ok = await copyText(dailyShareText());
+  document.getElementById('share-btn').textContent = ok ? '✓ 已複製，貼給朋友吧' : '複製失敗';
 });
 
 // ── Install banner ──
@@ -709,10 +948,14 @@ if (isIOS && !isStandalone) {
   document.getElementById('install-banner').style.display = 'block';
 }
 
+// 離開頁面時補存一次（更新已過秒數）
+addEventListener('pagehide', saveGame);
+document.addEventListener('visibilitychange', () => { if (document.hidden) saveGame(); });
+
 // ── Init ──
 buildBoard();
 buildNumpad();
-newGame('medium');
+if (!loadGame()) newGame('medium');
 </script>
 
 <!-- Service Worker registration -->
