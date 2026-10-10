@@ -137,6 +137,8 @@ b{font-weight:800}
 .en .nm2{font-size:10px;margin-top:2px;text-shadow:0 1px 2px #000}
 .en .cdn{position:absolute;top:12px;right:6px;min-width:20px;height:20px;border-radius:10px;background:#000c;border:1px solid #fff7;font-size:12px;line-height:18px;font-weight:800}
 .en .ab{position:absolute;top:12px;left:6px;width:20px;height:20px;border-radius:50%;background:var(--c);border:1px solid #fffa;font-size:11px;line-height:18px;font-weight:800;text-shadow:0 1px 1px #000a}
+.en .st{position:absolute;z-index:2;bottom:26px;left:50%;transform:translateX(-50%);font-size:11px;font-weight:800;white-space:nowrap;text-shadow:0 1px 2px #000,0 0 4px #000;pointer-events:none;border-radius:9px;line-height:16px}
+.en .st:not(:empty){background:#000a;padding:1px 4px}
 .en .tg{position:absolute;top:0;left:50%;transform:translateX(-50%);font-size:14px;display:none;animation:bob .8s infinite alternate}
 .en.target .tg{display:block}
 #bt-banner{position:absolute;left:0;right:0;top:34%;text-align:center;font-size:30px;font-weight:900;letter-spacing:3px;color:#fff;text-shadow:0 0 16px var(--gold),0 3px 0 #000;opacity:0;pointer-events:none}
@@ -159,7 +161,7 @@ b{font-weight:800}
 .hpbar span{position:absolute;inset:0;display:grid;place-items:center;font-size:12px;font-weight:800;text-shadow:0 1px 2px #000}
 .timebar{flex:none;height:8px;margin:5px 8px 0;border-radius:4px;background:#000a;overflow:hidden}
 .timebar i{display:block;height:100%;width:100%;background:linear-gradient(90deg,#3b9cff,#6ff);transform-origin:left}
-#bt-tip{flex:none;text-align:center;font-size:11px;color:var(--muted);height:16px;line-height:16px;margin-top:2px}
+#bt-tip{flex:none;text-align:center;font-size:11px;color:var(--muted);height:16px;line-height:16px;margin-top:2px;padding:0 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #bt-boardwrap{position:relative;flex:none;display:flex;justify-content:center;padding:0 0 6px}
 #board{position:relative;touch-action:none;overflow:hidden;border-radius:8px;border:2px solid #2b3678;background:conic-gradient(#0e1330 25%,#151c43 0 50%,#0e1330 0 75%,#151c43 0) 0 0/calc(var(--cs)*2) calc(var(--cs)*2)}
 #bt-combo{position:absolute;left:0;right:0;top:36%;text-align:center;font-size:36px;font-weight:900;color:#ffe27a;text-shadow:0 3px 0 #a3321e,0 0 18px #ff9f3a;pointer-events:none;opacity:0}
@@ -990,7 +992,6 @@ function startBattle(spec,fr){
   const lead=applyLeaders(team,[team[0],fr?team[team.length-1]:null]);
   const max=team.reduce((s,m)=>s+m.hp,0);
   B={spec,info,waves,wave:0,team,enemies:[],hp:max,max,target:0,phase:'idle',combos:[],guard:{pct:0,turns:0},drops:[],coins:0,over:false,fr,lead,turns:0,timeMax:(info.tb||6)+lead.time};
-  if(spec.kind==='rogue')rgOnBattleStart(B);
   const el=$('#battle');el.hidden=false;
   el.innerHTML=`<div class="bt-top"><div class="nm">${AE[info.attr]} ${info.name}</div><div id="bt-wave"></div><div id="bt-dropn">🎁0</div><button class="btn sm ghost" data-act="giveup">放棄</button></div>
   <div class="bt-field a-${info.attr} bgs-${info.attr}" id="bt-field"><div id="bt-enemies"></div><div id="bt-banner"></div><div class="flashr" id="bt-flash"></div></div>
@@ -999,6 +1000,7 @@ function startBattle(spec,fr){
   <div class="timebar"><i id="bt-time"></i></div>
   <div id="bt-tip"></div>
   <div id="bt-boardwrap"><div id="board"></div><div id="bt-combo"></div></div>`;
+  if(spec.kind==='rogue')rgOnBattleStart(B);
   fitBoard();genBoard();rTeamB();updHP();spawnWave();tip();
   if(!S.tut){const t=document.createElement('div');t.id='tut';t.innerHTML='👆 按住任一顆珠子並拖曳<br>連成 3 顆以上同色即消除<br>一次消 5 顆以上＝全體攻擊<br><small>點上方角色可發動技能</small>';$('#bt-boardwrap').appendChild(t)}
 }
@@ -1011,6 +1013,8 @@ function fitBoard(){
 }
 window.addEventListener('resize',()=>{if(B)fitBoard()});
 const randOrb=()=>pick(ORBS);
+// 地城掛勾：rogue.js 的遺物效果從這幾個點介入戰鬥；其他模式直接回傳預設值 v
+const RH=(n,v,...a)=>B&&B.spec.kind==='rogue'?rgHook(n,v,...a):v;
 function mkOrb(t){const el=document.createElement('div');el.className='orb a-'+t;el.innerHTML=`<i style="--ox:${ORBS.indexOf(t)}"></i>`;return{t,el}}
 function setOrb(o,t){o.t=t;o.el.className='orb a-'+t;o.el.firstChild.style.setProperty('--ox',ORBS.indexOf(t))}
 function posOrb(o,r,c,anim){o.el.style.transition=anim?'transform .2s ease-in':'none';o.el.style.transform=`translate(${c*cellS}px,${r*cellS}px)`}
@@ -1021,26 +1025,27 @@ function genBoard(){
     const o=mkOrb(t);G[r][c]=o;bd.appendChild(o.el);posOrb(o,r,c,false);
   }}
 }
-function tip(txt){const e=$('#bt-tip');if(e)e.textContent=txt||(B&&B.phase==='idle'?'按住珠子拖動轉珠・點敵人設為目標・點卡片使用技能':'')}
+function tip(txt){const e=$('#bt-tip');if(e)e.textContent=txt||(B&&B.phase==='idle'?B.tipX||'按住珠子拖動轉珠・點敵人設為目標・點卡片使用技能':'')}   // tipX：地城敵人特性提示
 function rTeamB(){
   $('#bt-team').innerHTML=B.team.map((m,i)=>`<div class="tm mc a-${m.attr} r${m.rarity}" data-act="skill" data-i="${i}">${frameInner(m.d)}<div class="tl">${i===0?ico('crown'):m.friend?'友':''}</div>${m.as?`<div class="sk ${m.cdLeft?'':'ready'}">${m.cdLeft?m.cdLeft:'SKILL'}</div>`:''}</div>`).join('');
 }
 function updHP(){
   const p=100*B.hp/B.max,f=$('#bt-hpfill');
   f.style.width=p+'%';f.className=p<25?'low':p<55?'mid':'';
-  $('#bt-hptxt').textContent=`${fmt(B.hp)} / ${fmt(B.max)}${B.guard.turns>0?`  🛡-${B.guard.pct}%`:''}`;
+  $('#bt-hptxt').textContent=`${fmt(B.hp)} / ${fmt(B.max)}${B.guard.turns>0?`  🛡-${B.guard.pct}%`:''}${B.hpTag||''}`;
 }
 function mountEnemies(){
   const box=$('#bt-enemies');box.innerHTML='';
   B.enemies.forEach((e,i)=>{
     const el=document.createElement('div');el.className=`en a-${e.attr}${e.boss?' boss':''}`;el.dataset.act='target';el.dataset.i=i;
-    el.innerHTML=`<div class="tg">🎯</div><span class="ab">${AN[e.attr]}</span><div class="cdn"></div><div class="face">${e.bi!=null?`<i class="spr s-boss bsp" style="--bx:${e.bi%4};--by:${Math.floor(e.bi/4)}"></i>`:e.spr?sprHTML(e.spr.a,e.spr.r,e.spr.c):e.emo}</div><div class="hpb"><i></i></div><div class="nm2">${e.name}</div>`;
+    el.innerHTML=`<div class="tg">🎯</div><span class="ab">${AN[e.attr]}</span><div class="cdn"></div><div class="face">${e.bi!=null?`<i class="spr s-boss bsp" style="--bx:${e.bi%4};--by:${Math.floor(e.bi/4)}"></i>`:e.spr?sprHTML(e.spr.a,e.spr.r,e.spr.c):e.emo}</div><div class="st"></div><div class="hpb"><i></i></div><div class="nm2">${e.name}</div>`;
     e.el=el;box.appendChild(el);updEnemy(e);
   });
 }
 function updEnemy(e){
   e.el.querySelector('.hpb i').style.width=(100*e.hp/e.max)+'%';
   e.el.querySelector('.cdn').textContent=e.hp>0?e.cd:'';
+  e.el.querySelector('.st').innerHTML=e.hp>0&&e.tag||'';
   e.el.classList.toggle('dead',e.hp<=0);
   e.el.classList.toggle('target',B.enemies[B.target]===e&&e.hp>0);
 }
@@ -1051,6 +1056,7 @@ function spawnWave(){
   B.enemies=B.waves[B.wave];B.enemies.forEach(e=>{e.cd=e.cdMax});B.target=0;mountEnemies();
   $('#bt-wave').textContent=`WAVE ${B.wave+1}/${B.waves.length}`;
   banner(B.spec.k==='rush'?`魔王 ${B.wave+1}/5`:B.wave===B.waves.length-1&&(B.spec.kind==='tower'||B.spec.k==='elem')?'BOSS!':`WAVE ${B.wave+1}`);
+  RH('wave');
 }
 function banner(t){const b=$('#bt-banner');b.textContent=t;b.classList.remove('on');void b.offsetWidth;b.classList.add('on')}
 function popOn(el,txt,cls){
@@ -1148,7 +1154,7 @@ async function resolveBoard(){
   while(loops++<30){
     const gs=findMatches();if(!gs.length)break;
     for(const g of gs){
-      B.combos.push({t:g.t,n:g.cells.length,all:g.row});
+      B.combos.push({t:g.t,n:g.cells.length,all:g.row,cas:loops>1});
       g.cells.forEach(([r,c])=>G[r][c].el.classList.add('clr'));
       showCombo(B.combos.length);await sleep(200);
       if(!B||B.over)return;
@@ -1168,11 +1174,14 @@ async function turn(){
   await resolveBoard();if(B!==my||B.over)return;
   B.turns++;
   await playerAttack();if(B!==my||B.over)return;
+  await RH('after');if(B!==my||B.over)return;
   B.team.forEach(m=>{if(m.cdLeft>0)m.cdLeft--});rTeamB();
   if(await checkClear())return;
   if(B!==my||B.over)return;
   await enemyPhase();
   if(B!==my||B.over||B.phase==='dead')return;
+  if(await checkClear())return;   // 反擊等效果可能在敵方回合打倒最後一隻
+  RH('turnStart');if(B!==my||B.over)return;
   B.phase='idle';$('#bt-time').style.transform='scaleX(1)';tip();
 }
 function fxAt(el,idx,size){
@@ -1199,17 +1208,18 @@ function killEnemy(e){
   e.hp=0;e.el.classList.add('dead');
   B.drops.push(...e.drops);B.coins+=e.coin;
   $('#bt-dropn').textContent='🎁'+B.drops.length;
-  beep(200,.2,'sawtooth',.04);
+  beep(200,.2,'sawtooth',.04);RH('kill',e);
   const i=B.enemies.findIndex(x=>x.hp>0);if(i>=0&&B.enemies[B.target].hp<=0)B.target=i;
   refreshTargets();
 }
 async function playerAttack(){
-  const N=B.combos.length;if(!N){await sleep(150);return}
+  if(!B.combos.length){await sleep(150);return}
+  const N=RH('combo',B.combos.length),am=RH('atkAll',1);
   const cm=1+.25*(N-1),lb=B.lead.combos.filter(c=>N>=c.n).reduce((p,c)=>p*c.m,1);
   const heals=B.combos.filter(c=>c.t==='heart');
   if(heals.length){
     const rcv=B.team.reduce((s,m)=>s+m.rcv,0);let tot=0;heals.forEach(c=>tot+=rcv*om(c.n)*cm);
-    healTeam(Math.round(tot));await sleep(350);
+    healTeam(Math.round(RH('heal',tot)));await sleep(350);
   }
   let aoeShown=false;
   for(let i=0;i<B.team.length;i++){
@@ -1221,7 +1231,7 @@ async function playerAttack(){
       const tg=c.all?B.enemies.filter(e=>e.hp>0):[curTarget()];
       for(const e of tg){
         if(!e||e.hp<=0)continue;
-        const r=rel(m.attr,e.attr),d=Math.max(1,Math.round(m.atk*om(c.n)*cm*lb*r)-e.def);
+        const r=rel(m.attr,e.attr),d=Math.max(1,Math.round(m.atk*om(c.n)*cm*lb*r*am*RH('dmg',1,m,c,e))-e.def);
         const o=dealt.get(e)||{d:0,r};o.d+=d;dealt.set(e,o);
       }
     }
@@ -1244,9 +1254,11 @@ async function enemyPhase(){
   for(const e of B.enemies){
     if(e.hp<=0||e.cd>0)continue;
     e.el.classList.add('hit');await sleep(280);e.el.classList.remove('hit');
-    let dmg=Math.max(1,Math.round(e.atk*(1-B.lead.red)*(1-B.guard.pct/100)*rnd(.95,1.05)));
-    B.hp=Math.max(0,B.hp-dmg);updHP();shake();popOn($('#bt-hpbar'),'-'+fmt(dmg),'dmg');beep(110,.2,'sawtooth',.06);
-    const tm=$$('#bt-team .tm');if(tm.length)popOn(pick(tm),'💥','');
+    const dmg=RH('hurt',Math.max(1,Math.round(e.atk*RH('eAct',1,e)*(1-B.lead.red)*(1-B.guard.pct/100)*rnd(.95,1.05))),e);
+    if(dmg>0){
+      B.hp=Math.max(0,B.hp-dmg);updHP();shake();popOn($('#bt-hpbar'),'-'+fmt(dmg),'dmg');beep(110,.2,'sawtooth',.06);
+      const tm=$$('#bt-team .tm');if(tm.length)popOn(pick(tm),'💥','');
+    }
     e.cd=e.cdMax;updEnemy(e);
     await sleep(420);
     if(B.hp<=0){lose();return}
@@ -1274,8 +1286,8 @@ ACT.doSkill=async t=>{
     case 'guard':B.guard={pct:s.pct,turns:s.turns};updHP();fxAt($('#bt-team'),6,170);break;
     case 'heal':healTeam(Math.round(B.max*s.pct/100));break;
     case 'delay':B.enemies.forEach(e=>{if(e.hp>0){e.cd+=s.turns;updEnemy(e);popOn(e.el,`+${s.turns}`,'');fxAt(e.el.querySelector('.face')||e.el,7)}});break;
-    case 'dmg':{const e=curTarget();if(e)hit(e,Math.max(1,Math.round(m.atk*s.m*rel(m.attr,e.attr))),m.attr,rel(m.attr,e.attr)>1?'crit':'');break}
-    case 'dmgAll':fxAoe();B.enemies.filter(e=>e.hp>0).forEach(e=>hit(e,Math.max(1,Math.round(m.atk*s.m*rel(m.attr,e.attr))),m.attr,rel(m.attr,e.attr)>1?'crit':''));break;
+    case 'dmg':{const e=curTarget();if(e)hit(e,Math.max(1,Math.round(m.atk*s.m*rel(m.attr,e.attr)*RH('eMul',1,e))),m.attr,rel(m.attr,e.attr)>1?'crit':'');break}
+    case 'dmgAll':fxAoe();B.enemies.filter(e=>e.hp>0).forEach(e=>hit(e,Math.max(1,Math.round(m.atk*s.m*rel(m.attr,e.attr)*RH('eMul',1,e))),m.attr,rel(m.attr,e.attr)>1?'crit':''));break;
   }
   m.cdLeft=s.cd;rTeamB();
   await sleep(500);
@@ -1343,6 +1355,6 @@ function init(){
 document.addEventListener('DOMContentLoaded',init); // rogue.js 在本 script 之後載入，等它也跑完再初始化
 try{if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js').catch(()=>{})}catch(e){}
 </script>
-<script src="rogue.js?v=1"></script>
+<script src="rogue.js?v=5"></script>
 </body>
 </html>
