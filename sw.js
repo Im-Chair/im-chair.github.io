@@ -1,4 +1,4 @@
-const CACHE = 'arcade-v43';
+const CACHE = 'arcade-v46';
 // RPG 敵人圖示：檔名＝ENEMIES／首領／域限精英的 key。v385 起 50 隻全數有圖，已無 SVG 回落。
 const RPG_MON = [
   'slime','bat','skel','thief','rat','garg','spider',
@@ -29,7 +29,13 @@ const RPG_EQ = [
   'ring','pendant','watch','lamp',
 ].map(k => `/rpg/eq/${k}.webp`);
 const ASSETS = [
-  '/', '/index.html', '/manifest.json',
+  '/', '/index.html', '/manifest.json', '/icon.png',
+  // v44：單檔小遊戲也預快取，裝了 App 但還沒點進去過的遊戲也能離線開。
+  // 數獨／轉珠之塔各有自己的 SW，但在它們註冊前（從沒進去過）是由這支根 SW 接手，所以一併列入。
+  '/minesweeper/', '/bulls-cows/', '/solitaire/', '/sudoku/', '/tower-orbs/',
+  // v45：小遊戲美術（可一張一張補；檔案還不存在時 install 只會略過，不會失敗）。產出流程見 美術需求_ChatGPT出圖.md
+  ...['sudoku','minesweeper','bulls-cows','solitaire','rpg','tower-orbs'].map(k => `/icons/${k}.webp`),
+  '/solitaire/back.webp', '/solitaire/felt.webp', '/minesweeper/flag.webp', '/minesweeper/mine.webp',
   // RPG：預先快取核心檔，讓「裝了 App 但還沒連網進過 RPG」的使用者也能離線開啟。
   // 這裡存的是「不帶 ?v= 版號」的基底網址，靠下方 fetch fallback 的 ignoreSearch 對應到實際帶版號的請求。
   '/rpg/', '/rpg/index.html', '/rpg/style.css',
@@ -52,7 +58,8 @@ self.addEventListener('install', e => {
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
+      // 只清自己（arcade-*）的舊版。快取空間整站共用，數獨／轉珠之塔的快取不能動。
+      Promise.all(keys.filter(k => k.startsWith('arcade-') && k !== CACHE).map(k => caches.delete(k)))
     )
   );
   self.clients.claim();

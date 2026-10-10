@@ -58,6 +58,9 @@
       transition: all 0.15s;
     }
     .diff-btn.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+    .diff-btn .best { display: block; font-size: 10px; margin-top: 2px; opacity: 0.8; }
+    .diff-btn .best:empty { display: none; }
+    .new-record { color: var(--accent); font-weight: 700; }
 
     /* Info row */
     .info-row { display: flex; gap: 8px; }
@@ -98,12 +101,18 @@
     }
 
     /* Cells */
+    .tool-btn .label { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.3; }
+    .tool-btn .tip { font-size: 10px; opacity: 0.55; }
+    .ui-img { width: 1.25em; height: 1.25em; vertical-align: -0.25em; object-fit: contain; }
+    .cell-img { width: 88%; height: 88%; object-fit: contain; pointer-events: none; -webkit-user-drag: none; }
     .cell {
       width: var(--cell-size); height: var(--cell-size);
       border-radius: 5px;
       display: flex; align-items: center; justify-content: center;
       font-size: var(--cell-font); font-weight: 700;
       cursor: pointer; user-select: none;
+      -webkit-user-select: none; -webkit-touch-callout: none; /* 長按不跳出系統選單 */
+      touch-action: manipulation;
       background: var(--surface2);
       border: 1px solid var(--border);
       box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
@@ -118,7 +127,9 @@
     .cell.revealed:active { transform: none; }
     .cell.flagged { background: rgba(224,92,92,0.15); border-color: rgba(224,92,92,0.5); }
     .cell.mine-hit { background: rgba(224,92,92,0.25); border-color: var(--mine); }
-    .cell.mine-show { background: #0f0f0f; border-color: #1c1c1c; box-shadow: none; }
+    /* 地雷圖是黑色的：格子要比翻開的空格亮，再加一圈淡光，不然在暗底上看不清 */
+    .cell.mine-show { background: #3a3a3a; border-color: #4a4a4a; box-shadow: none; }
+    .mine-show .cell-img, .mine-hit .cell-img { filter: drop-shadow(0 0 2px rgba(255,255,255,0.45)); }
     .cell[data-n="1"] { color: var(--n1); }
     .cell[data-n="2"] { color: var(--n2); }
     .cell[data-n="3"] { color: var(--n3); }
@@ -150,12 +161,14 @@
       width: 100%; padding: 13px; border-radius: 12px; border: none;
       background: var(--accent); color: #0a0a0a; font-size: 16px; font-weight: 700; cursor: pointer;
     }
+    .result-btn.secondary { margin-bottom: 10px; background: transparent; color: var(--accent); border: 1px solid var(--accent); }
+    .result-btn[hidden] { display: none; }
 
+    /* 回大廳：放進 header 左側的一般排版流，不再 fixed 蓋住標題 */
+    .header-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
     .home-btn {
-      position: fixed;
-      top: max(12px, env(safe-area-inset-top));
-      left: 12px;
-      z-index: 999;
+      display: inline-flex; align-items: center; flex-shrink: 0;
+      white-space: nowrap;
       background: rgba(0,0,0,0.55);
       backdrop-filter: blur(8px);
       border: 0.5px solid rgba(255,255,255,0.15);
@@ -171,10 +184,12 @@
   </style>
 </head>
 <body>
-<a class="home-btn" href="/">🏠 回大廳</a>
 <div id="app">
   <div class="header">
-    <div class="logo">掃<em>雷</em></div>
+    <div class="header-left">
+      <a class="home-btn" href="/">🏠 回大廳</a>
+      <div class="logo">掃<em>雷</em></div>
+    </div>
     <div class="timer-box">
       <span style="font-size:13px;color:var(--muted)">⏱</span>
       <span class="timer" id="timer">000</span>
@@ -182,14 +197,15 @@
   </div>
 
   <div class="difficulty">
-    <button class="diff-btn active" data-level="easy">簡單<br><span style="font-size:10px;color:inherit;opacity:0.6">9×9 · 10雷</span></button>
-    <button class="diff-btn" data-level="medium">中等<br><span style="font-size:10px;color:inherit;opacity:0.6">16×16 · 40雷</span></button>
-    <button class="diff-btn" data-level="hard">困難<br><span style="font-size:10px;color:inherit;opacity:0.6">30×16 · 99雷</span></button>
+    <button class="diff-btn active" data-level="easy">簡單<br><span style="font-size:10px;color:inherit;opacity:0.6">9×9 · 10雷</span><span class="best" id="best-easy"></span></button>
+    <button class="diff-btn" data-level="medium">中等<br><span style="font-size:10px;color:inherit;opacity:0.6">16×16 · 40雷</span><span class="best" id="best-medium"></span></button>
+    <button class="diff-btn" data-level="hard">困難<br><span style="font-size:10px;color:inherit;opacity:0.6">30×16 · 99雷</span><span class="best" id="best-hard"></span></button>
+    <button class="diff-btn daily-btn" id="daily-btn">📅 每日<br><span style="font-size:10px;color:inherit;opacity:0.6">16×16 · 40雷</span><span class="best" id="daily-status"></span></button>
   </div>
 
   <div class="info-row">
     <div class="info-box">
-      <span class="info-label">💣 剩餘地雷</span>
+      <span class="info-label"><img class="ui-img" src="mine.webp" alt="" onerror="this.replaceWith('💣')"> 剩餘地雷</span>
       <span class="info-value red" id="mine-count">10</span>
     </div>
     <div class="info-box">
@@ -200,7 +216,7 @@
 
   <div class="toolbar">
     <button class="tool-btn" id="flag-btn">
-      <span class="icon">🚩</span> 插旗模式
+      <span class="icon"><img class="ui-img" src="flag.webp" alt="" onerror="this.replaceWith('🚩')"></span><span class="label">插旗模式<small class="tip">長按／右鍵也能插旗</small></span>
     </button>
     <button class="tool-btn" id="new-btn">
       <span class="icon">↺</span> 新遊戲
@@ -219,19 +235,122 @@
     <div class="result-emoji" id="result-emoji"></div>
     <div class="result-title" id="result-title"></div>
     <div class="result-stats" id="result-stats"></div>
+    <button class="result-btn secondary" id="share-btn" hidden>📋 複製成績</button>
     <button class="result-btn" id="result-btn">再來一局</button>
   </div>
 </div>
 
 <script>
+// ── 音效（WebAudio 即時合成，不用音檔）──
+// 總開關在首頁（localStorage arcade-sound = 'off' 為關），每次出聲前都重讀，所以首頁切換後回來馬上生效。
+const SFX = (() => {
+  let ctx = null;
+  function on() { try { return localStorage.getItem('arcade-sound') !== 'off'; } catch { return true; } }
+  // freq：Hz；dur：秒；slide：結束時頻率倍率（<1 下滑、>1 上揚）；delay：延後秒數
+  function tone(freq, { dur = 0.07, type = 'triangle', vol = 0.06, slide = 0, delay = 0 } = {}) {
+    if (!on()) return;
+    try {
+      ctx = ctx || new (window.AudioContext || window.webkitAudioContext)();
+      if (ctx.state === 'suspended') ctx.resume(); // iOS：要在點擊當下 resume 才會出聲
+      const t = ctx.currentTime + delay;
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = type;
+      o.frequency.setValueAtTime(freq, t);
+      if (slide) o.frequency.exponentialRampToValueAtTime(freq * slide, t + dur);
+      g.gain.setValueAtTime(vol, t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g).connect(ctx.destination);
+      o.start(t); o.stop(t + dur + 0.02);
+    } catch {}
+  }
+  return {
+    tone,
+    tap:  () => tone(520, { dur: 0.04, vol: 0.04 }),
+    soft: () => tone(330, { dur: 0.05, vol: 0.035 }),
+    good: () => tone(784, { dur: 0.09 }),
+    bad:  () => tone(150, { dur: 0.16, type: 'square', vol: 0.035, slide: 0.7 }),
+    win:  () => [523, 659, 784, 1047].forEach((f, i) => tone(f, { dur: i === 3 ? 0.3 : 0.12, delay: i * 0.1 })),
+    lose: () => tone(330, { dur: 0.5, type: 'sawtooth', vol: 0.05, slide: 0.35 }),
+  };
+})();
+
 const LEVELS = {
   easy:   { rows: 9,  cols: 9,  mines: 10 },
   medium: { rows: 16, cols: 16, mines: 40 },
   hard:   { rows: 16, cols: 30, mines: 99 },
 };
 
+// ── 存檔與紀錄（localStorage）──
+// save：進行中的盤面，重新整理後可接著玩；stats：各難度的局數、勝場、最佳時間
+const SAVE_KEY = 'arcade-minesweeper-save', STATS_KEY = 'arcade-minesweeper-stats';
+function lsGet(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } }
+function lsSet(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+// 記一局結果；metrics 越小越好，回傳 { r, newBest: [破紀錄的 key] }
+function recordResult(mode, won, metrics = {}) {
+  const all = lsGet(STATS_KEY) || {};
+  const r = all[mode] || (all[mode] = { plays: 0, wins: 0, best: {} });
+  r.plays++;
+  const newBest = [];
+  if (won) {
+    r.wins++;
+    for (const k in metrics) if (r.best[k] == null || metrics[k] < r.best[k]) { r.best[k] = metrics[k]; newBest.push(k); }
+  }
+  lsSet(STATS_KEY, all);
+  return { r, newBest };
+}
+
+// ── 每日挑戰 ──
+// 用日期當亂數種子：同一天所有人拿到同一題，可以互相比。一天一次（贏或輸都算數），
+// 天天過關才會累積連續天數。掃雷版：盤面固定、並先翻開一塊起始區，大家從同一個局面開始。
+//進度與一般模式分開存（DAILY_SAVE_KEY），切換模式不會互相覆蓋。
+function dateStr(d = new Date()) {
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+function dayBefore(s) { const d = new Date(s + 'T12:00'); d.setDate(d.getDate() - 1); return dateStr(d); }
+// 字串 → 可重現的亂數（FNV-1a 雜湊當種子 + mulberry32），用法同 Math.random
+function seededRng(str) {
+  let a = 2166136261;
+  for (let i = 0; i < str.length; i++) a = Math.imul(a ^ str.charCodeAt(i), 16777619);
+  return () => {
+    a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+// daily：{ last: { date, won, ...成績 }, streak, best, lastWin }
+function dailyInfo() { return lsGet(DAILY_KEY) || { streak: 0, best: 0 }; }
+function dailyStreak(d = dailyInfo()) {
+  const today = dateStr();
+  return d.lastWin === today || d.lastWin === dayBefore(today) ? d.streak : 0; // 漏掉一天就歸零
+}
+function finishDaily(date, won, result) {
+  const d = dailyInfo();
+  if (d.last?.date === date) return d; // 同一天只記第一次
+  d.streak = won ? (d.lastWin === dayBefore(date) ? d.streak + 1 : 1) : 0;
+  if (won) d.lastWin = date;
+  d.best = Math.max(d.best || 0, d.streak);
+  d.last = { date, won, ...result };
+  lsSet(DAILY_KEY, d);
+  return d;
+}
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); return true; } catch {}
+  try { // 舊瀏覽器／非 https 的退路
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.style.cssText = 'position:fixed;opacity:0';
+    document.body.appendChild(ta); ta.select();
+    const ok = document.execCommand('copy'); ta.remove(); return ok;
+  } catch { return false; }
+}
+
+const DAILY_KEY = 'arcade-minesweeper-daily', DAILY_SAVE_KEY = 'arcade-minesweeper-daily-save';
+const DAILY_LEVEL = 'medium';
+let normalLevel = 'easy'; // 從每日挑戰回一般模式時用
+
 let state = {
   level: 'easy',
+  daily: null,    // 每日挑戰的日期字串；一般局為 null
   rows: 9, cols: 9, mines: 10,
   board: [],      // 0-8 = number, -1 = mine
   revealed: [],   // bool
@@ -255,11 +374,17 @@ function setCellSize(cols) {
   boardEl.style.gridTemplateColumns = `repeat(${cols}, ${size}px)`;
 }
 
-function newGame(level) {
+function newGame(level, daily = null) {
   const cfg = LEVELS[level];
   stopTimer();
+  // 一般局換一般局：舊局算放棄。牽涉每日挑戰的切換不動存檔（兩邊進度各自保留）
+  if (!state.daily && !daily) {
+    if (!state.firstClick && !state.gameOver) recordResult(state.level, false); // 中途放棄算一局
+    lsSet(SAVE_KEY, null);
+  }
+  if (!daily) normalLevel = level;
   state = {
-    level,
+    level, daily,
     rows: cfg.rows, cols: cfg.cols, mines: cfg.mines,
     board: Array(cfg.rows * cfg.cols).fill(0),
     revealed: Array(cfg.rows * cfg.cols).fill(false),
@@ -280,12 +405,67 @@ function newGame(level) {
   document.getElementById('overlay').classList.remove('show');
   buildBoard();
   setCellSize(cfg.cols);
+  if (daily) {
+    // 固定盤面：起始格與它周圍 8 格不放雷，先翻開，起始格一定是 0 → 會自動展開一塊
+    const rnd = seededRng('minesweeper-' + daily);
+    const start = Math.floor(rnd() * state.rows * state.cols);
+    placeMines(new Set([start, ...neighbors(start)]), rnd);
+    reveal(start);
+    renderBoard();
+  }
+  document.querySelectorAll('.diff-btn[data-level]').forEach(b => b.classList.toggle('active', !daily && b.dataset.level === level));
+  document.getElementById('daily-btn').classList.toggle('active', !!daily);
+  renderBest();
 }
 
-function placeMines(safeIdx) {
+function curElapsed() {
+  return state.timerInterval ? Math.floor((Date.now() - state.startTime) / 1000) : state.elapsed;
+}
+
+// 每次操作後存檔；還沒開局或已結束就清掉
+function saveGame() {
+  const key = state.daily ? DAILY_SAVE_KEY : SAVE_KEY;
+  if (state.firstClick || state.gameOver) { lsSet(key, null); return; }
+  const { level, daily, board, revealed, flagged, openCount } = state;
+  lsSet(key, { level, daily, board, revealed, flagged, openCount, elapsed: curElapsed() });
+}
+
+function loadGame(key = SAVE_KEY) {
+  const d = lsGet(key);
+  const cfg = d && LEVELS[d.level];
+  if (!cfg || !Array.isArray(d.board) || d.board.length !== cfg.rows * cfg.cols) return false;
+  if (d.daily && d.daily !== dateStr()) { lsSet(key, null); return false; } // 昨天沒玩完的每日題作廢
+  newGame(d.level, d.daily || null);
+  Object.assign(state, {
+    board: d.board, revealed: d.revealed, flagged: d.flagged,
+    openCount: d.openCount, elapsed: d.elapsed || 0, firstClick: false,
+  });
+  document.getElementById('mine-count').textContent = state.mines - state.flagged.filter(Boolean).length;
+  document.getElementById('timer').textContent = String(state.elapsed).padStart(3, '0');
+  renderBoard();
+  startTimer();
+  saveGame(); // newGame() 會清掉存檔，這裡寫回去
+  return true;
+}
+
+function renderBest() {
+  const all = lsGet(STATS_KEY) || {};
+  for (const lv in LEVELS) {
+    const t = all[lv]?.best?.time;
+    document.getElementById('best-' + lv).textContent = t != null ? '🏆 ' + formatTime(t) : '';
+  }
+  // 每日按鈕：今天做完打勾，否則顯示連續天數
+  const info = dailyInfo(), streak = dailyStreak(info);
+  document.getElementById('daily-status').textContent = info.last?.date === dateStr()
+    ? (info.last.won ? '✓ 今日完成' : '✗ 今日失敗')
+    : streak ? `🔥 ${streak} 天` : '';
+}
+
+// safe：不放雷的格子（一般局是第一下點的那格；每日題是起始區）；rnd：亂數來源
+function placeMines(safe, rnd = Math.random) {
   const total = state.rows * state.cols;
-  const indices = Array.from({length: total}, (_, i) => i).filter(i => i !== safeIdx);
-  shuffle(indices);
+  const indices = Array.from({length: total}, (_, i) => i).filter(i => !safe.has(i));
+  shuffle(indices, rnd);
   for (let i = 0; i < state.mines; i++) state.board[indices[i]] = -1;
   // calculate numbers
   for (let idx = 0; idx < total; idx++) {
@@ -312,9 +492,9 @@ function neighbors(idx) {
   return result;
 }
 
-function shuffle(arr) {
+function shuffle(arr, rnd = Math.random) {
   for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = Math.floor(rnd() * (i + 1));
     [arr[i], arr[j]] = [arr[j], arr[i]];
   }
 }
@@ -340,7 +520,7 @@ function handleClick(idx) {
 
   if (state.firstClick) {
     state.firstClick = false;
-    placeMines(idx);
+    if (!state.daily) placeMines(new Set([idx])); // 每日題開局就埋好了
     startTimer();
   }
 
@@ -349,6 +529,8 @@ function handleClick(idx) {
     state.gameOver = true;
     stopTimer();
     state.revealed[idx] = true;
+    state.hitMine = idx; // 踩到的那顆用 .mine-hit 標紅
+    SFX.lose();
     showAllMines(idx);
     renderBoard();
     setTimeout(() => showResult(false), 400);
@@ -358,6 +540,8 @@ function handleClick(idx) {
   reveal(idx);
   renderBoard();
   checkWin();
+  if (!state.gameOver) SFX.tap();
+  saveGame();
 }
 
 function chord(idx) {
@@ -374,6 +558,7 @@ function chord(idx) {
   if (hitMine) {
     state.gameOver = true;
     stopTimer();
+    SFX.lose();
     showAllMines(-1);
     renderBoard();
     setTimeout(() => showResult(false), 400);
@@ -381,14 +566,18 @@ function chord(idx) {
   }
   renderBoard();
   checkWin();
+  if (!state.gameOver) SFX.tap();
+  saveGame();
 }
 
 function toggleFlag(idx) {
-  if (state.revealed[idx] || state.gameOver || state.firstClick) return;
+  if (state.revealed[idx] || state.gameOver || (state.firstClick && !state.daily)) return;
   state.flagged[idx] = !state.flagged[idx];
+  SFX.tone(state.flagged[idx] ? 880 : 440, { dur: 0.06 });
   const remaining = state.mines - state.flagged.filter(Boolean).length;
   document.getElementById('mine-count').textContent = remaining;
   renderBoard();
+  saveGame();
 }
 
 function showAllMines(hitIdx) {
@@ -410,13 +599,51 @@ function checkWin() {
 }
 
 function showResult(won) {
+  if (won) SFX.win(); // 輸的音效在踩雷當下就放了
+  if (state.daily) {
+    lsSet(DAILY_SAVE_KEY, null);
+    recordResult('daily', won, won ? { time: state.elapsed } : {});
+    finishDaily(state.daily, won, { time: state.elapsed });
+    renderBest();
+    showDailyResult();
+    return;
+  }
+  lsSet(SAVE_KEY, null);
+  const { r, newBest } = recordResult(state.level, won, won ? { time: state.elapsed } : {});
+  renderBest();
+  const bestLine = r.best.time != null
+    ? `<br>最佳：<b>${formatTime(r.best.time)}</b>${newBest.length ? ' <span class="new-record">新紀錄！</span>' : ''}` : '';
+  const rateLine = `<br>勝場：<b>${r.wins}</b> / ${r.plays}`;
   document.getElementById('result-emoji').textContent = won ? '🎉' : '💥';
   document.getElementById('result-title').textContent = won ? '成功排雷！' : '踩到地雷！';
   const lvlMap = { easy:'簡單', medium:'中等', hard:'困難' };
   document.getElementById('result-stats').innerHTML = won
     ? `難度：<b>${lvlMap[state.level]}</b><br>時間：<b>${formatTime(state.elapsed)}</b>`
     : `難度：<b>${lvlMap[state.level]}</b><br>撐了：<b>${formatTime(state.elapsed)}</b>`;
+  document.getElementById('result-stats').innerHTML += bestLine + rateLine;
+  document.getElementById('share-btn').hidden = true;
+  document.getElementById('result-btn').textContent = '再來一局';
   document.getElementById('overlay').classList.add('show');
+}
+
+// 每日挑戰結果（剛打完、或今天已經玩過再點「每日」都走這裡）
+function showDailyResult() {
+  const info = dailyInfo(), last = info.last, streak = dailyStreak(info);
+  document.getElementById('result-emoji').textContent = last.won ? '📅' : '💥';
+  document.getElementById('result-title').textContent = last.won ? '每日挑戰完成！' : '每日挑戰失敗';
+  document.getElementById('result-stats').innerHTML =
+    `${last.date}<br>${last.won ? '時間' : '撐了'}：<b>${formatTime(last.time)}</b>` +
+    `<br>🔥 連續過關：<b>${streak}</b> 天（最高 ${info.best || 0}）<br>明天會有新的一題`;
+  document.getElementById('share-btn').hidden = false;
+  document.getElementById('share-btn').textContent = '📋 複製成績';
+  document.getElementById('result-btn').textContent = '回一般模式';
+  document.getElementById('overlay').classList.add('show');
+}
+function dailyShareText() {
+  const info = dailyInfo(), last = info.last;
+  return `ARCADE 掃雷・每日挑戰 ${last.date}\n` +
+    (last.won ? `✅ ${formatTime(last.time)}` : `💥 撐了 ${formatTime(last.time)}`) +
+    `・🔥連續 ${dailyStreak(info)} 天\n${location.origin}/minesweeper/`;
 }
 
 function formatTime(s) {
@@ -424,13 +651,17 @@ function formatTime(s) {
 }
 
 function startTimer() {
-  state.startTime = Date.now();
+  state.startTime = Date.now() - state.elapsed * 1000; // 讀檔時從已過秒數接續
   state.timerInterval = setInterval(() => {
     state.elapsed = Math.floor((Date.now() - state.startTime) / 1000);
     document.getElementById('timer').textContent = String(state.elapsed).padStart(3, '0');
   }, 1000);
 }
-function stopTimer() { clearInterval(state.timerInterval); }
+function stopTimer() {
+  state.elapsed = curElapsed();
+  clearInterval(state.timerInterval);
+  state.timerInterval = null;
+}
 
 // ── Render ──
 function buildBoard() {
@@ -439,9 +670,57 @@ function buildBoard() {
   for (let i = 0; i < state.rows * state.cols; i++) {
     const cell = document.createElement('div');
     cell.className = 'cell';
-    cell.addEventListener('click', () => handleClick(i));
+    bindCellInput(cell, i);
     boardEl.appendChild(cell);
   }
+}
+
+// ── 長按／右鍵 ──
+// 長按（350ms）或右鍵 = 「另一個動作」：平常是插旗；開著插旗模式時則是翻開。
+const LONG_PRESS_MS = 350;
+let pressTimer = null, pressStart = null, longPressed = false;
+
+function altAction(idx) {
+  if (state.gameOver) return;
+  if (state.flagMode) {
+    // 插旗模式下的長按＝翻開（暫時關掉插旗模式來走一般點擊流程）
+    state.flagMode = false; handleClick(idx); state.flagMode = true;
+  } else if (!state.revealed[idx] && !state.firstClick) {
+    toggleFlag(idx);
+    if (navigator.vibrate) navigator.vibrate(15);
+  }
+}
+
+function bindCellInput(cell, i) {
+  cell.addEventListener('pointerdown', e => {
+    if (e.button !== 0) return;
+    longPressed = false;
+    pressStart = { x: e.clientX, y: e.clientY };
+    clearTimeout(pressTimer);
+    pressTimer = setTimeout(() => { longPressed = true; altAction(i); }, LONG_PRESS_MS);
+  });
+  cell.addEventListener('pointermove', e => {
+    // 手指滑動超過 10px 視為捲動，取消長按
+    if (pressStart && Math.hypot(e.clientX - pressStart.x, e.clientY - pressStart.y) > 10) clearTimeout(pressTimer);
+  });
+  for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) cell.addEventListener(ev, () => clearTimeout(pressTimer));
+  cell.addEventListener('click', () => {
+    if (longPressed) { longPressed = false; return; } // 長按已處理，吃掉隨後的 click
+    handleClick(i);
+  });
+  cell.addEventListener('contextmenu', e => {
+    e.preventDefault();
+    if (longPressed) return; // 觸控長按也會觸發 contextmenu，避免重複
+    altAction(i);
+  });
+}
+
+// 格子圖示：flag.webp／mine.webp 存在就用圖，不存在維持 emoji（圖可以一張一張補）
+const ART = { flag: '🚩', mine: '💣' };
+for (const k in ART) {
+  const img = new Image();
+  img.onload = () => { ART[k] = `<img class="cell-img" src="${k}.webp" alt="">`; renderBoard(); };
+  img.src = k + '.webp';
 }
 
 function renderBoard() {
@@ -455,11 +734,11 @@ function renderBoard() {
 
     if (state.flagged[i] && !state.revealed[i]) {
       cell.classList.add('flagged');
-      cell.textContent = '🚩';
+      cell.innerHTML = ART.flag;
     } else if (state.revealed[i]) {
       if (state.board[i] === -1) {
         cell.classList.add(i === state.hitMine ? 'mine-hit' : 'mine-show');
-        cell.textContent = '💣';
+        cell.innerHTML = ART.mine;
       } else {
         cell.classList.add('revealed');
         if (state.board[i] > 0) {
@@ -479,21 +758,31 @@ document.getElementById('flag-btn').addEventListener('click', () => {
   document.getElementById('flag-btn').classList.toggle('flag-active', state.flagMode);
 });
 
-document.getElementById('new-btn').addEventListener('click', () => newGame(state.level));
-document.getElementById('result-btn').addEventListener('click', () => newGame(state.level));
+// 每日挑戰中按「新遊戲」／結算按鈕＝回一般模式（每日題不能重來）
+document.getElementById('new-btn').addEventListener('click', () => newGame(state.daily ? normalLevel : state.level));
+document.getElementById('result-btn').addEventListener('click', () => newGame(state.daily ? normalLevel : state.level));
+document.getElementById('share-btn').addEventListener('click', async () => {
+  const ok = await copyText(dailyShareText());
+  document.getElementById('share-btn').textContent = ok ? '✓ 已複製，貼給朋友吧' : '複製失敗';
+});
 
-document.querySelectorAll('.diff-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    newGame(btn.dataset.level);
-  });
+document.querySelectorAll('.diff-btn[data-level]').forEach(btn => {
+  btn.addEventListener('click', () => newGame(btn.dataset.level));
+});
+document.getElementById('daily-btn').addEventListener('click', () => {
+  if (dailyInfo().last?.date === dateStr()) { showDailyResult(); return; } // 今天玩過了
+  if (state.daily === dateStr() && !state.gameOver) return;               // 已經在玩
+  if (!loadGame(DAILY_SAVE_KEY)) newGame(DAILY_LEVEL, dateStr());
 });
 
 window.addEventListener('resize', () => setCellSize(state.cols));
 
+// 離開頁面時補存一次（更新已過秒數）
+addEventListener('pagehide', saveGame);
+document.addEventListener('visibilitychange', () => { if (document.hidden) saveGame(); });
+
 // ── Init ──
-newGame('easy');
+if (!loadGame()) newGame('easy');
 </script>
 </body>
 </html>

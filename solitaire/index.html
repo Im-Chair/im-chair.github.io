@@ -21,8 +21,8 @@
       --accent-dim: rgba(76,175,110,0.15);
       --card-bg: #f5f0e8;
       --card-border: #c8bfa8;
-      --card-back: #1e3a5f;
-      --card-back2: #2a4f7c;
+      --card-back: #143d24;   /* 配合 back.webp 的墨綠＋金（沒有圖時的斜紋也用這組色） */
+      --card-back2: #8a7334;
       --red: #c0392b;
       --black: #1a1a1a;
       --empty: rgba(255,255,255,0.05);
@@ -30,7 +30,8 @@
       --selected-glow: 0 0 0 2px #4caf6e, 0 4px 20px rgba(76,175,110,0.4);
     }
     html, body {
-      height: 100%; background: var(--bg);
+      /* felt.webp（無縫毛氈）存在就鋪滿，不存在時圖層透明、露出底色 */
+      height: 100%; background: url('felt.webp') 0 0 / 256px repeat, var(--bg);
       font-family: -apple-system, 'SF Pro Display', sans-serif;
       color: var(--text); overflow: hidden;
       touch-action: manipulation;
@@ -47,7 +48,12 @@
       display: flex; align-items: center; justify-content: space-between;
       padding: 0 2px; flex-shrink: 0;
     }
-    .logo { font-size: 18px; font-weight: 700; letter-spacing: -0.5px; }
+    .logo { font-size: 18px; font-weight: 700; letter-spacing: -0.5px; white-space: nowrap; }
+    .header-left { gap: 6px; }
+    .header-left .home-btn { padding: 6px 9px; }
+    /* 手機寬度 header 放不下：藏標題，讓計時／步數／按鈕有空間 */
+    @media (max-width: 420px) { .header-left .logo { display: none; } }
+    .score-badge, .timer { white-space: nowrap; }
     .logo em { color: var(--accent); font-style: normal; }
     .header-center { display: flex; gap: 8px; align-items: center; }
     .timer { font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; letter-spacing: 1px; }
@@ -100,8 +106,25 @@
       cursor: pointer;
       user-select: none;
       transition: box-shadow 0.15s;
-      touch-action: manipulation;
+      touch-action: none; /* 讓手指拖牌不會被當成捲動（整頁本來就不捲） */
+      -webkit-user-select: none; -webkit-touch-callout: none;
     }
+    /* 拖曳中跟著手指的牌 */
+    .drag-ghost { position: fixed; z-index: 1000; pointer-events: none; filter: drop-shadow(0 8px 16px rgba(0,0,0,0.5)); }
+    .drag-ghost .card { position: absolute; left: 0; right: 0; }
+
+    /* 自動收牌：所有牌都翻開、牌庫用完時出現 */
+    .finish-btn {
+      position: fixed; left: 50%; bottom: max(24px, env(safe-area-inset-bottom));
+      transform: translateX(-50%); z-index: 100;
+      display: none; padding: 12px 22px; border-radius: 24px;
+      background: var(--accent); color: #0d1a0f; border: none;
+      font-size: 15px; font-weight: 700; cursor: pointer;
+      box-shadow: 0 6px 24px rgba(76,175,110,0.45);
+    }
+    .finish-btn.show { display: block; animation: finishIn 0.3s ease-out; }
+    /* 不能共用 popUp：它的 transform 會蓋掉置中用的 translateX(-50%) */
+    @keyframes finishIn { from { opacity: 0; transform: translate(-50%, 12px); } to { opacity: 1; transform: translate(-50%, 0); } }
     .card-inner {
       width: 100%; height: 100%;
       border-radius: 7px;
@@ -115,11 +138,14 @@
     .card.face-down .card-inner {
       background: var(--card-back);
       border-color: var(--card-back2);
-      background-image: repeating-linear-gradient(
+      /* back.webp（牌背圖）存在就蓋在最上層，不存在時只看到原本的斜紋 */
+      background-image: url('back.webp'), repeating-linear-gradient(
         45deg,
         var(--card-back2) 0px, var(--card-back2) 1px,
         transparent 1px, transparent 8px
       );
+      background-size: cover, auto;
+      background-position: center;
     }
     .card.selected { box-shadow: var(--selected-glow); z-index: 50 !important; }
     .card.selected .card-inner { border-color: var(--accent); }
@@ -166,17 +192,18 @@
     .win-emoji { font-size: 56px; margin-bottom: 12px; }
     .win-title { font-size: 26px; font-weight: 800; margin-bottom: 8px; color: var(--accent); }
     .win-stats { font-size: 14px; color: var(--muted); line-height: 2; margin-bottom: 24px; }
+    .new-record { color: var(--accent); font-weight: 700; }
     .win-stats b { color: var(--text); }
     .win-btn {
       width: 100%; padding: 14px; border-radius: 14px; border: none;
       background: var(--accent); color: #0d1a0f; font-size: 16px; font-weight: 800; cursor: pointer;
     }
 
+    /* 回大廳：放進 header 左側的一般排版流，不再 fixed 蓋住標題 */
+    .header-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
     .home-btn {
-      position: fixed;
-      top: max(12px, env(safe-area-inset-top));
-      left: 12px;
-      z-index: 999;
+      display: inline-flex; align-items: center; flex-shrink: 0;
+      white-space: nowrap;
       background: rgba(0,0,0,0.55);
       backdrop-filter: blur(8px);
       border: 0.5px solid rgba(255,255,255,0.15);
@@ -192,10 +219,12 @@
   </style>
 </head>
 <body>
-<a class="home-btn" href="/">🏠 回大廳</a>
 <div id="app">
   <div class="header">
-    <div class="logo">接<em>龍</em></div>
+    <div class="header-left">
+      <a class="home-btn" href="/" title="回大廳" aria-label="回大廳">🏠</a>
+      <div class="logo">接<em>龍</em></div>
+    </div>
     <div class="header-center">
       <div class="timer" id="timer">00:00</div>
       <div class="score-badge">👣 <span id="score">0</span> 步</div>
@@ -231,6 +260,8 @@
   </div>
 </div>
 
+<button class="finish-btn" id="finish-btn">⚡ 自動收牌</button>
+
 <div id="win-screen">
   <div class="win-card">
     <div class="win-emoji">🎉</div>
@@ -241,6 +272,39 @@
 </div>
 
 <script>
+// ── 音效（WebAudio 即時合成，不用音檔）──
+// 總開關在首頁（localStorage arcade-sound = 'off' 為關），每次出聲前都重讀，所以首頁切換後回來馬上生效。
+const SFX = (() => {
+  let ctx = null;
+  function on() { try { return localStorage.getItem('arcade-sound') !== 'off'; } catch { return true; } }
+  // freq：Hz；dur：秒；slide：結束時頻率倍率（<1 下滑、>1 上揚）；delay：延後秒數
+  function tone(freq, { dur = 0.07, type = 'triangle', vol = 0.06, slide = 0, delay = 0 } = {}) {
+    if (!on()) return;
+    try {
+      ctx = ctx || new (window.AudioContext || window.webkitAudioContext)();
+      if (ctx.state === 'suspended') ctx.resume(); // iOS：要在點擊當下 resume 才會出聲
+      const t = ctx.currentTime + delay;
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = type;
+      o.frequency.setValueAtTime(freq, t);
+      if (slide) o.frequency.exponentialRampToValueAtTime(freq * slide, t + dur);
+      g.gain.setValueAtTime(vol, t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g).connect(ctx.destination);
+      o.start(t); o.stop(t + dur + 0.02);
+    } catch {}
+  }
+  return {
+    tone,
+    tap:  () => tone(520, { dur: 0.04, vol: 0.04 }),
+    soft: () => tone(330, { dur: 0.05, vol: 0.035 }),
+    good: () => tone(784, { dur: 0.09 }),
+    bad:  () => tone(150, { dur: 0.16, type: 'square', vol: 0.035, slide: 0.7 }),
+    win:  () => [523, 659, 784, 1047].forEach((f, i) => tone(f, { dur: i === 3 ? 0.3 : 0.12, delay: i * 0.1 })),
+    lose: () => tone(330, { dur: 0.5, type: 'sawtooth', vol: 0.05, slide: 0.35 }),
+  };
+})();
+
 // ── Constants ──
 const SUITS = ['♠','♥','♦','♣'];
 const SUIT_NAMES = ['spade','heart','diamond','club'];
@@ -252,6 +316,58 @@ function rankVal(rank) { return RANKS.indexOf(rank) + 1; }
 
 // ── State ──
 let G = {};
+
+// ── 存檔與紀錄（localStorage）──
+// save：進行中的牌局（含悔棋紀錄），重新整理後可接著玩；stats：翻1／翻3 各自的局數、勝場、最快時間、最少步數
+const SAVE_KEY = 'arcade-solitaire-save', STATS_KEY = 'arcade-solitaire-stats';
+const MODE_KEY = 'arcade-solitaire-mode';
+const SAVE_HISTORY = 20; // 存檔只帶最後 20 步悔棋，避免每步都寫入過大的資料
+function lsGet(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } }
+function lsSet(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+// 記一局結果；metrics 越小越好，回傳 { r, newBest: [破紀錄的 key] }
+function recordResult(mode, won, metrics = {}) {
+  const all = lsGet(STATS_KEY) || {};
+  const r = all[mode] || (all[mode] = { plays: 0, wins: 0, best: {} });
+  r.plays++;
+  const newBest = [];
+  if (won) {
+    r.wins++;
+    for (const k in metrics) if (r.best[k] == null || metrics[k] < r.best[k]) { r.best[k] = metrics[k]; newBest.push(k); }
+  }
+  lsSet(STATS_KEY, all);
+  return { r, newBest };
+}
+
+function curElapsed() {
+  return G.timerInterval ? Math.floor((Date.now() - G.startTime) / 1000) : G.elapsed;
+}
+
+function saveGame() {
+  if (G.won || !G.history.length) { lsSet(SAVE_KEY, null); return; } // 翻牌庫不算步數，所以用「有沒有操作過」判斷
+  const { stock, waste, foundations, tableau, drawMode, score, moves } = G;
+  lsSet(SAVE_KEY, { stock, waste, foundations, tableau, drawMode, score, moves,
+    history: G.history.slice(-SAVE_HISTORY), elapsed: curElapsed() });
+}
+
+function loadGame() {
+  const d = lsGet(SAVE_KEY);
+  if (!d || !Array.isArray(d.tableau) || d.tableau.length !== 7) return false;
+  newGame(d.drawMode);
+  stopTimer();
+  Object.assign(G, {
+    stock: d.stock, waste: d.waste, foundations: d.foundations, tableau: d.tableau,
+    score: d.score, moves: d.moves, history: d.history || [], elapsed: d.elapsed || 0,
+  });
+  startTimer();
+  render();
+  return true;
+}
+
+function renderModeBtn() {
+  const btn = document.getElementById('mode-btn');
+  btn.textContent = `翻${G.drawMode}張`;
+  btn.classList.toggle('active-mode', G.drawMode === 3);
+}
 
 function freshDeck() {
   const deck = [];
@@ -269,7 +385,10 @@ function shuffle(arr) {
   return arr;
 }
 
-function newGame() {
+function newGame(drawMode = G.drawMode) {
+  if (G.history?.length && !G.won) recordResult('draw' + G.drawMode, false); // 中途放棄算一局
+  lsSet(SAVE_KEY, null);
+  stopTimer(); // 先停舊局的計時器（原本在 G 換掉後才停，舊 interval 會殘留）
   const deck = shuffle(freshDeck());
   const tableau = Array.from({length:7}, () => []);
   let idx = 0;
@@ -286,7 +405,7 @@ function newGame() {
     foundations: [[],[],[],[]],
     tableau,
     selected: null, // {source, cards}
-    drawMode: G.drawMode || 1,
+    drawMode: drawMode || 1,
     score: 0,
     moves: 0,
     history: [],
@@ -297,18 +416,26 @@ function newGame() {
   };
   stopTimer(); startTimer();
   document.getElementById('win-screen').classList.remove('show');
-  document.getElementById('score').textContent = '0';
+  document.getElementById('timer').textContent = formatTime(0);
+  lsSet(MODE_KEY, G.drawMode);
+  renderModeBtn();
   render();
 }
 
 // ── Timer ──
 function startTimer() {
+  G.startTime = Date.now() - G.elapsed * 1000; // 讀檔時從已過秒數接續
+  document.getElementById('timer').textContent = formatTime(G.elapsed);
   G.timerInterval = setInterval(() => {
     G.elapsed = Math.floor((Date.now() - G.startTime)/1000);
     document.getElementById('timer').textContent = formatTime(G.elapsed);
   }, 1000);
 }
-function stopTimer() { clearInterval(G.timerInterval); }
+function stopTimer() {
+  if (G.timerInterval) G.elapsed = curElapsed();
+  clearInterval(G.timerInterval);
+  G.timerInterval = null;
+}
 function formatTime(s) {
   return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
 }
@@ -325,6 +452,7 @@ function pushHistory() { G.history.push(snapshot()); if (G.history.length > 60) 
 function undo() {
   if (!G.history.length) return;
   const prev = JSON.parse(G.history.pop());
+  SFX.soft();
   Object.assign(G, prev);
   G.selected = null;
   render();
@@ -356,6 +484,7 @@ function foundationFor(card) {
 // ── Stock click ──
 function clickStock() {
   pushHistory();
+  SFX.soft();
   G.selected = null;
   if (G.stock.length === 0) {
     // recycle waste
@@ -429,6 +558,7 @@ function clickFoundation(fi) {
       addScore(15);
       G.moves++;
       G.selected = null;
+      SFX.good();
       render();
       checkWin();
     } else {
@@ -447,6 +577,7 @@ function clickFoundation(fi) {
 
 function moveToTableau(col) {
   const cards = G.selected.cards;
+  SFX.tap();
   removeSelected();
   G.tableau[col].push(...cards);
   addScore(cards.length > 1 ? 5 : 10);
@@ -481,6 +612,7 @@ function autoMoveToFoundation(col, cardIdx) {
   const fi = foundationFor(card);
   if (fi < 0) return false;
   pushHistory();
+  SFX.good();
   G.tableau[col].pop();
   G.foundations[fi].push(card);
   addScore(15);
@@ -502,6 +634,7 @@ function autoMoveWasteToFoundation() {
   const fi = foundationFor(card);
   if (fi < 0) return;
   pushHistory();
+  SFX.good();
   G.waste.pop();
   G.foundations[fi].push(card);
   addScore(15);
@@ -519,11 +652,116 @@ function addScore(n) {
 function checkWin() {
   if (G.foundations.every(f => f.length === 13)) {
     stopTimer();
+    SFX.win();
     G.won = true;
+    lsSet(SAVE_KEY, null);
+    const { r, newBest } = recordResult('draw' + G.drawMode, true, { time: G.elapsed, moves: G.moves });
+    const rec = k => newBest.includes(k) ? ' <span class="new-record">新紀錄！</span>' : '';
     document.getElementById('win-stats').innerHTML =
-      `時間：<b>${formatTime(G.elapsed)}</b><br>步數：<b>${G.moves}</b> 步<br>得分：<b>${G.score}</b>`;
+      `時間：<b>${formatTime(G.elapsed)}</b>${rec('time')}<br>步數：<b>${G.moves}</b> 步${rec('moves')}<br>得分：<b>${G.score}</b>` +
+      `<br>最快：<b>${formatTime(r.best.time)}</b> · 最少：<b>${r.best.moves}</b> 步` +
+      `<br>翻${G.drawMode}張 過關：<b>${r.wins}</b> / ${r.plays} 局`;
     setTimeout(() => document.getElementById('win-screen').classList.add('show'), 600);
   }
+}
+
+// ── 拖曳 ──
+// 按住翻開的牌移動超過 6px 就進入拖曳；放開時看手指下方是哪一欄／哪個 A 區，沿用原本點選放置的規則。
+const DRAG_THRESHOLD = 6;
+let drag = null, suppressClick = false;
+
+function enableDrag(el, getSel) {
+  el.addEventListener('pointerdown', e => {
+    if (e.button !== 0 || G.won || finishing) return;
+    const sel = getSel();
+    if (sel) drag = { sel, x: e.clientX, y: e.clientY, ghost: null };
+  });
+}
+
+function startDragVisual() {
+  const els = drag.sel.els;
+  const first = els[0].getBoundingClientRect();
+  const ghost = document.createElement('div');
+  ghost.className = 'drag-ghost';
+  ghost.style.cssText += `left:${first.left}px;top:${first.top}px;width:${first.width}px;`;
+  for (const el of els) {
+    const r = el.getBoundingClientRect();
+    const c = el.cloneNode(true);
+    c.classList.remove('selected');
+    c.style.cssText = `top:${r.top - first.top}px;height:${r.height}px;z-index:auto;`;
+    ghost.appendChild(c);
+    el.style.visibility = 'hidden';
+  }
+  document.body.appendChild(ghost);
+  drag.ghost = ghost;
+}
+
+document.addEventListener('pointermove', e => {
+  if (!drag) return;
+  const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+  if (!drag.ghost) {
+    if (Math.hypot(dx, dy) < DRAG_THRESHOLD) return;
+    startDragVisual();
+  }
+  drag.ghost.style.transform = `translate(${dx}px,${dy}px)`;
+});
+
+function endDrag(e, cancelled) {
+  if (!drag) return;
+  const d = drag; drag = null;
+  if (!d.ghost) return; // 沒移動：交給原本的 click 處理
+  d.ghost.remove();
+  suppressClick = true; // 吃掉放開後瀏覽器可能補發的那一次 click
+  const target = !cancelled && document.elementFromPoint(e.clientX, e.clientY)?.closest('.column, .foundation');
+  const { els, ...sel } = d.sel;
+  G.selected = sel;
+  if (target?.classList.contains('foundation')) {
+    clickFoundation(+target.id.slice(1)); // 不合規則時 clickFoundation 會自己取消選取並重繪
+  } else if (target && !(sel.source === 'tableau' && sel.col === +target.id.slice(3))
+             && canPlaceOnTableau(sel.cards[0], +target.id.slice(3))) {
+    pushHistory();
+    moveToTableau(+target.id.slice(3));
+  } else {
+    if (target) SFX.bad(); // 拖到牌堆上但不合規則；拖到空白處就安靜放回
+    G.selected = null;
+    render(); // 放回原處
+  }
+}
+document.addEventListener('pointerup', e => endDrag(e, false));
+document.addEventListener('pointercancel', e => endDrag(e, true));
+// 拖曳結束後瀏覽器補發的 click 不要再當成點選
+// （不用 setTimeout 重設：分頁在背景時計時器會被節流，旗標可能卡住；改成下一次按下時重設）
+document.addEventListener('click', e => {
+  if (suppressClick) { suppressClick = false; e.stopPropagation(); e.preventDefault(); }
+}, true);
+document.addEventListener('pointerdown', () => { suppressClick = false; }, true);
+
+// ── 自動收牌 ──
+let finishing = false;
+function canAutoFinish() {
+  return !G.won && !finishing && !G.stock.length && !G.waste.length
+    && G.tableau.some(c => c.length) && G.tableau.every(c => c.every(x => x.faceUp));
+}
+function autoFinish() {
+  if (!canAutoFinish()) return;
+  pushHistory();
+  finishing = true;
+  G.selected = null;
+  const step = () => {
+    for (const c of G.tableau) {
+      const card = c[c.length - 1];
+      const fi = card ? foundationFor(card) : -1;
+      if (fi < 0) continue;
+      c.pop(); G.foundations[fi].push(card); addScore(15); G.moves++;
+      SFX.tone(500 + G.foundations.reduce((n, f) => n + f.length, 0) * 12, { dur: 0.05 }); // 越收越高
+      render();
+      if (G.foundations.every(f => f.length === 13)) { finishing = false; checkWin(); return; }
+      setTimeout(step, 70);
+      return;
+    }
+    finishing = false; render(); // 理論上全翻開一定收得完，保險起見停住
+  };
+  step();
 }
 
 // ── Render ──
@@ -554,6 +792,9 @@ function makeCardEl(card, isSelected, onclick, ondblclick) {
 function render() {
   renderTopRow();
   renderTableau();
+  document.getElementById('score').textContent = G.moves; // 悔棋後也要同步步數
+  document.getElementById('finish-btn').classList.toggle('show', canAutoFinish());
+  saveGame();
 }
 
 function renderTopRow() {
@@ -566,7 +807,7 @@ function renderTopRow() {
     el.style.position = 'absolute'; el.style.inset = '0';
     stockEl.appendChild(el);
     const badge = document.createElement('div');
-    badge.style.cssText = 'position:absolute;top:3px;right:4px;font-size:10px;color:rgba(255,255,255,0.5);font-weight:600;z-index:2;';
+    badge.style.cssText = 'position:absolute;top:3px;right:3px;font-size:10px;color:rgba(255,255,255,0.9);font-weight:600;z-index:2;background:rgba(0,0,0,0.6);padding:1px 5px;border-radius:6px;';
     badge.textContent = G.stock.length;
     stockEl.appendChild(badge);
   } else {
@@ -596,6 +837,7 @@ function renderTopRow() {
         el.style.width = 'calc(100% - ' + ((show-1-i)*12) + 'px)';
       }
       el.style.zIndex = i;
+      if (isTop) enableDrag(el, () => ({ source: 'waste', cards: [card], els: [el] }));
       wasteEl.appendChild(el);
     }
   }
@@ -695,6 +937,10 @@ function renderTableau() {
         }
       };
 
+      enableDrag(el, () => card.faceUp ? {
+        source: 'tableau', col, fromIdx: ci, cards: cards.slice(ci),
+        els: [...colEl.children].slice(ci, cards.length),
+      } : null);
       colEl.appendChild(el);
       y += card.faceUp ? offUp || minOff : offDown || minOff;
     });
@@ -714,14 +960,10 @@ function renderTableau() {
 }
 
 // ── Controls ──
-document.getElementById('undo-btn').addEventListener('click', undo);
-document.getElementById('new-btn').addEventListener('click', newGame);
-document.getElementById('mode-btn').addEventListener('click', () => {
-  G.drawMode = G.drawMode === 1 ? 3 : 1;
-  document.getElementById('mode-btn').textContent = `翻${G.drawMode}張`;
-  document.getElementById('mode-btn').classList.toggle('active-mode', G.drawMode === 3);
-  newGame();
-});
+document.getElementById('undo-btn').addEventListener('click', () => { if (!finishing) undo(); });
+document.getElementById('finish-btn').addEventListener('click', autoFinish);
+document.getElementById('new-btn').addEventListener('click', () => newGame());
+document.getElementById('mode-btn').addEventListener('click', () => newGame(G.drawMode === 1 ? 3 : 1));
 
 // Deselect on background tap
 document.getElementById('tableau').addEventListener('click', (e) => {
@@ -730,9 +972,13 @@ document.getElementById('tableau').addEventListener('click', (e) => {
   }
 });
 
+// 離開頁面時補存一次（更新已過秒數）
+addEventListener('pagehide', saveGame);
+document.addEventListener('visibilitychange', () => { if (document.hidden) saveGame(); });
+
 // ── Init ──
-G.drawMode = 1;
-newGame();
+G.drawMode = lsGet(MODE_KEY) === 3 ? 3 : 1;
+if (!loadGame()) newGame();
 </script>
 </body>
 </html>

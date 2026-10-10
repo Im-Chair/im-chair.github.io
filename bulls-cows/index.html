@@ -212,17 +212,22 @@
       color: var(--correct); margin: 12px 0;
     }
     .result-stats { font-size: 14px; color: var(--muted); line-height: 1.8; margin-bottom: 24px; }
+    .new-record { color: var(--accent); font-weight: 700; }
     .result-stats b { color: var(--text); }
     .result-btn {
       width: 100%; padding: 13px; border-radius: 12px; border: none;
       background: var(--accent); color: #fff; font-size: 16px; font-weight: 700; cursor: pointer;
     }
+    .result-btn.secondary { margin-bottom: 10px; background: transparent; color: var(--accent); border: 1px solid var(--accent); }
+    .result-btn[hidden] { display: none; }
+    .mode-tag { font-size: 11px; color: var(--accent); margin-bottom: 2px; }
+    .mode-tag[hidden] { display: none; }
 
+    /* 回大廳：放進 header 左側的一般排版流，不再 fixed 蓋住標題 */
+    .header-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
     .home-btn {
-      position: fixed;
-      top: max(12px, env(safe-area-inset-top));
-      left: 12px;
-      z-index: 999;
+      display: inline-flex; align-items: center; flex-shrink: 0;
+      white-space: nowrap;
       background: rgba(0,0,0,0.55);
       backdrop-filter: blur(8px);
       border: 0.5px solid rgba(255,255,255,0.15);
@@ -238,11 +243,14 @@
   </style>
 </head>
 <body>
-<a class="home-btn" href="/">🏠 回大廳</a>
 <div id="app">
   <div class="header">
-    <div class="logo">幾<em>A</em>幾<em>B</em></div>
+    <div class="header-left">
+      <a class="home-btn" href="/">🏠 回大廳</a>
+      <div class="logo">幾<em>A</em>幾<em>B</em></div>
+    </div>
     <div class="header-right">
+      <div class="mode-tag" id="mode-tag" hidden>📅 每日挑戰</div>
       <div class="attempt-count">第 <b id="attempt-num">1</b> 次猜測</div>
     </div>
   </div>
@@ -256,6 +264,9 @@
   <div style="display:flex; gap:8px;">
     <button class="tool-btn active" id="color-btn">
       <span class="icon">🎨</span> 顏色提示：開
+    </button>
+    <button class="tool-btn" id="daily-btn">
+      <span class="icon">📅</span> 每日
     </button>
     <button class="tool-btn" id="new-game-btn">
       <span class="icon">↺</span> 新遊戲
@@ -295,30 +306,159 @@
     <div class="result-title" id="result-title">答對了！</div>
     <div class="result-answer" id="result-answer"></div>
     <div class="result-stats" id="result-stats"></div>
+    <button class="result-btn secondary" id="share-btn" hidden>📋 複製成績</button>
     <button class="result-btn" id="result-btn">再來一局</button>
   </div>
 </div>
 
 <script>
+// ── 音效（WebAudio 即時合成，不用音檔）──
+// 總開關在首頁（localStorage arcade-sound = 'off' 為關），每次出聲前都重讀，所以首頁切換後回來馬上生效。
+const SFX = (() => {
+  let ctx = null;
+  function on() { try { return localStorage.getItem('arcade-sound') !== 'off'; } catch { return true; } }
+  // freq：Hz；dur：秒；slide：結束時頻率倍率（<1 下滑、>1 上揚）；delay：延後秒數
+  function tone(freq, { dur = 0.07, type = 'triangle', vol = 0.06, slide = 0, delay = 0 } = {}) {
+    if (!on()) return;
+    try {
+      ctx = ctx || new (window.AudioContext || window.webkitAudioContext)();
+      if (ctx.state === 'suspended') ctx.resume(); // iOS：要在點擊當下 resume 才會出聲
+      const t = ctx.currentTime + delay;
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = type;
+      o.frequency.setValueAtTime(freq, t);
+      if (slide) o.frequency.exponentialRampToValueAtTime(freq * slide, t + dur);
+      g.gain.setValueAtTime(vol, t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g).connect(ctx.destination);
+      o.start(t); o.stop(t + dur + 0.02);
+    } catch {}
+  }
+  return {
+    tone,
+    tap:  () => tone(520, { dur: 0.04, vol: 0.04 }),
+    soft: () => tone(330, { dur: 0.05, vol: 0.035 }),
+    good: () => tone(784, { dur: 0.09 }),
+    bad:  () => tone(150, { dur: 0.16, type: 'square', vol: 0.035, slide: 0.7 }),
+    win:  () => [523, 659, 784, 1047].forEach((f, i) => tone(f, { dur: i === 3 ? 0.3 : 0.12, delay: i * 0.1 })),
+    lose: () => tone(330, { dur: 0.5, type: 'sawtooth', vol: 0.05, slide: 0.35 }),
+  };
+})();
+
 let answer = [];
 let input = [];
 let attempts = 0;
+let guesses = [];   // 已送出的猜測，存檔用
+let daily = null;   // 每日挑戰的日期字串；一般局為 null
 let gameOver = false;
 let startTime = Date.now();
 
-function generateAnswer() {
+// ── 存檔與紀錄（localStorage）──
+// save：進行中的一局（答案＋已猜過的數字），重新整理後可接著猜；stats：局數、勝場、最少次數／最快時間
+const SAVE_KEY = 'arcade-bulls-cows-save', STATS_KEY = 'arcade-bulls-cows-stats';
+const COLOR_KEY = 'arcade-bulls-cows-color';
+function lsGet(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } }
+function lsSet(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+// 記一局結果；metrics 越小越好，回傳 { r, newBest: [破紀錄的 key] }
+function recordResult(mode, won, metrics = {}) {
+  const all = lsGet(STATS_KEY) || {};
+  const r = all[mode] || (all[mode] = { plays: 0, wins: 0, best: {} });
+  r.plays++;
+  const newBest = [];
+  if (won) {
+    r.wins++;
+    for (const k in metrics) if (r.best[k] == null || metrics[k] < r.best[k]) { r.best[k] = metrics[k]; newBest.push(k); }
+  }
+  lsSet(STATS_KEY, all);
+  return { r, newBest };
+}
+
+// ── 每日挑戰 ──
+// 用日期當亂數種子：同一天所有人拿到同一題，可以互相比。一天一次（贏或輸都算數），
+// 天天過關才會累積連續天數。幾A幾B 版：同一天大家猜同一個答案，比幾次猜中。
+//進度與一般模式分開存（DAILY_SAVE_KEY），切換模式不會互相覆蓋。
+function dateStr(d = new Date()) {
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+function dayBefore(s) { const d = new Date(s + 'T12:00'); d.setDate(d.getDate() - 1); return dateStr(d); }
+// 字串 → 可重現的亂數（FNV-1a 雜湊當種子 + mulberry32），用法同 Math.random
+function seededRng(str) {
+  let a = 2166136261;
+  for (let i = 0; i < str.length; i++) a = Math.imul(a ^ str.charCodeAt(i), 16777619);
+  return () => {
+    a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+// daily：{ last: { date, won, ...成績 }, streak, best, lastWin }
+function dailyInfo() { return lsGet(DAILY_KEY) || { streak: 0, best: 0 }; }
+function dailyStreak(d = dailyInfo()) {
+  const today = dateStr();
+  return d.lastWin === today || d.lastWin === dayBefore(today) ? d.streak : 0; // 漏掉一天就歸零
+}
+function finishDaily(date, won, result) {
+  const d = dailyInfo();
+  if (d.last?.date === date) return d; // 同一天只記第一次
+  d.streak = won ? (d.lastWin === dayBefore(date) ? d.streak + 1 : 1) : 0;
+  if (won) d.lastWin = date;
+  d.best = Math.max(d.best || 0, d.streak);
+  d.last = { date, won, ...result };
+  lsSet(DAILY_KEY, d);
+  return d;
+}
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); return true; } catch {}
+  try { // 舊瀏覽器／非 https 的退路
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.style.cssText = 'position:fixed;opacity:0';
+    document.body.appendChild(ta); ta.select();
+    const ok = document.execCommand('copy'); ta.remove(); return ok;
+  } catch { return false; }
+}
+
+const DAILY_KEY = 'arcade-bulls-cows-daily', DAILY_SAVE_KEY = 'arcade-bulls-cows-daily-save';
+
+function saveGame() {
+  const key = daily ? DAILY_SAVE_KEY : SAVE_KEY;
+  if (gameOver || !guesses.length) { lsSet(key, null); return; }
+  lsSet(key, { answer, guesses, daily, elapsed: Math.floor((Date.now() - startTime) / 1000) });
+}
+
+function loadGame(key = SAVE_KEY) {
+  const d = lsGet(key);
+  if (!d || !Array.isArray(d.answer) || d.answer.length !== 4 || !Array.isArray(d.guesses)) return false;
+  if (d.daily && d.daily !== dateStr()) { lsSet(key, null); return false; } // 昨天沒猜完的每日題作廢
+  newGame(d.daily || null);
+  answer = d.answer;
+  startTime = Date.now() - (d.elapsed || 0) * 1000;
+  for (const g of d.guesses) { input = g; submit(true); }
+  return true;
+}
+
+function generateAnswer(rnd = Math.random) {
   const digits = [0,1,2,3,4,5,6,7,8,9];
   for (let i = digits.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = Math.floor(rnd() * (i + 1));
     [digits[i], digits[j]] = [digits[j], digits[i]];
   }
   return digits.slice(0, 4);
 }
 
-function newGame() {
-  answer = generateAnswer();
+function newGame(dailyDate = null) {
+  // 一般局換一般局：舊局算放棄。牽涉每日挑戰的切換不動存檔（兩邊進度各自保留）
+  if (!daily && !dailyDate) {
+    if (!gameOver && guesses.length) recordResult('classic', false); // 中途放棄算一局
+    lsSet(SAVE_KEY, null);
+  }
+  daily = dailyDate;
+  document.getElementById('mode-tag').hidden = !daily;
+  document.getElementById('daily-btn').classList.toggle('active', !!daily);
+  answer = generateAnswer(daily ? seededRng('bulls-cows-' + daily) : Math.random);
   input = [];
   attempts = 0;
+  guesses = [];
   gameOver = false;
   startTime = Date.now();
   document.getElementById('attempt-num').textContent = '1';
@@ -351,6 +491,7 @@ function renderNumpad() {
 function addDigit(n) {
   if (gameOver || input.length >= 4 || input.includes(n)) return;
   input.push(n);
+  SFX.tap();
   renderInput();
   renderNumpad();
   document.getElementById('submit-btn').disabled = input.length < 4;
@@ -359,6 +500,7 @@ function addDigit(n) {
 function deleteDigit() {
   if (gameOver || input.length === 0) return;
   input.pop();
+  SFX.soft();
   renderInput();
   renderNumpad();
   document.getElementById('submit-btn').disabled = input.length < 4;
@@ -373,9 +515,11 @@ function evaluate(guess, ans) {
   return { a, b };
 }
 
-function submit() {
+// replaying = 讀檔時重播已猜過的數字：不存檔、不跳結算
+function submit(replaying = false) {
   if (input.length !== 4 || gameOver) return;
   attempts++;
+  guesses.push([...input]);
   const { a, b } = evaluate(input, answer);
 
   // Add to history
@@ -416,12 +560,29 @@ function submit() {
 
   if (a === 4) {
     gameOver = true;
+    if (!replaying) SFX.win();
     const elapsed = Math.floor((Date.now() - startTime) / 1000);
-    const m = Math.floor(elapsed / 60), s = elapsed % 60;
-    const timeStr = m > 0 ? `${m}分${s}秒` : `${s}秒`;
+    if (daily) {
+      lsSet(DAILY_SAVE_KEY, null);
+      recordResult('daily', true, { guesses: attempts, time: elapsed });
+      // rows：每次猜測的 [A, B]，分享時畫成格子（只有數量、不洩漏位置）
+      finishDaily(daily, true, { guesses: attempts, time: elapsed, answer: answer.join(''),
+        rows: guesses.map(g => { const r = evaluate(g, answer); return [r.a, r.b]; }) });
+      setTimeout(showDailyResult, 400);
+      return;
+    }
+    lsSet(SAVE_KEY, null);
+    const { r, newBest } = recordResult('classic', true, { guesses: attempts, time: elapsed });
+    const rec = k => newBest.includes(k) ? ' <span class="new-record">新紀錄！</span>' : '';
     document.getElementById('result-answer').textContent = answer.join(' ');
     document.getElementById('result-stats').innerHTML =
-      `共猜了 <b>${attempts}</b> 次<br>花費時間：<b>${timeStr}</b>`;
+      `共猜了 <b>${attempts}</b> 次${rec('guesses')}<br>花費時間：<b>${fmtTime(elapsed)}</b>${rec('time')}` +
+      `<br>最少：<b>${r.best.guesses}</b> 次 · 最快：<b>${fmtTime(r.best.time)}</b>` +
+      `<br>過關：<b>${r.wins}</b> / ${r.plays} 局`;
+    document.getElementById('result-emoji').textContent = '🎉';
+    document.getElementById('result-title').textContent = '答對了！';
+    document.getElementById('share-btn').hidden = true;
+    document.getElementById('result-btn').textContent = '再來一局';
     setTimeout(() => document.getElementById('overlay').classList.add('show'), 400);
   } else {
     input = [];
@@ -429,28 +590,75 @@ function submit() {
     renderInput();
     renderNumpad();
     document.getElementById('submit-btn').disabled = true;
+    if (!replaying) {
+      // 越接近答案音越高：0A0B 最低，3A 最高
+      SFX.tone(330 + a * 140 + b * 50, { dur: 0.14 });
+      saveGame();
+    }
   }
 }
 
-let colorHint = true;
+// 每日挑戰結果（剛猜中、或今天已經玩過再點「每日」都走這裡）
+function showDailyResult() {
+  const info = dailyInfo(), last = info.last;
+  document.getElementById('result-emoji').textContent = '📅';
+  document.getElementById('result-title').textContent = '每日挑戰完成！';
+  document.getElementById('result-answer').textContent = last.answer.split('').join(' ');
+  document.getElementById('result-stats').innerHTML =
+    `${last.date}<br>共猜了 <b>${last.guesses}</b> 次・<b>${fmtTime(last.time)}</b>` +
+    `<br>🔥 連續過關：<b>${dailyStreak(info)}</b> 天（最高 ${info.best || 0}）<br>明天會有新的一題`;
+  document.getElementById('share-btn').hidden = false;
+  document.getElementById('share-btn').textContent = '📋 複製成績';
+  document.getElementById('result-btn').textContent = '回一般模式';
+  document.getElementById('overlay').classList.add('show');
+}
+function dailyShareText() {
+  const info = dailyInfo(), last = info.last;
+  const grid = last.rows.map(([a, b]) => '🟩'.repeat(a) + '🟨'.repeat(b) + '⬛'.repeat(4 - a - b)).join('\n');
+  return `ARCADE 幾A幾B・每日挑戰 ${last.date}\n${last.guesses} 次猜中・${fmtTime(last.time)}・🔥連續 ${dailyStreak(info)} 天\n` +
+    `${grid}\n${location.origin}/bulls-cows/`;
+}
+
+function fmtTime(sec) {
+  const m = Math.floor(sec / 60), s = sec % 60;
+  return m > 0 ? `${m}分${s}秒` : `${s}秒`;
+}
+
+let colorHint = lsGet(COLOR_KEY) ?? true;
 
 // Events
 document.querySelectorAll('.num-btn[data-n]').forEach(btn => {
   btn.addEventListener('click', () => addDigit(parseInt(btn.dataset.n)));
 });
 document.getElementById('del-btn').addEventListener('click', deleteDigit);
-document.getElementById('submit-btn').addEventListener('click', submit);
-document.getElementById('result-btn').addEventListener('click', newGame);
-document.getElementById('new-game-btn').addEventListener('click', newGame);
+document.getElementById('submit-btn').addEventListener('click', () => submit());
+// 每日挑戰中按「新遊戲」／結算按鈕＝回一般模式（每日題不能重來）
+document.getElementById('result-btn').addEventListener('click', () => newGame());
+document.getElementById('new-game-btn').addEventListener('click', () => newGame());
+document.getElementById('daily-btn').addEventListener('click', () => {
+  const today = dateStr();
+  if (dailyInfo().last?.date === today) { showDailyResult(); return; } // 今天猜過了
+  if (daily === today && !gameOver) return;                           // 已經在猜
+  if (!loadGame(DAILY_SAVE_KEY)) newGame(today);
+});
+document.getElementById('share-btn').addEventListener('click', async () => {
+  const ok = await copyText(dailyShareText());
+  document.getElementById('share-btn').textContent = ok ? '✓ 已複製，貼給朋友吧' : '複製失敗';
+});
 
 document.getElementById('color-btn').addEventListener('click', () => {
   colorHint = !colorHint;
-  const btn = document.getElementById('color-btn');
-  btn.classList.toggle('active', colorHint);
-  btn.innerHTML = `<span class="icon">🎨</span> 顏色提示：${colorHint ? '開' : '關'}`;
+  lsSet(COLOR_KEY, colorHint);
+  renderColorBtn();
   // Re-render history without colors
   rerenderHistory();
 });
+
+function renderColorBtn() {
+  const btn = document.getElementById('color-btn');
+  btn.classList.toggle('active', colorHint);
+  btn.innerHTML = `<span class="icon">🎨</span> 顏色：${colorHint ? '開' : '關'}`;
+}
 
 function rerenderHistory() {
   document.querySelectorAll('.row-digit').forEach(d => {
@@ -473,7 +681,12 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Enter') submit();
 });
 
-newGame();
+// 離開頁面時補存一次（更新已過秒數）
+addEventListener('pagehide', saveGame);
+document.addEventListener('visibilitychange', () => { if (document.hidden) saveGame(); });
+
+renderColorBtn();
+if (!loadGame()) newGame();
 </script>
 </body>
 </html>
