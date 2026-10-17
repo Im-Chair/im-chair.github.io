@@ -5,13 +5,15 @@
     python tools/process_art.py --src X --dst Y   # 測試用：指定來源與輸出根目錄
 
 原圖檔名（.png / .jpg / .webp 皆可），缺的會略過，所以可以一張一張補：
-    icon-sudoku / icon-minesweeper / icon-bulls-cows / icon-solitaire / icon-rpg / icon-tower-orbs
+    icon-sudoku / icon-minesweeper / icon-bulls-cows / icon-solitaire / icon-rpg / icon-tower-orbs / icon-drift-ark
     solitaire-back / solitaire-felt
     minesweeper-flag / minesweeper-mine
+    relic-<id> / trait-<id> / boss-<id> / event-<id> / node-<id> / unlock-<id>（轉珠之塔地城，id 見下方 RG_ART）
 
 規格與 prompt 見 美術需求_ChatGPT出圖.md。只用 Pillow，不是網站的一部分（網站本身仍然零依賴）。
 """
 import argparse
+import json
 import sys
 from pathlib import Path
 
@@ -79,14 +81,30 @@ def sprite(im, size):
     return canvas.resize((size, size), Image.LANCZOS)
 
 
+# 轉珠之塔地城的圖示：種類 → (輸出邊長, id 清單)。id 要跟 tower-orbs/rogue.js 的 RG_RELIC / RG_TRAIT /
+# RG_BOSS / RG_EVENT / RG_NODE / RG_UNLOCK 一致（新增時兩邊都加）。全部輸出到 tower-orbs/rg/<種類>-<id>.webp
+RG_DIR = 'tower-orbs/rg'
+RG_ART = {
+    'relic': (128, ['ember', 'fuel', 'ash', 'wildfire', 'tide', 'coral', 'abyss', 'grail', 'spring', 'halo',
+                    'prism', 'harmony', 'rainbow', 'cell', 'coil', 'dynamo',
+                    'core', 'greed', 'glass', 'watch', 'rage', 'chain', 'bell']),
+    'trait': (64, ['rage', 'twin', 'regen', 'drain', 'shell', 'ward', 'venom', 'curse']),
+    'boss': (96, ['seal', 'barrier', 'shift']),
+    'event': (256, ['altar', 'gamble', 'wanderer', 'fountain', 'chest']),
+    'node': (96, ['battle', 'elite', 'event', 'shop', 'rest', 'boss']),
+    'unlock': (96, ['gold', 'relics', 'lead4', 'asc', 'kit']),
+}
+
 # 原圖名 → (輸出路徑, 處理函式)
 JOBS = {
     **{f'icon-{g}': (f'icons/{g}.webp', lambda im: icon(im, 256))
-       for g in ['sudoku', 'minesweeper', 'bulls-cows', 'solitaire', 'rpg', 'tower-orbs']},
+       for g in ['sudoku', 'minesweeper', 'bulls-cows', 'solitaire', 'rpg', 'tower-orbs', 'drift-ark']},
     'solitaire-back': ('solitaire/back.webp', lambda im: card_back(im, 300, 420)),
     'solitaire-felt': ('solitaire/felt.webp', lambda im: seamless_tile(im, 512)),
     'minesweeper-flag': ('minesweeper/flag.webp', lambda im: sprite(im, 96)),
     'minesweeper-mine': ('minesweeper/mine.webp', lambda im: sprite(im, 96)),
+    **{f'{k}-{i}': (f'{RG_DIR}/{k}-{i}.webp', (lambda n: lambda im: sprite(im, n))(n))
+       for k, (n, ids) in RG_ART.items() for i in ids},
 }
 
 
@@ -124,13 +142,19 @@ def main():
         print(f'    [OK] {result.size[0]}x{result.size[1]}，{dst.stat().st_size // 1024} KB')
         done.append(out)
 
+    # 地城會先讀這份清單，只對清單裡有的圖發請求（沒有的維持 emoji）
+    rg = args.dst / RG_DIR
+    if rg.is_dir():
+        names = sorted(f.stem for f in rg.glob('*.webp'))
+        (rg / 'index.json').write_text(json.dumps(names), encoding='utf-8')
+
     print(f'\n完成 {len(done)} 張。', end='')
     if missing:
         print(f'尚未提供（{args.src}）：{", ".join(missing)}')
     else:
         print('全部到齊。')
     if done:
-        print('記得把根目錄 sw.js 的 CACHE 版本 +1，已安裝 App 的人才會拿到新圖。')
+        print('記得把根目錄 sw.js 的 CACHE 版本 +1（轉珠之塔的圖則是 tower-orbs/sw.js），已安裝 App 的人才會拿到新圖。')
 
 
 if __name__ == '__main__':
