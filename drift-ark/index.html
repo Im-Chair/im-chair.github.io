@@ -98,6 +98,8 @@ h3 small{font-family:var(--fb);font-weight:400;color:var(--foam2);font-size:12px
 .row .m span{display:block;font-size:12px;color:var(--foam2);overflow-wrap:anywhere}
 .row .n{font-variant-numeric:tabular-nums;font-weight:700;min-width:2.4em;text-align:right}
 .row .btn{min-height:36px;font-size:12.5px;padding:4px 10px;white-space:nowrap}
+/* inventory grid */
+.bagtools{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}.bagtools .btn{min-height:34px;font-size:12px;padding:5px 10px}.bagtools .btn.active{outline:2px solid var(--wood);background:#286777}.baggrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:10px 0 16px}.bagcell{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-width:0;min-height:94px;padding:8px 4px 7px;background:linear-gradient(145deg,rgba(23,80,94,.9),rgba(7,25,31,.55));border:1px solid var(--line);border-radius:11px;cursor:pointer}.bagcell:hover,.bagcell:focus-visible{border-color:var(--wood);background:#205767;outline:none;transform:translateY(-1px)}.bagcell .ic{width:38px;height:38px;flex-basis:38px}.bagcell .bname{font-size:11px;line-height:1.25;text-align:center;overflow-wrap:anywhere;color:var(--foam2);max-width:100%}.bagcell .qty{position:absolute;right:5px;top:4px;min-width:20px;padding:1px 5px;border-radius:8px;background:rgba(7,25,31,.85);font-size:11px;font-weight:700;text-align:center}.bagcell .bactions{display:flex;gap:4px;width:100%;justify-content:center;margin-top:2px}.bagcell .bactions .btn{min-height:27px;padding:2px 6px;font-size:10px;flex:1;min-width:0}.bagtip{font-size:12px;color:var(--foam2);margin:3px 0 8px}.bagempty{grid-column:1/-1;text-align:center;padding:24px 8px;color:var(--foam2);border:1px dashed var(--line);border-radius:10px}@media(min-width:650px){.baggrid{grid-template-columns:repeat(6,minmax(0,1fr))}.bagcell{min-height:110px}.bagcell .ic{width:44px;height:44px;flex-basis:44px}}@media(max-width:360px){.baggrid{grid-template-columns:repeat(3,minmax(0,1fr))}
 .dot{width:14px;height:14px;border-radius:4px;flex:0 0 14px}
 .need{color:var(--coral)}
 .ok{color:var(--good)}
@@ -305,7 +307,7 @@ function ico(id,s){const k=ICO[id]||(IT[id]?'i_'+id:null);return k?ic(k,s):'<i c
 const KEY='drift-ark-v1';
 let S;
 function defaults(){const g={};for(let y=-1;y<=1;y++)for(let x=-1;x<=1;x++)g[x+','+y]={};
- return {v:1,t:Date.now(),offlineAt:0,trip:null,bag:{wood:6,plastic:4,cloth:2},store:{},w:85,f:85,eco:0,grid:g,tech:{},fav:['cook','rope'],log:{},logRewards:{},q:0,picks:0,swipes:0,dism:0,drinks:0,cooked:0,trips:0,hook:0,pack:0,set:{vib:1,snd:1,hand:'r',bs:1}}}
+ return {v:1,t:Date.now(),offlineAt:0,trip:null,bag:{wood:6,plastic:4,cloth:2},store:{},w:85,f:85,eco:0,grid:g,tech:{},fav:['cook','rope'],log:{},logRewards:{},projects:{cleanup:0,coral:0,garden:0,master:0},jobs:null,rep:0,q:0,picks:0,swipes:0,dism:0,drinks:0,cooked:0,trips:0,hook:0,pack:0,set:{vib:1,snd:1,hand:'r',bs:1}}}
 const plainObject=o=>!!o&&typeof o==='object'&&!Array.isArray(o);
 function cleanCounts(v){const out={};if(plainObject(v)){const allowed=new Set(Object.keys(NM));for(const [k,n] of Object.entries(v))if(allowed.has(k)&&Number.isSafeInteger(n)&&n>0&&n<=1000000)out[k]=n}return out}
 function cleanGrid(v){
@@ -351,11 +353,13 @@ function load(){
    S.set.sort=['cat','qty','rare'].includes(S.set.sort)?S.set.sort:'cat';
    for(const k of ['w','f','eco'])S[k]=Number.isFinite(S[k])?Math.max(0,Math.min(100,S[k])):d[k];
    for(const k of ['q','picks','swipes','dism','drinks','cooked','trips','hook','pack'])S[k]=Number.isFinite(S[k])?Math.max(0,Math.floor(S[k])):d[k];
-   S.q=Math.min(S.q,TUT.length);S.hook=Math.min(S.hook,3);S.pack=Math.min(S.pack,2);
+   S.q=Math.min(S.q,TUT.length);S.hook=Math.min(S.hook,3);S.pack=Math.min(S.pack,2);S.rep=Number.isFinite(o.rep)?Math.max(0,Math.min(100000,Math.floor(o.rep))):0;
    S.t=Number.isFinite(o.t)&&o.t>0?o.t:Date.now();S.offlineAt=Number.isFinite(o.offlineAt)&&o.offlineAt>0?o.offlineAt:0;
    S.trip=cleanTrip(o.trip);
    S.log={};if(plainObject(o.log))for(const id of Object.keys(IT)){const n=o.log[id];if(Number.isSafeInteger(n)&&n>0&&n<=1000000)S.log[id]=n}
    S.logRewards={};if(plainObject(o.logRewards))for(const m of LOG_MILESTONES)if(o.logRewards[String(m.at)]===1||o.logRewards[String(m.at)]===true)S.logRewards[String(m.at)]=1;
+   S.projects={cleanup:0,coral:0,garden:0,master:0};if(plainObject(o.projects))for(const k of Object.keys(S.projects))S.projects[k]=o.projects[k]===1?1:0;
+   S.jobs=plainObject(o.jobs)&&typeof o.jobs.day==='string'?{day:o.jobs.day,basePicks:Number.isFinite(o.jobs.basePicks)?Math.max(0,Math.floor(o.jobs.basePicks)):0,baseUnique:Number.isFinite(o.jobs.baseUnique)?Math.max(0,Math.floor(o.jobs.baseUnique)):0,baseTrips:Number.isFinite(o.jobs.baseTrips)?Math.max(0,Math.floor(o.jobs.baseTrips)):0,claimed:Array.isArray(o.jobs.claimed)?o.jobs.claimed.filter(x=>['salvage','discovery','voyage'].includes(x)):[]}:null;
    S.fav=Array.isArray(o.fav)?o.fav.filter(id=>RC.some(r=>r.id===id)).slice(0,3):d.fav;
    return true;
   }
@@ -365,7 +369,7 @@ function load(){
 function save(){try{S.t=Date.now();localStorage.setItem(KEY,JSON.stringify(S));return true}catch(e){return false}}
 const sum=o=>Object.values(o).reduce((a,b)=>a+b,0);
 function cntB(t){let n=0;for(const k in S.grid){const o=S.grid[k].o;if(o&&o.t===t)n++}return n}
-const bagCap=()=>40+12*S.pack+(S.tech.b2?8:0);
+const bagCap=()=>40+12*S.pack+(S.tech.b2?8:0)+Math.min(8,Math.floor((S.rep||0)/5)*2);
 const storeCap=()=>cntB('chest')*(40+(S.tech.b2?20:0));
 const has=id=>(S.bag[id]||0)+(S.store[id]||0);
 function add(box,id,n){S[box][id]=(S[box][id]||0)+n;if(S[box][id]<=0)delete S[box][id]}
@@ -410,7 +414,7 @@ function modal(html){$('#mbox').innerHTML=html;$('#modal').hidden=false;$('#mbox
 function closeModal(){M.lock=false;$('#modal').hidden=true;$('#mbox').innerHTML=''}
 
 /* ---------- survival ---------- */
-function drain(dt){const k=S.tech.s1?.75:1;S.w=Math.max(0,S.w-dt/10*k);S.f=Math.max(0,S.f-dt/15*k)}
+function drain(dt){const k=(S.tech.s1?.75:1)*(S.projects&&S.projects.master?.9:1);S.w=Math.max(0,S.w-dt/10*k);S.f=Math.max(0,S.f-dt/15*k)}
 function eat(id){const u=USE[id];if(!u||!has(id))return;pay({[id]:1});const m=S.tech.s3&&u.f?1.5:1;if(u.f)S.f=Math.min(100,S.f+u.f*m);if(u.w)S.w=Math.min(100,S.w+u.w);beep(520,.12);vib('light');toast(nameOf(id)+' 已使用')}
 
 /* ---------- machines (online + offline) ---------- */
@@ -429,8 +433,8 @@ function tickM(dt,rainMul){
   if(o.t==='net'){o.buf=o.buf||{};o.tm=(o.tm||0)+dt;while(o.tm>=40){o.tm-=40;if(sum(o.buf)<10){const d=pick(NETDROP);o.buf[d]=(o.buf[d]||0)+1}else{o.tm=0;break}}}
   else if(o.t==='rain'){o.v=Math.min(5,(o.v||0)+dt/25*(rainMul||1))}
   else if(o.t==='pur'){o.cd=Math.max(0,(o.cd||0)-dt)}
-  else if(o.t==='rod'){const per=35/((S.tech.c2?1.3:1)*(S.eco>=30?1.2:1));o.fish=Math.min(3,(o.fish||0)+dt/per)}
-  else if(o.t==='plant'&&o.g!=null){o.g+=dt*(S.tech.c2?1.3:1)}
+  else if(o.t==='rod'){const per=35/((S.tech.c2?1.3:1)*(S.eco>=30?1.2:1)*(S.projects&&S.projects.coral?1.25:1));o.fish=Math.min(3,(o.fish||0)+dt/per)}
+  else if(o.t==='plant'&&o.g!=null){o.g+=dt*(S.tech.c2?1.3:1)*(S.projects&&S.projects.garden?1.25:1)}
   else if(o.t==='recy'){o.tm=(o.tm||0)+dt;let n=Math.floor(o.tm/3);if(n>0){o.tm-=n*3;for(const id of JUNK){if(id==='coconut')continue;if(n<=0)break;const m=Math.min(n,has(id));if(m>0){dismantle(id,m);n-=m}}}if(o.tm>30)o.tm=0}
  });
 }
@@ -448,14 +452,20 @@ function sumObj(t,f){let n=0;eachObj(o=>{if(o.t===t)n+=o[f]||0});return n}
 /* ---------- world ---------- */
 const cv=$('#c'),g=cv.getContext('2d');
 let VW=1,VH=1,DPR=1,SC=1,OX=0,OY=0;
-const W={mv:0,items:[],fx:[],p:{x:0,y:0,dx:0,dy:1},hook:null,cd:0,t:0,cb:0,build:false,rain:0,joy:{x:0,y:0},keys:{},sp:0,evT:45,near:null,merch:null,bedCd:0,warn:0,hudT:0,saveT:0};
+const W={mv:0,items:[],fx:[],p:{x:0,y:0,dx:0,dy:1},hook:null,cd:0,t:0,cb:0,build:false,rain:0,joy:{x:0,y:0},keys:{},sp:0,evT:45,near:null,merch:null,bedCd:0,warn:0,hudT:0,saveT:0,cur:0,curT:48,curBoost:0,buoyCd:0,curUiT:1};
 function resize(){const a=$('#app');VW=a.clientWidth||360;VH=a.clientHeight||640;DPR=Math.min(2,window.devicePixelRatio||1);cv.width=VW*DPR;cv.height=VH*DPR;SC=Math.min(VW/520,VH/470);OX=VW/2;OY=VH*.5+24}
 const ZOOM=()=>SC*(1+.14*W.cb);
 const OYE=()=>OY-W.cb*VH*.14;
 const s2w=(sx,sy)=>{const z=ZOOM();return [(sx-OX)/z,(sy-OYE())/z]};
 
-function pickType(){let tot=0;const ws=[];for(const id in IT){let w=IT[id].w;if(IT[id].rare)w*=(S.tech.e2?1.6:1)*(S.tech.c3?1.5:1);if(id==='fish')w*=1+S.eco/80+(S.tech.c3?.4:0);tot+=w;ws.push([id,w])}let r=Math.random()*tot;for(const [id,w] of ws){if((r-=w)<=0)return id}return 'plank'}
-function spawn(id){id=id||pickType();const hx=(VW-OX)/SC+26;const ys=170+Math.random()*(VH-170-150);W.items.push({id,x:hx,y:(ys-OY)/SC,vx:-(20+Math.random()*16),ph:Math.random()*6,st:0,rot:rnd(-.5,.5),dl:0})}
+const CURRENTS=[
+ {id:'wood',n:'木料流',d:'左上',dy:-.34,c:'#d9b57c',ids:['drift','pallet','plank'],desc:'漂流木、木棧板與木板更常出現'},
+ {id:'plastic',n:'塑料流',d:'左下',dy:.34,c:'#83d5d8',ids:['bottle','sheet','jug'],desc:'塑膠瓶、塑料片與塑膠桶更常出現'},
+ {id:'metal',n:'金屬流',d:'平流',dy:0,c:'#b9c8d0',ids:['scrap','pipe','can','wire','battery'],desc:'鐵片、鋼管與電子雜物更常出現'},
+ {id:'upwell',n:'深海湧升流',d:'左上偏下',dy:-.12,c:'#d9a5ef',ids:['module','sample','relic','crate'],desc:'稀有物資與漂流貨箱出現率大幅提高'}
+];
+function pickType(){let tot=0;const ws=[];const cur=CURRENTS[W.cur||0];for(const id in IT){let w=IT[id].w;if(IT[id].rare)w*=(S.tech.e2?1.6:1)*(S.tech.c3?1.5:1)*(1+Math.min(.2,(S.rep||0)*.01));if(id==='fish')w*=1+S.eco/80+(S.tech.c3?.4:0)+(S.projects&&S.projects.coral?.7:0);if(IT[id].junk&&S.projects&&S.projects.cleanup)w*=.72;if(cur&&cur.ids.includes(id))w*=W.curBoost>0?7:(cur.id==='upwell'?3.2:2.8);tot+=w;ws.push([id,w])}let r=Math.random()*tot;for(const [id,w] of ws){if((r-=w)<=0)return id}return 'plank'}
+function spawn(id){id=id||pickType();const hx=(VW-OX)/SC+26;const ys=170+Math.random()*(VH-170-150);const cur=CURRENTS[W.cur||0];W.items.push({id,x:hx,y:(ys-OY)/SC,vx:-(20+Math.random()*16),vy:(cur?cur.dy*18:0)+rnd(-3,3),ph:Math.random()*6,st:0,rot:rnd(-.5,.5),dl:0})}
 function nearRaft(x,y){const cx=Math.round(x/T),cy=Math.round(y/T);for(let a=-2;a<=2;a++)for(let b=-2;b<=2;b++)if(tile(cx+a,cy+b)&&Math.hypot((cx+a)*T-x,(cy+b)*T-y)<=T*2.3)return true;return false}
 
 /* ---------- salvage journal / collection milestones ---------- */
@@ -474,9 +484,39 @@ function recordSalvage(id){
  for(const m of LOG_MILESTONES){const key=String(m.at);if(unique>=m.at&&!S.logRewards[key]){S.logRewards[key]=1;const before=S.eco;S.eco=Math.min(100,S.eco+m.eco);const actual=S.eco-before;toast('研究里程碑「'+m.title+'」完成，海域生態度 +'+actual);changed=true;}}
  return changed;
 }
+
+/* ---------- daily ocean contracts ---------- */
+const JOBS=[
+ {id:'salvage',n:'清理漂流帶',d:'成功打撈 12 件漂流物',goal:12,progress:j=>Math.max(0,S.picks-j.basePicks),reward:{wood:8,plastic:4}},
+ {id:'discovery',n:'海洋觀測員',d:'首次發現 3 種新物資',goal:3,progress:j=>Math.max(0,logUnique()-j.baseUnique),reward:{cloth:4,metal:3}},
+ {id:'voyage',n:'遠洋補給',d:'完成 1 次出航探索',goal:1,progress:j=>Math.max(0,S.trips-j.baseTrips),reward:{elec:3,metal:4}}
+];
+function localDay(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+function ensureJobs(){const day=localDay();if(!S.jobs||S.jobs.day!==day){S.jobs={day,basePicks:S.picks,baseUnique:logUnique(),baseTrips:S.trips,claimed:[]};save()}}
+function tJobs(){ensureJobs();const j=S.jobs;const rank=S.rep>=20?'方舟領航者':S.rep>=12?'遠洋專家':S.rep>=7?'航線探索者':S.rep>=3?'海面熟手':'漂流新手';const next=[3,7,12,20].find(x=>S.rep<x)||20;const rare=Math.round(Math.min(.2,S.rep*.01)*100);const cap=Math.min(8,Math.floor(S.rep/5)*2);let h=`<h3>海域委託 <small>${j.day}・每日更新</small></h3><div class="card"><div class="row" style="border:0;padding:0"><div class="m"><b>⚓ ${rank}</b><span>航海聲望 ${S.rep}・下一階級 ${S.rep>=20?'已達最高階級':next+' 點'}</span></div><span class="ok">+${rare}% 稀有率</span></div><div class="note">聲望被動：稀有漂流物出現權重 +${rare}%；背包容量 +${cap}。每領取一項委託可獲得 1 點聲望。</div><div style="height:6px;background:rgba(214,236,230,.14);border-radius:99px;overflow:hidden;margin:8px 0"><div style="height:100%;width:${S.rep>=20?100:Math.min(100,S.rep/next*100)}%;background:var(--wood)"></div></div><p class="note">船長公告：進度只計算今天開始後的行動；獎勵需手動領取，容量不足時可稍後再領。</p></div>`;
+ for(const m of JOBS){const n=Math.min(m.goal,m.progress(j)),done=n>=m.goal,claimed=j.claimed.includes(m.id);h+=`<div class="card"><div class="row" style="border:0;padding:0"><div class="m"><b>${m.n}</b><span>${m.d}</span></div><span class="${claimed?'ok':done?'ok':'note'}">${claimed?'已領取':n+'/'+m.goal}</span></div><div style="height:6px;background:rgba(214,236,230,.14);border-radius:99px;overflow:hidden;margin:8px 0"><div style="height:100%;width:${Math.min(100,n/m.goal*100)}%;background:var(--good)"></div></div><p class="note">獎勵：${mapStr(m.reward)}</p><button class="btn ${done&&!claimed?'':'alt'}" data-a="job" data-id="${m.id}" ${!done||claimed?'disabled':''}>${claimed?'今日已領取':done?'領取獎勵':'委託進行中'}</button></div>`}
+ h+='<p class="note">每日委託依裝置當地日期更新。跨日後會產生新進度，不會重置你的基地、圖鑑或科技。</p>';return h}
+function claimJob(id){ensureJobs();const m=JOBS.find(x=>x.id===id),j=S.jobs;if(!m||j.claimed.includes(id)||m.progress(j)<m.goal)return false;if(!grantBundle(m.reward)){toast('容量不足：整理背包或倉庫後再領取');return false}j.claimed.push(id);S.rep=(S.rep||0)+1;save();toast('委託完成：'+m.n+'，航海聲望 +1');beep(760,.18);vib('mid');return true}
+const OCEAN_PROJECTS=[
+ {id:'cleanup',n:'幽靈網回收行動',d:'清除纏住海洋生物的廢棄漁網與塑料。',cost:{plastic:8,cloth:5,metal:3},eco:8,effect:'雜物類漂流物出現權重降低 28%，更容易遇到可用物資。'},
+ {id:'coral',n:'珊瑚礁育苗計畫',d:'把研究樣本與種子投入海域復育，重建魚群棲地。',cost:{seed:4,sample:1,water:4,wood:4},eco:12,effect:'魚類漂流物出現權重提高，魚竿架產魚速度提高 25%。'},
+ {id:'garden',n:'海上浮島菜園',d:'建置耐鹽作物苗圃，讓方舟逐漸走向自給自足。',cost:{seed:6,water:5,wood:8},eco:10,effect:'種植箱作物成熟速度提高 25%。'}
+];
+function fundOceanProject(id){
+ const p=OCEAN_PROJECTS.find(x=>x.id===id);if(!p||S.projects[id])return false;
+ if(!can(p.cost)){toast('復育材料不足：請先打撈或出航補給');return false}
+ if(!pay(p.cost)){toast('材料扣除失敗，計畫未啟動');return false}
+ S.projects[id]=1;S.eco=Math.min(100,S.eco+p.eco);toast('復育計畫完成：'+p.n+'，生態度 +'+p.eco);beep(780,.2);vib('rare');
+ if(OCEAN_PROJECTS.every(x=>S.projects[x.id])&&!S.projects.master){S.projects.master=1;S.rep=(S.rep||0)+5;toast('方舟復育里程碑達成：聲望 +5，生存消耗降低 10%')}
+ save();return true;
+}
 function tLog(){
- const ids=Object.keys(IT),found=logUnique();let h=`<h3>漂流圖鑑 <small>已發現 ${found} / ${ids.length} 種</small></h3>`;
+ const ids=Object.keys(IT),found=logUnique(),cur=CURRENTS[W.cur||0];let h=`<h3>漂流圖鑑 <small>已發現 ${found} / ${ids.length} 種</small></h3>`;
+ h+=`<div class="card" style="border-color:${cur.c}"><b style="color:${cur.c}">海流觀測：${cur.n}</b><p class="note">${cur.desc}。目前流向：${cur.d}；約 ${Math.max(1,Math.ceil(W.curT))} 秒後轉流。海流會改變漂流物的出現機率與漂移方向。</p><p class="note">引流浮標：消耗繩索 ×1、塑料 ×2，立即吸引 6 件當前海流偏好的漂流物。${W.buoyCd>0?'冷卻中：'+Math.ceil(W.buoyCd)+' 秒':'可以布設'}</p><button class="btn" data-a="buoy" ${W.buoyCd>0||!can({rope:1,plastic:2})?'disabled':''}>${W.buoyCd>0?'浮標冷卻中':'布設引流浮標'}</button></div>`;
  h+='<div class="card"><b>海洋研究紀錄</b><p class="note">透過打撈、攔截網收集與開啟漂流貨箱記錄發現。每種物資都會累計收集次數；首次發現不會消耗物品。</p><div style="height:8px;background:rgba(214,236,230,.14);border-radius:99px;overflow:hidden"><div style="height:100%;width:'+(found/ids.length*100)+'%;background:var(--good);border-radius:99px"></div></div><p class="note">圖鑑完成度：'+Math.floor(found/ids.length*100)+'%</p></div>';
+ h+='<h3>長期計畫：海域復育</h3><div class="card"><p class="note">這些不是每日任務，而是永久世界進度。投入物資後會改變海洋與木筏的運作；完成全部計畫可獲得額外航海聲望，並降低生存消耗。</p><div class="note">已完成 '+OCEAN_PROJECTS.filter(p=>S.projects&&S.projects[p.id]).length+' / '+OCEAN_PROJECTS.length+' 項</div></div>';
+ for(const p of OCEAN_PROJECTS){const done=!!(S.projects&&S.projects[p.id]);h+=`<div class="card"><div class="row" style="border:0;padding:0"><div class="m"><b>${done?'✓ ':''}${p.n}</b><span>${p.d}</span></div><span class="${done?'ok':'note'}">${done?'已完成':'永久計畫'}</span></div><p class="note">效果：${p.effect}</p><p class="note">投入：${mapStr(p.cost)}　｜　生態度 +${p.eco}</p><button class="btn ${done?'alt':''}" data-a="project" data-id="${p.id}" ${done||!can(p.cost)?'disabled':''}>${done?'已完成':can(p.cost)?'投入物資並完成':'材料不足'}</button></div>`}
+ if(S.projects&&S.projects.master)h+='<div class="card"><b class="ok">方舟復育里程碑已達成</b><p class="note">全部復育計畫完成：航海聲望 +5，飲水與飽食消耗永久降低 10%。</p></div>';
  h+='<h3>研究里程碑</h3>';
  for(const m of LOG_MILESTONES){const done=!!S.logRewards[String(m.at)];h+=`<div class="row"><div class="m"><b>${done?'✓ ':''}${m.title}</b><span>${m.desc}・獎勵：海域生態度 +${m.eco}</span><span>${Math.min(found,m.at)} / ${m.at}</span></div><span class="${done?'ok':'note'}">${done?'已完成':'未完成'}</span></div>`}
  h+='<h3>發現清單</h3><div class="gridcards" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px">';
@@ -539,7 +579,7 @@ function getAct(){const n=W.near;let a=null;
 
 /* ---------- update ---------- */
 function update(dt){
- W.t+=dt;W.cd=Math.max(0,W.cd-dt);W.bedCd=Math.max(0,W.bedCd-dt);W.cb+=((W.build?1:0)-W.cb)*Math.min(1,dt*8);
+ W.t+=dt;W.cd=Math.max(0,W.cd-dt);W.bedCd=Math.max(0,W.bedCd-dt);W.cb+=((W.build?1:0)-W.cb)*Math.min(1,dt*8);W.curT-=dt;W.curBoost=Math.max(0,W.curBoost-dt);W.buoyCd=Math.max(0,W.buoyCd-dt);W.curUiT-=dt;if(W.curUiT<=0){W.curUiT=1;if(SP==='log'&&!$('#sheet').hidden)renderSheet(false)}if(W.curT<=0){W.cur=(W.cur+1+Math.floor(Math.random()*(CURRENTS.length-1)))%CURRENTS.length;W.curT=48+Math.random()*22;const c=CURRENTS[W.cur];toast('海流轉變：'+c.n+'｜'+c.desc);if(SP==='log'&&!$('#sheet').hidden)renderSheet(false)}
  const p=W.p;let ix=W.joy.x+(W.keys.ArrowRight||W.keys.d?1:0)-(W.keys.ArrowLeft||W.keys.a?1:0),iy=W.joy.y+(W.keys.ArrowDown||W.keys.s?1:0)-(W.keys.ArrowUp||W.keys.w?1:0);const m=Math.hypot(ix,iy);
  W.mv=m>.2&&!W.build?1:0;
  if(m>.2&&!W.build){const k=Math.min(1,m);const vx=ix/m*95*k*dt,vy=iy/m*95*k*dt;p.dx=ix/m;p.dy=iy/m;if(walkable(p.x+vx,p.y))p.x+=vx;if(walkable(p.x,p.y+vy))p.y+=vy}
@@ -550,7 +590,7 @@ function update(dt){
  for(const it of W.items){
   if(it.dl>0){it.dl-=dt;if(it.st===1)continue}
   if(it.st===1){const dx=p.x-it.x,dy=p.y-it.y,d=Math.hypot(dx,dy);if(d<14){if(collect(it))it.gone=1;continue}it.x+=dx/d*300*dt;it.y+=dy/d*300*dt;continue}
-  it.x+=it.vx*dt;it.y+=Math.sin(W.t*.8+it.ph)*6*dt;
+  const cur=CURRENTS[W.cur||0];it.x+=it.vx*dt;it.y+=(it.vy||0)*dt+Math.sin(W.t*.8+it.ph)*6*dt;
   if(tile(Math.round(it.x/T),Math.round(it.y/T)))it.y+=(it.y>=0?1:-1)*70*dt;
   if(it.x<lim)it.gone=1}
  W.items=W.items.filter(i=>!i.gone);
@@ -611,6 +651,8 @@ function render(){
  const gr=g.createLinearGradient(0,y0,0,y1);gr.addColorStop(0,'#10596c');gr.addColorStop(1,'#08303d');g.fillStyle=gr;g.fillRect(x0-10,y0-10,x1-x0+20,y1-y0+20);
  g.strokeStyle='rgba(214,236,230,.07)';g.lineWidth=1.5;
  for(let yy=Math.floor(y0/46)*46;yy<y1;yy+=46){g.beginPath();for(let xx=x0;xx<=x1+16;xx+=16){const v=yy+Math.sin(xx*.03+W.t*.7+yy*.05)*4;xx===x0?g.moveTo(xx,v):g.lineTo(xx,v)}g.stroke()}
+ // Ocean-current chevrons: a readable world cue for the active drift pattern.
+ const cur=CURRENTS[W.cur||0];g.save();g.strokeStyle=cur.c;g.globalAlpha=.18;g.lineWidth=2;for(let i=0;i<9;i++){const ax=x0+((i*83-W.t*26)%(x1-x0+90)+(x1-x0+90))%(x1-x0+90),ay=y0+95+(i*71%(Math.max(120,y1-y0-180)));const dy=cur.dy*18;g.beginPath();g.moveTo(ax+18,ay-dy);g.lineTo(ax,ay);g.lineTo(ax+18,ay+dy);g.stroke();g.beginPath();g.moveTo(ax+18,ay);g.lineTo(ax+34,ay);g.stroke()}g.restore();
  for(const it of W.items)if(!it.st)drawItem(it);
  const lift=5*(1-W.cb);
  g.fillStyle='rgba(0,0,0,.22)';for(const k in S.grid){const [x,y]=k.split(',').map(Number);g.fillRect(x*T-20+3,y*T-20+5,T,T)}
@@ -729,30 +771,33 @@ $('#act').onclick=doAct;
 addEventListener('keydown',e=>{W.keys[e.key]=1;if(e.key==='e'||e.key==='Enter')doAct();if(e.key==='b')setBuild(!W.build)});
 addEventListener('keyup',e=>{W.keys[e.key]=0});
 /* ---------- sheets ---------- */
-let SP=null,dis=null,selReg='wreck',useSteel=false,resetArm=false;
-const TABS=[['bag','背包'],['craft','合成'],['tech','科技'],['sail','出航'],['log','圖鑑'],['set','設定']];
+let SP=null,dis=null,selReg='wreck',useSteel=false,resetArm=false,bagFilter='all';
+const TABS=[['bag','背包'],['craft','合成'],['tech','科技'],['sail','出航'],['log','圖鑑'],['jobs','委託'],['set','設定']];
 const CATN={mat:'材料',food:'生存物資',junk:'雜物',sp:'特殊'};
 function openSheet(p){if(W.build)setBuild(false);SP=p;dis=null;$('#sheet').hidden=false;renderSheet(true)}
 function closeSheet(){$('#sheet').hidden=true;SP=null;dis=null}
 function renderSheet(top){if(!SP)return;const sb=$('#sbody');const st=top?0:sb.scrollTop;
  $('#stabs').innerHTML=TABS.map(t=>`<button data-tab="${t[0]}" class="${SP===t[0]?'on':''}">${t[1]}</button>`).join('')+'<button id="sx" aria-label="關閉">×</button>';
- sb.innerHTML=({bag:tBag,craft:tCraft,tech:tTech,sail:tSail,log:tLog,set:tSet})[SP]();sb.scrollTop=st}
+ sb.innerHTML=({bag:tBag,craft:tCraft,tech:tTech,sail:tSail,log:tLog,jobs:tJobs,set:tSet})[SP]();sb.scrollTop=st}
 function sorted(box){const ids=Object.keys(S[box]);const mode=S.set.sort||'cat';const o={mat:0,food:1,junk:2,sp:3};
  ids.sort((a,b)=>mode==='qty'?S[box][b]-S[box][a]:mode==='rare'?(o[catOf(b)]-o[catOf(a)])||(S[box][a]-S[box][b]):(o[catOf(a)]-o[catOf(b)])||(S[box][b]-S[box][a]));return ids}
 function rowItem(id,box){const n=S[box][id],u=USE[id];return `<div class="row">${ico(id)}<div class="m"><b>${nameOf(id)}</b><span>${CATN[catOf(id)]}${u?'・可使用':''}${IT[id]&&IT[id].junk?'・可拆解':''}</span></div><div class="n">${n}</div>${u?`<button class="btn alt" data-a="use" data-id="${id}">使用</button>`:''}${box==='bag'?(storeCap()?`<button class="btn alt" data-a="st" data-id="${id}">存入</button>`:''):`<button class="btn alt" data-a="tk" data-id="${id}">取出</button>`}</div>`}
 function tBag(){
  const sm={cat:'種類',qty:'數量',rare:'稀有度'}[S.set.sort||'cat'];
  let h=`<h3>背包 <small>${sum(S.bag)} / ${bagCap()}</small></h3><div class="acts"><button class="btn alt" data-a="stSame">存入同類</button><button class="btn alt" data-a="stAll">全部存入</button><button class="btn alt" data-a="sort">整理：${sm}</button></div>`;
- const b=sorted('bag');h+=b.length?b.map(i=>rowItem(i,'bag')).join(''):'<p class="note">背包是空的，點擊海面打撈。</p>';
+ h+='<div class="bagtools" aria-label="物品分類篩選">'+[['all','全部'],['mat','材料'],['food','生存物資'],['junk','雜物'],['sp','特殊']].map(([id,label])=>`<button class="btn alt ${bagFilter===id?'active':''}" data-a="bagFilter" data-id="${id}">${label}${id==='all'?'':` ${Object.keys(S.bag).filter(k=>catOf(k)===id).length}`}</button>`).join('')+'</div><p class="bagtip">滑鼠移到物品上可查看完整說明；點擊「使用／存入」即可操作。</p>';
+ const b=sorted('bag').filter(id=>bagFilter==='all'||catOf(id)===bagFilter);
+ h+='<div class="baggrid">'+(b.length?b.map(id=>{const n=S.bag[id],u=USE[id],it=IT[id],desc=[nameOf(id),CATN[catOf(id)],u?'可使用':'',it&&it.junk?'可拆解：'+mapStr(it.junk):'',it&&it.rare?'稀有物資':''].filter(Boolean).join('｜');return `<div class="bagcell" tabindex="0" title="${desc.replace(/"/g,'&quot;')}">${ico(id)}<span class="qty">${n}</span><span class="bname">${nameOf(id)}</span><div class="bactions">${u?`<button class="btn" data-a="use" data-id="${id}" title="使用${nameOf(id)}">使用</button>`:''}${storeCap()?`<button class="btn alt" data-a="st" data-id="${id}" title="將${nameOf(id)}存入倉庫">存入</button>`:''}</div></div>`}).join(''):'<div class="bagempty">這個分類目前沒有物品。</div>')+'</div>';
  h+=`<h3>倉庫 <small>${sum(S.store)} / ${storeCap()}</small></h3>`;
  if(!storeCap())h+='<p class="note">還沒有儲物箱。建造儲物箱後，這裡會顯示倉庫，合成時也會直接使用倉庫的材料。</p>';
- else{h+='<div class="acts"><button class="btn alt" data-a="tkAll">全部取出</button></div>';const s=sorted('store');h+=s.length?s.map(i=>rowItem(i,'store')).join(''):'<p class="note">倉庫是空的。</p>'}
+ else{h+='<div class="acts"><button class="btn alt" data-a="tkAll">全部取出</button></div>';const st=sorted('store');h+=st.length?'<div class="baggrid">'+st.map(id=>`<div class="bagcell" title="${nameOf(id)}｜${CATN[catOf(id)]}">${ico(id)}<span class="qty">${S.store[id]}</span><span class="bname">${nameOf(id)}</span><div class="bactions"><button class="btn alt" data-a="tk" data-id="${id}">取出</button></div></div>`).join('')+'</div>':'<p class="note">倉庫是空的。</p>'}
  h+='<h3>批量拆解 <small>背包與倉庫合計</small></h3>';
  const js=JUNK.filter(id=>has(id)>0);
  if(!js.length)h+='<p class="note">沒有可拆解的雜物。漂流木、空罐、窗簾、舊收音機等都能拆成材料。</p>';
  else for(const id of js)h+=`<div class="row">${ico(id)}<div class="m"><b>${nameOf(id)}</b><span>拆解 → ${mapStr(IT[id].junk)}</span></div><div class="n">${has(id)}</div><button class="btn alt" data-a="dis" data-id="${id}">全部拆解</button></div>`;
  if(dis&&has(dis)){const out={};for(const k in IT[dis].junk)out[k]=IT[dis].junk[k]*has(dis);h+=`<div class="card"><b>確認拆解 ${nameOf(dis)} ×${has(dis)}</b><p class="note">預計產出：${mapStr(out)}</p><div class="acts"><button class="btn" data-a="disOk">確認拆解</button><button class="btn alt" data-a="disNo">取消</button></div></div>`}
  return h}
+
 function srcStr(k,n){const b=S.bag[k]||0,s=S.store[k]||0;return `<span class="${b+s>=n?'ok':'need'}">${nameOf(k)} ${n}（背包 ${b}・倉庫 ${s}）</span>`}
 function doCraft(r){
  if(!r){toast('找不到這項配方');return false}
@@ -799,13 +844,17 @@ $('#sheet').addEventListener('click',e=>{
  const b=e.target.closest('[data-a]');if(!b)return;const a=b.dataset.a,id=b.dataset.id;let top=false;
  if(a!=='reset')resetArm=false;
  switch(a){
+  case 'job':if(claimJob(id))top=true;break;
+  case 'project':if(fundOceanProject(id))top=true;break;
   case 'use':eat(id);break;
+  case 'buoy':{if(W.buoyCd>0){toast('引流浮標仍在冷卻');break}if(!pay({rope:1,plastic:2})){toast('需要繩索 ×1、塑料 ×2');break}const cur=CURRENTS[W.cur||0];W.curBoost=24;W.buoyCd=90;for(let i=0;i<6;i++){const id=pick(cur.ids);spawn(id)}toast('引流浮標已布設：海流偏好物資大量靠近');vib('rare');beep(860,.2);save();top=true;break}
   case 'st':{const k=Math.min(S.bag[id]||0,sroom());if(k>0){add('bag',id,-k);add('store',id,k)}else toast('倉庫已滿');break}
   case 'tk':{const k=Math.min(S.store[id]||0,room());if(k>0){add('store',id,-k);add('bag',id,k)}else toast('背包已滿');break}
   case 'stSame':{let m=0;for(const i of Object.keys(S.bag)){if(!S.store[i])continue;const k=Math.min(S.bag[i],sroom());if(k>0){add('bag',i,-k);add('store',i,k);m+=k}}toast(m?'已存入 '+m+' 件':'沒有可存入的同類物資');break}
   case 'stAll':{let m=0;for(const i of Object.keys(S.bag)){const k=Math.min(S.bag[i],sroom());if(k>0){add('bag',i,-k);add('store',i,k);m+=k}}toast(m?'已存入 '+m+' 件':'倉庫已滿或沒有儲物箱');break}
   case 'tkAll':{let m=0;for(const i of Object.keys(S.store)){const k=Math.min(S.store[i],room());if(k>0){add('store',i,-k);add('bag',i,k);m+=k}}toast(m?'已取出 '+m+' 件':'背包已滿');break}
   case 'sort':{const l=['cat','qty','rare'];S.set.sort=l[(l.indexOf(S.set.sort||'cat')+1)%3];break}
+  case 'bagFilter':bagFilter=id;break
   case 'dis':dis=id;break;
   case 'disNo':dis=null;break;
   case 'disOk':{const o=dismantle(dis,has(dis));if(o){toast('拆解完成：'+mapStr(o));vib('mid');beep(480,.12)}dis=null;break}
@@ -821,7 +870,7 @@ $('#sheet').addEventListener('click',e=>{
   case 's_bs':S.set.bs=parseFloat(id);applySet();break;
   case 'reset':if(!resetArm){resetArm=true}else{
    try{localStorage.removeItem(KEY)}catch(_){}
-   S=defaults();TR=null;W.mv=0;W.items=[];W.fx=[];W.p={x:0,y:0,dx:0,dy:1};W.hook=null;W.cd=0;W.t=0;W.cb=0;W.build=false;W.rain=0;W.joy={x:0,y:0};W.keys={};W.sp=0;W.evT=45;W.near=null;W.merch=null;W.bedCd=0;W.warn=0;W.hudT=0;W.saveT=0;
+   S=defaults();ensureJobs();TR=null;W.mv=0;W.items=[];W.fx=[];W.p={x:0,y:0,dx:0,dy:1};W.hook=null;W.cd=0;W.t=0;W.cb=0;W.build=false;W.rain=0;W.joy={x:0,y:0};W.keys={};W.sp=0;W.evT=45;W.near=null;W.merch=null;W.bedCd=0;W.warn=0;W.hudT=0;W.saveT=0;W.cur=0;W.curT=48;W.curBoost=0;W.buoyCd=0;W.curUiT=1;
    B.tool='floor';B.gh=null;B.undo=[];B.down=false;B.stroke=[];B.hold=null;B.warned=false;B.lastSy=0;useSteel=false;selReg='wreck';resetArm=false;
    $('#app').classList.remove('mode-build');$('#buildbar').hidden=true;closeSheet();updQuest();renderQuick();applySet();updHUD();save();welcome();return
   }break;
@@ -940,7 +989,7 @@ function showReturn(r){const h=Math.floor(r.el/3600),m=Math.floor(r.el%3600/60);
 
 /* ---------- boot ---------- */
 (function boot(){
- const had=load();resize();addEventListener('resize',resize);applySet();
+ const had=load();ensureJobs();resize();addEventListener('resize',resize);applySet();
  // S.t is the most recent save time; offlineAt separately records when the app actually went into the background.
  if(had){
   const stamp=Number(S.offlineAt)||0;
