@@ -113,6 +113,35 @@ h3 small{font-family:var(--fb);font-weight:400;color:var(--foam2);font-size:12px
 .idet .m b{display:block;font-size:15px}
 .idet .m span{display:block;font-size:12px;color:var(--foam2)}
 .idet .acts{width:100%;margin:2px 0 0}
+/* 合成：工作站分頁＋單列五格 */
+.stabs2{display:flex;gap:4px;margin:6px 0}
+.stabs2 button{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:1px;padding:5px 2px;background:rgba(7,25,31,.45);border:1px solid var(--line);border-radius:10px;font-size:12px;color:var(--foam2)}
+.stabs2 button .ic{width:26px;height:26px;flex:0 0 auto}
+.stabs2 button .em{font-size:20px;line-height:26px}
+.stabs2 button.on{border-color:var(--wood);color:var(--wood);background:var(--panel2)}
+.stabs2 button.off{opacity:.55}
+.igrid.g5{grid-template-columns:repeat(5,1fr)}
+.cell .em{font-size:26px;line-height:34px}
+.cell.ready{border-color:rgba(124,207,154,.6)}
+.cell.dim{opacity:.5}
+.cell.dim.sel{opacity:.8}
+.cell .fv{position:absolute;top:1px;left:4px;font-size:11px;color:var(--wood)}
+.idet .em{font-size:32px;line-height:40px}
+.btn[disabled]{opacity:.45;cursor:default}
+/* 科技樹：每條路線一張圖，欄＝層級，線＝前置關係 */
+.tt{position:relative;margin:4px 0 2px}
+.tt svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.tt svg path{fill:none;stroke:var(--line);stroke-width:2;vector-effect:non-scaling-stroke}
+.tt svg path.on{stroke:var(--good)}
+.tt svg path.av{stroke:var(--wood)}
+.tn{position:absolute;width:28%;height:48px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;padding:2px;border-radius:10px;border:1px solid var(--line);background:rgba(7,25,31,.85);font-size:12.5px;font-weight:700;line-height:1.2;text-align:center}
+.tn small{font-weight:400;font-size:10.5px;color:var(--foam2)}
+.tn.done{border-color:var(--good);background:#143b33}
+.tn.done small{color:var(--good)}
+.tn.av{border-color:var(--wood);box-shadow:0 0 8px rgba(210,171,110,.35)}
+.tn.av small{color:var(--wood)}
+.tn.lock{color:var(--foam2)}
+.tn.sel{outline:2px solid var(--foam);outline-offset:1px}
 .dot{width:14px;height:14px;border-radius:4px;flex:0 0 14px}
 .need{color:var(--coral)}
 .ok{color:var(--good)}
@@ -784,10 +813,10 @@ $('#act').onclick=doAct;
 addEventListener('keydown',e=>{W.keys[e.key]=1;if(e.key==='e'||e.key==='Enter')doAct();if(e.key==='b')setBuild(!W.build)});
 addEventListener('keyup',e=>{W.keys[e.key]=0});
 /* ---------- sheets ---------- */
-let SP=null,dis=null,bagSel=null,selReg='wreck',useSteel=false,resetArm=false;
+let SP=null,dis=null,bagSel=null,craftSt='',craftSel=null,techSel=null,selReg='wreck',useSteel=false,resetArm=false;
 const TABS=[['bag','背包'],['craft','合成'],['tech','科技'],['sail','出航'],['log','圖鑑'],['jobs','委託'],['set','設定']];
 const CATN={mat:'材料',food:'生存物資',junk:'雜物',sp:'特殊'};
-function openSheet(p){if(W.build)setBuild(false);SP=p;dis=null;bagSel=null;$('#sheet').hidden=false;renderSheet(true)}
+function openSheet(p){if(W.build)setBuild(false);SP=p;dis=null;bagSel=null;craftSel=null;techSel=null;$('#sheet').hidden=false;renderSheet(true)}
 function closeSheet(){$('#sheet').hidden=true;SP=null;dis=null}
 function renderSheet(top){if(!SP)return;const sb=$('#sbody');const st=top?0:sb.scrollTop;
  $('#stabs').innerHTML=TABS.map(t=>`<button data-tab="${t[0]}" class="${SP===t[0]?'on':''}">${t[1]}</button>`).join('')+'<button id="sx" aria-label="關閉">×</button>';
@@ -831,14 +860,47 @@ function doCraft(r){
  if(r.out&&!grantBundle(r.out)){S.bag=bagBefore;S.store=storeBefore;toast('容量不足：先整理背包或倉庫，再製作');return false}
  if(r.eff)S[r.eff]++;if(r.id==='cook'||r.id==='cookp')S.cooked++;
  toast('製作完成：'+r.n);vib('mid');beep(660,.15);return true}
+// 合成頁：上方工作站分頁（一般／熔爐／爐灶／工作台），下方該站的配方單列五格，點格子看詳情與製作
+const CST=[['','一般','🧰'],['furn','熔爐','b_furn'],['stove','爐灶','b_stove'],['bench','工作台','b_bench']];
+// 配方圖示：有對應圖就用圖，沒有用 emoji（之後補圖只要改這裡）
+const RIC={rope:'🪢',steel:'🔩',cook:'i_fish',cookp:'🥔',hook:'🪝',pack:'🎒'};
+const icOrEm=(k,s)=>/^[a-z]/.test(k||'')?ic(k,s):`<span class="em">${k||'？'}</span>`;
 function tCraft(){let h='<h3>合成 <small>直接使用背包與倉庫的材料</small></h3>';
- for(const r of RC){const lack=r.st&&!cntB(r.st);const lv=r.eff?` Lv ${S[r.eff]}/${r.max}`:'';const fav=S.fav.includes(r.id);
-  h+=`<div class="card"><div class="row" style="border:0;padding:0"><div class="m"><b>${r.n}${lv}</b><span>${r.d}${r.st?'・需要'+STN[r.st]+(lack?'（尚未建造）':''):''}</span></div><button class="btn alt" data-a="fav" data-id="${r.id}">${fav?'★':'☆'}</button><button class="btn" data-a="craft" data-id="${r.id}">製作</button></div><div class="note">${Object.keys(r.cost).map(k=>srcStr(k,r.cost[k])).join('　')}</div></div>`}
+ h+='<div class="stabs2">'+CST.map(([k,n,im])=>{const built=!k||cntB(k)>0;return `<button class="${craftSt===k?'on':''}${built?'':' off'}" data-a="cst" data-id="${k}">${icOrEm(im)}${n}</button>`}).join('')+'</div>';
+ const lack=craftSt&&!cntB(craftSt);
+ if(lack)h+=`<p class="note need">尚未建造${STN[craftSt]}：先在建造模式蓋一座，才能製作這裡的物品。</p>`;
+ const list=RC.filter(r=>(r.st||'')===craftSt);
+ h+='<div class="igrid g5">'+list.map(r=>{const maxed=r.max&&S[r.eff]>=r.max;const ready=!lack&&!maxed&&can(r.cost);
+  return `<button class="cell${ready?' ready':' dim'}${craftSel===r.id?' sel':''}" data-a="cpick" data-id="${r.id}" aria-label="${r.n}">${S.fav.includes(r.id)?'<span class="fv">★</span>':''}${icOrEm(RIC[r.id])}${r.eff?`<span class="q">${S[r.eff]}/${r.max}</span>`:''}<span class="nm">${r.n}</span></button>`}).join('')+'</div>';
+ const r=list.find(x=>x.id===craftSel);
+ if(r){const maxed=r.max&&S[r.eff]>=r.max;const fav=S.fav.includes(r.id);
+  h+=`<div class="card idet">${icOrEm(RIC[r.id],40)}<div class="m"><b>${r.n}${r.eff?` Lv ${S[r.eff]}/${r.max}`:''}</b><span>${r.d}</span></div><div class="note" style="width:100%">${maxed?'<span class="ok">已達最高等級</span>':Object.keys(r.cost).map(k=>srcStr(k,r.cost[k])).join('<br>')}</div><div class="acts"><button class="btn" data-a="craft" data-id="${r.id}"${maxed?' disabled':''}>製作</button><button class="btn alt" data-a="fav" data-id="${r.id}">${fav?'★ 已加入快捷':'☆ 加入快捷'}</button></div></div>`}
+ else if(list.length)h+='<p class="note">點選物品查看所需材料並製作。綠框＝材料足夠。</p>';
  return h+'<p class="note">★ 的配方會出現在畫面下方的快捷欄，點一下就製作。</p>'}
-function tTech(){let h='<h3>科技 <small>四條路線可自由安排</small></h3>';let cur='';
- for(const t of TH){if(t.r!==cur){cur=t.r;h+=`<h3>${cur}</h3>`}
-  const done=S.tech[t.id];const miss=(t.req||[]).filter(r=>!S.tech[r]).map(r=>TH.find(x=>x.id===r).n);const ecoBad=t.eco&&S.eco<t.eco;
-  h+=`<div class="row"><div class="m"><b>${t.n}</b><span>${t.d}</span><span>${done?'':Object.keys(t.cost).map(k=>srcStr(k,t.cost[k])).join('　')}</span>${miss.length?`<span class="need">需先研究：${miss.join('、')}</span>`:''}${ecoBad?`<span class="need">生態度需達 ${t.eco}（目前 ${Math.floor(S.eco)}）</span>`:''}</div>${done?'<span class="ok">已研究</span>':`<button class="btn" data-a="tech" data-id="${t.id}">研究</button>`}</div>`}
+// 科技樹：每條路線依前置關係排成層級（欄），只有前置都研究完的節點才能研究
+const TT_H=60;
+function techLayout(route){const ns=TH.filter(t=>t.r===route),dep={},pos={},cnt={};
+ const d=t=>dep[t.id]!=null?dep[t.id]:(dep[t.id]=(t.req||[]).length?Math.max(...t.req.map(r=>d(TH.find(x=>x.id===r))))+1:0);
+ for(const t of ns){const c=d(t);const row=cnt[c]||0;cnt[c]=row+1;pos[t.id]={c,row}}
+ return {ns,pos,rows:Math.max(...Object.values(cnt))}}
+function techState(t){if(S.tech[t.id])return 'done';if((t.req||[]).some(r=>!S.tech[r]))return 'lock';return 'av'}
+function tTech(){let h='<h3>科技 <small>研究完前置，才能點亮下一格</small></h3>';
+ for(const route of [...new Set(TH.map(t=>t.r))]){const {ns,pos,rows}=techLayout(route);const H=rows*TT_H;
+  const nd=ns.filter(t=>S.tech[t.id]).length;
+  h+=`<h3>${route} <small>${nd} / ${ns.length}</small></h3><div class="tt" style="height:${H}px"><svg viewBox="0 0 300 ${H}" preserveAspectRatio="none">`;
+  const cy=p=>p.row*TT_H+26;
+  for(const t of ns)for(const r of t.req||[]){const a=pos[r],b=pos[t.id];if(!a)continue;const x1=a.c*100+92,x2=b.c*100+8,y1=cy(a),y2=cy(b),mx=(x1+x2)/2;
+   h+=`<path class="${S.tech[t.id]?'on':S.tech[r]?'av':''}" d="M${x1} ${y1}C${mx} ${y1} ${mx} ${y2} ${x2} ${y2}"/>`}
+  h+='</svg>';
+  for(const t of ns){const p=pos[t.id],st=techState(t);
+   h+=`<button class="tn ${st}${techSel===t.id?' sel':''}" style="left:${(p.c*33.333+2.67).toFixed(2)}%;top:${p.row*TT_H+2}px" data-a="tpick" data-id="${t.id}">${t.n}<small>${st==='done'?'✓ 已研究':st==='av'?'可研究':'🔒 未解鎖'}</small></button>`}
+  h+='</div>';
+  const t=ns.find(x=>x.id===techSel);
+  if(t){const st=techState(t);const miss=(t.req||[]).filter(r=>!S.tech[r]).map(r=>TH.find(x=>x.id===r).n);const ecoBad=t.eco&&S.eco<t.eco;
+   h+=`<div class="card idet"><div class="m"><b>${t.n}</b><span>${t.d}</span></div>`;
+   if(st==='done')h+='<div class="note ok" style="width:100%">已研究</div>';
+   else h+=`<div class="note" style="width:100%">${Object.keys(t.cost).map(k=>srcStr(k,t.cost[k])).join('<br>')}${miss.length?`<br><span class="need">需先研究：${miss.join('、')}</span>`:''}${ecoBad?`<br><span class="need">生態度需達 ${t.eco}（目前 ${Math.floor(S.eco)}）</span>`:''}</div><div class="acts"><button class="btn" data-a="tech" data-id="${t.id}"${st==='lock'?' disabled':''}>研究</button></div>`;
+   h+='</div>'}}
  return h}
 const FOODS=['fish','potato','tin','hpot','cooked'];
 function takeFood(n){let need=n;for(const f of FOODS){while(need>0&&has(f)>0){pay({[f]:1});need--}}return need===0}
@@ -859,7 +921,7 @@ function tSet(){const s=S.set;
  <h3>存檔</h3><div class="card"><p class="note">遊戲每 6 秒自動存檔，切換 App 時也會存檔。離線時攔截網最多累積 8 小時。</p><div class="acts"><button class="btn alt" data-a="reset">${resetArm?'再按一次確認清除':'重新開始'}</button></div></div>`}
 
 $('#sheet').addEventListener('click',e=>{
- const tb=e.target.closest('[data-tab]');if(tb){SP=tb.dataset.tab;dis=null;bagSel=null;renderSheet(true);return}
+ const tb=e.target.closest('[data-tab]');if(tb){SP=tb.dataset.tab;dis=null;bagSel=null;craftSel=null;techSel=null;renderSheet(true);return}
  if(e.target.closest('#sx')){closeSheet();return}
  const b=e.target.closest('[data-a]');if(!b)return;const a=b.dataset.a,id=b.dataset.id;let top=false;
  if(a!=='reset')resetArm=false;
@@ -874,6 +936,9 @@ $('#sheet').addEventListener('click',e=>{
   case 'stAll':{let m=0;for(const i of Object.keys(S.bag)){const k=Math.min(S.bag[i],sroom());if(k>0){add('bag',i,-k);add('store',i,k);m+=k}}toast(m?'已存入 '+m+' 件':'倉庫已滿或沒有儲物箱');break}
   case 'tkAll':{let m=0;for(const i of Object.keys(S.store)){const k=Math.min(S.store[i],room());if(k>0){add('store',i,-k);add('bag',i,k);m+=k}}toast(m?'已取出 '+m+' 件':'背包已滿');break}
   case 'sort':{const l=['cat','qty','rare'];S.set.sort=l[(l.indexOf(S.set.sort||'cat')+1)%3];break}
+  case 'cst':craftSt=id||'';craftSel=null;break;
+  case 'cpick':craftSel=craftSel===id?null:id;break;
+  case 'tpick':techSel=techSel===id?null:id;break;
   case 'pick':{const bx=b.dataset.box;bagSel=bagSel&&bagSel.box===bx&&bagSel.id===id?null:{box:bx,id};if(dis&&dis!==id)dis=null;break}
   case 'dis':dis=id;break;
   case 'disNo':dis=null;break;
