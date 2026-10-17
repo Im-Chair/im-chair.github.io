@@ -98,8 +98,21 @@ h3 small{font-family:var(--fb);font-weight:400;color:var(--foam2);font-size:12px
 .row .m span{display:block;font-size:12px;color:var(--foam2);overflow-wrap:anywhere}
 .row .n{font-variant-numeric:tabular-nums;font-weight:700;min-width:2.4em;text-align:right}
 .row .btn{min-height:36px;font-size:12.5px;padding:4px 10px;white-space:nowrap}
-/* inventory grid */
-.bagtools{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}.bagtools .btn{min-height:34px;font-size:12px;padding:5px 10px}.bagtools .btn.active{outline:2px solid var(--wood);background:#286777}.baggrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:10px 0 16px}.bagcell{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-width:0;min-height:94px;padding:8px 4px 7px;background:linear-gradient(145deg,rgba(23,80,94,.9),rgba(7,25,31,.55));border:1px solid var(--line);border-radius:11px;cursor:pointer}.bagcell:hover,.bagcell:focus-visible{border-color:var(--wood);background:#205767;outline:none;transform:translateY(-1px)}.bagcell .ic{width:38px;height:38px;flex-basis:38px}.bagcell .bname{font-size:11px;line-height:1.25;text-align:center;overflow-wrap:anywhere;color:var(--foam2);max-width:100%}.bagcell .qty{position:absolute;right:5px;top:4px;min-width:20px;padding:1px 5px;border-radius:8px;background:rgba(7,25,31,.85);font-size:11px;font-weight:700;text-align:center}.bagcell .bactions{display:flex;gap:4px;width:100%;justify-content:center;margin-top:2px}.bagcell .bactions .btn{min-height:27px;padding:2px 6px;font-size:10px;flex:1;min-width:0}.bagtip{font-size:12px;color:var(--foam2);margin:3px 0 8px}.bagempty{grid-column:1/-1;text-align:center;padding:24px 8px;color:var(--foam2);border:1px dashed var(--line);border-radius:10px}@media(min-width:650px){.baggrid{grid-template-columns:repeat(6,minmax(0,1fr))}.bagcell{min-height:110px}.bagcell .ic{width:44px;height:44px;flex-basis:44px}}@media(max-width:360px){.baggrid{grid-template-columns:repeat(3,minmax(0,1fr))}
+/* 背包／倉庫網格：點格子選取，操作在下方詳情卡 */
+.igrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:6px;margin:6px 0}
+.cell{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;aspect-ratio:1;min-width:0;padding:4px 2px 3px;background:rgba(7,25,31,.45);border:1px solid var(--line);border-radius:10px}
+.cell .ic{width:34px;height:34px;flex:0 0 auto}
+.cell .dot{width:22px;height:22px;flex:0 0 auto;border-radius:6px}
+.cell .nm{font-size:11px;line-height:1.2;max-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;color:var(--foam2)}
+.cell .q{position:absolute;top:2px;right:4px;font-size:12px;font-weight:700;font-variant-numeric:tabular-nums;text-shadow:0 1px 2px #000}
+.cell.use{border-color:rgba(124,207,154,.45)}
+.cell.junk .nm{color:var(--wood)}
+.cell.sel{border-color:var(--wood);background:var(--panel2);box-shadow:0 0 0 1px var(--wood) inset}
+.idet{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.idet .m{flex:1;min-width:120px}
+.idet .m b{display:block;font-size:15px}
+.idet .m span{display:block;font-size:12px;color:var(--foam2)}
+.idet .acts{width:100%;margin:2px 0 0}
 .dot{width:14px;height:14px;border-radius:4px;flex:0 0 14px}
 .need{color:var(--coral)}
 .ok{color:var(--good)}
@@ -771,33 +784,40 @@ $('#act').onclick=doAct;
 addEventListener('keydown',e=>{W.keys[e.key]=1;if(e.key==='e'||e.key==='Enter')doAct();if(e.key==='b')setBuild(!W.build)});
 addEventListener('keyup',e=>{W.keys[e.key]=0});
 /* ---------- sheets ---------- */
-let SP=null,dis=null,selReg='wreck',useSteel=false,resetArm=false,bagFilter='all';
+let SP=null,dis=null,bagSel=null,selReg='wreck',useSteel=false,resetArm=false;
 const TABS=[['bag','背包'],['craft','合成'],['tech','科技'],['sail','出航'],['log','圖鑑'],['jobs','委託'],['set','設定']];
 const CATN={mat:'材料',food:'生存物資',junk:'雜物',sp:'特殊'};
-function openSheet(p){if(W.build)setBuild(false);SP=p;dis=null;$('#sheet').hidden=false;renderSheet(true)}
+function openSheet(p){if(W.build)setBuild(false);SP=p;dis=null;bagSel=null;$('#sheet').hidden=false;renderSheet(true)}
 function closeSheet(){$('#sheet').hidden=true;SP=null;dis=null}
 function renderSheet(top){if(!SP)return;const sb=$('#sbody');const st=top?0:sb.scrollTop;
  $('#stabs').innerHTML=TABS.map(t=>`<button data-tab="${t[0]}" class="${SP===t[0]?'on':''}">${t[1]}</button>`).join('')+'<button id="sx" aria-label="關閉">×</button>';
  sb.innerHTML=({bag:tBag,craft:tCraft,tech:tTech,sail:tSail,log:tLog,jobs:tJobs,set:tSet})[SP]();sb.scrollTop=st}
 function sorted(box){const ids=Object.keys(S[box]);const mode=S.set.sort||'cat';const o={mat:0,food:1,junk:2,sp:3};
  ids.sort((a,b)=>mode==='qty'?S[box][b]-S[box][a]:mode==='rare'?(o[catOf(b)]-o[catOf(a)])||(S[box][a]-S[box][b]):(o[catOf(a)]-o[catOf(b)])||(S[box][b]-S[box][a]));return ids}
-function rowItem(id,box){const n=S[box][id],u=USE[id];return `<div class="row">${ico(id)}<div class="m"><b>${nameOf(id)}</b><span>${CATN[catOf(id)]}${u?'・可使用':''}${IT[id]&&IT[id].junk?'・可拆解':''}</span></div><div class="n">${n}</div>${u?`<button class="btn alt" data-a="use" data-id="${id}">使用</button>`:''}${box==='bag'?(storeCap()?`<button class="btn alt" data-a="st" data-id="${id}">存入</button>`:''):`<button class="btn alt" data-a="tk" data-id="${id}">取出</button>`}</div>`}
+function cellItem(id,box){const n=S[box][id],on=bagSel&&bagSel.box===box&&bagSel.id===id;
+ return `<button class="cell${USE[id]?' use':''}${IT[id]&&IT[id].junk?' junk':''}${on?' sel':''}" data-a="pick" data-box="${box}" data-id="${id}" aria-label="${nameOf(id)} ${n}">${ico(id)}<span class="q">${n}</span><span class="nm">${nameOf(id)}</span></button>`}
+// 選中格子的詳情卡：名稱、分類、可用操作（使用／存取／拆解）
+function itemDetail(box){if(!bagSel||bagSel.box!==box)return '';const id=bagSel.id,n=S[box][id];if(!n)return '';const u=USE[id],j=IT[id]&&IT[id].junk;
+ let h=`<div class="card idet">${ico(id,40)}<div class="m"><b>${nameOf(id)} ×${n}</b><span>${CATN[catOf(id)]}${u?'・可使用':''}</span>${j?`<span>拆解 → ${mapStr(j)}</span>`:''}</div><div class="acts">`;
+ if(u)h+=`<button class="btn" data-a="use" data-id="${id}">使用</button>`;
+ if(box==='bag'){if(storeCap())h+=`<button class="btn alt" data-a="st" data-id="${id}">存入倉庫</button>`}else h+=`<button class="btn alt" data-a="tk" data-id="${id}">取出</button>`;
+ if(j)h+=`<button class="btn alt" data-a="dis" data-id="${id}">全部拆解</button>`;
+ h+='</div>';
+ if(dis===id&&has(id)){const out={};for(const k in j)out[k]=j[k]*has(id);h+=`<div style="width:100%"><b>確認拆解 ${nameOf(id)} ×${has(id)}</b><p class="note">預計產出：${mapStr(out)}（背包與倉庫合計）</p><div class="acts"><button class="btn" data-a="disOk">確認拆解</button><button class="btn alt" data-a="disNo">取消</button></div></div>`}
+ return h+'</div>'}
 function tBag(){
  const sm={cat:'種類',qty:'數量',rare:'稀有度'}[S.set.sort||'cat'];
  let h=`<h3>背包 <small>${sum(S.bag)} / ${bagCap()}</small></h3><div class="acts"><button class="btn alt" data-a="stSame">存入同類</button><button class="btn alt" data-a="stAll">全部存入</button><button class="btn alt" data-a="sort">整理：${sm}</button></div>`;
- h+='<div class="bagtools" aria-label="物品分類篩選">'+[['all','全部'],['mat','材料'],['food','生存物資'],['junk','雜物'],['sp','特殊']].map(([id,label])=>`<button class="btn alt ${bagFilter===id?'active':''}" data-a="bagFilter" data-id="${id}">${label}${id==='all'?'':` ${Object.keys(S.bag).filter(k=>catOf(k)===id).length}`}</button>`).join('')+'</div><p class="bagtip">滑鼠移到物品上可查看完整說明；點擊「使用／存入」即可操作。</p>';
- const b=sorted('bag').filter(id=>bagFilter==='all'||catOf(id)===bagFilter);
- h+='<div class="baggrid">'+(b.length?b.map(id=>{const n=S.bag[id],u=USE[id],it=IT[id],desc=[nameOf(id),CATN[catOf(id)],u?'可使用':'',it&&it.junk?'可拆解：'+mapStr(it.junk):'',it&&it.rare?'稀有物資':''].filter(Boolean).join('｜');return `<div class="bagcell" tabindex="0" title="${desc.replace(/"/g,'&quot;')}">${ico(id)}<span class="qty">${n}</span><span class="bname">${nameOf(id)}</span><div class="bactions">${u?`<button class="btn" data-a="use" data-id="${id}" title="使用${nameOf(id)}">使用</button>`:''}${storeCap()?`<button class="btn alt" data-a="st" data-id="${id}" title="將${nameOf(id)}存入倉庫">存入</button>`:''}</div></div>`}).join(''):'<div class="bagempty">這個分類目前沒有物品。</div>')+'</div>';
+ const b=sorted('bag');h+=b.length?'<div class="igrid">'+b.map(i=>cellItem(i,'bag')).join('')+'</div>'+itemDetail('bag'):'<p class="note">背包是空的，點擊海面打撈。</p>';
  h+=`<h3>倉庫 <small>${sum(S.store)} / ${storeCap()}</small></h3>`;
  if(!storeCap())h+='<p class="note">還沒有儲物箱。建造儲物箱後，這裡會顯示倉庫，合成時也會直接使用倉庫的材料。</p>';
- else{h+='<div class="acts"><button class="btn alt" data-a="tkAll">全部取出</button></div>';const st=sorted('store');h+=st.length?'<div class="baggrid">'+st.map(id=>`<div class="bagcell" title="${nameOf(id)}｜${CATN[catOf(id)]}">${ico(id)}<span class="qty">${S.store[id]}</span><span class="bname">${nameOf(id)}</span><div class="bactions"><button class="btn alt" data-a="tk" data-id="${id}">取出</button></div></div>`).join('')+'</div>':'<p class="note">倉庫是空的。</p>'}
+ else{h+='<div class="acts"><button class="btn alt" data-a="tkAll">全部取出</button></div>';const s=sorted('store');h+=s.length?'<div class="igrid">'+s.map(i=>cellItem(i,'store')).join('')+'</div>'+itemDetail('store'):'<p class="note">倉庫是空的。</p>'}
  h+='<h3>批量拆解 <small>背包與倉庫合計</small></h3>';
  const js=JUNK.filter(id=>has(id)>0);
  if(!js.length)h+='<p class="note">沒有可拆解的雜物。漂流木、空罐、窗簾、舊收音機等都能拆成材料。</p>';
  else for(const id of js)h+=`<div class="row">${ico(id)}<div class="m"><b>${nameOf(id)}</b><span>拆解 → ${mapStr(IT[id].junk)}</span></div><div class="n">${has(id)}</div><button class="btn alt" data-a="dis" data-id="${id}">全部拆解</button></div>`;
- if(dis&&has(dis)){const out={};for(const k in IT[dis].junk)out[k]=IT[dis].junk[k]*has(dis);h+=`<div class="card"><b>確認拆解 ${nameOf(dis)} ×${has(dis)}</b><p class="note">預計產出：${mapStr(out)}</p><div class="acts"><button class="btn" data-a="disOk">確認拆解</button><button class="btn alt" data-a="disNo">取消</button></div></div>`}
+ if(dis&&has(dis)&&!(bagSel&&bagSel.id===dis&&(S[bagSel.box][dis]||0))){const out={};for(const k in IT[dis].junk)out[k]=IT[dis].junk[k]*has(dis);h+=`<div class="card"><b>確認拆解 ${nameOf(dis)} ×${has(dis)}</b><p class="note">預計產出：${mapStr(out)}</p><div class="acts"><button class="btn" data-a="disOk">確認拆解</button><button class="btn alt" data-a="disNo">取消</button></div></div>`}
  return h}
-
 function srcStr(k,n){const b=S.bag[k]||0,s=S.store[k]||0;return `<span class="${b+s>=n?'ok':'need'}">${nameOf(k)} ${n}（背包 ${b}・倉庫 ${s}）</span>`}
 function doCraft(r){
  if(!r){toast('找不到這項配方');return false}
@@ -839,7 +859,7 @@ function tSet(){const s=S.set;
  <h3>存檔</h3><div class="card"><p class="note">遊戲每 6 秒自動存檔，切換 App 時也會存檔。離線時攔截網最多累積 8 小時。</p><div class="acts"><button class="btn alt" data-a="reset">${resetArm?'再按一次確認清除':'重新開始'}</button></div></div>`}
 
 $('#sheet').addEventListener('click',e=>{
- const tb=e.target.closest('[data-tab]');if(tb){SP=tb.dataset.tab;dis=null;renderSheet(true);return}
+ const tb=e.target.closest('[data-tab]');if(tb){SP=tb.dataset.tab;dis=null;bagSel=null;renderSheet(true);return}
  if(e.target.closest('#sx')){closeSheet();return}
  const b=e.target.closest('[data-a]');if(!b)return;const a=b.dataset.a,id=b.dataset.id;let top=false;
  if(a!=='reset')resetArm=false;
@@ -854,7 +874,7 @@ $('#sheet').addEventListener('click',e=>{
   case 'stAll':{let m=0;for(const i of Object.keys(S.bag)){const k=Math.min(S.bag[i],sroom());if(k>0){add('bag',i,-k);add('store',i,k);m+=k}}toast(m?'已存入 '+m+' 件':'倉庫已滿或沒有儲物箱');break}
   case 'tkAll':{let m=0;for(const i of Object.keys(S.store)){const k=Math.min(S.store[i],room());if(k>0){add('store',i,-k);add('bag',i,k);m+=k}}toast(m?'已取出 '+m+' 件':'背包已滿');break}
   case 'sort':{const l=['cat','qty','rare'];S.set.sort=l[(l.indexOf(S.set.sort||'cat')+1)%3];break}
-  case 'bagFilter':bagFilter=id;break
+  case 'pick':{const bx=b.dataset.box;bagSel=bagSel&&bagSel.box===bx&&bagSel.id===id?null:{box:bx,id};if(dis&&dis!==id)dis=null;break}
   case 'dis':dis=id;break;
   case 'disNo':dis=null;break;
   case 'disOk':{const o=dismantle(dis,has(dis));if(o){toast('拆解完成：'+mapStr(o));vib('mid');beep(480,.12)}dis=null;break}
