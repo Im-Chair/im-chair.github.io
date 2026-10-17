@@ -393,7 +393,8 @@ function skText(s){
 
 /* ================= state ================= */
 const KEY='tower_orbs_save_v1';
-function fresh(){return{started:false,lv:1,exp:0,stam:26,stamT:Date.now(),coins:1000,gems:50,fp:50,bagCap:80,cards:[],uid:1,teams:[[],[],[]],at:0,floor:0,login:'',pulls:0,seen:{},snd:true,tut:0,sfirst:{}}}
+const TEAMS=5; // 隊伍組數（舊存檔 3 組，sanitize 會補滿）
+function fresh(){return{started:false,lv:1,exp:0,stam:26,stamT:Date.now(),coins:1000,gems:50,fp:50,bagCap:80,cards:[],uid:1,teams:[[],[],[],[],[]],at:0,floor:0,login:'',pulls:0,seen:{},snd:true,tut:0,sfirst:{}}}
 let S;
 try{S=Object.assign(fresh(),JSON.parse(localStorage.getItem(KEY)||'null')||{})}catch(e){S=fresh()}
 function sanitize(){
@@ -401,9 +402,9 @@ function sanitize(){
   S.cards=S.cards.filter(c=>c&&CARD[c.id]&&Number.isFinite(c.uid));
   S.uid=Math.max(S.uid,1+S.cards.reduce((m,c)=>Math.max(m,c.uid),0));
   const has=new Set(S.cards.map(c=>c.uid));
-  S.teams=(S.teams.length?S.teams:[[],[],[]]).slice(0,3).map(t=>{const a=(Array.isArray(t)?t:[]).slice(0,5).map(u=>has.has(u)?u:null);while(a.length<5)a.push(null);return a});
-  while(S.teams.length<3)S.teams.push([null,null,null,null,null]);
-  S.at=Math.min(2,Math.max(0,S.at|0));
+  S.teams=(S.teams.length?S.teams:[[],[],[],[],[]]).slice(0,TEAMS).map(t=>{const a=(Array.isArray(t)?t:[]).slice(0,5).map(u=>has.has(u)?u:null);while(a.length<5)a.push(null);return a});
+  while(S.teams.length<TEAMS)S.teams.push([null,null,null,null,null]);
+  S.at=Math.min(TEAMS-1,Math.max(0,S.at|0));
   ['coins','gems','fp','lv','exp','stam','floor','bagCap'].forEach(k=>{if(!Number.isFinite(S[k])||S[k]<0)S[k]=f[k]});
 }
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
@@ -491,19 +492,23 @@ const DAYA=[null,'water','fire','wood','light','dark',null];
 const DAYN={water:'週一',fire:'週二',wood:'週三',light:'週四',dark:'週五'};
 const elemOpen=a=>{const d=DAYA[new Date().getDay()];return !d||d===a};
 const TIERS=[{n:'初級',f:8,u:2},{n:'中級',f:20,u:12},{n:'高級',f:35,u:25}];
+/* 波次數：主線隨層數 3→4→5→6 波；特殊關卡依難度 初級 3、中級 4、高級 5（魔王連戰固定 5 隻）。最後一波是 Boss */
+const towerWv=f=>f<15?3:f<30?4:f<50?5:6;
+const spWv=s=>s.k==='rush'?5:2+s.t;
 function stageInfo(s){
   if(s.kind==='rogue')return rgStageInfo(s);
   if(s.kind==='tower'){
     const f=s.f,a=ATTRS[(f-1)%5];
-    return{f,name:`第 ${f} 層`,sub:`${ZONE[(f-1)%5]}迴廊${f%10===0?' · 魔王層':''}`,attr:a,cost:4+Math.floor(f/4),exp:40+f*12,coins:80+f*20,first:S.floor>=f?0:firstGems(f)};
+    const wv=towerWv(f);
+    return{f,wv,name:`第 ${f} 層`,sub:`${ZONE[(f-1)%5]}迴廊${f%10===0?' · 魔王層':''}`,attr:a,cost:4+Math.floor(f/4),exp:Math.round((40+f*12)*wv/3),coins:Math.round((80+f*20)*wv/3),first:S.floor>=f?0:firstGems(f)};
   }
   const sp=SPS.find(x=>x.k===s.k),tr=(sp.T||TIERS)[s.t-1],f=tr.f,m=SPM[s.k];
   const attr=s.k==='elem'?(s.a||'water'):sp.attr;
   let lock='';
   if(S.floor<tr.u)lock=`需先通關塔第 ${tr.u} 層`;
   else if(s.k==='elem'&&!elemOpen(attr))lock=`${AN[attr]}屬性試煉僅在${DAYN[attr]}與週末開放`;
-  const first=SFG[s.k]&&!(S.sfirst||{})[s.k+s.t]?SFG[s.k][s.t-1]:0;
-  return{f,name:s.k==='elem'?`${AN[attr]}屬性試煉·${tr.n}`:`${sp.n}·${tr.n}`,sub:sp.d,attr,cost:sp.cost+(s.t-1)*2,exp:Math.round((40+f*12)*m[0]),coins:Math.round((80+f*20)*m[1]),first,lock,tb:s.k==='swift'?3:6};
+  const first=SFG[s.k]&&!(S.sfirst||{})[s.k+s.t]?SFG[s.k][s.t-1]:0,wv=spWv(s),wm=s.k==='rush'?1:wv/3;
+  return{f,wv,name:s.k==='elem'?`${AN[attr]}屬性試煉·${tr.n}`:`${sp.n}·${tr.n}`,sub:sp.d,attr,cost:sp.cost+(s.t-1)*2,exp:Math.round((40+f*12)*m[0]*wm),coins:Math.round((80+f*20)*m[1]*wm),first,lock,tb:s.k==='swift'?3:6};
 }
 const BOSSN={water:'滄海龍王·瀾淵',fire:'煉獄炎龍·赤焰',wood:'古樹魔王·翠根',light:'熾天使長·拉斐',dark:'暗淵魔王·諾斯'};
 function mkEnemy(f,attr,boss,m={}){
@@ -548,8 +553,8 @@ function genWaves(s,info){
   const f=info.f,waves=[];
   if(s.kind==='tower'){
     const za=ATTRS[(f-1)%5],mix=()=>za,big=f%10===0,dt=dropTable(s,info);
-    for(let w=0;w<3;w++){
-      if(w<2)waves.push(Array.from({length:ri(2,3)},()=>mkEnemy(f,mix(),false)));
+    for(let w=0;w<info.wv;w++){
+      if(w<info.wv-1)waves.push(Array.from({length:ri(2,3)},()=>mkEnemy(f,mix(),false)));
       else waves.push([mkEnemy(f,za,true,big?{hp:1.5,atk:1.2}:{})]);
     }
     waves.flat().forEach(e=>{
@@ -560,12 +565,12 @@ function genWaves(s,info){
     });
   }else if(s.k==='elem'){
     const a=info.attr,p=sPool(a,s.t);
-    for(let w=0;w<3;w++)waves.push(w<2?Array.from({length:ri(2,3)},()=>mkEnemy(f,a,false)):[mkEnemy(f,a,true)]);
+    for(let w=0;w<info.wv;w++)waves.push(w<info.wv-1?Array.from({length:ri(2,3)},()=>mkEnemy(f,a,false)):[mkEnemy(f,a,true)]);
     waves.flat().forEach(e=>{e.coin=ri(20,40)+f*4;if(Math.random()<.4)e.drops.push('sp_'+a);if(!e.boss&&Math.random()<.15)e.drops.push(pick(p.normal));if(e.boss){e.drops.push(pick(p.boss));if(Math.random()<.4)e.drops.push('cr_'+a)}});
   }else if(s.k==='rush'){
     ATTRS.forEach(a=>{const e=mkEnemy(f,a,true,{hp:.6,atk:.8});e.coin=ri(40,70)+f*6;e.drops.push(pick(sPool(a,s.t).boss));if(Math.random()<.3)e.drops.push('cr_'+a);waves.push([e])});
   }else{
-    for(let w=0;w<3;w++)waves.push(Array.from({length:3},()=>{
+    for(let w=0;w<info.wv;w++)waves.push(Array.from({length:3},()=>{
       const a=pick(ATTRS),e=mkEnemy(f,a,false,{hp:.5,atk:.4});
       e.cd=e.cdMax=ri(3,4);
       if(s.k==='spirit'){e.name=AN[a]+'元素精靈';e.emo=AE[a];e.spr={a,r:0,c:0};e.drops=['sp_'+a];if(Math.random()<.2)e.drops.push('cr_'+a);if(Math.random()<.5)e.drops.push('sp_'+pick(ATTRS));e.coin=ri(10,20)}
@@ -588,12 +593,12 @@ function render(keep){
   sc.scrollTop=keep?st:0;
 }
 function rTower(){
-  let h=`<div class="tabs"><button class="${UI.sub==='tower'?'on':''}" data-act="sub" data-v="tower">🗼 神魔之塔</button><button class="${UI.sub==='sp'?'on':''}" data-act="sub" data-v="sp">🎁 特殊關卡</button><button class="${UI.sub==='rogue'?'on':''}" data-act="sub" data-v="rogue">🌀 地城</button></div>`;
+  let h=`<div class="tabs"><button class="${UI.sub==='tower'?'on':''}" data-act="sub" data-v="tower">🗼 主線</button><button class="${UI.sub==='sp'?'on':''}" data-act="sub" data-v="sp">🎁 特殊關卡</button><button class="${UI.sub==='rogue'?'on':''}" data-act="sub" data-v="rogue">🌀 地城</button></div>`;
   if(UI.sub==='tower'){
-    h+=`<div class="hint">已通關至第 <b style="color:var(--gold)">${S.floor}</b> 層。屬性相剋：<b>水→火→木→水</b>（傷害×1.5，反向×0.5），<b>光⇄暗</b>互相剋制×1.5。塔無止盡，一路往上！</div>`;
+    h+=`<div class="hint">已通關至第 <b style="color:var(--gold)">${S.floor}</b> 層。屬性相剋：<b>水→火→木→水</b>（傷害×1.5，反向×0.5），<b>光⇄暗</b>互相剋制×1.5。塔無止盡，一路往上！越高層波次越多（15 層起 4 波、30 層起 5 波、50 層起 6 波）。</div>`;
     for(let f=S.floor+3;f>=1;f--){
       const a=ATTRS[(f-1)%5],locked=f>S.floor+1,cost=4+Math.floor(f/4);
-      h+=`<div class="floor a-${a}${locked?' lock':''}${f===S.floor+1?' cur':''}${f<=S.floor?' done':''}" ${locked?'':`data-act="stage" data-k="tower" data-f="${f}"`}><div class="fn">${sprHTML(a,0,2)}<b>${f}</b></div><div class="fi"><b>第 ${f} 層 ${AE[a]}</b><div>${ZONE[(f-1)%5]}迴廊${f%10===0?' · 魔王層 '+ico('crown'):''}</div></div><div class="fc">${ico('stam')}${cost}${f>S.floor&&!locked?`<div style="font-size:11px">首通 ${ico('gem')}${firstGems(f)}</div>`:''}</div></div>`;
+      h+=`<div class="floor a-${a}${locked?' lock':''}${f===S.floor+1?' cur':''}${f<=S.floor?' done':''}" ${locked?'':`data-act="stage" data-k="tower" data-f="${f}"`}><div class="fn">${sprHTML(a,0,2)}<b>${f}</b></div><div class="fi"><b>第 ${f} 層 ${AE[a]}</b><div>${ZONE[(f-1)%5]}迴廊 · ${towerWv(f)} 波${f%10===0?' · 魔王層 '+ico('crown'):''}</div></div><div class="fc">${ico('stam')}${cost}${f>S.floor&&!locked?`<div style="font-size:11px">首通 ${ico('gem')}${firstGems(f)}</div>`:''}</div></div>`;
     }
   }else if(UI.sub==='rogue'){
     h+=rRogue(); /* 地城（Roguelike）模式，見 rogue.js */
@@ -612,7 +617,7 @@ function rTower(){
 }
 function rTeam(){
   const t=S.teams[S.at],cost=teamCost(t),cap=costCap();
-  let h=`<div class="tabs">${[0,1,2].map(i=>`<button class="${i===S.at?'on':''}" data-act="preset" data-v="${i}">隊伍 ${i+1}</button>`).join('')}</div>`;
+  let h=`<div class="tabs">${S.teams.map((_,i)=>`<button class="${i===S.at?'on':''}" data-act="preset" data-v="${i}">隊伍 ${i+1}</button>`).join('')}</div>`;
   h+=`<div class="slots">${t.map((u,i)=>{const c=u&&byUid(u);return `<div class="slot" data-act="slot" data-i="${i}">${c?mini(c,{noTeam:true}):'<div class="empty">＋</div>'}<div class="sl">${i===0?ico('crown')+' 隊長':'隊員 '+i}</div></div>`}).join('')}</div>`;
   const tm=buildTeam(null);
   let hp=0,atk=0,rcv=0;
@@ -620,7 +625,7 @@ function rTeam(){
   h+=`<div class="panel"><div style="display:flex;justify-content:space-between;font-size:14px"><b>隊伍 COST</b><b style="color:${cost>cap?'var(--bad)':'var(--ok)'}">${cost} / ${cap}</b></div>
   <div class="statline"><div>生命<b>${fmt(hp)}</b></div><div>攻擊（合計）<b>${fmt(atk)}</b></div><div>回復<b>${fmt(rcv)}</b></div></div>
   <div class="sec"><b>隊長技</b>　${tm[0]?tm[0].name:'—'}<br>${tm[0]?lsText(tm[0].ls):'請先設定隊長'}</div>
-  <div class="hint" style="margin-top:8px">統計已含隊長技（不含好友隊長）。出戰時還能選擇一位好友，好友隊長技同時生效。</div></div>
+  <div class="hint" style="margin-top:8px">統計已含隊長技（不含好友隊長）。出戰時先選一位助戰隊友，再從 ${TEAMS} 組隊伍中挑一組出戰；隊友的隊長技同時生效。</div></div>
   <div class="row"><button class="btn ghost" data-act="autoTeam">⚡ 自動編成</button><button class="btn ghost" data-act="clearTeam">清空隊伍</button></div>`;
   return h;
 }
@@ -743,7 +748,7 @@ function genFriends(){
   return out;
 }
 function openStage(spec){
-  UI.spec=spec;UI.fr={list:genFriends(),sel:0};
+  UI.spec=spec;UI.fr={list:genFriends(),sel:-1,step:'fr'};
   openModal('');renderStageModal();
 }
 function stageErr(info){
@@ -773,19 +778,36 @@ function dropSection(spec,info){
   <div class="hint" style="margin:8px 0 0">本層怪物與掉落皆為 ${AE[info.attr]} ${AN[info.attr]}屬性。${AN[info.attr]}之精靈：一般敵人 40%、Boss 50% 掉落；${AN[info.attr]}之結晶（強化素材）：Boss 25% 掉落。</div>`;
 }
 function renderStageModal(){
-  const spec=UI.spec,info=stageInfo(spec),err=stageErr(info),fr=UI.fr;
-  const ls=(d)=>lsText(d.ls);
-  setModal(`<div class="stghead bgs-${info.attr}"><div style="width:58px;height:58px;flex:none">${sprHTML(info.attr,0,2)}</div><div><h3 style="margin:0">${info.name}</h3><div class="hint" style="margin:2px 0 0;color:#c9d0ff">${info.sub}</div></div></div>
+  const spec=UI.spec,info=stageInfo(spec),fr=UI.fr;
+  const head=`<div class="stghead bgs-${info.attr}"><div style="width:58px;height:58px;flex:none">${sprHTML(info.attr,0,2)}</div><div><h3 style="margin:0">${info.name}</h3><div class="hint" style="margin:2px 0 0;color:#c9d0ff">${info.sub}</div></div></div>
   <div class="rw"><span>${ico('stam')} 消耗體力</span><b>${info.cost}（持有 ${S.stam}）</b></div>
-  <div class="rw"><span>獎勵</span><b>EXP ${fmt(info.exp)} · ${ico('coin')}${fmt(info.coins)}+${info.first?` · ${ico('gem')}${info.first}`:''}</b></div>
-  ${dropSection(spec,info)}
-  <div style="margin:10px 0 2px;font-size:13px;font-weight:800">選擇好友隊長（好友隊長技同時生效，通關 +10 ${ico('friend')}）</div>
-  ${fr.list.map((f,i)=>{const d=CARD[f.id];return `<div class="fr ${fr.sel===i?'on':''}" data-act="pickFr" data-i="${i}">${miniD(d,{lv:f.lv})}<div class="ft"><b>${f.name}</b> · ${d.name}<br><small style="color:var(--muted)">${ls(d)}</small></div></div>`}).join('')}
-  <div class="fr ${fr.sel===-1?'on':''}" data-act="pickFr" data-i="-1"><div class="ft" style="text-align:center">不使用好友</div></div>
+  <div class="rw"><span>波次</span><b>${info.wv} 波${spec.kind==='tower'||spec.k==='elem'?'（最後一波 Boss）':''}</b></div>
+  <div class="rw"><span>獎勵</span><b>EXP ${fmt(info.exp)} · ${ico('coin')}${fmt(info.coins)}+${info.first?` · ${ico('gem')}${info.first}`:''}</b></div>`;
+  /* 第一步：選助戰隊友（點一位就進到選隊伍） */
+  if(fr.step!=='team'||!fr.list[fr.sel]){
+    setModal(`${head}${dropSection(spec,info)}
+    <div style="margin:10px 0 2px;font-size:13px;font-weight:800">① 選擇助戰隊友（隊友的隊長技同時生效，通關 +10 ${ico('friend')}）</div>
+    ${fr.list.map((f,i)=>{const d=CARD[f.id];return `<div class="fr" data-act="pickFr" data-i="${i}">${miniD(d,{lv:f.lv})}<div class="ft"><b>${f.name}</b> · ${d.name}<br><small style="color:var(--muted)">${lsText(d.ls)}</small></div></div>`}).join('')}
+    <button class="btn ghost full" style="margin-top:6px" data-act="refreshFr">🔄 刷新隊友</button>
+    <div class="row sticky"><button class="btn ghost" data-act="close">返回</button></div>`);
+    return;
+  }
+  /* 第二步：選出戰隊伍 */
+  const err=stageErr(info),f=fr.list[fr.sel],fd=CARD[f.id],t=S.teams[S.at];
+  const tm=buildTeam(f);let hp=0,atk=0,rcv=0;
+  if(tm.length){applyLeaders(tm,[tm[0],tm[tm.length-1]]);tm.forEach(m=>{hp+=m.hp;atk+=m.atk;rcv+=m.rcv})}
+  setModal(`${head}
+  <div style="margin:10px 0 2px;font-size:13px;font-weight:800">① 助戰隊友</div>
+  <div class="fr on" data-act="backFr">${miniD(fd,{lv:f.lv})}<div class="ft"><b>${f.name}</b> · ${fd.name}<br><small style="color:var(--muted)">${lsText(fd.ls)}</small></div><small style="flex:none;color:var(--muted)">更換 ›</small></div>
+  <div style="margin:10px 0 6px;font-size:13px;font-weight:800">② 選擇出戰隊伍</div>
+  <div class="tabs" style="margin-bottom:6px">${S.teams.map((x,i)=>`<button class="${i===S.at?'on':''}" data-act="stTeam" data-v="${i}" style="padding:7px 0;line-height:1.2">隊伍 ${i+1}<br><small style="font-size:10px">${x[0]&&byUid(x[0])?`COST ${teamCost(x)}`:'未編成'}</small></button>`).join('')}</div>
+  <div class="grid" style="grid-template-columns:repeat(6,minmax(0,1fr));gap:4px">${t.map((u,i)=>{const c=u&&byUid(u);return `<div class="slot">${c?mini(c,{noTeam:true}):'<div class="empty">＋</div>'}<div class="sl">${i===0?ico('crown')+'隊長':'隊員'+i}</div></div>`}).join('')}<div class="slot">${miniD(fd,{lv:f.lv})}<div class="sl" style="color:var(--gold)">隊友</div></div></div>
+  <div class="statline"><div>生命<b>${fmt(hp)}</b></div><div>攻擊（合計）<b>${fmt(atk)}</b></div><div>回復<b>${fmt(rcv)}</b></div></div>
+  <div class="hint" style="margin-top:4px">COST ${teamCost(t)} / ${costCap()}・統計已含雙方隊長技。要調整成員請到下方「隊伍」頁。</div>
   ${bagFree()<5?`<div class="hint" style="color:var(--bad);margin-top:8px">⚠ 背包空間只剩 ${bagFree()} 格，多出的掉落卡會自動換成金幣。</div><button class="btn full" style="margin-top:6px" data-act="stageBag">${ico('gem')} 1 魔石擴充背包 +5 格（現有 ${S.bagCap}）</button>`:''}
   ${err?`<div class="hint" style="color:var(--bad);margin-top:8px">⚠ ${err}</div>`:''}
   ${err&&err.startsWith('體力')?`<button class="btn full" style="margin-top:6px" data-act="stageStam">${ico('gem')} 1 魔石補滿體力（持有 ${S.gems}）</button>`:''}
-  <div class="row sticky"><button class="btn ghost" data-act="close">返回</button><button class="btn gold ${err?'dis':''}" data-act="fight">出戰！</button></div>`);
+  <div class="row sticky"><button class="btn ghost" data-act="backFr">上一步</button><button class="btn gold ${err?'dis':''}" data-act="fight">出戰！</button></div>`);
 }
 
 /* ================= gacha ================= */
@@ -822,11 +844,15 @@ ACT.stage=t=>{
   const spec=t.dataset.k==='tower'?{kind:'tower',f:+t.dataset.f}:{kind:'sp',k:t.dataset.sk,t:+t.dataset.t,a:t.dataset.a||undefined};
   openStage(spec);
 };
-ACT.pickFr=t=>{UI.fr.sel=+t.dataset.i;renderStageModal()};
+ACT.pickFr=t=>{UI.fr.sel=+t.dataset.i;UI.fr.step='team';renderStageModal()};
+ACT.backFr=()=>{UI.fr.step='fr';renderStageModal()};
+ACT.refreshFr=()=>{UI.fr.list=genFriends();UI.fr.sel=-1;beep(520,.08);renderStageModal()};
+ACT.stTeam=t=>{S.at=+t.dataset.v;save();renderStageModal()};
 ACT.fight=()=>{
   const spec=UI.spec,info=stageInfo(spec),err=stageErr(info);
   if(err)return toast(err);
-  const fr=UI.fr.sel>=0?UI.fr.list[UI.fr.sel]:null;
+  const fr=UI.fr.list[UI.fr.sel];
+  if(UI.fr.step!=='team'||!fr)return toast('請先選擇助戰隊友');
   const wasFull=S.stam>=stamMax();S.stam-=info.cost;if(wasFull)S.stamT=Date.now();
   save();closeAll();startBattle(spec,fr);
 };
@@ -952,14 +978,14 @@ ACT.copySave=()=>{const t=$('#sv-txt');t.select();try{navigator.clipboard.writeT
 ACT.importSave=()=>openModal(`<h3>匯入存檔</h3><div class="hint">貼上先前匯出的文字。匯入會覆蓋目前進度。</div><textarea id="sv-in" style="width:100%;height:120px;background:#0c1130;color:#cfd6ff;border:1px solid var(--line);border-radius:8px;font-size:11px"></textarea><div class="row"><button class="btn ghost" data-act="close">取消</button><button class="btn gold" data-act="doImport">匯入</button></div>`);
 ACT.doImport=()=>{try{const o=JSON.parse(decodeURIComponent(escape(atob($('#sv-in').value.trim()))));if(!o||!Array.isArray(o.cards))throw 0;S=Object.assign(fresh(),o);sanitize();save();closeAll();render();toast('匯入成功')}catch(e){toast('存檔格式不正確')}};
 ACT.snd=()=>{S.snd=!S.snd;save();render(true)};
-ACT.reset=()=>confirmBox('確定要刪除所有進度並重新開始嗎？此動作無法復原。',()=>{try{localStorage.removeItem(KEY)}catch(e){}S=fresh();S.teams=[[null,null,null,null,null],[null,null,null,null,null],[null,null,null,null,null]];closeAll();render();starterModal()},'重置');
+ACT.reset=()=>confirmBox('確定要刪除所有進度並重新開始嗎？此動作無法復原。',()=>{try{localStorage.removeItem(KEY)}catch(e){}S=fresh();S.teams=Array.from({length:TEAMS},()=>[null,null,null,null,null]);closeAll();render();starterModal()},'重置');
 ACT.help=()=>openModal(`<h3>📖 遊戲說明</h3>
 <div class="sec"><b>🔮 轉珠</b><br>按住任一顆珠子拖動，經過的珠子會依序位移。放開手指或時間用完後，三顆以上同色相連即消除。連鎖消除會累積 COMBO。</div>
 <div class="sec"><b>⚔️ 攻擊</b><br>每消除一組某屬性的珠子，隊伍中同屬性的卡片就會發動攻擊。消除越多顆、COMBO 越高，傷害越大。<b>單組一次消除 5 顆以上</b>（或一橫排 6 顆）會變成<b>全體攻擊</b>，同時打到所有敵人。❤️ 心珠用來回復生命。</div>
 <div class="sec"><b>🌈 屬性相剋</b><br>水→火→木→水（×1.5，反向×0.5）；光⇄暗互相剋制（×1.5）。</div>
 <div class="sec"><b>✨ 技能</b><br>點擊隊伍中的卡片可查看並發動主動技；技能有冷卻回合。強化時餵食「相同技能」的卡片可讓技能升級（最高 Lv5，每級冷卻 -1）。隊長技與好友隊長技會同時生效。</div>
 <div class="sec"><b>🎴 卡片</b><br>稀有度 ★1~★7。用精靈或其他卡片「強化」升級；升到滿級後，集齊同屬性精靈可「進化」成更高稀有度。可在「抽卡」用魔石召喚，或通關時掉落。</div>
-<div class="sec"><b>🗼 爬塔</b><br>每層 3 個波次，最後是 Boss。首次通關可獲得魔石。體力每 20 秒回復 1 點，升級時全回復。</div>
+<div class="sec"><b>🗼 主線</b><br>每層 3 個波次起跳，越高層波次越多（15 層 4 波、30 層 5 波、50 層 6 波），最後一波是 Boss。特殊關卡初級 3 波、中級 4 波、高級 5 波。出戰前先選助戰隊友、再選要出戰的隊伍。首次通關可獲得魔石。體力每 20 秒回復 1 點，升級時全回復。</div>
 <button class="btn ghost full" style="margin-top:10px" data-act="close">關閉</button>`);
 ACT.starter=t=>{
   const a=t.dataset.v,k=ATTRS.indexOf(a),ids=[a+'A3',a+'B3',ATTRS[(k+1)%5]+'A3',ATTRS[(k+2)%5]+'A3',ATTRS[(k+3)%5]+'A3'];
@@ -1355,6 +1381,6 @@ function init(){
 document.addEventListener('DOMContentLoaded',init); // rogue.js 在本 script 之後載入，等它也跑完再初始化
 try{if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js').catch(()=>{})}catch(e){}
 </script>
-<script src="rogue.js?v=5"></script>
+<script src="rogue.js?v=6"></script>
 </body>
 </html>

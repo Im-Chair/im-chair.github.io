@@ -32,6 +32,8 @@ let RG = (() => {
       if (r) {
         r.relics = r.relics || []; r.orb = r.orb || {}; r.energy = r.energy || 0; r.core = r.core || 0;
         r.asc = r.asc || 0; r.curse = r.curse || 0; r.seenEv = r.seenEv || []; r.boss = r.boss || 'seal';
+        if (!r.map) { r.map = rgMapGen(); r.path = []; delete r.choices }   // 舊版是每層三選一，補一張路線圖
+        r.path = r.path || [];
       }
       return d;
     }
@@ -176,15 +178,51 @@ function rgGiveRelic(r) {
   return `遺物已經全部到手，改為 ${AE[a]} ${AN[a]}珠強化 +1。`;
 }
 
-/* ---------- 路線 ---------- */
-function rgChoices(F) {
-  if (F >= RG_FLOORS) return ['boss'];
-  if (F === 1) return ['battle', 'battle'];
-  if (F === RG_FLOORS - 1) return ['elite', 'shop', 'rest'];   // 魔王前一定有營火與商店可選
+/* ---------- 路線圖 ----------
+   開局一次產生整張地圖：run.map[F-1] 是第 F 層的房間 { k 種類, l 道（0/1/2）, a 屬性, to 下一層可走到的道 }，
+   run.path[F-1] 是第 F 層實際走的道。第 1 層兩間戰鬥、第 5 層保證有商店、第 9 層固定 精英／商店／營火、第 10 層魔王。 */
+function rgFloorKinds(F, n) {
+  if (F === RG_FLOORS - 1) return ['elite', 'shop', 'rest'].sort(() => Math.random() - .5);   // 魔王前一定有營火與商店可選
+  if (F === 1) return Array(n).fill('battle');
   const w = { battle: 5, elite: F >= 3 ? 2 : 0, event: 2.5, shop: F >= 3 ? 1.2 : 0, rest: F >= 4 ? 1.5 : 0 };
   const out = F === 5 ? ['shop'] : [];   // 中段保證一間商店
-  while (out.length < 3) { const k = wpick(Object.keys(w), x => w[x]); if (k === 'battle' || !out.includes(k)) out.push(k) }
-  return out.sort((a, b) => RG_ORDER.indexOf(a) - RG_ORDER.indexOf(b));
+  while (out.length < n) { const k = wpick(Object.keys(w), x => w[x]); if (k === 'battle' || !out.includes(k)) out.push(k) }
+  return out.sort(() => Math.random() - .5);
+}
+function rgMapGen() {
+  const map = [];
+  for (let F = 1; F <= RG_FLOORS; F++) {
+    const lanes = F === RG_FLOORS ? [1] : F === 1 ? [0, 2] : [0, 1, 2];
+    const ks = F === RG_FLOORS ? ['boss'] : rgFloorKinds(F, lanes.length);
+    map.push(lanes.map((l, i) => ({ k: ks[i], l, a: pick(ATTRS), to: [] })));
+  }
+  for (let fi = 0; fi < RG_FLOORS - 1; fi++) {
+    const cur = map[fi], nx = map[fi + 1], has = l => nx.some(n => n.l === l);
+    if (nx.length === 1) { cur.forEach(n => n.to = [nx[0].l]); continue }
+    cur.forEach(n => {
+      if (has(n.l)) n.to.push(n.l);
+      const d = pick([-1, 1]), l2 = n.l + d, nb = cur.find(m => m.l === l2);
+      // 往旁邊多開一條岔路（不跟鄰道已有的連線交叉）；有岔路時偶爾收掉直走那條
+      if (Math.random() < .55 && has(l2) && !(nb && nb.to.includes(n.l))) {
+        n.to.push(l2);
+        if (n.to.length > 1 && Math.random() < .35) n.to = [l2];
+      }
+      if (!n.to.length) n.to.push(nx.reduce((b, m) => Math.abs(m.l - n.l) < Math.abs(b.l - n.l) ? m : b).l);
+    });
+    // 每個房間至少要有一條路進得來
+    nx.forEach(m => {
+      if (cur.some(n => n.to.includes(m.l))) return;
+      cur.reduce((b, n) => Math.abs(n.l - m.l) < Math.abs(b.l - m.l) ? n : b).to.push(m.l);
+    });
+    cur.forEach(n => n.to.sort());
+  }
+  return map;
+}
+// 目前這層可以進的房間（index）：第 1 層或舊存檔沒有前一步紀錄時全部可進
+function rgAvail(run) {
+  const row = run.map[run.floor - 1] || [], pl = run.floor > 1 ? run.path[run.floor - 2] : null;
+  const prev = pl == null ? null : (run.map[run.floor - 2] || []).find(n => n.l === pl);
+  return row.map((n, i) => i).filter(i => !prev || prev.to.includes(row[i].l));
 }
 
 /* ---------- 隊伍 ---------- */
@@ -235,9 +273,11 @@ function rRogue() {
     <div style="display:flex;justify-content:space-between;align-items:baseline"><h3 style="margin:0">🌀 地城 第 ${run.floor} / ${RG_FLOORS} 層${run.asc ? ` <small style="color:var(--muted)">深淵 ${run.asc}</small>` : ''}</h3><span>${ico('coin')}${fmt(run.gold)}</span></div>
     <div style="margin:8px 0 2px;font-size:12px;color:var(--muted)">隊伍生命 ${hp}%${run.curse ? '　<span style="color:var(--bad)">🧰 詛咒：下一場敵人攻擊 ×1.4</span>' : ''}</div>
     <div style="height:8px;border-radius:4px;background:#0006;overflow:hidden"><i style="display:block;height:100%;width:${hp}%;background:${hp < 30 ? 'var(--bad)' : 'var(--ok)'}"></i></div>
-    <div style="margin-top:10px">${rgTeamHTML('rgMember')}</div>
+    <div style="margin:10px 0 4px;font-size:12px;color:var(--muted)">隊伍 ${run.team.length} / 5　<small>（點隊員看詳情）</small></div>
+    ${rgTeamHTML('rgMember')}
     ${rgBuildHTML()}
-  </div>`;
+  </div>
+  ${rgMapHTML(run, true)}`;
   if (run.phase === 'reward') {
     h += `<button class="btn gold full" data-act="rgReward">🎁 ${run.bonus ? '挑選出發前的遺物' : '領取戰鬥獎勵'}</button>`;
   } else if (run.phase === 'shop') {
@@ -249,29 +289,97 @@ function rRogue() {
     h += `<div class="hint" style="margin-top:4px">上一場戰鬥（${n.e} ${n.n}）中途離開了。重新挑戰同一個房間，但要付出 ${RG_INTERRUPT * 100}% 生命的代價。</div>
       <button class="btn gold full" data-act="rgResume">重新挑戰</button>`;
   } else {
-    h += `<div class="hint" style="margin-top:4px">選擇下一個房間：</div>`;
-    run.choices.forEach((k, i) => {
-      const n = RG_NODE[k], a = ATTRS[(run.floor + i) % 5], fight = ['battle', 'elite', 'boss'].includes(k);
-      const d = k === 'boss' ? `${rgArt('boss-' + run.boss, RG_BOSS[run.boss].e, 14)} ${RG_BOSS[run.boss].n}：${RG_BOSS[run.boss].d}` : n.d;
-      h += `<div class="floor a-${fight ? a : 'heart'}" data-act="rgGo" data-i="${i}"><div class="fn" style="display:grid;place-items:center">${rgArt('node-' + k, n.e, RG_ART.has('node-' + k) ? 44 : 26)}</div>
-        <div class="fi"><b>${n.n}</b><div>${d}</div></div><div class="fc">${fight ? AE[a] : ''}</div></div>`;
-    });
-    if (run.floor < RG_FLOORS) h += `<div class="hint" style="margin-top:6px">${rgArt('node-boss', '👑', 14)} 第 ${RG_FLOORS} 層魔王：${rgArt('boss-' + run.boss, RG_BOSS[run.boss].e, 14)} <b>${RG_BOSS[run.boss].n}</b>——${RG_BOSS[run.boss].d}</div>`;
+    h += rgNodeInfo(run);
   }
   h += `<div class="row"><button class="btn ghost" data-act="rgQuit">放棄這次地城</button></div>`;
+  requestAnimationFrame(rgMapScroll);
   return h;
 }
+
+/* ---------- 路線圖畫面 ----------
+   由下（第 1 層）往上（魔王）畫；走過的路金色、這層可進的房間會發光。點任一房間看說明，可進的才有「前往」。 */
+const RG_ROW = 56, rgLaneX = l => [16.67, 50, 83.33][l];
+function rgMapHTML(run, live) {
+  const H = RG_FLOORS * RG_ROW, y = F => (RG_FLOORS - F) * RG_ROW + RG_ROW / 2;
+  const av = run.phase === 'map' ? rgAvail(run) : [], sel = live && UI.rgSel;
+  let lines = '', nodes = '';
+  run.map.forEach((row, fi) => {
+    const F = fi + 1;
+    nodes += `<span class="rgfl" style="top:${y(F)}px;${F === run.floor ? 'color:var(--gold);font-weight:800' : ''}">${F}F</span>`;
+    row.forEach((n, i) => {
+      n.to.forEach(l2 => {
+        const took = run.path[fi] === n.l && run.path[fi + 1] === l2;
+        lines += `<line x1="${rgLaneX(n.l)}" y1="${y(F)}" x2="${rgLaneX(l2)}" y2="${y(F + 1)}" stroke="${took ? '#ffd36b' : '#3a4790'}" stroke-width="${took ? 3 : 2}" ${took ? '' : 'stroke-dasharray="4 4"'} vector-effect="non-scaling-stroke"/>`;
+      });
+      const fight = ['battle', 'elite', 'boss'].includes(n.k);
+      const st = F < run.floor ? (run.path[fi] === n.l ? 'done' : 'off')
+        : F > run.floor ? 'fut'
+        : run.phase === 'map' ? (av.includes(i) ? 'av' : 'off')
+        : run.path[fi] === n.l ? 'here' : 'off';
+      const on = sel && sel.F === F && sel.i === i ? ' sel' : '';
+      nodes += `<div class="rgn ${st}${on}${n.k === 'boss' ? ' boss' : ''} a-${fight ? n.a : 'heart'}" style="left:${rgLaneX(n.l)}%;top:${y(F)}px" ${live ? `data-act="rgNode" data-f="${F}" data-i="${i}"` : ''}>${rgArt('node-' + n.k, RG_NODE[n.k].e, n.k === 'boss' ? 30 : 22)}</div>`;
+    });
+  });
+  return `<div class="rgmap" id="${live ? 'rg-map' : 'rg-map2'}"><div class="rgmap-in" style="height:${H}px">
+    <svg viewBox="0 0 100 ${H}" preserveAspectRatio="none">${lines}</svg>${nodes}</div></div>
+    <div class="hint" style="margin:4px 0 8px;text-align:center"><span style="color:var(--gold)">●</span> 可前往　<span style="color:var(--ok)">●</span> 目前位置　✔ 走過的路${live ? '　點房間看說明' : ''}</div>`;
+}
+// 路線圖捲到目前這層（點房間看說明時保留原本的捲動位置）
+function rgMapScroll() {
+  const m = $('#rg-map'), run = RG.run; if (!m || !run) return;
+  if (UI.rgMapKeep != null) { m.scrollTop = UI.rgMapKeep; UI.rgMapKeep = null; return }
+  m.scrollTop = (RG_FLOORS - run.floor) * RG_ROW + RG_ROW / 2 - m.clientHeight / 2;
+}
+// 路線圖下方的房間說明：預設顯示這層第一個可進的房間
+function rgNodeInfo(run) {
+  const av = rgAvail(run);
+  let s = UI.rgSel && run.map[UI.rgSel.F - 1] && run.map[UI.rgSel.F - 1][UI.rgSel.i] ? UI.rgSel : null;
+  if (!s) s = { F: run.floor, i: av[0] || 0 };
+  const n = run.map[s.F - 1][s.i], N = RG_NODE[n.k], fight = ['battle', 'elite', 'boss'].includes(n.k);
+  const d = n.k === 'boss' ? `${rgArt('boss-' + run.boss, RG_BOSS[run.boss].e, 14)} ${RG_BOSS[run.boss].n}：${RG_BOSS[run.boss].d}` : N.d;
+  const can = s.F === run.floor && av.includes(s.i);
+  const why = s.F < run.floor ? '已經走過這一層' : s.F > run.floor ? `還在前方（第 ${s.F} 層）` : '從你走的路到不了這裡';
+  return `<div class="floor a-${fight ? n.a : 'heart'}${can ? ' cur' : ''}" ${can ? `data-act="rgGo" data-i="${s.i}"` : 'style="cursor:default"'}>
+    <div class="fn" style="display:grid;place-items:center">${rgArt('node-' + n.k, N.e, RG_ART.has('node-' + n.k) ? 44 : 26)}</div>
+    <div class="fi"><b>${s.F}F · ${N.n}</b>${fight ? ` ${AE[n.a]}` : ''}<div>${d}</div></div>
+    <div class="fc">${can ? '<b>前往 ›</b>' : `<small style="color:var(--muted)">${why}</small>`}</div></div>`;
+}
+ACT.rgNode = t => {
+  const m = $('#rg-map'); UI.rgMapKeep = m ? m.scrollTop : null;
+  UI.rgSel = { F: +t.dataset.f, i: +t.dataset.i }; render(true);
+};
+document.head.insertAdjacentHTML('beforeend', `<style>
+.rgmap{max-height:340px;overflow-y:auto;border:1px solid var(--line);border-radius:12px;background:#0a0e27;margin-bottom:2px}
+.rgmap-in{position:relative}
+.rgmap svg{position:absolute;inset:0;width:100%;height:100%}
+.rgfl{position:absolute;left:6px;font-size:10px;color:var(--muted);transform:translateY(-50%)}
+.rgn{position:absolute;width:40px;height:40px;transform:translate(-50%,-50%);border-radius:50%;display:grid;place-items:center;cursor:pointer;border:2px solid #3a4790;background:radial-gradient(circle at 50% 35%,color-mix(in srgb,var(--c) 50%,#1a2250),#10163a 80%)}
+.rgn.boss{width:52px;height:52px}
+.rgn.fut{opacity:.8}
+.rgn.off{opacity:.28;filter:grayscale(.85)}
+.rgn.done{border-color:var(--gold)}
+.rgn.done::after{content:"✔";position:absolute;right:-5px;bottom:-5px;font-size:9px;width:15px;height:15px;line-height:15px;text-align:center;border-radius:50%;background:var(--gold);color:#3a2a00}
+.rgn.here{border-color:var(--ok);box-shadow:0 0 12px var(--ok)}
+.rgn.av{border-color:var(--gold);box-shadow:0 0 12px #ffd36baa;animation:rgpulse .9s ease-in-out infinite alternate}
+.rgn.sel{outline:2px solid #fff;outline-offset:2px}
+@keyframes rgpulse{to{box-shadow:0 0 20px #ffd36b}}
+</style>`);
 ACT.rgAsc = t => { const M = RG.meta; M.ascSel = clamp(M.ascSel + +t.dataset.v, 0, M.ascMax); rgSave(); render(true) };
 ACT.rgRelics = () => {
   const run = RG.run; if (!run) return;
   const orbs = Object.keys(run.orb).filter(a => run.orb[a]);
-  openModal(`<h3>🧿 本局遺物（${run.relics.length}）</h3>
-    ${B && B.rg ? rgFoeHTML() : ''}
+  const inB = B && B.rg;
+  openModal(`<h3>🧿 本局狀態　<small style="color:var(--muted)">第 ${run.floor} / ${RG_FLOORS} 層</small></h3>
+    ${inB ? rgFoeHTML() : ''}
+    ${inB ? `<div class="sec"><b>隊伍 ${run.team.length} / 5</b>${rgTeamHTML('')}</div>
+    <div style="margin:8px 0 4px;font-size:13px;font-weight:800">🗺️ 路線</div>${rgMapHTML(run, false)}` : ''}
+    <div style="margin:8px 0 0;font-size:13px;font-weight:800">遺物（${run.relics.length}）</div>
     ${run.relics.map(id => `<div class="sec">${rgRelicLine(id)}<br>${RG_RELIC[id].d}</div>`).join('')}
     ${orbs.length ? `<div class="sec"><b>符石強化</b><br>${orbs.map(a => `${AE[a]} ${AN[a]}珠 Lv${run.orb[a]}（${a === 'heart' ? '回復' : '傷害'} +${Math.round(run.orb[a] * RG_ORB_UP * 100)}%）`).join('<br>')}</div>` : ''}
     ${rgHas('cell') ? `<div class="sec">⚡ 能量 ${run.energy} / ${RG_CHARGE}</div>` : ''}
     ${rgHas('core') ? `<div class="sec">🔮 共鳴核心：隊長屬性攻擊 +${Math.min(60, run.core)}%</div>` : ''}
     <button class="btn ghost full" style="margin-top:8px" data-act="close">關閉</button>`, 'wide');
+  const m2 = $('#rg-map2'); if (m2) m2.scrollTop = (RG_FLOORS - run.floor) * RG_ROW + RG_ROW / 2 - m2.clientHeight / 2;
 };
 // 戰鬥中：目前這波敵人的特性完整說明
 function rgFoeHTML() {
@@ -303,7 +411,7 @@ ACT.rgLead = t => {
     team: [{ id: lead.id, lv: 20 }, { id: rgCardOf(lead.attr, 3, lead.fam), lv: 15 }, { id: rgCardOf(lead.attr, 3, lead.fam), lv: 15 }],
     relics: [RG_START[lead.attr]], orb: {}, energy: 0, core: 0,
     asc: rgUnl('asc') ? RG.meta.ascSel : 0, curse: 0, seenEv: [], boss: pick(Object.keys(RG_BOSS)),
-    choices: rgChoices(1),
+    map: rgMapGen(), path: [],
   };
   const had = RG_UNLOCK.filter(u => u.ok(RG.meta)).map(u => u.id);
   RG.meta.runs++;   // 「挑戰次數」類的解鎖在出發時就成立，這裡提示（其他的在結算畫面提示）
@@ -312,7 +420,7 @@ ACT.rgLead = t => {
     run.phase = 'reward'; run.bonus = true;
     run.reward = rgRelicPick(3, id => RG_RELIC[id].tag === 'any').map(id => ({ t: 'relic', id }));
   }
-  rgSave(); closeAll(); render();
+  UI.rgSel = null; rgSave(); closeAll(); render();
   if (run.bonus) rgShowReward();
 };
 
@@ -325,7 +433,9 @@ function rgFight(room) {
 }
 ACT.rgGo = t => {
   const run = RG.run; if (!run || run.phase !== 'map') return;
-  const i = +t.dataset.i, k = run.choices[i];
+  const i = +t.dataset.i, n = run.map[run.floor - 1][i];
+  if (!n || !rgAvail(run).includes(i)) return toast('從目前的路線到不了這個房間');
+  const k = n.k; run.path[run.floor - 1] = n.l;
   if (k === 'rest') return rgRest();
   if (k === 'shop') { run.phase = 'shop'; run.shop = rgShopGen(run.floor); rgSave(); render(true); return rgShowShop() }
   if (k === 'event') {
@@ -333,7 +443,7 @@ ACT.rgGo = t => {
     run.ev = pick(left.length ? left : Object.keys(RG_EVENT)); run.seenEv.push(run.ev);
     run.phase = 'event'; rgSave(); render(true); return rgShowEvent();
   }
-  rgFight({ node: k, a: ATTRS[(run.floor + i) % 5], bm: k === 'boss' ? run.boss : undefined });
+  rgFight({ node: k, a: n.a, bm: k === 'boss' ? run.boss : undefined });
 };
 ACT.rgResume = () => {
   const run = RG.run; if (!run || run.phase !== 'battle' || B) return;
@@ -792,7 +902,7 @@ ACT.rgRestDo = t => {
 function rgNextFloor() {
   const run = RG.run;
   RG.meta.best = Math.max(RG.meta.best, run.floor);
-  run.floor++; run.phase = 'map'; run.reward = null; run.shop = null; run.ev = null; run.choices = rgChoices(run.floor);
+  run.floor++; run.phase = 'map'; run.reward = null; run.shop = null; run.ev = null; UI.rgSel = null;
   rgSave(); UI.tab = 'tower'; UI.sub = 'rogue'; render();
 }
 
