@@ -24,6 +24,7 @@
 ├── solitaire/          # 接龍（單一 index.html）
 ├── tower-orbs/         # 轉珠之塔（index.html 主程式＋rogue.js 地城模式，另自帶 manifest/sw，獨立 PWA；
 │                       #   地城圖示放 rg/，有圖用圖、沒圖用 emoji；改 rogue.js 要同步升 index.html 的 ?v= 與 sw.js 版號）
+├── tetris/             # 俄羅斯方塊（單一 index.html；紀錄 arcade-tetris-stats，含對戰電腦模式）
 ├── drift-ark/          # 漂流紀元：最後的方舟（單一 index.html，美術以 base64 內嵌；存檔 key drift-ark-v1）
 ├── rpg/                # 貪婪深淵（Roguelite，模組化多檔案 — 見下）
 ├── icons/              # 首頁卡片圖示 <遊戲>.webp（可缺，缺的卡片沿用 emoji）
@@ -40,7 +41,7 @@
 
 ## 兩種遊戲型態
 
-1. **單檔遊戲**（數獨、掃雷、幾A幾B、接龍、漂流方舟）：整個遊戲的 HTML / CSS / JS 全部內嵌在該資料夾的 `index.html`。改這些遊戲只需動一個檔案。
+1. **單檔遊戲**（數獨、掃雷、幾A幾B、接龍、漂流方舟、俄羅斯方塊）：整個遊戲的 HTML / CSS / JS 全部內嵌在該資料夾的 `index.html`。改這些遊戲只需動一個檔案。
 2. **模組化遊戲**（rpg/貪婪深淵）：拆成多個 `.js` 檔，用 `<script src>` 依序載入，共享全域變數，無模組系統（非 ES modules）。
 
 ## RPG（貪婪深淵）架構

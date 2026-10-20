@@ -1,4 +1,4 @@
-const CACHE = 'arcade-v52';
+const CACHE = 'arcade-v53';
 // RPG 敵人圖示：檔名＝ENEMIES／首領／域限精英的 key。v385 起 50 隻全數有圖，已無 SVG 回落。
 const RPG_MON = [
   'slime','bat','skel','thief','rat','garg','spider',
@@ -35,8 +35,9 @@ const ASSETS = [
   '/minesweeper/', '/bulls-cows/', '/solitaire/', '/sudoku/', '/tower-orbs/',
   '/tower-orbs/rogue.js',   // v47：轉珠之塔的地城模式拆成獨立檔
   '/drift-ark/',            // v48：漂流方舟（單檔，美術以 base64 內嵌）
+  '/tetris/',               // v53：俄羅斯方塊（單檔）
   // v45：小遊戲美術（可一張一張補；檔案還不存在時 install 只會略過，不會失敗）。產出流程見 美術需求_ChatGPT出圖.md
-  ...['sudoku','minesweeper','bulls-cows','solitaire','rpg','tower-orbs','drift-ark'].map(k => `/icons/${k}.webp`),
+  ...['sudoku','minesweeper','bulls-cows','solitaire','rpg','tower-orbs','drift-ark','tetris'].map(k => `/icons/${k}.webp`),
   '/solitaire/back.webp', '/solitaire/felt.webp', '/minesweeper/flag.webp', '/minesweeper/mine.webp',
   // RPG：預先快取核心檔，讓「裝了 App 但還沒連網進過 RPG」的使用者也能離線開啟。
   // 這裡存的是「不帶 ?v= 版號」的基底網址，靠下方 fetch fallback 的 ignoreSearch 對應到實際帶版號的請求。

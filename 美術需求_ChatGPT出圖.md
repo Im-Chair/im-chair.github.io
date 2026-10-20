@@ -32,6 +32,7 @@
 | 5 | `icon-rpg` | 1024×1024 | `icons/rpg.webp` | 同上 | ★★★ |
 | 6 | `icon-tower-orbs` | 1024×1024 | `icons/tower-orbs.webp` | 同上 | ★★★ |
 | 6b | `icon-drift-ark` | 1024×1024 | `icons/drift-ark.webp` | 同上（漂流方舟） | ★★★ |
+| 6c | `icon-tetris` | 1024×1024 | `icons/tetris.webp` | 同上（俄羅斯方塊） | ★★★ |
 | 7 | `solitaire-back` | 1024×1536（直式） | `solitaire/back.webp`（300×420） | 接龍牌背 | ★★ |
 | 8 | `solitaire-felt` | 1024×1024 | `solitaire/felt.webp`（512，鋪滿） | 接龍桌布 | ★★ |
 | 9 | `minesweeper-flag` | 1024×1024 透明 | `minesweeper/flag.webp`（96） | 掃雷旗子 | ★ |
@@ -75,6 +76,7 @@
 | `icon-rpg` | 同樣風格，下一張主題：**深淵探險** —— 從上往下看的一個深不見底的洞口，洞緣散落幾枚發光金幣。 |
 | `icon-tower-orbs` | 同樣風格，下一張主題：**轉珠** —— 一顆發光的魔法寶珠，下方是一座剪影高塔。 |
 | `icon-drift-ark` | 同樣風格，下一張主題：**海上漂流** —— 從斜上方看的一艘小木筏，中間立著一根掛破帆的桅杆，周圍是幾道發光的波紋與一兩個漂浮的木箱。 |
+| `icon-tetris` | 同樣風格，下一張主題：**俄羅斯方塊** —— 一個發光的 T 形方塊正往下落，下方是兩三排疊得參差的方塊，最底下一整排正在發亮消除。 |
 
 ### 驗收
 

@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="俄羅斯方塊">
+<meta name="theme-color" content="#0e1819">
+<title>俄羅斯方塊</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=Silkscreen:wght@400;700&display=swap" rel="stylesheet">
+<style>
+/* Layout: one-screen portrait game. Header stats, hold | board | next, thumb pad at the bottom. */
+:root {
+  --bg: #0e1819;
+  --panel: #152426;
+  --line: #254043;
+  --fg: #e9efe9;
+  --dim: #7f9a98;
+  --accent: #ffb347;
+  --accent-ink: #231605;
+  --board: #0b1314;
+  --grid: rgba(127, 154, 152, 0.10);
+  --font-display: 'Silkscreen', 'Courier New', monospace;
+  --font-num: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  --font-ui: system-ui, -apple-system, 'PingFang TC', 'Noto Sans TC', 'Microsoft JhengHei', sans-serif;
+  color-scheme: dark;
+}
+[hidden] { display: none !important; }
+html { height: 100%; }
+body {
+  height: 100%;
+  margin: 0;
+  box-sizing: border-box;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-ui);
+  padding-top: calc(10px + env(safe-area-inset-top, 0px));
+  padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  overscroll-behavior: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+#app {
+  height: 100%;
+  max-width: 520px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.stats { display: flex; gap: 8px; }
+.stat {
+  flex: 1;
+  min-width: 0;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 6px 10px 7px;
+}
+.label {
+  font-family: var(--font-display);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--dim);
+  text-transform: uppercase;
+}
+.value {
+  font-family: var(--font-num);
+  font-weight: 600;
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.25;
+}
+#stage {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+#row { display: flex; gap: 8px; align-items: flex-start; }
+.col { width: 64px; display: flex; flex-direction: column; gap: 6px; flex: none; }
+.col canvas { display: block; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; }
+.best { margin-top: 6px; }
+.best .value { font-size: 16px; }
+#boardWrap { position: relative; flex: none; }
+#board {
+  display: block;
+  background: var(--board);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  touch-action: none;
+}
+#overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  overflow-y: auto;
+  text-align: center;
+  background: rgba(11, 19, 20, 0.88);
+  border-radius: 6px;
+}
+#overlay h1 { margin: 0; font-size: 26px; font-weight: 800; letter-spacing: 0.04em; text-wrap: balance; }
+#overlay .sub { font-family: var(--font-display); font-size: 10px; letter-spacing: 0.12em; color: var(--accent); }
+#overlay > :first-child { margin-top: auto; }
+#overlay > :last-child { margin-bottom: auto; }
+#overlay .how { margin: 0; font-size: 11.5px; line-height: 1.5; color: var(--dim); text-wrap: balance; }
+.opts { width: 100%; display: grid; gap: 8px; }
+.optrow { display: grid; gap: 4px; }
+.seg { display: flex; gap: 4px; }
+.seg button {
+  flex: 1 1 auto;
+  height: 30px;
+  padding: 0 6px;
+  font: 600 12px var(--font-ui);
+  background: var(--panel);
+  color: var(--dim);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  cursor: pointer;
+}
+.seg button.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.seg button:focus-visible { outline: 2px solid var(--fg); outline-offset: 1px; }
+#oppBox { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+#overlay .final { font-family: var(--font-num); font-size: 15px; color: var(--fg); }
+.primary {
+  font: 700 15px var(--font-ui);
+  background: var(--accent);
+  color: var(--accent-ink);
+  border: 0;
+  border-radius: 10px;
+  padding: 11px 26px;
+  cursor: pointer;
+}
+.primary:focus-visible, .btn:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+.btn {
+  height: 56px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  color: var(--fg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 600 13px var(--font-ui);
+  cursor: pointer;
+  touch-action: none;
+  padding: 0;
+}
+.btn svg { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.btn.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btn.small { height: 40px; width: 100%; font-size: 12px; }
+.pads { display: flex; gap: 14px; }
+.pad { flex: 1; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; min-width: 0; }
+.btn.drop { border-color: var(--accent); color: var(--accent); }
+.btn.drop.on { color: var(--accent-ink); }
+.home {
+  flex: none;
+  width: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font-size: 18px;
+  text-decoration: none;
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div class="stats">
+    <a class="home" href="/" aria-label="回大廳">🏠</a>
+    <div class="stat"><div class="label">分數</div><div class="value" id="vScore">0</div></div>
+    <div class="stat"><div class="label">等級</div><div class="value" id="vLevel">1</div></div>
+    <div class="stat"><div class="label">行數</div><div class="value" id="vLines">0</div></div>
+  </div>
+
+  <div id="stage">
+    <div id="row">
+      <div class="col">
+        <div class="label">暫存</div>
+        <canvas id="hold" aria-label="暫存的方塊"></canvas>
+        <div class="stat best" id="bestBox"><div class="label">最高</div><div class="value" id="vBest">0</div></div>
+        <div id="oppBox" hidden><div class="label">對手</div><canvas id="opp" aria-label="對手的遊戲區"></canvas></div>
+      </div>
+      <div id="boardWrap">
+        <canvas id="board" aria-label="遊戲區"></canvas>
+        <div id="overlay">
+          <div class="sub">TETRIS</div>
+          <h1 id="ovTitle">俄羅斯方塊</h1>
+          <div class="final" id="ovFinal" hidden></div>
+          <p class="how" id="ovHelp">輕點旋轉．左右滑動移動．向下滑動加速．快速下滑直接落下</p>
+          <div class="opts" id="ovOpts">
+            <div class="optrow"><div class="label">模式</div>
+              <div class="seg" data-key="mode"><button type="button" data-val="solo">單人</button><button type="button" data-val="vs">對戰電腦</button></div></div>
+            <div class="optrow"><div class="label">起始行數</div>
+              <div class="seg" data-key="rows"><button type="button" data-val="0">0</button><button type="button" data-val="2">2</button><button type="button" data-val="4">4</button><button type="button" data-val="6">6</button><button type="button" data-val="8">8</button><button type="button" data-val="10">10</button></div></div>
+            <div class="optrow" id="diffRow"><div class="label">難度</div>
+              <div class="seg" data-key="diff"><button type="button" data-val="easy">簡單</button><button type="button" data-val="normal">普通</button><button type="button" data-val="hard">困難</button></div></div>
+          </div>
+          <button class="primary" id="ovBtn" type="button">開始遊戲</button>
+        </div>
+      </div>
+      <div class="col">
+        <div class="label">下一個</div>
+        <canvas id="next" aria-label="接下來的方塊"></canvas>
+        <button class="btn small" id="bPause" type="button" aria-label="暫停">暫停</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="pads">
+    <div class="pad">
+      <button class="btn" id="bLeft" type="button" aria-label="向左"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <button class="btn" id="bDown" type="button" aria-label="加速下落"><svg viewBox="0 0 24 24"><path d="M5 9l7 7 7-7"/></svg></button>
+      <button class="btn" id="bRight" type="button" aria-label="向右"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
+    </div>
+    <div class="pad">
+      <button class="btn" id="bHold" type="button" aria-label="暫存">暫存</button>
+      <button class="btn" id="bRot" type="button" aria-label="旋轉"><svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.6-5.9M20 4v5h-5"/></svg></button>
+      <button class="btn drop" id="bDrop" type="button" aria-label="直接落下"><svg viewBox="0 0 24 24"><path d="M5 5l7 6 7-6M5 13l7 6 7-6"/></svg></button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var COLS = 10, ROWS = 20;
+  var SHAPES = {
+    I: [[0,0,0,0],[1,1,1,1],[0,0,0,0],[0,0,0,0]],
+    O: [[1,1],[1,1]],
+    T: [[0,1,0],[1,1,1],[0,0,0]],
+    S: [[0,1,1],[1,1,0],[0,0,0]],
+    Z: [[1,1,0],[0,1,1],[0,0,0]],
+    J: [[1,0,0],[1,1,1],[0,0,0]],
+    L: [[0,0,1],[1,1,1],[0,0,0]]
+  };
+  var COLORS = { I: '#4fc3cf', O: '#e9c84a', T: '#a977d6', S: '#6fc774', Z: '#e5605a', J: '#5a82dc', L: '#ee9244', G: '#6d8283' };
+  var KICKS = [[0,0],[-1,0],[1,0],[0,-1],[-2,0],[2,0],[-1,-1],[1,-1]];
+  var LINE_POINTS = [0, 100, 300, 500, 800];
+
+  var $ = function (id) { return document.getElementById(id); };
+  var cv = $('board'), ctx = cv.getContext('2d');
+  var holdCv = $('hold'), holdCtx = holdCv.getContext('2d');
+  var nextCv = $('next'), nextCtx = nextCv.getContext('2d');
+  var oppCv = $('opp'), oppCtx = oppCv.getContext('2d');
+  var opts = { mode: 'solo', rows: 0, diff: 'normal' };
+  var cpu = null, pendingMe = 0, oppDirty = true;
+  var dpr = Math.min(window.devicePixelRatio || 1, 3);
+
+  var board, cur, bag = [], queue = [], holdT = null, canHold = true;
+  var score = 0, lines = 0, level = 1, best = 0;
+  var state = 'ready'; // ready | playing | paused | over
+  var dropTimer = 0, lockTimer = 0, lockResets = 0;
+  var clearing = null, clearTimer = 0;
+  var cell = 22, sideDirty = true;
+
+  // 紀錄：arcade-tetris-stats = { solo: { plays, wins, best: { score } }, vs: { plays, wins } }，首頁卡片會讀
+  var STATS_KEY = 'arcade-tetris-stats';
+  function loadStats() {
+    var st = null;
+    try { st = JSON.parse(localStorage.getItem(STATS_KEY) || 'null'); } catch (e) {}
+    st = st || {};
+    st.solo = st.solo || { plays: 0, wins: 0, best: {} };
+    st.vs = st.vs || { plays: 0, wins: 0, best: {} };
+    // 舊版只存 tetris-best，搬過來
+    try {
+      var old = parseInt(localStorage.getItem('tetris-best') || '0', 10) || 0;
+      if (old > (st.solo.best.score || 0)) st.solo.best.score = old;
+    } catch (e) {}
+    return st;
+  }
+  function saveStats(st) { try { localStorage.setItem(STATS_KEY, JSON.stringify(st)); } catch (e) {} }
+  var stats = loadStats();
+  best = stats.solo.best.score || 0;
+
+  // 音效：WebAudio 即時合成。總開關在首頁（localStorage arcade-sound = 'off' 為關），每次出聲前重讀
+  var SFX = (function () {
+    var ac = null;
+    function on() { try { return localStorage.getItem('arcade-sound') !== 'off'; } catch (e) { return true; } }
+    function tone(freq, o) {
+      o = o || {};
+      if (!on()) return;
+      try {
+        ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+        if (ac.state === 'suspended') ac.resume();
+        var t = ac.currentTime + (o.delay || 0), dur = o.dur || 0.06;
+        var osc = ac.createOscillator(), gn = ac.createGain();
+        osc.type = o.type || 'triangle';
+        osc.frequency.setValueAtTime(freq, t);
+        if (o.slide) osc.frequency.exponentialRampToValueAtTime(freq * o.slide, t + dur);
+        gn.gain.setValueAtTime(o.vol || 0.05, t);
+        gn.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        osc.connect(gn); gn.connect(ac.destination);
+        osc.start(t); osc.stop(t + dur + 0.02);
+      } catch (e) {}
+    }
+    return {
+      move: function () { tone(520, { dur: 0.03, vol: 0.025, type: 'square' }); },
+      rotate: function () { tone(760, { dur: 0.04, vol: 0.03, slide: 1.2 }); },
+      lock: function () { tone(160, { dur: 0.07, vol: 0.06, type: 'square', slide: 0.7 }); },
+      hold: function () { tone(440, { dur: 0.06, vol: 0.04 }); tone(660, { dur: 0.06, vol: 0.04, delay: 0.05 }); },
+      clear: function (n) {
+        var notes = n >= 4 ? [523, 659, 784, 1047, 1319] : [523, 659, 784].slice(0, n + 1);
+        notes.forEach(function (f, i) { tone(f, { dur: 0.1, vol: 0.06, delay: i * 0.06 }); });
+      },
+      garbage: function () { tone(110, { dur: 0.18, vol: 0.07, type: 'sawtooth', slide: 0.6 }); },
+      over: function () { [392, 330, 262, 196].forEach(function (f, i) { tone(f, { dur: 0.18, vol: 0.06, delay: i * 0.13 }); }); },
+      win: function () { [523, 659, 784, 1047].forEach(function (f, i) { tone(f, { dur: 0.14, vol: 0.06, delay: i * 0.1 }); }); }
+    };
+  })();
+  try {
+    var saved = JSON.parse(localStorage.getItem('tetris-opts') || 'null');
+    if (saved) {
+      if (saved.mode === 'solo' || saved.mode === 'vs') opts.mode = saved.mode;
+      if ([0, 2, 4, 6, 8, 10].indexOf(saved.rows) >= 0) opts.rows = saved.rows;
+      if (['easy', 'normal', 'hard'].indexOf(saved.diff) >= 0) opts.diff = saved.diff;
+    }
+  } catch (e) {}
+
+  function emptyBoard() {
+    var b = [];
+    for (var r = 0; r < ROWS; r++) b.push(new Array(COLS).fill(0));
+    return b;
+  }
+  board = emptyBoard();
+
+  /* ---------- sizing ---------- */
+  function setCanvas(c, g, w, h) {
+    c.style.width = w + 'px';
+    c.style.height = h + 'px';
+    c.width = Math.round(w * dpr);
+    c.height = Math.round(h * dpr);
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  function layout() {
+    var st = $('stage');
+    var availW = st.clientWidth - 2 * 64 - 2 * 8 - 4;
+    var availH = st.clientHeight - 4;
+    cell = Math.max(12, Math.min(36, Math.floor(Math.min(availW / COLS, availH / ROWS))));
+    setCanvas(cv, ctx, cell * COLS, cell * ROWS);
+    setCanvas(holdCv, holdCtx, 62, 56);
+    setCanvas(nextCv, nextCtx, 62, 150);
+    setCanvas(oppCv, oppCtx, 62, 122);
+    sideDirty = true;
+    oppDirty = true;
+  }
+  if (window.ResizeObserver) new ResizeObserver(layout).observe($('stage'));
+  window.addEventListener('resize', layout);
+
+  /* ---------- pieces ---------- */
+  function newBag() {
+    var a = ['I','O','T','S','Z','J','L'];
+    for (var i = a.length - 1; i > 0; i--) {
+      var j = (Math.random() * (i + 1)) | 0, t = a[i]; a[i] = a[j]; a[j] = t;
+    }
+    return a;
+  }
+  function nextType() { if (!bag.length) bag = newBag(); return bag.pop(); }
+  function fillQueue() { while (queue.length < 5) queue.push(nextType()); }
+
+  function collideOn(b, m, x, y) {
+    for (var r = 0; r < m.length; r++) {
+      for (var c = 0; c < m[r].length; c++) {
+        if (!m[r][c]) continue;
+        var nx = x + c, ny = y + r;
+        if (nx < 0 || nx >= COLS || ny >= ROWS) return true;
+        if (ny >= 0 && b[ny][nx]) return true;
+      }
+    }
+    return false;
+  }
+  function collide(m, x, y) { return collideOn(board, m, x, y); }
+  function rotateMatrix(m, dir) {
+    var n = m.length, out = [];
+    for (var i = 0; i < n; i++) out.push(new Array(n).fill(0));
+    for (var y = 0; y < n; y++) for (var x = 0; x < n; x++) {
+      if (dir > 0) out[x][n - 1 - y] = m[y][x]; else out[n - 1 - x][y] = m[y][x];
+    }
+    return out;
+  }
+  function spawn(t) {
+    var m = SHAPES[t].map(function (r) { return r.slice(); });
+    cur = { t: t, m: m, x: ((COLS - m[0].length) / 2) | 0, y: t === 'I' ? -1 : 0 };
+    dropTimer = 0; lockTimer = 0; lockResets = 0;
+    if (collide(cur.m, cur.x, cur.y)) gameOver();
+  }
+  function spawnNext() {
+    var t = queue.shift();
+    fillQueue();
+    spawn(t);
+    sideDirty = true;
+  }
+
+  /* ---------- actions ---------- */
+  function active() { return state === 'playing' && cur && !clearing; }
+  function grounded() { return collide(cur.m, cur.x, cur.y + 1); }
+  function bumpLock() {
+    if (grounded() && lockResets < 15) { lockTimer = 0; lockResets++; }
+  }
+  function move(dx) {
+    if (!active()) return false;
+    if (collide(cur.m, cur.x + dx, cur.y)) return false;
+    cur.x += dx; bumpLock(); SFX.move(); return true;
+  }
+  function rotate(dir) {
+    if (!active() || cur.t === 'O') return;
+    var rm = rotateMatrix(cur.m, dir);
+    for (var i = 0; i < KICKS.length; i++) {
+      var k = KICKS[i];
+      if (!collide(rm, cur.x + k[0], cur.y + k[1])) {
+        cur.m = rm; cur.x += k[0]; cur.y += k[1]; bumpLock(); SFX.rotate(); return;
+      }
+    }
+  }
+  function softDrop() {
+    if (!active()) return false;
+    if (collide(cur.m, cur.x, cur.y + 1)) return false;
+    cur.y++; dropTimer = 0; score += 1; updateStats(); return true;
+  }
+  function hardDrop() {
+    if (!active()) return;
+    var d = 0;
+    while (!collide(cur.m, cur.x, cur.y + 1)) { cur.y++; d++; }
+    score += 2 * d;
+    lock();
+  }
+  function hold() {
+    if (!active() || !canHold) return;
+    var t = cur.t, prev = holdT;
+    holdT = t;
+    if (prev) spawn(prev); else spawnNext();
+    canHold = false; sideDirty = true; SFX.hold();
+  }
+  function vibrate(ms) { try { if (navigator.vibrate) navigator.vibrate(ms); } catch (e) {} }
+
+  function lock() {
+    var over = false;
+    for (var r = 0; r < cur.m.length; r++) for (var c = 0; c < cur.m[r].length; c++) {
+      if (!cur.m[r][c]) continue;
+      var ny = cur.y + r, nx = cur.x + c;
+      if (ny < 0) { over = true; continue; }
+      board[ny][nx] = cur.t;
+    }
+    cur = null;
+    if (over) { gameOver(); return; }
+    var full = [];
+    for (var y = 0; y < ROWS; y++) {
+      if (board[y].every(function (v) { return v; })) full.push(y);
+    }
+    if (full.length) {
+      score += LINE_POINTS[full.length] * level;
+      lines += full.length;
+      level = 1 + Math.floor(lines / 10);
+      clearing = full; clearTimer = 240;
+      vibrate(full.length >= 4 ? [20, 30, 40] : 15);
+      SFX.clear(full.length);
+      if (cpu) sendFromMe(full.length);
+    } else {
+      vibrate(6);
+      SFX.lock();
+      if (cpu && pendingMe > 0) {
+        var n = Math.min(pendingMe, 8);
+        pendingMe = 0;
+        vibrate([10, 20, 10]);
+        SFX.garbage();
+        if (addGarbage(board, n)) { gameOver(false); return; }
+      }
+      canHold = true;
+      spawnNext();
+    }
+    updateStats();
+  }
+  function finishClear() {
+    var keep = board.filter(function (_, y) { return clearing.indexOf(y) === -1; });
+    while (keep.length < ROWS) keep.unshift(new Array(COLS).fill(0));
+    board = keep;
+    clearing = null;
+    canHold = true;
+    spawnNext();
+  }
+
+  /* ---------- garbage, start rows, versus ---------- */
+  function attackFor(n) { return [0, 0, 1, 2, 4][n] || 0; }
+  function sendFromMe(n) {
+    var a = attackFor(n), c = Math.min(pendingMe, a);
+    pendingMe -= c; a -= c; cpu.pending += a;
+  }
+  function sendFromCpu(n) {
+    var a = attackFor(n), c = Math.min(cpu.pending, a);
+    cpu.pending -= c; a -= c; pendingMe += a;
+  }
+  // Pushes n single-hole rows up from the bottom. Returns true if blocks were pushed off the top.
+  function addGarbage(b, n) {
+    var overflow = false;
+    for (var i = 0; i < n; i++) {
+      var row = new Array(COLS).fill('G');
+      row[(Math.random() * COLS) | 0] = 0;
+      var top = b.shift();
+      if (top.some(function (v) { return v; })) overflow = true;
+      b.push(row);
+    }
+    return overflow;
+  }
+  function addStartRows(b, n) {
+    var types = ['I', 'O', 'T', 'S', 'Z', 'J', 'L'];
+    for (var i = 0; i < n; i++) {
+      var row = [];
+      for (var c = 0; c < COLS; c++) row.push(Math.random() < 0.65 ? types[(Math.random() * 7) | 0] : 0);
+      if (row.every(function (v) { return v; })) row[(Math.random() * COLS) | 0] = 0;
+      b.shift();
+      b.push(row);
+    }
+  }
+  function cpuInit() {
+    var c = {
+      board: emptyBoard(), bag: [], pending: 0, timer: 0,
+      interval: { easy: 1300, normal: 800, hard: 450 }[opts.diff] || 800
+    };
+    addStartRows(c.board, opts.rows);
+    return c;
+  }
+  function evalBoard(b, cleared) {
+    var hs = [], holes = 0, agg = 0, bump = 0;
+    for (var c = 0; c < COLS; c++) {
+      var h = 0, seen = false;
+      for (var r = 0; r < ROWS; r++) {
+        if (b[r][c]) { if (!seen) { seen = true; h = ROWS - r; } }
+        else if (seen) holes++;
+      }
+      hs.push(h); agg += h;
+    }
+    for (var i = 1; i < COLS; i++) bump += Math.abs(hs[i] - hs[i - 1]);
+    return -0.51 * agg + 0.76 * cleared - 0.36 * holes - 0.18 * bump;
+  }
+  function isFull(row) { return row.every(function (v) { return v; }); }
+  // Places one CPU piece. Returns false when the CPU has topped out.
+  function cpuStep() {
+    var c = cpu;
+    if (!c.bag.length) c.bag = newBag();
+    var t = c.bag.pop();
+    var m = SHAPES[t].map(function (r) { return r.slice(); });
+    var cands = [];
+    for (var rot = 0; rot < 4; rot++) {
+      for (var x = -2; x < COLS; x++) {
+        if (collideOn(c.board, m, x, -2)) continue;
+        var y = -2;
+        while (!collideOn(c.board, m, x, y + 1)) y++;
+        var b = c.board.map(function (row) { return row.slice(); });
+        var ok = true;
+        for (var r = 0; r < m.length && ok; r++) {
+          for (var k = 0; k < m[r].length; k++) {
+            if (!m[r][k]) continue;
+            if (y + r < 0) { ok = false; break; }
+            b[y + r][x + k] = t;
+          }
+        }
+        if (!ok) continue;
+        var cleared = 0;
+        b = b.filter(function (row) { if (isFull(row)) { cleared++; return false; } return true; });
+        while (b.length < ROWS) b.unshift(new Array(COLS).fill(0));
+        cands.push({ s: evalBoard(b, cleared), m: m, x: x, y: y });
+      }
+      if (t === 'O') break;
+      m = rotateMatrix(m, 1);
+    }
+    if (!cands.length) return false;
+    cands.sort(function (a, b) { return b.s - a.s; });
+    var pick = cands[0];
+    if (opts.diff === 'easy' && Math.random() < 0.4) pick = cands[Math.min(cands.length - 1, 1 + ((Math.random() * 3) | 0))];
+    else if (opts.diff === 'normal' && Math.random() < 0.15) pick = cands[Math.min(cands.length - 1, 1)];
+
+    for (var r2 = 0; r2 < pick.m.length; r2++) for (var k2 = 0; k2 < pick.m[r2].length; k2++) {
+      if (pick.m[r2][k2]) c.board[pick.y + r2][pick.x + k2] = t;
+    }
+    var kept = c.board.filter(function (row) { return !isFull(row); });
+    var n = ROWS - kept.length;
+    if (n) {
+      while (kept.length < ROWS) kept.unshift(new Array(COLS).fill(0));
+      c.board = kept;
+      sendFromCpu(n);
+    } else if (c.pending > 0) {
+      var g = Math.min(c.pending, 8);
+      c.pending = 0;
+      if (addGarbage(c.board, g)) return false;
+    }
+    oppDirty = true;
+    return true;
+  }
+  function cpuTick(dt) {
+    cpu.timer += dt;
+    if (cpu.timer >= cpu.interval) {
+      cpu.timer = 0;
+      if (!cpuStep()) gameOver(true);
+    }
+  }
+
+  /* ---------- state ---------- */
+  function updateStats() {
+    $('vScore').textContent = score;
+    $('vLevel').textContent = level;
+    $('vLines').textContent = lines;
+    $('vBest').textContent = Math.max(best, score);
+  }
+  function syncOpts() {
+    var segs = document.querySelectorAll('#ovOpts .seg');
+    for (var i = 0; i < segs.length; i++) {
+      var key = segs[i].getAttribute('data-key');
+      var btns = segs[i].querySelectorAll('button');
+      for (var j = 0; j < btns.length; j++) {
+        btns[j].classList.toggle('on', btns[j].getAttribute('data-val') === String(opts[key]));
+      }
+    }
+    $('diffRow').hidden = opts.mode !== 'vs';
+  }
+  $('ovOpts').addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('button[data-val]') : null;
+    if (!b) return;
+    var key = b.parentNode.getAttribute('data-key'), val = b.getAttribute('data-val');
+    opts[key] = key === 'rows' ? parseInt(val, 10) : val;
+    try { localStorage.setItem('tetris-opts', JSON.stringify(opts)); } catch (err) {}
+    syncOpts();
+  });
+  function showOverlay(kind) {
+    var fin = $('ovFinal');
+    fin.hidden = true;
+    $('ovHelp').hidden = false;
+    $('ovOpts').hidden = kind === 'paused';
+    if (kind === 'ready') {
+      $('ovTitle').textContent = '俄羅斯方塊';
+      $('ovBtn').textContent = '開始遊戲';
+    } else if (kind === 'paused') {
+      $('ovTitle').textContent = '暫停中';
+      $('ovHelp').hidden = true;
+      $('ovBtn').textContent = '繼續';
+    } else {
+      $('ovTitle').textContent = kind === 'win' ? '你贏了' : (cpu ? '你輸了' : '遊戲結束');
+      fin.hidden = false;
+      fin.textContent = '分數 ' + score + (!cpu && score >= best && score > 0 ? '　新紀錄' : '');
+      $('ovHelp').hidden = true;
+      $('ovBtn').textContent = '再玩一次';
+    }
+    syncOpts();
+    $('overlay').hidden = false;
+    $('bPause').textContent = '暫停';
+  }
+  function startGame() {
+    board = emptyBoard();
+    addStartRows(board, opts.rows);
+    pendingMe = 0;
+    cpu = opts.mode === 'vs' ? cpuInit() : null;
+    $('bestBox').hidden = !!cpu;
+    $('oppBox').hidden = !cpu;
+    oppDirty = true;
+    bag = []; queue = []; fillQueue();
+    score = 0; lines = 0; level = 1; holdT = null; canHold = true;
+    clearing = null; cur = null;
+    state = 'playing';
+    $('overlay').hidden = true;
+    spawnNext();
+    updateStats();
+  }
+  function gameOver(win) {
+    state = 'over';
+    cur = cur && collide(cur.m, cur.x, cur.y) ? cur : null;
+    var rec = cpu ? stats.vs : stats.solo;
+    rec.plays++;
+    if (win) rec.wins++;
+    if (!cpu && score > best) {
+      best = score;
+      stats.solo.best.score = best;
+      try { localStorage.setItem('tetris-best', String(best)); } catch (e) {}
+    }
+    saveStats(stats);
+    if (win) SFX.win(); else SFX.over();
+    updateStats();
+    vibrate(win ? [30, 30, 30, 30, 60] : [40, 40, 80]);
+    showOverlay(win ? 'win' : 'over');
+  }
+  function pause() {
+    if (state !== 'playing') return;
+    state = 'paused';
+    showOverlay('paused');
+  }
+  function resume() {
+    if (state !== 'paused') return;
+    state = 'playing';
+    $('overlay').hidden = true;
+  }
+  function primary() {
+    if (state === 'paused') resume(); else startGame();
+  }
+  function interval() { return Math.max(70, 800 * Math.pow(0.82, level - 1)); }
+
+  /* ---------- loop ---------- */
+  var last = performance.now();
+  function frame(ts) {
+    var dt = Math.min(100, ts - last); last = ts;
+    update(dt);
+    draw();
+    requestAnimationFrame(frame);
+  }
+  function update(dt) {
+    if (state !== 'playing') return;
+    if (cpu) { cpuTick(dt); if (state !== 'playing') return; }
+    if (clearing) {
+      clearTimer -= dt;
+      if (clearTimer <= 0) finishClear();
+      return;
+    }
+    if (!cur) return;
+    if (grounded()) {
+      lockTimer += dt;
+      if (lockTimer >= 500) lock();
+    } else {
+      lockTimer = 0;
+      dropTimer += dt;
+      var iv = interval();
+      while (dropTimer >= iv) {
+        dropTimer -= iv;
+        if (!collide(cur.m, cur.x, cur.y + 1)) cur.y++; else break;
+      }
+    }
+  }
+
+  /* ---------- drawing ---------- */
+  function drawCell(g, x, y, s, color, alpha) {
+    g.globalAlpha = alpha == null ? 1 : alpha;
+    g.fillStyle = color;
+    g.fillRect(x + 1, y + 1, s - 2, s - 2);
+    g.fillStyle = 'rgba(255,255,255,0.24)';
+    g.fillRect(x + 1, y + 1, s - 2, Math.max(2, s * 0.14));
+    g.fillStyle = 'rgba(0,0,0,0.26)';
+    g.fillRect(x + 1, y + s - 1 - Math.max(2, s * 0.14), s - 2, Math.max(2, s * 0.14));
+    g.globalAlpha = 1;
+  }
+  function draw() {
+    var W = cell * COLS, H = cell * ROWS;
+    ctx.clearRect(0, 0, W, H);
+    ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--grid') || 'rgba(127,154,152,.1)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (var i = 1; i < COLS; i++) { ctx.moveTo(i * cell + 0.5, 0); ctx.lineTo(i * cell + 0.5, H); }
+    for (var j = 1; j < ROWS; j++) { ctx.moveTo(0, j * cell + 0.5); ctx.lineTo(W, j * cell + 0.5); }
+    ctx.stroke();
+
+    for (var y = 0; y < ROWS; y++) for (var x = 0; x < COLS; x++) {
+      var v = board[y][x];
+      if (v) drawCell(ctx, x * cell, y * cell, cell, COLORS[v]);
+    }
+    if (clearing) {
+      var blink = Math.floor(clearTimer / 60) % 2 === 0;
+      ctx.fillStyle = blink ? 'rgba(255,255,255,0.85)' : 'rgba(255,179,71,0.75)';
+      clearing.forEach(function (ry) { ctx.fillRect(0, ry * cell, W, cell); });
+    }
+    if (cur && state !== 'over') {
+      var gy = cur.y;
+      while (!collide(cur.m, cur.x, gy + 1)) gy++;
+      var col = COLORS[cur.t];
+      if (gy !== cur.y) {
+        ctx.strokeStyle = col; ctx.globalAlpha = 0.55; ctx.lineWidth = 1.5;
+        for (var r = 0; r < cur.m.length; r++) for (var c = 0; c < cur.m[r].length; c++) {
+          if (cur.m[r][c] && gy + r >= 0) ctx.strokeRect((cur.x + c) * cell + 2.5, (gy + r) * cell + 2.5, cell - 5, cell - 5);
+        }
+        ctx.globalAlpha = 1;
+      }
+      for (var r2 = 0; r2 < cur.m.length; r2++) for (var c2 = 0; c2 < cur.m[r2].length; c2++) {
+        if (cur.m[r2][c2] && cur.y + r2 >= 0) drawCell(ctx, (cur.x + c2) * cell, (cur.y + r2) * cell, cell, col);
+      }
+    }
+    if (cpu && pendingMe > 0) {
+      var ph = Math.min(pendingMe, ROWS) * cell;
+      ctx.fillStyle = '#e5605a';
+      ctx.fillRect(0, H - ph, 4, ph);
+    }
+    if (sideDirty) { drawSide(); sideDirty = false; }
+    if (oppDirty || (cpu && cpu.pending !== oppShownPending)) { drawOpp(); oppDirty = false; }
+  }
+  var oppShownPending = 0;
+  function drawOpp() {
+    oppCtx.clearRect(0, 0, 62, 122);
+    oppShownPending = cpu ? cpu.pending : 0;
+    if (!cpu) return;
+    var s = 6;
+    for (var y = 0; y < ROWS; y++) for (var x = 0; x < COLS; x++) {
+      var v = cpu.board[y][x];
+      if (v) { oppCtx.fillStyle = COLORS[v]; oppCtx.fillRect(1 + x * s, 1 + y * s, s - 1, s - 1); }
+    }
+    if (cpu.pending > 0) {
+      var ph = Math.min(cpu.pending, ROWS) * s;
+      oppCtx.fillStyle = '#e5605a';
+      oppCtx.fillRect(0, 121 - ph, 2, ph);
+    }
+  }
+  function drawMini(g, t, boxY, boxW, boxH, s, alpha) {
+    var m = SHAPES[t], minR = 9, maxR = -1, minC = 9, maxC = -1;
+    for (var r = 0; r < m.length; r++) for (var c = 0; c < m[r].length; c++) {
+      if (m[r][c]) { minR = Math.min(minR, r); maxR = Math.max(maxR, r); minC = Math.min(minC, c); maxC = Math.max(maxC, c); }
+    }
+    var w = (maxC - minC + 1) * s, h = (maxR - minR + 1) * s;
+    var ox = (boxW - w) / 2, oy = boxY + (boxH - h) / 2;
+    for (var r2 = minR; r2 <= maxR; r2++) for (var c2 = minC; c2 <= maxC; c2++) {
+      if (m[r2][c2]) drawCell(g, ox + (c2 - minC) * s, oy + (r2 - minR) * s, s, COLORS[t], alpha);
+    }
+  }
+  function drawSide() {
+    holdCtx.clearRect(0, 0, 62, 56);
+    if (holdT) drawMini(holdCtx, holdT, 0, 62, 56, 13, canHold ? 1 : 0.35);
+    nextCtx.clearRect(0, 0, 62, 150);
+    for (var i = 0; i < 3; i++) if (queue[i]) drawMini(nextCtx, queue[i], i * 50, 62, 50, 13, 1);
+  }
+
+  /* ---------- input: buttons ---------- */
+  function bindBtn(id, fn, rep) {
+    var b = $(id), t1 = 0, t2 = 0;
+    function stop() { clearTimeout(t1); clearInterval(t2); b.classList.remove('on'); }
+    b.addEventListener('pointerdown', function (e) {
+      e.preventDefault();
+      b.classList.add('on');
+      fn();
+      if (rep) t1 = setTimeout(function () { t2 = setInterval(fn, rep.arr); }, rep.das);
+    });
+    ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (ev) { b.addEventListener(ev, stop); });
+    b.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+  }
+  bindBtn('bLeft', function () { move(-1); }, { das: 170, arr: 55 });
+  bindBtn('bRight', function () { move(1); }, { das: 170, arr: 55 });
+  bindBtn('bDown', function () { softDrop(); }, { das: 90, arr: 45 });
+  bindBtn('bRot', function () { rotate(1); });
+  bindBtn('bDrop', function () { hardDrop(); });
+  bindBtn('bHold', function () { hold(); });
+  $('bPause').addEventListener('click', function () {
+    if (state === 'playing') pause(); else if (state === 'paused') resume();
+  });
+  $('ovBtn').addEventListener('click', primary);
+
+  /* ---------- input: swipe on the board ---------- */
+  var g = null;
+  cv.addEventListener('pointerdown', function (e) {
+    if (state !== 'playing') return;
+    try { cv.setPointerCapture(e.pointerId); } catch (err) {}
+    g = { x0: e.clientX, y0: e.clientY, ax: e.clientX, ay: e.clientY, t0: performance.now(), moved: false };
+  });
+  cv.addEventListener('pointermove', function (e) {
+    if (!g) return;
+    if (Math.abs(e.clientX - g.x0) > 8 || Math.abs(e.clientY - g.y0) > 8) g.moved = true;
+    var dx = e.clientX - g.ax;
+    while (Math.abs(dx) >= cell) {
+      var dir = dx > 0 ? 1 : -1;
+      move(dir); g.ax += dir * cell; dx = e.clientX - g.ax;
+    }
+    var dy = e.clientY - g.ay, step = cell * 0.9;
+    if (dy < 0) g.ay = e.clientY;
+    while (dy >= step) {
+      softDrop(); g.ay += step; dy = e.clientY - g.ay;
+    }
+  });
+  function endSwipe(e) {
+    if (!g) return;
+    var dt = performance.now() - g.t0;
+    var dx = e.clientX - g.x0, dy = e.clientY - g.y0;
+    if (!g.moved && dt < 300) rotate(1);
+    else if (dy > cell * 3 && dt < 260 && Math.abs(dx) < dy * 0.6) hardDrop();
+    g = null;
+  }
+  cv.addEventListener('pointerup', endSwipe);
+  cv.addEventListener('pointercancel', function () { g = null; });
+  cv.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+
+  /* ---------- input: keyboard ---------- */
+  document.addEventListener('keydown', function (e) {
+    var k = e.key;
+    if (k === 'ArrowLeft') { move(-1); e.preventDefault(); }
+    else if (k === 'ArrowRight') { move(1); e.preventDefault(); }
+    else if (k === 'ArrowDown') { softDrop(); e.preventDefault(); }
+    else if (k === 'ArrowUp' || k === 'x' || k === 'X') { rotate(1); e.preventDefault(); }
+    else if (k === 'z' || k === 'Z') { rotate(-1); }
+    else if (k === ' ') { if (state === 'playing') hardDrop(); else primary(); e.preventDefault(); }
+    else if (k === 'c' || k === 'C' || k === 'Shift') { hold(); }
+    else if (k === 'p' || k === 'P' || k === 'Escape') {
+      if (state === 'playing') pause(); else if (state === 'paused') resume();
+    }
+    else if (k === 'Enter' && state !== 'playing') { primary(); }
+  });
+  document.addEventListener('visibilitychange', function () { if (document.hidden) pause(); });
+
+  /* ---------- boot ---------- */
+  fillQueue();
+  updateStats();
+  showOverlay('ready');
+  layout();
+  requestAnimationFrame(function (ts) { last = ts; frame(ts); });
+})();
+</script>
+
+</body></html>

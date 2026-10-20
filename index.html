@@ -152,6 +152,7 @@
     .game-card:nth-child(6) { animation-delay: 0.42s; }
     .game-card:nth-child(7) { animation-delay: 0.48s; }
     .game-card:nth-child(8) { animation-delay: 0.54s; }
+    .game-card:nth-child(9) { animation-delay: 0.60s; }
 
     .game-card::before {
       content: '';
@@ -505,6 +506,23 @@
         <span class="card-arrow">→</span>
       </div>
     </a>
+    <!-- 俄羅斯方塊 -->
+    <a class="game-card available" href="./tetris/" data-game="tetris" data-icon="icons/tetris.webp">
+      <div class="card-top">
+        <div class="card-icon">🧱</div>
+        <span class="card-status ready">可遊玩</span>
+      </div>
+      <div class="card-name">俄羅斯方塊</div>
+      <div class="card-desc">經典消行，滑動操作、暫存方塊，還能和電腦互丟垃圾行對戰。</div>
+      <div class="card-footer">
+        <div class="card-tags">
+          <span class="tag">益智</span>
+          <span class="tag">對戰電腦</span>
+          <span class="tag">單人</span>
+        </div>
+        <span class="card-arrow">→</span>
+      </div>
+    </a>
     <!-- 預留 slot -->
     <div class="game-card coming-soon">
       <div class="card-top">
@@ -522,7 +540,7 @@
 
   <div class="stats">
     <div class="stat">
-      <span class="stat-value" id="game-count">7</span>
+      <span class="stat-value" id="game-count">8</span>
       <span class="stat-label">遊戲</span>
 </div>
     <div class="stat">
@@ -572,6 +590,12 @@
       const wins = ms.reduce((n, r) => n + r.wins, 0);
       const times = ms.map(r => r.best?.time).filter(t => t != null);
       return wins ? `🏆 ${wins} 勝 · ${fmt(Math.min(...times))}` : '';
+    },
+    'tetris': st => {
+      const parts = [];
+      if (st.solo?.best?.score) parts.push(`🏆 ${st.solo.best.score} 分`);
+      if (st.vs?.wins) parts.push(`⚔️ ${st.vs.wins} 勝`);
+      return parts.join(' · ');
     },
   };
   // 每日挑戰（各遊戲寫入 arcade-<遊戲>-daily：{ last: { date, won }, streak, lastWin }）
