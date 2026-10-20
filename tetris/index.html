@@ -134,6 +134,21 @@ body {
 .seg button.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 .seg button:focus-visible { outline: 2px solid var(--fg); outline-offset: 1px; }
 #oppBox { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+.slot { display: flex; flex-direction: column; gap: 6px; }
+/* 直式手機：暫存／下一個移到棋盤上方排成一條，棋盤吃滿寬度（由 layout() 判斷切換） */
+#row.top {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-areas: "l r" "b b";
+  gap: 8px;
+}
+#row.top #colL { grid-area: l; }
+#row.top #colR { grid-area: r; justify-self: end; }
+#row.top #boardWrap { grid-area: b; }
+#row.top .col { width: auto; flex-direction: row; align-items: flex-end; gap: 8px; }
+#row.top .slot { gap: 4px; }
+#row.top .best { margin-top: 0; padding: 4px 8px; }
+#row.top #oppBox { margin-top: 0; gap: 4px; }
 #overlay .final { font-family: var(--font-num); font-size: 15px; color: var(--fg); }
 .primary {
   font: 700 15px var(--font-ui);
@@ -168,6 +183,9 @@ body {
 .btn.drop.on { color: var(--accent-ink); }
 .home {
   flex: none;
+  padding: 0;
+  color: var(--fg);
+  cursor: pointer;
   width: 44px;
   display: flex;
   align-items: center;
@@ -189,13 +207,13 @@ body {
     <div class="stat"><div class="label">分數</div><div class="value" id="vScore">0</div></div>
     <div class="stat"><div class="label">等級</div><div class="value" id="vLevel">1</div></div>
     <div class="stat"><div class="label">行數</div><div class="value" id="vLines">0</div></div>
+    <button class="home" id="bPause" type="button" aria-label="暫停">⏸</button>
   </div>
 
   <div id="stage">
     <div id="row">
-      <div class="col">
-        <div class="label">暫存</div>
-        <canvas id="hold" aria-label="暫存的方塊"></canvas>
+      <div class="col" id="colL">
+        <div class="slot"><div class="label">暫存</div><canvas id="hold" aria-label="暫存的方塊"></canvas></div>
         <div class="stat best" id="bestBox"><div class="label">最高</div><div class="value" id="vBest">0</div></div>
         <div id="oppBox" hidden><div class="label">對手</div><canvas id="opp" aria-label="對手的遊戲區"></canvas></div>
       </div>
@@ -217,10 +235,8 @@ body {
           <button class="primary" id="ovBtn" type="button">開始遊戲</button>
         </div>
       </div>
-      <div class="col">
-        <div class="label">下一個</div>
-        <canvas id="next" aria-label="接下來的方塊"></canvas>
-        <button class="btn small" id="bPause" type="button" aria-label="暫停">暫停</button>
+      <div class="col" id="colR">
+        <div class="slot"><div class="label">下一個</div><canvas id="next" aria-label="接下來的方塊"></canvas></div>
       </div>
     </div>
   </div>
@@ -270,6 +286,7 @@ body {
   var dropTimer = 0, lockTimer = 0, lockResets = 0;
   var clearing = null, clearTimer = 0;
   var cell = 22, sideDirty = true;
+  var TOP_H = 70, top = false, side = null;
 
   // 紀錄：arcade-tetris-stats = { solo: { plays, wins, best: { score } }, vs: { plays, wins } }，首頁卡片會讀
   var STATS_KEY = 'arcade-tetris-stats';
@@ -350,14 +367,20 @@ body {
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
   function layout() {
-    var st = $('stage');
-    var availW = st.clientWidth - 2 * 64 - 2 * 8 - 4;
-    var availH = st.clientHeight - 4;
-    cell = Math.max(12, Math.min(36, Math.floor(Math.min(availW / COLS, availH / ROWS))));
+    var st = $('stage'), W = st.clientWidth, H = st.clientHeight;
+    // 兩種排法取棋盤較大者：側欄（寬螢幕）或上方橫條（直式手機）
+    var cSide = Math.floor(Math.min((W - 2 * 64 - 2 * 8 - 4) / COLS, (H - 4) / ROWS));
+    var cTop = Math.floor(Math.min((W - 4) / COLS, (H - TOP_H - 8 - 4) / ROWS));
+    top = cTop > cSide;
+    cell = Math.max(12, Math.min(40, top ? cTop : cSide));
+    $('row').classList.toggle('top', top);
+    $('row').style.width = top ? (cell * COLS + 2) + 'px' : '';
     setCanvas(cv, ctx, cell * COLS, cell * ROWS);
-    setCanvas(holdCv, holdCtx, 62, 56);
-    setCanvas(nextCv, nextCtx, 62, 150);
-    setCanvas(oppCv, oppCtx, 62, 122);
+    if (top) { side = { holdW: 48, holdH: 48, nextW: 132, nextH: 48, oppW: 26, oppH: 48, s: 10 }; }
+    else { side = { holdW: 62, holdH: 56, nextW: 62, nextH: 150, oppW: 62, oppH: 122, s: 13 }; }
+    setCanvas(holdCv, holdCtx, side.holdW, side.holdH);
+    setCanvas(nextCv, nextCtx, side.nextW, side.nextH);
+    setCanvas(oppCv, oppCtx, side.oppW, side.oppH);
     sideDirty = true;
     oppDirty = true;
   }
@@ -658,7 +681,6 @@ body {
     }
     syncOpts();
     $('overlay').hidden = false;
-    $('bPause').textContent = '暫停';
   }
   function startGame() {
     board = emptyBoard();
@@ -794,36 +816,38 @@ body {
   }
   var oppShownPending = 0;
   function drawOpp() {
-    oppCtx.clearRect(0, 0, 62, 122);
+    oppCtx.clearRect(0, 0, side.oppW, side.oppH);
     oppShownPending = cpu ? cpu.pending : 0;
     if (!cpu) return;
-    var s = 6;
+    var s = Math.min((side.oppW - 2) / COLS, (side.oppH - 2) / ROWS), gap = s >= 4 ? 1 : 0;
     for (var y = 0; y < ROWS; y++) for (var x = 0; x < COLS; x++) {
       var v = cpu.board[y][x];
-      if (v) { oppCtx.fillStyle = COLORS[v]; oppCtx.fillRect(1 + x * s, 1 + y * s, s - 1, s - 1); }
+      if (v) { oppCtx.fillStyle = COLORS[v]; oppCtx.fillRect(1 + x * s, 1 + y * s, s - gap, s - gap); }
     }
     if (cpu.pending > 0) {
       var ph = Math.min(cpu.pending, ROWS) * s;
       oppCtx.fillStyle = '#e5605a';
-      oppCtx.fillRect(0, 121 - ph, 2, ph);
+      oppCtx.fillRect(0, side.oppH - 1 - ph, 2, ph);
     }
   }
-  function drawMini(g, t, boxY, boxW, boxH, s, alpha) {
+  function drawMini(g, t, boxX, boxY, boxW, boxH, s, alpha) {
     var m = SHAPES[t], minR = 9, maxR = -1, minC = 9, maxC = -1;
     for (var r = 0; r < m.length; r++) for (var c = 0; c < m[r].length; c++) {
       if (m[r][c]) { minR = Math.min(minR, r); maxR = Math.max(maxR, r); minC = Math.min(minC, c); maxC = Math.max(maxC, c); }
     }
     var w = (maxC - minC + 1) * s, h = (maxR - minR + 1) * s;
-    var ox = (boxW - w) / 2, oy = boxY + (boxH - h) / 2;
+    var ox = boxX + (boxW - w) / 2, oy = boxY + (boxH - h) / 2;
     for (var r2 = minR; r2 <= maxR; r2++) for (var c2 = minC; c2 <= maxC; c2++) {
       if (m[r2][c2]) drawCell(g, ox + (c2 - minC) * s, oy + (r2 - minR) * s, s, COLORS[t], alpha);
     }
   }
   function drawSide() {
-    holdCtx.clearRect(0, 0, 62, 56);
-    if (holdT) drawMini(holdCtx, holdT, 0, 62, 56, 13, canHold ? 1 : 0.35);
-    nextCtx.clearRect(0, 0, 62, 150);
-    for (var i = 0; i < 3; i++) if (queue[i]) drawMini(nextCtx, queue[i], i * 50, 62, 50, 13, 1);
+    holdCtx.clearRect(0, 0, side.holdW, side.holdH);
+    if (holdT) drawMini(holdCtx, holdT, 0, 0, side.holdW, side.holdH, side.s, canHold ? 1 : 0.35);
+    nextCtx.clearRect(0, 0, side.nextW, side.nextH);
+    // 側欄：三個直排；上方橫條：三個橫排
+    var sw = top ? side.nextW / 3 : side.nextW, sh = top ? side.nextH : side.nextH / 3;
+    for (var i = 0; i < 3; i++) if (queue[i]) drawMini(nextCtx, queue[i], top ? i * sw : 0, top ? 0 : i * sh, sw, sh, side.s, 1);
   }
 
   /* ---------- input: buttons ---------- */
