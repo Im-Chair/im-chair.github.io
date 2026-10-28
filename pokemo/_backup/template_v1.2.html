@@ -1,0 +1,1240 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>珠界：歸一之子</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;touch-action:none}
+html,body{margin:0;height:100%;background:#070a14;color:#eef1ff;font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;overflow:hidden}
+button{font:inherit;color:inherit;border:0;border-radius:10px;padding:10px 16px;background:#2b3a67;cursor:pointer}
+button:active{filter:brightness(1.25)}
+button.pri{background:linear-gradient(#5a7dff,#3b55d6);font-weight:700}
+button.warn{background:#7a2b3a}
+input,textarea{-webkit-user-select:text;user-select:text;touch-action:auto;font:inherit;width:100%;padding:10px;border-radius:8px;border:1px solid #3b4a7c;background:#0e1430;color:#fff}
+textarea{height:90px;font-size:12px}
+#app{position:relative;width:100%;max-width:480px;height:100%;margin:0 auto;overflow:hidden;background:#101728}
+.screen{position:absolute;inset:0;display:none;flex-direction:column}
+.screen.on{display:flex}
+.center{align-items:center;justify-content:center;text-align:center;gap:12px;padding:20px}
+.scroll{overflow-y:auto;touch-action:pan-y;-webkit-overflow-scrolling:touch}
+.scroll *,#modal .box *{touch-action:pan-y}
+#bagTabs *{touch-action:pan-x}
+#modal input,#modal textarea{touch-action:auto}
+
+/* title */
+
+.logo{font-size:56px;font-weight:900;letter-spacing:8px;text-shadow:0 0 24px #7aa0ff}
+.logo small{display:block;font-size:22px;letter-spacing:10px;margin-top:4px;color:#ffd84a}
+.orbrow{display:flex;gap:10px;margin:8px 0 18px}
+.orbdot{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;box-shadow:inset 0 -4px 8px #0005,0 0 10px #0006}
+#sTitle button{width:210px}
+.ver{font-size:12px;color:#8a95c0;margin-top:10px}
+
+/* map */
+#sMap{background:#000}
+#mapCv{width:100%;height:100%;display:block}
+#hud{position:absolute;top:calc(8px + env(safe-area-inset-top));left:8px;right:8px;display:flex;justify-content:space-between;align-items:center;pointer-events:none}
+#hud *{pointer-events:auto}
+#hudName{background:#0009;padding:6px 12px;border-radius:20px;font-size:14px}
+#hud button{padding:8px 16px;background:#0009;border:1px solid #fff4}
+#joy{position:absolute;left:22px;bottom:calc(30px + env(safe-area-inset-bottom));width:130px;height:130px;border-radius:50%;background:#ffffff18;border:2px solid #ffffff44}
+#knob{position:absolute;left:41px;top:41px;width:48px;height:48px;border-radius:50%;background:#ffffffaa;box-shadow:0 2px 8px #0008}
+#toast{position:absolute;left:50%;top:70px;transform:translateX(-50%);background:#000c;padding:8px 16px;border-radius:20px;font-size:14px;opacity:0;transition:opacity .25s;pointer-events:none;white-space:nowrap}
+#toast.on{opacity:1}
+
+/* starter */
+#sStarter{background:radial-gradient(circle at 50% 20%,#25407a,#0b1022 75%)}
+.stwrap{display:flex;gap:8px;width:100%}
+.stcard{flex:1;background:#1a2547;border:2px solid #34447f;border-radius:14px;padding:10px 4px;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:13px}
+.stcard.sel{border-color:#ffd84a;background:#2a3a6f;box-shadow:0 0 14px #ffd84a66}
+
+/* sprite */
+.spr{position:relative;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;color:#fff;text-shadow:0 2px 4px #000a;flex:none;box-shadow:inset 0 -6px 10px #0006,0 3px 8px #0006}
+.spr img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;border-radius:0}
+
+/* battle */
+#sBattle{background:linear-gradient(#1c2a55,#101728 55%)}
+#bTop{position:relative;flex:1;min-height:0;padding:calc(10px + env(safe-area-inset-top)) 12px 4px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;gap:4px}
+#eInfo{width:100%;font-size:14px}
+#eSprWrap{position:relative;margin:2px 0}
+#eCd{position:absolute;right:-26px;top:-4px;background:#d63b4b;border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-weight:800;border:2px solid #fff}
+#bMsg{min-height:38px;font-size:14px;text-align:center;color:#dfe6ff;display:flex;align-items:center}
+.bar{height:10px;background:#0a0f20;border-radius:6px;overflow:hidden;flex:1}
+.bar i{display:block;height:100%;width:100%;background:linear-gradient(#ff7a7a,#e03b3b);transition:width .35s}
+.bar.green i{background:linear-gradient(#7dff8c,#2bb24a)}
+.bar.pink i{background:linear-gradient(#ffb0e0,#ff5ab8)}
+.bar.exp i{background:linear-gradient(#8ac0ff,#3b7bff)}
+.bar.sm{height:6px;margin-top:3px}
+.barRow{display:flex;align-items:center;gap:6px;font-size:12px}
+.barRow label{width:46px}
+.barRow small{width:86px;text-align:right}
+#bTeamRow .sk{font-size:9px;color:#9aa8d8;white-space:nowrap}
+#bTeamRow .skb{display:block;width:40px;height:4px;background:#0006;border-radius:2px;overflow:hidden}
+#bTeamRow .skb b{display:block;height:100%;background:#ffd84a}
+#bTeamRow .tm.rdy{background:#3a4a1a;outline:1.5px solid #ffd84a;animation:rdy 1s infinite alternate}
+#bTeamRow .tm.rdy .sk{color:#ffd84a;font-weight:bold}
+@keyframes rdy{from{filter:brightness(1)}to{filter:brightness(1.35)}}
+#bTeamRow{display:flex;gap:3px;padding:4px 0;justify-content:center;min-height:56px;flex:1}
+.tm{width:46px;cursor:pointer;border-radius:8px;padding:1px 0;display:flex;flex-direction:column;align-items:center;font-size:10px;gap:1px}
+#bBars{padding:2px 12px;display:flex;flex-direction:column;gap:3px}
+#bTimerBox{height:8px;margin:4px 8px 4px;background:#0a0f20;border-radius:6px;overflow:hidden}
+#bTimer{display:block;height:100%;width:100%;background:linear-gradient(#ffe27a,#ff9d2e)}
+.boardWrap{margin:auto auto 0;width:100%;max-width:calc((100vh - 330px)*1.2);max-width:calc((100dvh - 330px)*1.2);min-width:280px;padding:0 0 calc(6px + env(safe-area-inset-bottom));position:relative}
+#bBoard{display:block;width:100%}
+#bTeamWrap{display:flex;align-items:center;gap:4px;padding:0 6px}
+#bRun{padding:8px 10px;font-size:13px;background:#5a2b3a;flex:none}
+.pop{position:absolute;left:50%;font-weight:900;font-size:26px;text-shadow:0 2px 4px #000;pointer-events:none;animation:popup .9s ease-out forwards;z-index:5}
+@keyframes popup{from{transform:translate(-50%,0);opacity:1}to{transform:translate(-50%,-60px);opacity:0}}
+.shake{animation:shake .3s}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+.flash{animation:flash .35s}
+@keyframes flash{50%{filter:brightness(2.4)}}
+
+/* dialog / modal */
+#dlg{position:absolute;left:0;right:0;bottom:0;display:none;padding:12px 12px calc(16px + env(safe-area-inset-bottom));z-index:20;background:linear-gradient(transparent,#000a 25%)}
+#dlg.on{display:block}
+#dlgBox{background:#141c3acc;border:2px solid #6f86d6;border-radius:14px;padding:14px;min-height:110px;position:relative;font-size:16px;line-height:1.6}
+#dlgName{position:absolute;top:-14px;left:14px;background:#3b55d6;border-radius:10px;padding:2px 12px;font-size:13px;font-weight:700}
+#dlgP{position:absolute;right:14px;bottom:calc(100% - 4px);height:150px;display:none;pointer-events:none;filter:drop-shadow(0 3px 5px #000b)}
+#dlgNext{position:absolute;right:12px;bottom:6px;animation:blink 1s infinite}
+@keyframes blink{50%{opacity:.2}}
+#modal{position:absolute;inset:0;background:#000b;display:none;align-items:center;justify-content:center;z-index:30;padding:18px}
+#modal.on{display:flex}
+#modal .box{background:#17213f;border:2px solid #5d74c8;border-radius:16px;padding:16px;width:100%;max-height:88%;overflow-y:auto;touch-action:pan-y}
+#modal .box h3{margin:0 0 8px}
+#modal .btns{display:flex;gap:8px;justify-content:flex-end;margin-top:12px;flex-wrap:wrap}
+#modal .row{display:flex;width:100%;gap:8px;align-items:center;text-align:left;margin-top:6px;background:#26325d}
+#fade{position:absolute;inset:0;background:#000;opacity:0;pointer-events:none;transition:opacity .28s;z-index:40}
+#fade.on{opacity:1;pointer-events:auto}
+
+/* bag */
+#sBag{background:#0e1428}
+#bagTabs{display:flex;gap:2px;padding:calc(8px + env(safe-area-inset-top)) 6px 0;overflow-x:auto;touch-action:pan-x;flex:none}
+#bagTabs button{flex:1;min-width:54px;padding:8px 4px;border-radius:10px 10px 0 0;background:#1a2447;font-size:13px}
+#bagTabs button.on{background:#3b55d6;font-weight:700}
+#bagBody{flex:1;padding:10px;background:#17213f}
+#bagClose{margin:8px;padding:12px}
+.mrow{display:flex;gap:10px;align-items:center;background:#202c55;border-radius:12px;padding:8px;margin-bottom:8px}
+.mi{flex:1;font-size:13px;line-height:1.5}
+.ma{display:flex;flex-direction:column;gap:4px}
+.ma button{padding:4px 10px;font-size:12px}
+.tag{display:inline-block;padding:0 6px;border-radius:8px;font-size:11px;color:#fff;margin:0 3px}
+.rar{color:#ffd84a;font-size:12px}
+.dimm{opacity:.45}
+.note{font-size:12px;color:#9aa8d8;margin:6px 0}
+
+/* ===== 素材（沿用《轉珠之塔》） ===== */
+:root{--bosses:url(__BOSSES__);--bg-water:url(__BG_WATER__);--bg-fire:url(__BG_FIRE__);--bg-wood:url(__BG_WOOD__);--bg-light:url(__BG_LIGHT__);--bg-dark:url(__BG_DARK__);--bg-title:url(__BG_TITLE__)}
+.s-water{background-image:url(__S_WATER__)}.s-fire{background-image:url(__S_FIRE__)}.s-wood{background-image:url(__S_WOOD__)}.s-light{background-image:url(__S_LIGHT__)}.s-dark{background-image:url(__S_DARK__)}
+.sp{display:block;flex:none;background-repeat:no-repeat;background-size:600% 400%;filter:drop-shadow(0 2px 3px rgba(0,0,0,.55))}
+.sp.sb{background-image:var(--bosses);background-size:400% 200%}
+#sTitle{background:linear-gradient(#0a0e27b0,#0a0e27f0),var(--bg-title) center/cover}
+#bTop{background-size:cover;background-position:center 70%}
+#bTop[data-bg=water]{background-image:linear-gradient(#0a0e2755,#101728 96%),var(--bg-water)}
+#bTop[data-bg=fire]{background-image:linear-gradient(#0a0e2755,#101728 96%),var(--bg-fire)}
+#bTop[data-bg=wood]{background-image:linear-gradient(#0a0e2755,#101728 96%),var(--bg-wood)}
+#bTop[data-bg=light]{background-image:linear-gradient(#0a0e2755,#101728 96%),var(--bg-light)}
+#bTop[data-bg=dark]{background-image:linear-gradient(#0a0e2755,#101728 96%),var(--bg-dark)}
+#bMsg{background:#0008;border-radius:10px;padding:4px 10px}
+.tunebox{background:#202c55;border-radius:12px;padding:10px;margin:8px 0;font-size:13px;line-height:1.7}
+.tunebox input{width:76px;display:inline-block;padding:4px 6px;margin:0 4px;text-align:center}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="sTitle" class="screen on center">
+    <div class="logo">珠界<small>歸一之子</small></div>
+    <div class="orbrow" id="titleOrbs"></div>
+    <button class="pri" id="btnCont" style="display:none">繼續遊戲</button>
+    <button class="pri" id="btnNew">新遊戲</button>
+    <button id="btnImp">匯入存檔碼</button>
+    <div class="ver">原型 v0.8 ・ 110 種怪物 ・ 第 1 張地圖：翠風草原</div>
+  </div>
+
+  <div id="sMap" class="screen">
+    <canvas id="mapCv"></canvas>
+    <div id="hud"><span id="hudName"></span><button id="btnBag">背包</button></div>
+    <div id="joy"><i id="knob"></i></div>
+    <div id="toast"></div>
+  </div>
+
+  <div id="sStarter" class="screen center">
+    <h2 style="margin:0">選擇你的夥伴</h2>
+    <div class="note">老周替你保管多年的三位夥伴</div>
+    <div class="stwrap" id="stwrap"></div>
+    <button class="pri" id="stOk" style="width:80%;opacity:.4">就決定是你了</button>
+  </div>
+
+  <div id="sBattle" class="screen">
+    <div id="bTop">
+      <div id="eInfo">
+        <div><b id="eName"></b> <span id="eLv"></span> <span id="eAttr"></span> <span class="rar" id="eRar"></span></div>
+        <div class="barRow"><div class="bar"><i id="eHp"></i></div><small id="eHpTxt"></small></div>
+      </div>
+      <div id="eSprWrap"><div id="eSpr"></div><div id="eCd">2</div></div>
+      <div id="bMsg"></div>
+    </div>
+    <div id="bTeamWrap"><div id="bTeamRow"></div><button id="bRun">逃跑</button></div>
+    <div id="bBars">
+      <div class="barRow"><label>隊伍HP</label><div class="bar green"><i id="tHp"></i></div><small id="tHpTxt"></small></div>
+      <div class="barRow" id="charmRow"><label>符</label><div class="bar pink"><i id="cBar" style="width:0"></i></div><small id="cTxt"></small></div>
+    </div>
+    <div id="bTimerBox"><i id="bTimer"></i></div>
+    <div class="boardWrap"><canvas id="bBoard"></canvas></div>
+  </div>
+
+  <div id="sBag" class="screen">
+    <div id="bagTabs"></div>
+    <div id="bagBody" class="scroll"></div>
+    <button id="bagClose" class="pri">返回地圖</button>
+  </div>
+
+  <div id="dlg"><div id="dlgBox"><img id="dlgP" alt=""><div id="dlgName"></div><div id="dlgText"></div><div id="dlgNext">▼</div></div></div>
+  <div id="modal"></div>
+  <div id="fade"></div>
+</div>
+
+<script>
+'use strict';
+/* ================= 基礎 ================= */
+const $=s=>document.querySelector(s);
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const rnd=(a,b)=>a+Math.random()*(b-a);
+const ri=(a,b)=>Math.floor(rnd(a,b+1));
+const ATTR=['水','火','木','光','暗'];
+const ATTRC=['#3da5ff','#ff5a3c','#43c05a','#ffd84a','#9b5de5','#ff7ac8'];
+const RAR=Array.from({length:8},(_,i)=>'★'.repeat(i));   // 稀有度＝星數（★2～★7）
+const SAVE_KEY='orbrpg_save_v3';
+const AK=['water','fire','wood','light','dark'];
+
+/* ===== 平衡參數（可在 背包→存檔 頁面即時調整，存在這支手機上） ===== */
+const TUNE_DEF={cap:9,cw:1.5,need:20};
+const TUNE=Object.assign({},TUNE_DEF);
+try{Object.assign(TUNE,JSON.parse(localStorage.getItem('orbrpg_tune2')||'{}'))}catch(e){}
+const saveTune=()=>{try{localStorage.setItem('orbrpg_tune2',JSON.stringify(TUNE))}catch(e){}};
+
+/* 屬性相剋：水>火>木>水，光<->暗 */
+const adv=(a,d)=>(a===0&&d===1)||(a===1&&d===2)||(a===2&&d===0)||(a===3&&d===4)||(a===4&&d===3);
+const dis=(a,d)=>adv(d,a)&&!(a>=3&&d>=3);
+const relOut=(a,d)=>adv(a,d)?1.5:dis(a,d)?0.5:1;   // 我方打敵方
+const relIn=(e,m)=>adv(e,m)?1.25:dis(e,m)?0.8:1;   // 敵方打我方
+
+/* ================= 怪物資料：5 屬性 × 3 系 × 6 階 = 90 隻（名稱與進化線沿用《轉珠之塔》） ================= */
+const FAM={
+ water:[
+  {race:'妖精',n:['水滴史萊姆','迷你水母','碧波水母','珊瑚冠水母','深海水母王','星海水母女皇·莉維亞'],s:[1,1,1]},
+  {race:'獸類',n:['小海龜','青甲龜','金紋海龜','珊瑚甲龜','蒼海守護龜','滄海巨甲·阿特拉斯'],s:[1.15,.85,1.1]},
+  {race:'龍類',n:['小藍魚','彩鰭魚','飛鰭魚龍','白鱗海蛟','金角海龍','滄海龍帝·瀾'],s:[.95,1,1.2]}],
+ fire:[
+  {race:'龍類',n:['小火蜥','烈尾火蜥','炎角蜥龍','熔岩蜥將','炎獄龍','煉獄雙首龍·伊格'],s:[1,1,1]},
+  {race:'神族',n:['火雛鳥','炎羽鳥','赤焰鷹','烈焰鳳雛','業火鳳凰','浴火神鳳·朱焰'],s:[.9,1.2,.9]},
+  {race:'魔族',n:['熔岩球','熔岩石偶','熔岩岩怪','赤岩魔像','火山巨像','熔核巨神·伏爾甘'],s:[1.2,.95,.85]}],
+ wood:[
+  {race:'妖精',n:['嫩葉小狐','翠葉狐','青葉鹿狐','森之靈鹿','金角翠鹿','世界樹聖鹿·艾爾'],s:[1,1,1]},
+  {race:'獸類',n:['葉雛','翠羽鳥','風葉鷹','綠翼獅鷲','翠翼獅鷲王','蒼風神鷲·賽芙'],s:[1,1,1.2]},
+  {race:'獸類',n:['雲絨獸','葉雲犬','雲嵐狼','翠嵐狼','青雲狼王','嵐林天狼·菲洛'],s:[1.15,.9,1]}],
+ light:[
+  {race:'妖精',n:['光暈小兔','聖耳兔','星耳靈兔','聖光狐兔','金翼靈獸','聖輝天兔王·露米'],s:[1,1,1]},
+  {race:'神族',n:['光雛鳥','聖光梟','金羽梟鷲','光翼獅鷲','曙光聖鷲','天耀神鷲·海里'],s:[1,.95,1.3]},
+  {race:'獸類',n:['光鬃幼獅','星尾獅','聖鬃獅','白金獅將','翼獅聖獸','日冕聖獅王·阿斯'],s:[.95,1.15,1]}],
+ dark:[
+  {race:'魔族',n:['暗影小貓','紫焰影貓','暗角影獸','夜煉影狼','紫炎魔狼','冥焰龍狼王·諾克'],s:[1,1,1]},
+  {race:'龍類',n:['暗影蝙蝠','紫焰飛蝠','夜翼蝠龍','暗翼飛龍','夜幕翼龍','暗淵魔龍·維爾'],s:[.95,1.15,1]},
+  {race:'魔族',n:['骷髏小靈','幽冥骷髏','骨披幽靈獸','骸骨魔犬','死靈骨龍','冥界骸龍王·戈爾'],s:[1.15,.9,1]}]
+};
+const LETTER=['A','B','C'];
+const baseStats=(r,s)=>({hp:Math.round(80*Math.pow(r-1,.6)*s[0]),atk:Math.round(16*Math.pow(r-1,.6)*s[1]),rec:Math.round(9*Math.pow(r-1,.5)*s[2])});
+const NEWMON=__NEWMON__;     // true＝使用 monsters/roster.json 的新怪物（需搭配新的 5 張屬性圖）
+const ROSTER=__ROSTER__;
+const SP={};let NO=0;
+if(NEWMON){
+  ROSTER.forEach(r=>{SP[r.id]={id:r.id,no:++NO,name:r.name,attr:r.attr,rar:r.rar,hp:r.st[0],atk:r.st[1],rec:r.st[2],row:r.row,col:r.col,next:r.next,evo:r.evo,zone:r.zone,stage:r.stage,head:r.head,line:r.line}});
+}else{
+AK.forEach((a,ai)=>FAM[a].forEach((f,li)=>f.n.forEach((nm,k)=>{
+  const r=k+2,id=a+LETTER[li]+r,bs=baseStats(r,f.s);
+  SP[id]={id,no:++NO,name:nm,attr:ai,rar:r,hp:bs.hp,atk:bs.atk,rec:bs.rec,row:li+1,col:k,race:f.race,next:k<5?a+LETTER[li]+(r+1):null};
+})));
+}
+SP.boss_light={id:'boss_light',no:0,name:'熾天使長・拉斐',attr:3,rar:7,hp:190,atk:28,rec:12,boss:{c:3,r:0},guardOnly:true};
+const STARTERS=NEWMON?['waterA1','fireA1','woodA1']:['waterA2','fireA2','woodA2'];
+// 翠風草原遇敵表 [id,權重,最低Lv,最高Lv]：以 ★2 為主，少量 ★3
+const ZONE1=[];
+if(NEWMON){Object.values(SP).filter(sp=>sp.head&&sp.zone&&sp.zone.includes(1)).forEach(sp=>ZONE1.push([sp.id,sp.rar>=3?3:(sp.attr===3||sp.attr===4?4:9),sp.rar>=3?3:2,sp.rar>=3?6:5]))}
+else(()=>{const w2={water:10,fire:10,wood:12,light:3,dark:3},w3={water:2,fire:2,wood:3,light:1,dark:1};
+  AK.forEach(a=>[0,1,2].forEach(li=>{ZONE1.push([a+LETTER[li]+'2',w2[a],2,5]);ZONE1.push([a+LETTER[li]+'3',w3[a],4,7])}))})();
+const CAPBASE=[0,0,.6,.45,.3,.2,.12,.06];            // 依星數的基礎收服率
+const rarMul=r=>[1,1,1,1.3,1.8,2.5,3.5,5][r]||1;      // 依星數的經驗值倍率
+
+const lvMul=lv=>1+0.12*(lv-1);
+const expNeed=lv=>20+lv*lv*3;
+function st(m){const sp=SP[m.id];const iv=m.iv||{hp:1,atk:1,rec:1};return{hp:Math.round(sp.hp*iv.hp*lvMul(m.lv)),atk:Math.round(sp.atk*iv.atk*lvMul(m.lv)),rec:Math.round(sp.rec*iv.rec*lvMul(m.lv))}}
+function newMon(id,lv){return{id,lv,exp:0,iv:{hp:+rnd(.9,1.1).toFixed(3),atk:+rnd(.9,1.1).toFixed(3),rec:+rnd(.9,1.1).toFixed(3)},uid:++P.uid}}
+
+/* ================= 技能 ================= */
+const LEARN=[1,10,20,32,45];   // 每條進化線的技能學習等級
+const SKILLS={
+ charm1:{n:'符咒',t:'charm',cd:5,v:5,d:'把盤面 5 顆屬性珠變成符'},
+ charm2:{n:'符潮',t:'charm',cd:7,v:8,d:'把盤面 8 顆屬性珠變成符'},
+ charm3:{n:'符之海',t:'charm',cd:9,v:12,d:'把盤面 12 顆屬性珠變成符'},
+ pur1:{n:'淨化',t:'purify',cd:5,v:5,d:'把 5 顆符變成自己屬性的珠'},
+ pur2:{n:'聖潔淨化',t:'purify',cd:7,v:9,d:'把 9 顆符變成自己屬性的珠'},
+ rec1:{n:'染色',t:'recolor',cd:6,v:6,d:'把 6 顆其他屬性的珠變成自己的屬性'},
+ rec2:{n:'同化',t:'recolor',cd:8,v:10,d:'把 10 顆其他屬性的珠變成自己的屬性'},
+ str1:{n:'衝擊',t:'strike',cd:4,v:1.2,d:'造成 120% 攻擊的傷害（野生珠獸最多打到剩 1 血）'},
+ str2:{n:'重擊',t:'strike',cd:6,v:2,d:'造成 200% 攻擊的傷害（野生珠獸最多打到剩 1 血）'},
+ str3:{n:'崩毀',t:'strike',cd:8,v:3.2,d:'造成 320% 攻擊的傷害（野生珠獸最多打到剩 1 血）'},
+ drn1:{n:'吸取',t:'drain',cd:5,v:1.3,d:'造成 130% 攻擊的傷害，並把傷害的 50% 轉為隊伍體力'},
+ drn2:{n:'噬魂',t:'drain',cd:7,v:2,d:'造成 200% 攻擊的傷害，並把傷害的 60% 轉為隊伍體力'},
+ heal1:{n:'療癒',t:'heal',cd:5,v:.18,d:'回復隊伍 18% 最大體力（依回復力浮動）'},
+ heal2:{n:'祝福',t:'heal',cd:7,v:.3,d:'回復隊伍 30% 最大體力（依回復力浮動）'},
+ heal3:{n:'生命之泉',t:'heal',cd:9,v:.45,d:'回復隊伍 45% 最大體力（依回復力浮動）'},
+ frz1:{n:'凍結',t:'freeze',cd:6,v:2,d:'敵人的行動倒數 +2'},
+ frz2:{n:'時間停滯',t:'freeze',cd:8,v:3,d:'敵人的行動倒數 +3'},
+ shd1:{n:'守護',t:'shield',cd:6,v:.5,d:'2 回合內，受到的傷害 -50%'},
+ shd2:{n:'聖壁',t:'shield',cd:8,v:.75,d:'2 回合內，受到的傷害 -75%'},
+ amp1:{n:'激昂',t:'amp',cd:5,v:1.5,d:'下一次消珠的傷害 ×1.5（也提高野生珠獸的傷害上限）'},
+ amp2:{n:'狂熱',t:'amp',cd:7,v:2,d:'下一次消珠的傷害 ×2（也提高野生珠獸的傷害上限）'},
+ seal1:{n:'縮符',t:'seal',cd:7,v:3,d:'本場戰鬥所需的符減少 3 個（最低 10 個；只對野生珠獸有效）'},
+ seal2:{n:'絕對束縛',t:'seal',cd:9,v:5,d:'本場戰鬥所需的符減少 5 個（最低 10 個；只對野生珠獸有效）'},
+ lure1:{n:'誘引',t:'lure',cd:7,v:.12,d:'本場戰鬥收服率 +12%（只對野生珠獸有效）'},
+ lure2:{n:'魅惑',t:'lure',cd:9,v:.2,d:'本場戰鬥收服率 +20%（只對野生珠獸有效）'}
+};
+const SKF={charm:['charm1','charm2','charm3'],pur:['pur1','pur2'],recolor:['rec1','rec2'],strike:['str1','str2','str3'],drain:['drn1','drn2'],heal:['heal1','heal2','heal3'],freeze:['frz1','frz2'],shield:['shd1','shd2'],amp:['amp1','amp2'],lure:['lure1','lure2'],seal:['seal1','seal2']};
+const FAMS=[ // 依屬性的技能傾向：水 火 木 光 暗
+ ['heal','freeze','charm','recolor','shield','drain','seal'],
+ ['strike','amp','recolor','drain','charm','freeze','lure'],
+ ['heal','drain','pur','lure','shield','recolor','seal'],
+ ['heal','shield','pur','amp','lure','strike','seal'],
+ ['drain','charm','strike','amp','freeze','recolor','lure']];
+const hstr=s=>[...String(s)].reduce((a,c)=>(a*31+c.charCodeAt(0))>>>0,7);
+const _skc={};
+function skillList(sp){   // 回傳 [[學習等級,技能id]...]
+  const key=sp.line||sp.id;if(_skc[key])return _skc[key];
+  const f=FAMS[sp.attr],h=hstr(key),L=f.length,A=f[h%L],B=f[(h%L+1+((h>>3)%(L-1)))%L];
+  const t=(F,k)=>SKF[F][Math.min(k,SKF[F].length)-1];
+  let ids=[t(A,1),t(B,1),t(A,2),t(B,2),t(A,3)];
+  if(ids[4]===ids[2]){const C=f.find(x=>x!==A&&x!==B&&SKF[x].length>=2);ids[4]=t(C,2)}
+  return _skc[key]=LEARN.map((lv,i)=>[lv,ids[i]]);
+}
+const learnedSkills=m=>skillList(SP[m.id]).filter(([lv])=>m.lv>=lv).map(x=>x[1]);
+function skillOf(m){const L=learnedSkills(m);return L.includes(m.sk)?m.sk:L[L.length-1]}
+const skCostId=id=>Math.round(SKILLS[id].cd*1.5),skCost=m=>skCostId(skillOf(m));
+const CAPSK=['charm','seal','lure'];   // 收服輔助類：開戰就蓄滿，可立刻使用   // 技能蓄力：需消除這麼多顆「自身屬性」的珠子
+function skillTxt(id){const k=SKILLS[id];return `【${k.n}】需消除 ${skCostId(id)} 顆自身屬性珠：${k.d}`}
+function applySkillEffect(m,sk){return sk}
+function spr(sp,size){
+  if(sp.boss)return `<div class="sp sb" style="width:${size}px;height:${size}px;background-position:${sp.boss.c*33.3333}% ${sp.boss.r*100}%"></div>`;
+  return `<div class="sp s-${AK[sp.attr]}" style="width:${size}px;height:${size}px;background-position:${sp.col*20}% ${sp.row*33.3333}%"></div>`;
+}
+
+/* ================= 存檔 ================= */
+let P=null;
+function freshPlayer(){return{v:1,name:'旅人',x:13.5,y:31.5,team:[],box:[],dex:{},items:{potion:3,candy:1},flags:{},scrolls:[],hpFrac:1,uid:0}}
+function save(){try{localStorage.setItem(SAVE_KEY,JSON.stringify(P))}catch(e){}}
+function loadSave(){try{const s=localStorage.getItem(SAVE_KEY);return s?JSON.parse(s):null}catch(e){return null}}
+const exportCode=()=>btoa(unescape(encodeURIComponent(JSON.stringify(P))));
+function importCode(c){try{const o=JSON.parse(decodeURIComponent(escape(atob(c.trim()))));if(!o||o.v!==1||!Array.isArray(o.team))return false;P=o;save();return true}catch(e){return false}}
+
+/* ================= 介面工具 ================= */
+let cur='sTitle';
+function show(id){document.querySelectorAll('.screen').forEach(e=>e.classList.toggle('on',e.id===id));cur=id}
+async function fade(on){$('#fade').classList.toggle('on',on);await sleep(300)}
+let toastT=0;
+function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>e.classList.remove('on'),1800)}
+function modal(html,btns=[{t:'確定',c:'pri'}]){
+  return new Promise(res=>{
+    const m=$('#modal');
+    m.innerHTML=`<div class="box">${html}<div class="btns">${btns.map((b,i)=>`<button data-i="${i}" class="${b.c||''}">${b.t}</button>`).join('')}</div></div>`;
+    m.classList.add('on');
+    m.onclick=e=>{const b=e.target.closest('button[data-i]');if(!b)return;m.classList.remove('on');res(+b.dataset.i)};
+  });
+}
+async function pickMon(title,list){ // list: 怪物實例陣列，回傳索引或 -1
+  const rows=list.map((m,i)=>{const sp=SP[m.id],s=st(m);return `<button class="row" data-i="${i}">${spr(sp,40)}<div class="mi"><b>${sp.name}</b> Lv${m.lv}<span class="tag" style="background:${ATTRC[sp.attr]}">${ATTR[sp.attr]}</span><br><small>HP ${s.hp} 攻 ${s.atk} 回 ${s.rec}</small></div></button>`}).join('');
+  const r=await modal(`<h3>${title}</h3>${rows}`,[{t:'取消'}]);
+  return r>=list.length?-1:r;
+}
+/* 對話：lines 為字串或 [說話者,內容] */
+function say(lines){
+  return new Promise(res=>{
+    const d=$('#dlg'),txt=$('#dlgText'),nm=$('#dlgName');
+    let i=0,timer=null,full='',pos=0;
+    d.classList.add('on');
+    const showLine=()=>{
+      const L=lines[i];const name=Array.isArray(L)?L[0]:'';full=Array.isArray(L)?L[1]:L;
+      nm.style.display=name?'block':'none';nm.textContent=name;
+      const pk=name===P.name?'main':PORT_OF[name],pe=$('#dlgP');if(pk&&CH[pk]){pe.src=CH[pk].p;pe.style.display='block'}else pe.style.display='none';
+      txt.style.color=name?'#fff':'#bfcaf5';
+      pos=0;txt.textContent='';clearInterval(timer);
+      timer=setInterval(()=>{pos++;txt.textContent=full.slice(0,pos);if(pos>=full.length)clearInterval(timer)},22);
+    };
+    d.onclick=()=>{
+      if(pos<full.length){clearInterval(timer);pos=full.length;txt.textContent=full;return}
+      i++;if(i>=lines.length){clearInterval(timer);$('#dlgP').style.display='none';d.classList.remove('on');d.onclick=null;res()}else showLine();
+    };
+    showLine();
+  });
+}
+
+/* ================= 地圖 ================= */
+const MW=28,MH=36;
+const T={G:0,TG:1,TREE:2,WATER:3,PATH:4,HOUSE:5,FOUNT:6,FLOWER:7,GATE:8,SIGN:9,DOOR:11,BUSH:12,ROCK:13};
+const SOLID=new Set([2,3,5,6,8,9,11,12,13]);
+const HOUSES=[[5,26],[19,28],[5,29]];
+const hash=(x,y)=>(((x*73856093)^(y*19349663))>>>0)%100;
+let map=[];
+function buildMap(){
+  const m=Array.from({length:MH},()=>Array(MW).fill(T.G));
+  const rect=(x1,y1,x2,y2,t)=>{for(let y=y1;y<=y2;y++)for(let x=x1;x<=x2;x++)m[y][x]=t};
+  // 邊界與側邊樹林
+  for(let y=0;y<MH;y++)for(let x=0;x<MW;x++){
+    if(x<=1||x>=MW-2||y<=1||y>=MH-2)m[y][x]=T.TREE;
+    else if((x<=4||x>=23)&&hash(x,y)<38)m[y][x]=T.TREE;
+  }
+  // 高草區
+  const patches=[[3,20,11,25],[16,17,24,24],[4,9,10,15],[16,6,23,13],[8,15,12,19]];
+  patches.forEach(([a,b,c,d])=>{for(let y=b;y<=d;y++)for(let x=a;x<=c;x++)if(m[y][x]===T.G&&hash(x+3,y+7)<88)m[y][x]=T.TG});
+  rect(18,14,21,16,T.WATER);
+  // 野花點綴
+  for(let y=2;y<MH-2;y++)for(let x=2;x<MW-2;x++)if(m[y][x]===T.G&&hash(x*3,y*5)<5)m[y][x]=T.FLOWER;
+  // 散置灌木、石頭（實心裝飾）
+  const npcPos=[[11,31],[17,26],[11,16],[13,8],[6,18]];
+  for(let y=10;y<=33;y++)for(let x=5;x<=22;x++){
+    if(m[y][x]!==T.G||Math.abs(x-13.5)<3.2||npcPos.some(([a,b])=>Math.abs(a-x)<=1&&Math.abs(b-y)<=1))continue;
+    const h=hash(x*7+1,y*11+3);if(h<2)m[y][x]=T.BUSH;else if(h<4)m[y][x]=T.ROCK;
+  }
+  // 主道
+  rect(13,10,14,33,T.PATH);rect(12,26,15,33,T.PATH);rect(13,2,13,9,T.PATH);
+  // 關口：封住兩側
+  for(let x=2;x<=25;x++){m[5][x]=T.TREE;m[4][x]=T.TREE}
+  rect(13,5,13,9,T.PATH);rect(12,6,12,9,T.TREE);rect(14,6,14,9,T.TREE);
+  m[4][13]=T.GATE; // 關門
+  rect(2,2,25,3,T.TREE);
+  // 初芽鎮房屋
+  const house=(x,y)=>{rect(x,y,x+2,y+2,T.HOUSE);m[y+2][x+1]=T.DOOR};
+  house(5,26);house(19,28);house(5,29);
+  m[31][16]=T.FOUNT;
+  return m;
+}
+const NPCS=[
+  {id:'zhou',ch:'zhou',x:11,y:31,name:'老周',col:'#8a6d3b',hair:'#ddd'},
+  {id:'hana',ch:'hana',x:17,y:26,name:'阿花',col:'#d65a8a',hair:'#5a3b1c'},
+  {id:'cloak',ch:'cloak',x:11,y:16,name:'斗篷人',col:'#3b3f55',hair:'#222'},
+  {id:'guard',ch:'guard',x:13,y:8,name:'守衛 賽倫',col:'#8a93a8',hair:'#b33'},
+  {id:'stele',obj:'stele',x:6,y:18,name:'古碑'}
+];
+const G={face:0,moving:false,lock:true,keys:{},joy:{x:0,y:0},bump:0,stepAcc:0,grace:3,last:0,saveT:0};
+const mapCv=$('#mapCv'),mctx=mapCv.getContext('2d');
+let mw=300,mh=600,TS=36,mdpr=1;
+function resizeMap(){
+  mdpr=Math.min(2,window.devicePixelRatio||1);
+  mw=mapCv.clientWidth;mh=mapCv.clientHeight;
+  mapCv.width=mw*mdpr;mapCv.height=mh*mdpr;TS=Math.max(30,Math.round(mw/10));
+}
+const solidAt=(tx,ty)=>tx<0||ty<0||tx>=MW||ty>=MH||SOLID.has(map[ty][tx]);
+const activeNpcs=()=>NPCS.filter(n=>!(n.id==='guard'&&P.flags.guardDone));
+function npcNear(x,y,r){return activeNpcs().find(n=>Math.hypot(x-(n.x+.5),y-(n.y+.5))<r)}
+function canStand(x,y){
+  const r=0.27;
+  for(const [dx,dy] of [[-r,-r],[r,-r],[-r,r],[r,r]])if(solidAt(Math.floor(x+dx),Math.floor(y+dy)))return false;
+  return !npcNear(x,y,0.68);
+}
+function areaName(){return P.y>=26?'初芽鎮':P.y<=10?'守界關口':'翠風草原'}
+
+function drawTileOld(c,t,x,y,tx,ty,now){
+  const h=hash(tx,ty),S=TS;
+  const base=(col)=>{c.fillStyle=col;c.fillRect(x,y,S+1,S+1)};
+  if(t===T.G||t===T.FLOWER||t===T.TREE||t===T.TG){base(h%2?'#5aa85e':'#54a058')}
+  if(t===T.G){if(h%6===0){c.fillStyle='#6cbc6f';c.fillRect(x+S*.3,y+S*.4,3,3)}}
+  else if(t===T.FLOWER){c.fillStyle=['#ff8ad0','#fff27a','#8ad0ff'][h%3];c.beginPath();c.arc(x+S*.35,y+S*.4,3,0,7);c.arc(x+S*.7,y+S*.7,3,0,7);c.fill()}
+  else if(t===T.TG){
+    base('#3c8a47');c.strokeStyle='#2a6c37';c.lineWidth=2;c.beginPath();
+    for(let i=0;i<4;i++){const ax=x+S*(.15+.22*i),ay=y+S*.85;c.moveTo(ax,ay);c.quadraticCurveTo(ax+(i%2?5:-5),y+S*.5,ax+(i%2?2:-2),y+S*.2+(h%5))}
+    c.stroke();
+  }
+  else if(t===T.TREE){c.fillStyle='#5b3b1f';c.fillRect(x+S*.42,y+S*.55,S*.16,S*.4);c.fillStyle='#2c7a3a';c.beginPath();c.arc(x+S/2,y+S*.4,S*.4,0,7);c.fill();c.fillStyle='#3a9448';c.beginPath();c.arc(x+S*.4,y+S*.32,S*.18,0,7);c.fill()}
+  else if(t===T.WATER){base('#3a86d6');c.strokeStyle='#9bd0ff';c.lineWidth=1.5;c.beginPath();const o=Math.sin(now/500+tx)*4;c.moveTo(x+4,y+S*.4+o/2);c.quadraticCurveTo(x+S/2,y+S*.3+o,x+S-4,y+S*.4);c.stroke()}
+  else if(t===T.PATH){base('#cbb37c');if(h%4===0){c.fillStyle='#b29a63';c.fillRect(x+S*.3,y+S*.5,4,3)}}
+  else if(t===T.HOUSE||t===T.DOOR){
+    const up=ty>0&&(map[ty-1][tx]===T.HOUSE||map[ty-1][tx]===T.DOOR);
+    base(up?'#c79a68':'#c0453a');
+    if(up&&t===T.HOUSE&&h%2){c.fillStyle='#a8d8ff';c.fillRect(x+S*.3,y+S*.3,S*.4,S*.35)}
+    if(t===T.DOOR){c.fillStyle='#5b3b1f';c.fillRect(x+S*.25,y+S*.2,S*.5,S*.8)}
+    if(!up){c.fillStyle='#8c2f27';c.fillRect(x,y+S*.8,S,S*.2)}
+  }
+  else if(t===T.FOUNT){base('#5aa85e');c.fillStyle='#9aa0ad';c.beginPath();c.arc(x+S/2,y+S/2,S*.45,0,7);c.fill();c.fillStyle='#5ab4ff';c.beginPath();c.arc(x+S/2,y+S/2,S*.32+Math.sin(now/300)*1.5,0,7);c.fill()}
+  else if(t===T.GATE){base('#8b8f9c');c.strokeStyle='#5d6070';c.lineWidth=1.5;c.strokeRect(x+.5,y+.5,S-1,S/2);c.strokeRect(x+.5,y+S/2,S/2,S/2);c.strokeRect(x+S/2,y+S/2,S/2,S/2)}
+  else if(t===T.SIGN){base('#cbb37c');c.fillStyle='#7a5430';c.fillRect(x+S*.45,y+S*.4,S*.1,S*.5);c.fillRect(x+S*.2,y+S*.18,S*.6,S*.3)}
+}
+function drawPerson(c,px,py,body,hair,label){
+  c.fillStyle='#0004';c.beginPath();c.ellipse(px,py+TS*.3,TS*.26,TS*.1,0,0,7);c.fill();
+  c.fillStyle=body;c.beginPath();c.arc(px,py+TS*.08,TS*.25,0,7);c.fill();
+  c.fillStyle='#ffd9b0';c.beginPath();c.arc(px,py-TS*.2,TS*.19,0,7);c.fill();
+  c.fillStyle=hair;c.beginPath();c.arc(px,py-TS*.26,TS*.19,Math.PI,0);c.fill();
+  if(label){c.font='bold 11px sans-serif';c.textAlign='center';c.fillStyle='#000a';c.fillText(label,px+1,py-TS*.5+1);c.fillStyle='#fff';c.fillText(label,px,py-TS*.5)}
+}
+/* ===== 地圖素材（ChatGPT 生成） ===== */
+const ART={};
+[['tiles','__A_TILES__'],['tree1','__A_TREE1__'],['tree2','__A_TREE2__'],['house','__A_HOUSE__'],['fountain','__A_FOUNTAIN__'],['sign','__A_SIGN__'],['gate','__A_GATE__'],['rock','__A_ROCK__'],['bush','__A_BUSH__']]
+ .forEach(([k,src])=>{const im=new Image();im.onload=()=>{ART[k]=im};im.src=src});
+const ARTW={tree1:1.9,tree2:1.55,house:3.35,fountain:1.55,sign:1.1,gate:3.7,rock:1.15,bush:1.25};
+const tileAt=(tx,ty)=>tx<0||ty<0||tx>=MW||ty>=MH?T.TREE:map[ty][tx];
+const pathLike=t=>t===T.PATH||t===T.GATE||t===T.SIGN;
+function drawTile(c,t,x,y,tx,ty,now){
+  if(!ART.tiles)return drawTileOld(c,t,x,y,tx,ty,now);
+  const S=TS+1,h=hash(tx,ty),im=ART.tiles;
+  const tl=(col,row)=>c.drawImage(im,col*128,row*128,128,128,x,y,S,S);
+  if(t===T.TG){tgTile(c,x,y);return}
+  if(t===T.WATER){tl(0,2);c.globalAlpha=.5+.5*Math.sin(now/900+tx*.6+ty*.8);tl(1,2);c.globalAlpha=1;return}
+  if(t===T.PATH||t===T.GATE||t===T.SIGN){
+    const L=pathLike(tileAt(tx-1,ty)),R=pathLike(tileAt(tx+1,ty));
+    if(L&&!R)tl(1,1);                                       // 右側是草地：用路緣
+    else if(R&&!L){c.save();c.translate(x+S,y);c.scale(-1,1);c.drawImage(im,128,128,128,128,0,0,S,S);c.restore()} // 左側是草地：鏡射路緣
+    else tl(0,1);
+    return;
+  }
+  // 其餘都以草地為底
+  if(t===T.FLOWER)tl(h%2?2:2,h%2?3:1);
+  else tl(...[[0,0],[1,0],[1,3],[0,0],[1,0],[3,3]][h%6]);
+  if(t===T.TREE){c.fillStyle='rgba(8,48,22,.38)';c.fillRect(x,y,S,S)}
+}
+
+/* ===== 立體高草：角色站在高草裡時，下半身被「同一張貼圖」蓋住（與底圖無縫） ===== */
+let camXg=0,camYg=0;
+function tgTile(c,x,y){c.drawImage(ART.tiles,3*128+3,3,122,122,x,y,TS+1,TS+1)}
+function coverGrass(c,px,py){
+  if(!ART.tiles)return;
+  const wx=px+camXg,wy=py+camYg,ftx=Math.floor(wx/TS),fty=Math.floor((wy-2)/TS);
+  if(tileAt(ftx,fty)!==T.TG)return;
+  const x0=px-TS*.62,x1=px+TS*.62,st=TS*.11,bot=py+TS*.07;
+  const pts=[[x0,bot]];
+  for(let x=Math.floor((x0+camXg)/st)*st-camXg;x<=x1+st;x+=st){
+    const k=Math.floor(Math.round((x+camXg)/st));
+    const h1=(hash(k,7)%100)/100,h2=(hash(k,13)%100)/100;
+    pts.push([x,py-TS*(.42+.3*h1)]);pts.push([x+st*.5,py-TS*(.30+.12*h2)]);
+  }
+  pts.push([x1,bot]);
+  c.save();c.beginPath();pts.forEach((p,i)=>i?c.lineTo(p[0],p[1]):c.moveTo(p[0],p[1]));c.closePath();c.clip();
+  for(let ty=fty-2;ty<=fty+1;ty++)for(let tx=ftx-1;tx<=ftx+1;tx++)if(tileAt(tx,ty)===T.TG)tgTile(c,Math.floor(tx*TS-camXg),Math.floor(ty*TS-camYg));
+  c.restore();
+  c.strokeStyle='rgba(8,48,20,.4)';c.lineWidth=1.5;c.beginPath();pts.slice(1,-1).forEach((p,i)=>i?c.lineTo(p[0],p[1]):c.moveTo(p[0],p[1]));c.stroke();
+}
+function drawArt(c,key,cx,bottom,camX,camY){
+  const im=ART[key];if(!im)return;
+  const w=ARTW[key]*TS,h=w*im.height/im.width;
+  c.drawImage(im,Math.round(cx*TS-camX-w/2),Math.round(bottom*TS-camY-h),Math.round(w),Math.round(h));
+}
+/* ===== 角色圖（ChatGPT 生成；每張 4 格：正面/背面/左/右） ===== */
+const CH={main:{src:'__C_MAIN__',p:'__P_MAIN__',walk:1,cw:120,ch:202,h:1.313},zhou:{src:'__C_ZHOU__',p:'__P_ZHOU__',cw:94,ch:202,h:1.212},hana:{src:'__C_HANA__',p:'__P_HANA__',cw:114,ch:202,h:1.212},guard:{src:'__C_GUARD__',p:'__P_GUARD__',cw:114,ch:202,h:1.566},cloak:{src:'__C_CLOAK__',p:'__P_CLOAK__',cw:116,ch:202,h:1.364}};
+Object.values(CH).forEach(c=>{c.img=new Image();c.img.src=c.src});
+const PORT_OF={'老周':'zhou','阿花':'hana','賽倫':'guard','斗篷人':'cloak'};
+function faceTo(n){
+  const dx=P.x-(n.x+.5),dy=P.y-(n.y+.5);
+  if(Math.hypot(dx,dy)>3)return 0;
+  return Math.abs(dx)>Math.abs(dy)?(dx<0?2:3):(dy<0?1:0);
+}
+function drawChar(c,key,px,py,face,label,bob,fr){
+  const ch=CH[key];
+  if(!ch||!ch.img.complete||!ch.img.naturalWidth)return drawPerson(c,px,py-TS*.3,'#3b6bff','#2a1b12',label);
+  c.fillStyle='rgba(0,0,0,.28)';c.beginPath();c.ellipse(px,py,TS*.3,TS*.1,0,0,7);c.fill();
+  const h=ch.h*TS*1.2,w=h*ch.cw/ch.ch;
+  const sx=ch.walk?(fr||0)*ch.cw:face*ch.cw,sy=ch.walk?face*ch.ch:0;
+  c.drawImage(ch.img,sx,sy,ch.cw,ch.ch,Math.round(px-w/2),Math.round(py-h-bob),Math.round(w),Math.round(h));
+  coverGrass(c,px,py);
+  if(label){c.font='bold 11px sans-serif';c.textAlign='center';const ty=py-h-bob-3;c.fillStyle='#000b';c.fillText(label,px+1,ty+1);c.fillStyle='#fff';c.fillText(label,px,ty)}
+}
+function drawStele(c,n,camX,camY,now){
+  const cx=(n.x+.5)*TS-camX,by=(n.y+1)*TS-camY,seen=P.flags.stele;
+  if(!seen&&P.flags.q1){const a=.25+.2*Math.sin(now/400);c.fillStyle=`rgba(120,220,255,${a})`;c.beginPath();c.ellipse(cx,by-TS*.55,TS*.75,TS*.9,0,0,7);c.fill()}
+  drawArt(c,'rock',n.x+.5,n.y+1,camX,camY);
+  c.fillStyle=seen?'rgba(120,220,255,.9)':'rgba(220,230,255,.6)';c.font='bold '+Math.round(TS*.4)+'px serif';c.textAlign='center';c.fillText('歸',cx,by-TS*.28);
+  if(P.flags.q1&&!seen){c.font='bold 11px sans-serif';c.fillStyle='#000b';c.fillText('古碑',cx+1,by-TS*1.05+1);c.fillStyle='#fff';c.fillText('古碑',cx,by-TS*1.05)}
+}
+function drawMap(now){
+  const c=mctx;c.setTransform(mdpr,0,0,mdpr,0,0);
+  const camX=clamp(P.x*TS-mw/2,0,Math.max(0,MW*TS-mw)),camY=clamp(P.y*TS-mh/2,0,Math.max(0,MH*TS-mh));
+  camXg=camX;camYg=camY;
+  c.fillStyle='#000';c.fillRect(0,0,mw,mh);
+  const x0=Math.floor(camX/TS),y0=Math.floor(camY/TS),x1=Math.min(MW-1,Math.ceil((camX+mw)/TS)),y1=Math.min(MH-1,Math.ceil((camY+mh)/TS));
+  for(let ty=y0;ty<=y1;ty++)for(let tx=x0;tx<=x1;tx++)drawTile(c,map[ty][tx],Math.floor(tx*TS-camX),Math.floor(ty*TS-camY),tx,ty,now);
+  const ents=[];
+  if(ART.tiles){
+    // 立體物件：往上/兩側多掃一些格，避免高大的圖在畫面邊緣被切掉
+    for(let ty=Math.max(0,y0);ty<=Math.min(MH-1,y1+4);ty++)for(let tx=Math.max(0,x0-2);tx<=Math.min(MW-1,x1+2);tx++){
+      const t=map[ty][tx],cx=tx+.5;
+      if(t===T.TREE)ents.push({y:ty+.9,f:()=>drawArt(c,hash(tx*5,ty*3)<55?'tree1':'tree2',cx,ty+1,camX,camY)});
+      else if(t===T.BUSH)ents.push({y:ty+.9,f:()=>drawArt(c,'bush',cx,ty+1,camX,camY)});
+      else if(t===T.ROCK)ents.push({y:ty+.9,f:()=>drawArt(c,'rock',cx,ty+1,camX,camY)});
+      else if(t===T.FOUNT)ents.push({y:ty+.95,f:()=>drawArt(c,'fountain',cx,ty+1.08,camX,camY)});
+      else if(t===T.SIGN)ents.push({y:ty+1,f:()=>drawArt(c,'sign',cx,ty+1,camX,camY)});
+    }
+    HOUSES.forEach(([hx,hy])=>ents.push({y:hy+3,f:()=>drawArt(c,'house',hx+1.5,hy+3.08,camX,camY)}));
+    ents.push({y:4.9,f:()=>drawArt(c,'gate',13.5,5.0,camX,camY)});
+  }
+  activeNpcs().forEach(n=>ents.push({y:n.y+.5,f:()=>n.obj?drawStele(c,n,camX,camY,now):drawChar(c,n.ch,(n.x+.5)*TS-camX,(n.y+.5)*TS-camY+TS*.3,faceTo(n),n.name,0)}));
+  ents.push({y:P.y,f:()=>drawChar(c,'main',P.x*TS-camX,P.y*TS-camY+TS*.3,G.face,P.name,0,G.moving?[1,0,1,2][Math.floor(now/140)%4]:1)});
+  ents.sort((a,b)=>a.y-b.y).forEach(e=>e.f());
+}
+let mapRunning=false;
+function mapLoop(now){
+  if(cur!=='sMap'){mapRunning=false;return}
+  const dt=Math.min(0.05,(now-(G.last||now))/1000);G.last=now;
+  update(dt);drawMap(now);
+  requestAnimationFrame(mapLoop);
+}
+function startMapLoop(){G.last=0;if(!mapRunning){mapRunning=true;requestAnimationFrame(mapLoop)}}
+function dirVec(){
+  let x=G.joy.x,y=G.joy.y;
+  const k=G.keys;
+  if(k.ArrowLeft||k.a)x-=1;if(k.ArrowRight||k.d)x+=1;if(k.ArrowUp||k.w)y-=1;if(k.ArrowDown||k.s)y+=1;
+  const l=Math.hypot(x,y);
+  if(l>1){x/=l;y/=l}
+  return[x,y];
+}
+function update(dt){
+  G.bump-=dt;G.saveT+=dt;
+  G.moving=false;
+  if(G.lock)return;
+  const[dx,dy]=dirVec();
+  if(Math.abs(dx)+Math.abs(dy)<0.15)return;
+  const sp=3.6,mx=dx*sp*dt,my=dy*sp*dt;
+  let moved=0;
+  G.face=Math.abs(dx)>Math.abs(dy)?(dx<0?2:3):(dy<0?1:0);
+  if(canStand(P.x+mx,P.y)){P.x+=mx;moved+=Math.abs(mx)}
+  if(canStand(P.x,P.y+my)){P.y+=my;moved+=Math.abs(my)}
+  G.moving=moved>0;
+  // 碰撞互動
+  const l=Math.hypot(dx,dy)||1,px=P.x+dx/l*0.55,py=P.y+dy/l*0.55;
+  if(G.bump<=0){
+    const n=npcNear(px,py,0.85);
+    const tt=map[clamp(Math.floor(py),0,MH-1)][clamp(Math.floor(px),0,MW-1)];
+    if(n){G.bump=1;interactNpc(n)}
+    else if(tt===T.FOUNT||tt===T.GATE||tt===T.SIGN||tt===T.DOOR){G.bump=1;interactTile(tt)}
+  }
+  // 草叢遇敵
+  if(moved>0&&map[Math.floor(P.y)][Math.floor(P.x)]===T.TG){
+    G.stepAcc+=moved;
+    if(G.stepAcc>=1){G.stepAcc-=1;if(G.grace>0)G.grace--;else if(Math.random()<0.11){startWild();return}}
+  }
+  if(G.saveT>20){G.saveT=0;save()}
+  $('#hudName').textContent=areaName();
+}
+
+/* ================= 摇桿 ================= */
+(function(){
+  const joy=$('#joy'),knob=$('#knob');let id=null;
+  function set(e){
+    const r=joy.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;
+    let dx=e.clientX-cx,dy=e.clientY-cy;const R=r.width/2,l=Math.hypot(dx,dy);
+    if(l>R){dx=dx/l*R;dy=dy/l*R}
+    knob.style.transform=`translate(${dx}px,${dy}px)`;
+    const nx=dx/R,ny=dy/R;G.joy.x=Math.hypot(nx,ny)<0.2?0:nx;G.joy.y=Math.hypot(nx,ny)<0.2?0:ny;
+  }
+  joy.addEventListener('pointerdown',e=>{id=e.pointerId;joy.setPointerCapture(id);set(e)});
+  joy.addEventListener('pointermove',e=>{if(e.pointerId===id)set(e)});
+  const end=e=>{if(e.pointerId===id){id=null;G.joy.x=G.joy.y=0;knob.style.transform=''}};
+  joy.addEventListener('pointerup',end);joy.addEventListener('pointercancel',end);
+  addEventListener('keydown',e=>{G.keys[e.key]=true;G.keys[e.key.toLowerCase()]=true});
+  addEventListener('keyup',e=>{G.keys[e.key]=false;G.keys[e.key.toLowerCase()]=false});
+})();
+
+/* ================= 劇情與互動 ================= */
+const SCROLLS=[
+ {t:'史冊殘卷・壹',x:'教科書說，初代珠師艾瑟爾獨力擊敗了暴君歸一王。但這份手稿寫著：「珠核本有五枚，由五位守護者各執其一。歸一，並非野心，而是為了縫合大地的裂痕……」'},
+ {t:'史冊殘卷・貳'},{t:'史冊殘卷・參'},{t:'史冊殘卷・肆'},{t:'史冊殘卷・伍'},{t:'史冊殘卷・陸'},{t:'史冊殘卷・柒'},{t:'史冊殘卷・捌'}
+];
+function questHint(){
+  const f=P.flags;
+  if(f.guardDone)return '第 1 章完成。第二張地圖「碎鏡海岸」尚未開放。';
+  if(!f.q1)return '去跟老周談談。他似乎對你的吊墜很在意。';
+  if(!f.stele)return '西邊草原有一塊古碑。帶著吊墜去摸摸它。';
+  if(!f.truth1)return '找斗篷人談談，問清楚古碑的真相。';
+  return '帶著銅印去北邊關口，挑戰守衛賽倫。';
+}
+async function interactTile(t){
+  G.lock=true;G.joy.x=G.joy.y=0;
+  if(t===T.FOUNT){P.hpFrac=1;save();await say(['療癒泉的水清澈見底。你的夥伴們精神一振，體力全部恢復了！'])}
+  else if(t===T.GATE){await say([P.flags.guardDone?'關門已經開啟。':'巨大的關門緊閉著。守衛就站在門前，看起來不會輕易放行。'])}
+  else if(t===T.SIGN){await say(['【原型到此】','第二張地圖「碎鏡海岸」尚未開放。','你已取得第 1 卷史冊殘卷。歸一會的真相，才剛剛露出一角……'])}
+  else if(t===T.DOOR){await say(['門鎖著，裡面似乎沒有人。'])}
+  G.lock=false;G.bump=0.8;
+}
+async function interactNpc(n){
+  G.lock=true;G.joy.x=G.joy.y=0;
+  const f=P.flags;
+  if(n.id==='zhou'){
+    if(f.guardDone){await say([['老周','你的眼神……越來越像你父親了。繼續走下去吧。']])}
+    else if(!f.q1){
+      await say([['老周','這一帶的野生珠獸不兇，多練練再往北走。累了就去廣場的療癒泉。'],['老周','……等一下。你脖子上那枚吊墜，讓我看看。'],['老周','果然。那是歸一會的舊紋章。孩子，你一直被告訴「歸一會是惡人」，對吧？'],
+        ['老周','守界盟的守衛不會把你放在眼裡——除非你知道你是誰。西邊草原有一塊古碑，十五年前我見過，上面刻的字跟史冊不一樣。'],['老周','帶著吊墜去摸摸它。看完再決定，要不要走北邊的關口。']]);
+      f.q1=1;toast('新目標：去西邊草原找古碑');
+    }else if(!f.stele){await say([['老周','古碑在西邊草原，高草的外緣。帶著吊墜去摸它。']])}
+    else if(!f.truth1){await say([['老周','你看見了。……去找那個斗篷人吧，他知道更多。']])}
+    else{await say([['老周','真相不會自己走到人面前。守衛現在會正眼看你了，但別大意，賽倫是真的強。']])}
+    save();
+  }else if(n.id==='hana'){
+    await say([['阿花',`草叢裡有野生珠獸喔！把「符」珠消滿 ${TUNE.need} 個，就有機會收服牠們。`],['阿花','對手血量越低、等級比牠高越多、稀有度越低，就越容易成功！但如果先把牠打倒就沒機會囉。']]);
+  }else if(n.id==='stele'){
+    if(!f.q1){await say(['一塊風化的古碑，字跡模糊，看不出寫了什麼。'])}
+    else if(!f.stele){
+      await say(['你伸手觸碰古碑，胸前的吊墜忽然發燙。','碑面的苔蘚褪去，浮現出一行行光字——','「珠核本有五枚，由五位守護者各執其一。歸一，並非野心，而是為了縫合大地的裂痕。」','「守界盟的先祖，在歸一之日前夜，奪走了其中一枚。」','畫面一閃，你看見火光、倒下的人影，以及一個與你面容相似的背影——他把吊墜交給了一個嬰兒。',
+        '……那個嬰兒，是你。','你喘著氣收回手。史冊上寫的，似乎不是全部。']);
+      f.stele=1;toast('目標更新：找斗篷人談談');
+    }else{await say(['古碑靜靜地發著微光。你已經看過它想讓你看的東西了。'])}
+    save();
+  }else if(n.id==='cloak'){
+    if(!f.stele){
+      const lines=[['斗篷人','……你身上有舊時代的氣味。'],['斗篷人','守界盟的守衛會檢查每個過關的人。史冊上寫的，並不全是真的，孩子。']];
+      if(!f.cloakGift){lines.push('斗篷人塞給你兩瓶回復藥，轉身消失在草叢邊。');P.items.potion+=2;f.cloakGift=1}
+      await say(lines);
+    }else if(!f.truth1){
+      await say([['斗篷人','……你的眼神變了。你摸過古碑了。'],['斗篷人','守界盟之所以是「正派」，是因為贏的人寫了史冊。他們改寫了那一夜。'],['斗篷人','賽倫不是壞人，但他只相信史冊。拿出吊墜，讓他看你是誰——然後打贏他，他才會開始懷疑自己守護的是什麼。'],
+        '斗篷人把一枚小小的銅印放進你手心：「這是歸一會舊部的通行印。有它，守衛才會認出你。」']);
+      f.truth1=1;toast('真相已揭開：守衛會認出你了');
+    }else{await say([['斗篷人','去吧。北邊的關口在等你。']])}
+    save();
+  }else if(n.id==='guard'){
+    if(await guardEvent())return;
+  }
+  G.lock=false;G.bump=0.8;
+}
+async function guardEvent(){
+  if(!P.flags.truth1){
+    await say([['賽倫','站住。無通行資格者，不得靠近關口。'],'賽倫看了你一眼，目光又移回遠方。在他眼裡，你只是路過的旅人。']);
+    if(P.flags.q1&&!P.flags.stele)toast('提示：先去西邊草原找古碑');else if(P.flags.stele)toast('提示：先去找斗篷人談談');else toast('提示：去跟老周談談');
+    return false;
+  }
+  const avg=teamAvg();
+  await say([['賽倫','站住。依守界盟令，通過此關者須接受珠核檢查。'],['賽倫','……等等。你胸前那枚吊墜，還有手裡的銅印——這是歸一會舊部的東西。'],['賽倫','你是……歸一之子。好，守界盟的珠核檢查，我親自來。']]);
+  if(avg<8){
+    const r=await modal(`<h3>守衛：賽倫</h3><div class="note">對方隊伍約 Lv7～10，你的隊伍平均 Lv${avg.toFixed(1)}。建議先在草原練等後再來。</div>`,[{t:'先去練等'},{t:'現在就挑戰',c:'warn'}]);
+    if(r===0)return false;
+  }
+  await startGuardBattle();
+  return true;
+}
+async function afterGuardWin(){
+  P.flags.guardDone=1;P.scrolls.push(0);P.items.potion+=3;P.items.candy+=2;P.hpFrac=1;
+  map[4][13]=T.SIGN;
+  save();
+  await say([['賽倫','……好強的珠力。你的戰法，不像是本地人。'],['賽倫','這個，是我在關口舊牆裡找到的。本該上繳守界盟，但……上面的字跡，不是我們的人寫的。'],
+   '你獲得了【史冊殘卷・壹】、回復藥 ×3、經驗糖 ×2。',
+   ['賽倫','過去吧。……希望你看見的，是比史冊更真實的東西。'],
+   '賽倫讓開了道路。關門緩緩升起。']);
+  toast('已取得：史冊殘卷・壹');
+}
+
+/* ================= 隊伍計算 ================= */
+function teamInfo(){return P.team.map(m=>({m,sp:SP[m.id],s:st(m)}))}
+function teamAvg(){return P.team.reduce((a,m)=>a+m.lv,0)/Math.max(1,P.team.length)}
+function teamMax(){return teamInfo().reduce((a,t)=>a+t.s.hp,0)}
+const EVO={2:10,3:20,4:30,5:40,6:50};   // 各星數的進化等級：★2→★3 在 Lv10，之後每 10 級一階
+function addExp(m,amt){
+  const out=[];m.exp+=amt;
+  while(m.exp>=expNeed(m.lv)&&m.lv<60){
+    m.exp-=expNeed(m.lv);m.lv++;
+    const sp=SP[m.id];out.push(`${sp.name} 升到了 Lv${m.lv}！`);
+    skillList(sp).forEach(([lv,id])=>{if(lv===m.lv&&lv>1)out.push(`📖 ${sp.name} 學會了技能【${SKILLS[id].n}】！`)});
+    if(sp.next&&m.lv>=(sp.evo||EVO[sp.rar])){const nx=SP[sp.next];out.push(`✨ ${sp.name} 進化成了 ${nx.name}！`);m.id=nx.id;P.dex[nx.id]=2}
+  }
+  return out;
+}
+
+/* ================= 戰鬥：盤面 ================= */
+const COLS=6,ROWS=5,LIMIT=6000;
+const bc=$('#bBoard'),bx=bc.getContext('2d');
+let grid=[],cell=60,held=null,moved=false,dragStart=0,timerRAF=0,boardRun=false,B=null;
+function resizeBoard(){
+  const w=bc.parentElement.clientWidth||320,dpr=Math.min(2,window.devicePixelRatio||1),h=w*ROWS/COLS;
+  bc.style.width=w+'px';bc.style.height=h+'px';bc.width=w*dpr;bc.height=h*dpr;cell=w/COLS;bx.setTransform(dpr,0,0,dpr,0,0);
+}
+function pickType(){
+  const w=B.weights,tot=w.reduce((a,b)=>a+b,0);let r=Math.random()*tot;
+  for(let i=0;i<w.length;i++){r-=w[i];if(r<=0)return i}return 0;
+}
+const mkOrb=(t,r,c)=>({t,x:c,y:r,a:1,fade:false});
+function initGrid(){
+  grid=Array.from({length:ROWS},(_,r)=>Array.from({length:COLS},(_,c)=>mkOrb(pickType(),r,c)));
+  for(let k=0;k<80;k++){
+    const gs=findGroups();if(!gs.length)break;
+    gs.forEach(g=>g.cells.forEach(([r,c])=>{grid[r][c]=mkOrb(pickType(),r,c)}));
+  }
+}
+function findGroups(){
+  const m=Array.from({length:ROWS},()=>Array(COLS).fill(false));
+  for(let r=0;r<ROWS;r++){let run=1;for(let c=1;c<=COLS;c++){
+    if(c<COLS&&grid[r][c]&&grid[r][c-1]&&grid[r][c].t===grid[r][c-1].t)run++;
+    else{if(run>=3)for(let k=1;k<=run;k++)m[r][c-k]=true;run=1}}}
+  for(let c=0;c<COLS;c++){let run=1;for(let r=1;r<=ROWS;r++){
+    if(r<ROWS&&grid[r][c]&&grid[r-1][c]&&grid[r][c].t===grid[r-1][c].t)run++;
+    else{if(run>=3)for(let k=1;k<=run;k++)m[r-k][c]=true;run=1}}}
+  const seen=Array.from({length:ROWS},()=>Array(COLS).fill(false)),gs=[];
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
+    if(!m[r][c]||seen[r][c])continue;
+    const t=grid[r][c].t,cells=[],q=[[r,c]];seen[r][c]=true;
+    while(q.length){const[a,b]=q.pop();cells.push([a,b]);
+      for(const[da,db]of[[1,0],[-1,0],[0,1],[0,-1]]){const na=a+da,nb=b+db;
+        if(na>=0&&nb>=0&&na<ROWS&&nb<COLS&&m[na][nb]&&!seen[na][nb]&&grid[na][nb].t===t){seen[na][nb]=true;q.push([na,nb])}}}
+    gs.push({t,cells});
+  }
+  return gs;
+}
+const ORBIMG=new Image();let ORB_OK=false;ORBIMG.onload=()=>{ORB_OK=true};ORBIMG.src='__ORBS__';
+function drawOrb(c,o,x,y,scale){
+  const R=cell*.43*scale;c.save();c.globalAlpha=o.a;
+  const px=x*cell+cell/2,py=y*cell+cell/2,col=ATTRC[o.t];
+  if(ORB_OK){
+    const d=R*2.3;
+    c.drawImage(ORBIMG,o.t*160,0,160,160,px-d/2,py-d/2,d,d);
+    if(o.t===5){ // 心形珠蓋上「符」字
+      c.font=`900 ${R*1.05}px "Noto Sans TC","PingFang TC",sans-serif`;c.textAlign='center';c.textBaseline='middle';
+      c.lineWidth=R*.2;c.strokeStyle='#8a1450';c.lineJoin='round';c.strokeText('符',px,py-R*.08);c.fillStyle='#fff';c.fillText('符',px,py-R*.08);
+    }
+  }else if(o.t===5){
+    c.fillStyle=col;const w=R*1.5,h=R*1.8;c.beginPath();c.roundRect?c.roundRect(px-w/2,py-h/2,w,h,6):c.rect(px-w/2,py-h/2,w,h);c.fill();
+    c.fillStyle='#fff';c.font=`bold ${R*1.0}px sans-serif`;c.textAlign='center';c.textBaseline='middle';c.fillText('符',px,py+1);
+  }else{
+    const g=c.createRadialGradient(px-R*.35,py-R*.4,R*.1,px,py,R);g.addColorStop(0,'#fff');g.addColorStop(.25,col);g.addColorStop(1,'#0008');
+    c.fillStyle=g;c.beginPath();c.arc(px,py,R,0,7);c.fill();
+    c.fillStyle='#fffd';c.font=`bold ${R*.95}px sans-serif`;c.textAlign='center';c.textBaseline='middle';c.fillText(ATTR[o.t],px,py+1);
+  }
+  c.restore();
+}
+function drawBoard(){
+  bx.clearRect(0,0,cell*COLS,cell*ROWS);
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){bx.fillStyle=(r+c)%2?'#151c33':'#1c2542';bx.fillRect(c*cell,r*cell,cell,cell)}
+  let top=null;
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
+    const o=grid[r][c];if(!o)continue;
+    if(held&&held.o===o){top=o;continue}
+    o.x+=(c-o.x)*0.35;o.y+=(r-o.y)*0.35;
+    if(Math.abs(c-o.x)<.01)o.x=c;if(Math.abs(r-o.y)<.01)o.y=r;
+    if(o.fade)o.a=Math.max(0,o.a-0.09);
+    drawOrb(bx,o,o.x,o.y,o.fade?o.a:1);
+  }
+  if(top)drawOrb(bx,top,top.x,top.y,1.12);
+}
+function boardLoop(){if(cur!=='sBattle'){boardRun=false;return}drawBoard();requestAnimationFrame(boardLoop)}
+function settled(){for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){const o=grid[r][c];if(o&&(Math.abs(o.x-c)>.03||Math.abs(o.y-r)>.03))return false}return true}
+async function settle(){for(let i=0;i<60;i++){await sleep(30);if(settled())return}}
+async function resolveBoard(){
+  const all=[];
+  while(true){
+    const gs=findGroups();if(!gs.length)break;
+    gs.forEach(g=>g.cells.forEach(([r,c])=>{grid[r][c].fade=true}));
+    await sleep(260);
+    all.push(...gs);
+    gs.forEach(g=>g.cells.forEach(([r,c])=>{grid[r][c]=null}));
+    for(let c=0;c<COLS;c++){
+      let w=ROWS-1;
+      for(let r=ROWS-1;r>=0;r--)if(grid[r][c]){if(w!==r){grid[w][c]=grid[r][c];grid[r][c]=null}w--}
+      for(let r=w;r>=0;r--)grid[r][c]=mkOrb(pickType(),r,c),grid[r][c].y=-(w-r+1);
+    }
+    await settle();await sleep(100);
+  }
+  return all;
+}
+/* 拖曳 */
+function bpos(e){const r=bc.getBoundingClientRect();return[(e.clientX-r.left)/cell,(e.clientY-r.top)/cell]}
+bc.addEventListener('pointerdown',e=>{
+  if(!B||B.busy||B.over)return;
+  const[px,py]=bpos(e),c=clamp(Math.floor(px),0,COLS-1),r=clamp(Math.floor(py),0,ROWS-1);
+  bc.setPointerCapture(e.pointerId);
+  held={o:grid[r][c],r,c};held.o.x=px-.5;held.o.y=py-.5;moved=false;dragStart=0;
+});
+bc.addEventListener('pointermove',e=>{
+  if(!held)return;
+  const[px,py]=bpos(e),c=clamp(Math.floor(px),0,COLS-1),r=clamp(Math.floor(py),0,ROWS-1);
+  if(c!==held.c||r!==held.r){
+    const other=grid[r][c];grid[held.r][held.c]=other;grid[r][c]=held.o;held.r=r;held.c=c;
+    if(!moved){moved=true;dragStart=performance.now();runTimer()}
+  }
+  held.o.x=clamp(px-.5,-.2,COLS-.8);held.o.y=clamp(py-.5,-.2,ROWS-.8);
+});
+function releaseHeld(){
+  if(!held)return;held=null;cancelAnimationFrame(timerRAF);$('#bTimer').style.width='100%';
+  if(moved)afterMove();
+}
+bc.addEventListener('pointerup',releaseHeld);bc.addEventListener('pointercancel',releaseHeld);
+function runTimer(){
+  const f=()=>{
+    if(!held)return;
+    const left=1-(performance.now()-dragStart)/LIMIT;
+    $('#bTimer').style.width=Math.max(0,left*100)+'%';
+    if(left<=0){releaseHeld();return}
+    timerRAF=requestAnimationFrame(f);
+  };f();
+}
+
+/* ================= 戰鬥：流程 ================= */
+function mkEnemy(id,lv,hpMul,atkMul){
+  const sp=SP[id],s=st({id,lv});
+  const cd=hpMul===3?3:2;return{sp,lv,attr:sp.attr,maxHp:Math.round(s.hp*hpMul),hp:Math.round(s.hp*hpMul),atk:Math.round(s.atk*atkMul),cd,cdMax:cd};
+}
+function pickWild(){
+  const tot=ZONE1.reduce((a,z)=>a+z[1],0);let r=Math.random()*tot;
+  for(const z of ZONE1){r-=z[1];if(r<=0)return mkEnemy(z[0],ri(z[2],z[3]),3,0.8)}
+  return mkEnemy(NEWMON?'woodA1':'woodA2',3,3,0.8);
+}
+function weightsFor(canCap){
+  const w=[1,1,1,1,1];P.team.forEach(m=>{w[SP[m.id].attr]=1.35});
+  w.push(canCap?TUNE.cw:0);return w;
+}
+async function startWild(){
+  G.lock=true;G.joy.x=G.joy.y=0;
+  const e=pickWild();
+  await beginBattle({kind:'wild',waves:[e],canCap:true,intro:`野生的 ${e.sp.name} 出現了！`});
+}
+async function startGuardBattle(){
+  G.lock=true;
+  const waves=[mkEnemy(NEWMON?'lightB2':'lightB3',7,1.6,0.85),mkEnemy(NEWMON?'lightC2':'lightC4',9,1.6,0.85),mkEnemy('boss_light',11,1.6,0.9)];
+  await beginBattle({kind:'guard',waves,canCap:false,intro:'守界盟守衛・賽倫 發起了挑戰！'});
+}
+async function beginBattle(cfg){
+  await fade(true);
+  const tm=teamMax();
+  B={kind:cfg.kind,waves:cfg.waves,wi:0,canCap:cfg.canCap,charm:0,busy:true,over:false,
+     teamHp:Math.max(1,Math.round(P.hpFrac*tm)),teamMax:tm,weights:weightsFor(cfg.canCap),exp:0,drops:[],shield:0,shieldV:0,amp:1,lure:0,
+     skch:P.team.map(m=>CAPSK.includes(SKILLS[skillOf(m)].t)?skCost(m):Math.round(skCost(m)*.5))};
+  B.enemy=B.waves[0];
+  show('sBattle');resizeBoard();initGrid();
+  if(!boardRun){boardRun=true;requestAnimationFrame(boardLoop)}
+  $('#charmRow').style.display=B.canCap?'flex':'none';
+  $('#bRun').style.visibility=B.kind==='wild'?'visible':'hidden';
+  if(!P.dex[B.enemy.sp.id])P.dex[B.enemy.sp.id]=1;
+  renderBattle();msg(cfg.intro);
+  await fade(false);
+  await sleep(500);msg('拖曳珠子，連成 3 顆以上消除！');B.busy=false;
+}
+function msg(t){$('#bMsg').textContent=t}
+const needNow=()=>Math.max(10,TUNE.need-((B&&B.cut)||0));
+function capChance(){
+  const e=B.enemy,base=CAPBASE[e.sp.rar],hpf=1+(1-e.hp/e.maxHp)*1.5,lvf=clamp(1+(teamAvg()-e.lv)*.06,.5,1.5);
+  return clamp(base*hpf*lvf+(B.lure||0),.03,.95);
+}
+function sprSize(){return clamp(innerHeight-560,100,180)+(B.kind==='guard'?10:0)}
+function renderBattle(){
+  const e=B.enemy;
+  $('#eName').textContent=e.sp.name;$('#eLv').textContent='Lv'+e.lv;
+  $('#eAttr').innerHTML=`<span class="tag" style="background:${ATTRC[e.attr]}">${ATTR[e.attr]}</span>`;
+  $('#eRar').textContent=RAR[e.sp.rar];
+  $('#eSpr').innerHTML=spr(e.sp,sprSize());$('#bTop').dataset.bg=AK[e.attr];
+  $('#eHp').style.width=(e.hp/e.maxHp*100)+'%';$('#eHpTxt').textContent=`${Math.max(0,e.hp)}/${e.maxHp}`;
+  $('#eCd').textContent=e.cd;
+  $('#tHp').style.width=(B.teamHp/B.teamMax*100)+'%';$('#tHpTxt').textContent=`${Math.max(0,Math.round(B.teamHp))}/${B.teamMax}`;
+  $('#bTeamRow').innerHTML=teamInfo().map((t,i)=>{const k=SKILLS[skillOf(t.m)],cost=skCost(t.m),ch=Math.min(cost,(B.skch||[])[i]||0),rdy=ch>=cost&&!B.busy&&!B.over;
+    return `<div class="tm ${rdy?'rdy':''}" data-mi="${i}">${spr(t.sp,40)}<span style="color:${ATTRC[t.sp.attr]}">${ATTR[t.sp.attr]} Lv${t.m.lv}</span><span class="sk">${k.n} ${ch>=cost?'✦':ch+'/'+cost}</span><i class="skb"><b style="width:${ch/cost*100}%"></b></i></div>`}).join('');
+  if(B.canCap){
+    $('#cBar').style.width=Math.min(100,B.charm/needNow()*100)+'%';
+    $('#cTxt').textContent=`${Math.min(B.charm,needNow())}/${needNow()} 收服率${Math.round(capChance()*100)}%`;
+  }
+}
+function pop(text,color,big){
+  const d=document.createElement('div');d.className='pop';d.textContent=text;d.style.color=color;d.style.top=(big?90:60)+'px';
+  $('#eSprWrap').appendChild(d);setTimeout(()=>d.remove(),950);
+}
+function calcDamage(groups,combo){
+  const info=teamInfo(),e=B.enemy;
+  let tot=0;
+  groups.forEach(g=>{
+    if(g.t>=5)return;
+    const sz=1+.25*(g.cells.length-3),match=info.filter(t=>t.sp.attr===g.t);
+    match.forEach(t=>{tot+=t.s.atk*sz*relOut(t.sp.attr,e.attr)});  // 只有同屬性的珠子才會造成傷害
+  });
+  return Math.round(tot*(1+.25*(combo-1)));
+}
+async function afterMove(){
+  if(!B||B.busy||B.over)return;
+  B.busy=true;
+  const groups=await resolveBoard();
+  if(!groups.length){B.busy=false;return}
+  const combo=groups.length,e=B.enemy;
+  P.team.forEach((m,i)=>{let n=0;groups.forEach(g=>{if(g.t===SP[m.id].attr)n+=g.cells.length});B.skch[i]=Math.min(skCost(m),(B.skch[i]||0)+n)});
+  // 符
+  let charmGain=0;groups.forEach(g=>{if(g.t===5)charmGain+=g.cells.length});
+  if(B.canCap)B.charm+=charmGain;
+  // 傷害
+  let dmg=Math.round(calcDamage(groups,combo)*B.amp),capped=false;const ampUsed=B.amp>1;
+  if(B.canCap){const cap=Math.max(1,Math.round(e.maxHp*TUNE.cap/100*B.amp));if(dmg>cap){dmg=cap;capped=true}}   // 野生珠獸單回合最多承受 WILD_CAP×最大血量
+  B.amp=1;e.hp=Math.max(0,e.hp-dmg);
+  $('#eSpr').classList.remove('flash');void $('#eSpr').offsetWidth;$('#eSpr').classList.add('flash');
+  pop('-'+dmg,'#ffe27a',true);
+  msg(`${combo} Combo！造成 ${dmg} 傷害`+(capped?'（已達單回合傷害上限，多餘的屬性珠是浪費，改消符更划算）':'')+(charmGain&&B.canCap?`，符 +${charmGain}`:''));
+  // 回復
+  renderBattle();await sleep(700);
+  if(e.hp<=0){await onEnemyDown();return}
+  // 收服判定
+  if(B.canCap&&B.charm>=needNow()){
+    B.charm-=needNow();
+    const p=capChance();msg(`符之力達到 ${needNow()}！收服判定中…（${Math.round(p*100)}%）`);renderBattle();await sleep(1100);
+    if(Math.random()<p){await onCapture();return}
+    msg('收服失敗……牠掙脫了！');pop('失敗','#ff8a8a',true);await sleep(900);
+  }
+  // 敵方行動
+  e.cd--;
+  if(e.cd<=0){
+    const info=teamInfo(),m=info.reduce((a,t)=>a+relIn(e.attr,t.sp.attr),0)/Math.max(1,info.length);
+    let d=Math.max(1,Math.round(e.atk*rnd(.85,1.15)*m));if(B.shield>0)d=Math.max(1,Math.round(d*(1-B.shieldV)));
+    B.teamHp=Math.max(0,B.teamHp-d);e.cd=e.cdMax;
+    $('#bTop').classList.remove('shake');void $('#bTop').offsetWidth;$('#bTop').classList.add('shake');
+    msg(`${e.sp.name} 發動攻擊！隊伍受到 ${d} 傷害`);
+  }
+  if(B.shield>0)B.shield--;
+  renderBattle();await sleep(500);
+  if(B.teamHp<=0){await onDefeat();return}
+  B.busy=false;
+}
+
+async function useSkill(i){
+  if(!B||B.busy||B.over)return;
+  const m=P.team[i];if(!m)return;
+  const id=skillOf(m),k=SKILLS[id],sp=SP[m.id],s=st(m),e=B.enemy;
+  const cost=skCost(m);if((B.skch[i]||0)<cost){toast(`【${k.n}】還需消除 ${cost-(B.skch[i]||0)} 顆${ATTR[sp.attr]}珠`);return}
+  if(k.t==='charm'&&!B.canCap){toast('這場戰鬥沒有符，無法使用');return}
+  if((k.t==='lure'||k.t==='seal')&&!B.canCap){toast('只對野生珠獸有效');return}
+  B.busy=true;
+  const cells=(f)=>{const a=[];for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)if(grid[r][c]&&f(grid[r][c]))a.push(grid[r][c]);return a};
+  const shuffle=a=>{for(let j=a.length-1;j>0;j--){const q=Math.floor(Math.random()*(j+1));[a[j],a[q]]=[a[q],a[j]]}return a};
+  let note='';
+  if(k.t==='charm'){const l=shuffle(cells(o=>o.t<5)).slice(0,k.v);l.forEach(o=>o.t=5);note=`${l.length} 顆珠變成了符`}
+  else if(k.t==='purify'){const l=shuffle(cells(o=>o.t===5)).slice(0,k.v);l.forEach(o=>o.t=sp.attr);note=`${l.length} 顆符被淨化成${ATTR[sp.attr]}珠`}
+  else if(k.t==='recolor'){const l=shuffle(cells(o=>o.t<5&&o.t!==sp.attr)).slice(0,k.v);l.forEach(o=>o.t=sp.attr);note=`${l.length} 顆珠變成了${ATTR[sp.attr]}珠`}
+  else if(k.t==='strike'||k.t==='drain'){
+    let d=Math.max(1,Math.round(s.atk*k.v*relOut(sp.attr,e.attr)));
+    if(B.canCap)d=Math.min(d,Math.max(0,e.hp-1));
+    e.hp=Math.max(0,e.hp-d);
+    $('#eSpr').classList.remove('flash');void $('#eSpr').offsetWidth;$('#eSpr').classList.add('flash');
+    pop('-'+d,'#ffe27a',true);note=`造成 ${d} 傷害`;
+    if(k.t==='drain'){const h=Math.round(d*(id==='drn2'?.6:.5));B.teamHp=Math.min(B.teamMax,B.teamHp+h);note+=`，隊伍回復 ${h}`}
+  }
+  else if(k.t==='heal'){
+    const f=clamp(s.rec/(s.hp*.11),.7,1.4),h=Math.round(B.teamMax*k.v*f);
+    B.teamHp=Math.min(B.teamMax,B.teamHp+h);pop('+'+h,'#7dff8c',false);note=`隊伍回復 ${h} 體力`;
+  }
+  else if(k.t==='freeze'){e.cd=Math.min(e.cdMax+3,e.cd+k.v);note=`敵人行動倒數 +${k.v}`}
+  else if(k.t==='shield'){B.shield=2;B.shieldV=k.v;note=`2 回合內受到傷害 -${Math.round(k.v*100)}%`}
+  else if(k.t==='amp'){B.amp=k.v;note=`下一次消珠傷害 ×${k.v}`}
+  else if(k.t==='seal'){const before=needNow();B.cut=(B.cut||0)+k.v;note=`所需符 ${before} → ${needNow()}`}
+  else if(k.t==='lure'){B.lure+=k.v;note=`收服率 +${Math.round(k.v*100)}%`}
+  B.skch[i]=0;
+  msg(`${sp.name} 的【${k.n}】：${note}`);
+  renderBattle();await sleep(650);
+  if(e.hp<=0){await onEnemyDown();return}
+  B.busy=false;renderBattle();
+}
+$('#bTeamRow').onclick=e=>{const t=e.target.closest('[data-mi]');if(t)useSkill(+t.dataset.mi)};
+async function onEnemyDown(){
+  const e=B.enemy;
+  msg(`${e.sp.name} 倒下了！`);
+  B.exp+=Math.floor((6+e.lv*5)*rarMul(e.sp.rar));
+  await sleep(900);
+  if(B.wi<B.waves.length-1){
+    B.wi++;B.enemy=B.waves[B.wi];if(!P.dex[B.enemy.sp.id])P.dex[B.enemy.sp.id]=1;
+    renderBattle();msg(`下一位：${B.enemy.sp.name} Lv${B.enemy.lv}`);await sleep(900);B.busy=false;return;
+  }
+  await endBattle('win');
+}
+async function onCapture(){
+  const e=B.enemy,m=newMon(e.sp.id,e.lv);
+  P.dex[e.sp.id]=2;
+  let where='加入了隊伍';
+  if(P.team.length<6)P.team.push(m);else{P.box.push(m);where='被送進了倉庫'}
+  pop('收服成功！','#7dff8c',true);msg(`收服成功！${e.sp.name} ${where}`);
+  B.exp+=Math.floor((6+e.lv*5)*rarMul(e.sp.rar));
+  await sleep(1300);
+  await endBattle('capture',`${e.sp.name} Lv${e.lv} ${where}！`);
+}
+async function onDefeat(){
+  B.over=true;msg('隊伍全滅了……');await sleep(1200);await endBattle('lose');
+}
+async function endBattle(res,extra){
+  B.over=true;B.busy=true;
+  let report='';
+  if(res==='win'||res==='capture'){
+    const ups=[];P.team.forEach(m=>ups.push(...addExp(m,B.exp)));
+    P.hpFrac=clamp(B.teamHp/B.teamMax,0.05,1);
+    let drop='';
+    if(B.kind==='wild'&&Math.random()<.3){if(Math.random()<.8){P.items.potion++;drop='撿到了回復藥 ×1'}else{P.items.candy++;drop='撿到了經驗糖 ×1'}}
+    report=`<h3>${res==='capture'?'收服成功！':'戰鬥勝利！'}</h3>${extra?`<p>${extra}</p>`:''}<p>全隊獲得 ${B.exp} 經驗值${drop?'<br>'+drop:''}</p>${ups.length?'<p style="color:#ffd84a">'+ups.join('<br>')+'</p>':''}`;
+  }else if(res==='lose'){
+    P.hpFrac=1;P.x=13.5;P.y=31.5;
+    report='<h3>戰敗……</h3><p>你被送回了初芽鎮，夥伴們在療癒泉旁恢復了體力。</p>';
+  }else if(res==='run'){
+    P.hpFrac=clamp(B.teamHp/B.teamMax,0.05,1);
+  }
+  if(report)await modal(report);
+  save();
+  await fade(true);
+  const wasGuard=B.kind==='guard',guardWin=wasGuard&&res==='win';
+  B=null;G.grace=3;G.stepAcc=0;
+  show('sMap');startMapLoop();
+  await fade(false);
+  if(guardWin)await afterGuardWin();
+  G.lock=false;
+}
+$('#bRun').onclick=async()=>{
+  if(!B||B.busy||B.over||B.kind!=='wild')return;
+  B.busy=true;msg('成功逃跑了！');await sleep(600);await endBattle('run');
+};
+
+/* ================= 背包 ================= */
+let bagTab='team';
+const TABS=[['team','隊伍'],['box','倉庫'],['dex','圖鑑'],['item','道具'],['scroll','殘卷'],['sys','存檔']];
+function openBag(){G.lock=true;G.joy.x=G.joy.y=0;show('sBag');renderBag()}
+function monRow(m,i,acts){
+  const sp=SP[m.id],s=st(m),need=expNeed(m.lv);
+  return `<div class="mrow">${spr(sp,50)}<div class="mi"><b>${sp.name}</b><span class="tag" style="background:${ATTRC[sp.attr]}">${ATTR[sp.attr]}</span><span class="rar">${RAR[sp.rar]}</span> Lv${m.lv}<br><small>HP ${s.hp}　攻擊 ${s.atk}　回復 ${s.rec}</small><br><small style="color:#9aa8d8">${sp.next?`Lv${sp.evo||EVO[sp.rar]} 進化 → ${SP[sp.next].name}`:'最終型態'}</small><div class="bar exp sm"><i style="width:${m.exp/need*100}%"></i></div><small style="color:#ffd84a">技能：${SKILLS[skillOf(m)].n}</small></div><div class="ma">${acts}<button data-act="skill" data-uid="${m.uid}">技能</button></div></div>`;
+}
+function renderBag(){
+  $('#bagTabs').innerHTML=TABS.map(([k,n])=>`<button data-tab="${k}" class="${k===bagTab?'on':''}">${n}</button>`).join('');
+  const b=$('#bagBody');let h='';
+  if(bagTab==='team'){
+    h=`<div class="note">隊伍 ${P.team.length}/6　全隊總 HP ${teamMax()}　目前體力 ${Math.round(P.hpFrac*100)}%</div>`;
+    P.team.forEach((m,i)=>{h+=monRow(m,i,`${i>0?`<button data-act="up" data-i="${i}">↑ 前移</button>`:''}${P.team.length>1?`<button data-act="tobox" data-i="${i}">存入倉庫</button>`:''}`)});
+  }else if(bagTab==='box'){
+    h=`<div class="note">倉庫 ${P.box.length} 隻</div>`;
+    if(!P.box.length)h+='<div class="note">還沒有存放的珠獸。隊伍滿 6 隻後收服的會自動送來這裡。</div>';
+    P.box.forEach((m,i)=>{h+=monRow(m,i,P.team.length<6?`<button data-act="join" data-i="${i}">加入隊伍</button>`:`<button data-act="swap" data-i="${i}">換入隊伍</button>`)+''});
+  }else if(bagTab==='dex'){
+    const list=Object.values(SP).filter(s=>!s.guardOnly),caught=list.filter(s=>P.dex[s.id]===2).length;
+    h=`<div class="note">已收服 ${caught}／${list.length} 種</div>`;
+    list.forEach(sp=>{const d=P.dex[sp.id]||0;
+      h+=`<div class="mrow ${d?'':'dimm'}">${d?spr(sp,40):'<div class="spr" style="width:40px;height:40px;background:#333">？</div>'}<div class="mi"><b>No.${String(sp.no).padStart(3,'0')} ${d?sp.name:'？？？'}</b>${d?`<span class="tag" style="background:${ATTRC[sp.attr]}">${ATTR[sp.attr]}</span><span class="rar">${RAR[sp.rar]}</span>`:''}<br><small>${d===2?'已收服':d===1?'已遇見':'未發現'}</small></div></div>`});
+  }else if(bagTab==='item'){
+    h=`<div class="mrow"><div class="mi"><b>回復藥</b> ×${P.items.potion}<br><small>回復隊伍 50% 體力</small></div><div class="ma"><button data-act="potion" ${P.items.potion?'':'disabled'}>使用</button></div></div>
+       <div class="mrow"><div class="mi"><b>經驗糖</b> ×${P.items.candy}<br><small>讓一隻珠獸升 1 級</small></div><div class="ma"><button data-act="candy" ${P.items.candy?'':'disabled'}>使用</button></div></div>
+       <div class="note">沒有商店。道具靠探索、戰鬥掉落與劇情取得。</div>`;
+  }else if(bagTab==='scroll'){
+    h='<div class="note">收集 8 卷史冊殘卷，拼出被抹去的歷史。</div><div class="note" style="border-color:#ffd54a">📌 '+questHint()+'</div>';
+    SCROLLS.forEach((s,i)=>{const got=P.scrolls.includes(i);
+      h+=`<div class="mrow ${got?'':'dimm'}"><div class="mi"><b>${s.t}</b><br><small>${got?s.x:'？？？（尚未取得）'}</small></div></div>`});
+  }else{
+    h=`<div class="note">遊戲會自動存檔（儲存在這支手機的瀏覽器）。換手機或清除資料前，請先匯出存檔碼。</div>
+       <button class="pri" data-act="save" style="width:100%;margin-bottom:8px">立即存檔</button>
+       <button data-act="export" style="width:100%;margin-bottom:8px">匯出存檔碼</button>
+       <textarea id="codeBox" placeholder="匯出的存檔碼會顯示在這裡；要匯入時貼上後按下面的按鈕"></textarea>
+       <button data-act="import" style="width:100%;margin:8px 0">匯入存檔碼</button>
+       <div class="tunebox"><b>平衡測試</b>（調整後立刻生效，下一場戰鬥套用）<br>
+         野生怪每回合最多承受 <input id="tCap" type="number" inputmode="decimal" value="${TUNE.cap}">% 最大血量<br>
+         符珠出現權重 <input id="tCw" type="number" inputmode="decimal" step="0.1" value="${TUNE.cw}">（其他珠約為 1～1.35）<br>
+         收服判定所需符數 <input id="tNeed" type="number" inputmode="numeric" value="${TUNE.need}"><br>
+         <button data-act="tuneReset" style="margin-top:6px;padding:6px 12px">恢復預設</button></div>
+       <button class="warn" data-act="reset" style="width:100%">清除存檔並重新開始</button>`;
+  }
+  b.innerHTML=h;
+}
+$('#bagBody').onchange=e=>{
+  const id=e.target.id,v=parseFloat(e.target.value);if(!['tCap','tCw','tNeed'].includes(id)||!Number.isFinite(v))return;
+  if(id==='tCap')TUNE.cap=clamp(v,2,100);if(id==='tCw')TUNE.cw=clamp(v,0.2,3);if(id==='tNeed')TUNE.need=Math.round(clamp(v,5,99));
+  saveTune();renderBag();toast('已套用');
+};
+$('#bagTabs').onclick=e=>{const t=e.target.closest('[data-tab]');if(t){bagTab=t.dataset.tab;renderBag()}};
+$('#bagBody').onclick=async e=>{
+  const b=e.target.closest('[data-act]');if(!b||b.disabled)return;
+  const a=b.dataset.act,i=+b.dataset.i;
+  if(a==='up'){[P.team[i-1],P.team[i]]=[P.team[i],P.team[i-1]]}
+  else if(a==='tobox'){P.box.push(P.team.splice(i,1)[0]);P.hpFrac=clamp(P.hpFrac,0,1)}
+  else if(a==='join'){P.team.push(P.box.splice(i,1)[0])}
+  else if(a==='swap'){const k=await pickMon('要換下哪一隻？',P.team);if(k>=0){const t=P.team[k];P.team[k]=P.box[i];P.box[i]=t}}
+  else if(a==='potion'){P.items.potion--;P.hpFrac=Math.min(1,P.hpFrac+.5);toast('隊伍體力回復了')}
+  else if(a==='candy'){const k=await pickMon('讓誰升級？',P.team);if(k>=0){P.items.candy--;const u=addExp(P.team[k],expNeed(P.team[k].lv)-P.team[k].exp);toast(u[0]||'經驗值增加了')}}
+  else if(a==='skill'){
+    const m=[...P.team,...P.box].find(x=>x.uid===+b.dataset.uid);
+    if(m){
+      const sp=SP[m.id],cur=skillOf(m),L=skillList(sp);
+      const rows=L.map(([lv,id],j)=>{const k=SKILLS[id],ok=m.lv>=lv;
+        return `<button class="row" data-i="${j}" ${ok?'':'disabled style="opacity:.45"'}><div class="mi"><b>${k.n}</b>${id===cur?' <span style="color:#ffd84a">（使用中）</span>':''}<br><small>${ok?`需消除 ${skCostId(id)} 顆${ATTR[sp.attr]}珠　${k.d}`:`Lv${lv} 學會　${k.d}`}</small></div></button>`}).join('');
+      const r=await modal(`<h3>${sp.name} 的技能</h3><div class="note">每隻珠獸戰鬥時只能使用 1 個技能。點選要裝備的技能。</div>${rows}`,[{t:'關閉'}]);
+      if(r<L.length&&m.lv>=L[r][0]){m.sk=L[r][1];toast(`已裝備【${SKILLS[L[r][1]].n}】`)}
+    }
+  }
+  else if(a==='tuneReset'){Object.assign(TUNE,TUNE_DEF);saveTune();toast('已恢復預設')}
+  else if(a==='save'){save();toast('已存檔')}
+  else if(a==='export'){$('#codeBox').value=exportCode();$('#codeBox').select()}
+  else if(a==='import'){const c=$('#codeBox').value;if(importCode(c)){toast('匯入成功');await sleep(500);location.reload()}else toast('存檔碼無效')}
+  else if(a==='reset'){const r=await modal('<h3>確定清除？</h3><p>所有進度將消失，無法復原。</p>',[{t:'取消'},{t:'清除',c:'warn'}]);if(r===1){localStorage.removeItem(SAVE_KEY);location.reload()}}
+  if(['up','tobox','join','swap','potion','candy','skill'].includes(a))save();
+  renderBag();
+};
+$('#bagClose').onclick=()=>{save();show('sMap');startMapLoop();G.lock=false};
+$('#btnBag').onclick=()=>{if(!G.lock)openBag()};
+
+/* ================= 開場 ================= */
+async function newGame(){
+  P=freshPlayer();
+  await fade(true);show('sMap');resizeMap();$('#hudName').textContent='初芽鎮';drawMap(0);await fade(false);
+  G.lock=true;
+  await say([
+    '千年前，五色珠核的力量引發了大戰。',
+    '初代珠師艾瑟爾擊敗暴君「歸一王」，封印了珠核——世人尊他為「守界英雄」。',
+    '此後，「守界盟」守護著珠界的和平；而「歸一會」，則被寫進史冊，成為永遠的惡名。',
+    '十六年前，歸一會最後的據點陷落。有人抱著一個嬰兒，逃進偏遠的初芽鎮——',
+    '今天，是你十六歲的成年禮。'
+  ]);
+  await modal(`<h3>你的名字</h3><input id="nameIn" maxlength="6" placeholder="最多 6 個字" value="夜">`,[{t:'決定',c:'pri'}]);
+  P.name=($('#nameIn').value||'旅人').trim().slice(0,6)||'旅人';
+  await say([
+    ['老周',`來了啊，${P.name}。滿十六歲了呢。`],
+    ['老周','鎮上的規矩，成年的孩子可以從我這領走一位夥伴。這三隻，我替你保管很久了。'],
+    ['老周','還有……這個你收好。'],
+    '老周遞給你一枚舊吊墜，上面刻著五色交織的圓環。',
+    ['老周','記住——在外頭，絕對不要讓守界盟的人看見它。'],
+    [P.name,'為什麼？'],
+    ['老周','……等你走得夠遠，自然會明白。']
+  ]);
+  const id=await chooseStarter();
+  P.team.push(newMon(id,5));P.dex[id]=2;P.flags.intro=1;save();
+  await fade(true);show('sMap');await fade(false);
+  await say([
+    ['老周','消掉盤面上的「符」，就能與野生的珠獸締結羈絆——這是我們這一脈教你的第一件事。'],
+    ['老周','往北穿過草原，就是守界盟的關口。路上多練練，累了就來廣場的療癒泉。']
+  ]);
+  startMapLoop();G.lock=false;
+}
+function chooseStarter(){
+  return new Promise(async res=>{
+    await fade(true);show('sStarter');
+    let sel=0;
+    $('#stwrap').innerHTML=STARTERS.map(id=>{const sp=SP[id],s=st({id,lv:5});
+      return `<div class="stcard" data-id="${id}">${spr(sp,72)}<b>${sp.name}</b><span class="tag" style="background:${ATTRC[sp.attr]}">${ATTR[sp.attr]}屬性</span><small>HP ${s.hp}<br>攻擊 ${s.atk}<br>回復 ${s.rec}</small></div>`}).join('');
+    $('#stOk').style.opacity=.4;
+    await fade(false);
+    $('#stwrap').onclick=e=>{const c=e.target.closest('.stcard');if(!c)return;sel=c.dataset.id;document.querySelectorAll('.stcard').forEach(x=>x.classList.toggle('sel',x===c));$('#stOk').style.opacity=1};
+    $('#stOk').onclick=async()=>{
+      if(!sel)return;
+      const sp=SP[sel];
+      const r=await modal(`<h3>就決定是 ${sp.name} 嗎？</h3><p>${ATTR[sp.attr]}屬性。其他屬性的夥伴，之後可以靠收服來湊齊。</p>`,[{t:'再想想'},{t:'決定',c:'pri'}]);
+      if(r===1){$('#stOk').onclick=null;res(sel)}
+    };
+  });
+}
+async function continueGame(){
+  await fade(true);show('sMap');resizeMap();drawMap(0);await fade(false);
+  if(P.flags.guardDone)map[4][13]=T.SIGN;
+  G.lock=false;startMapLoop();
+}
+
+/* ================= 啟動 ================= */
+(function boot(){
+  map=buildMap();
+  $('#titleOrbs').innerHTML=ATTR.map((a,i)=>`<div class="orbdot" style="background:radial-gradient(circle at 35% 30%,#fff9,${ATTRC[i]} 60%,#0007)">${a}</div>`).join('')+`<div class="orbdot" style="background:${ATTRC[5]};border-radius:8px">符</div>`;
+  const sv=loadSave();
+  if(sv&&sv.flags&&sv.flags.intro&&sv.team.length)$('#btnCont').style.display='block';
+  $('#btnCont').onclick=()=>{P=sv;continueGame()};
+  $('#btnNew').onclick=async()=>{
+    if(sv&&sv.flags&&sv.flags.intro){const r=await modal('<h3>開始新遊戲？</h3><p>目前的存檔會被覆蓋。</p>',[{t:'取消'},{t:'開始',c:'warn'}]);if(r!==1)return}
+    newGame();
+  };
+  $('#btnImp').onclick=async()=>{
+    await modal('<h3>匯入存檔碼</h3><textarea id="impBox" placeholder="貼上存檔碼"></textarea>',[{t:'取消'},{t:'匯入',c:'pri'}]).then(r=>{
+      if(r===1){if(importCode($('#impBox').value)){location.reload()}else toast('存檔碼無效')}
+    });
+  };
+  addEventListener('resize',()=>{if(cur==='sMap')resizeMap();if(cur==='sBattle')resizeBoard()});
+  window.__dbg={get P(){return P},get B(){return B},G,findGroups:()=>findGroups(),setGrid:g=>{grid=g}};
+})();
+</script>
+</body>
+</html>
