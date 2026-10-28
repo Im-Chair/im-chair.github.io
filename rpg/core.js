@@ -378,9 +378,9 @@ function cyclesUnlocked(){
 
 function cd(c){ if(!G.cycData[c]) G.cycData[c] = {deep:0, cp:0}; return G.cycData[c]; }
 
-function cycMult(c){ if(c<=0) return 1; return c<=3 ? CYC_MULT[c-1] : CYC_MULT[2]*Math.pow(2.86, c-3); } // 等比×2.86/重 (§9)
+function cycMult(c){ if(c<=0) return 1; return c<=3 ? CYC_MULT[c-1] : CYC_MULT[2]*Math.pow(CYC_INF_STEP, c-3); } // 固定輪迴沿用錨點；無限段與裝備共用成長倍率
 
-function cycK(c){ if(c<=0) return 1; return c<=3 ? CYC_K[c-1] : CYC_K[2]*Math.pow(2.3, c-3); } // 裝備樓層成長倍率：只乘樓層項（基礎值/詞綴同軸），無限段 ×2.3/重
+function cycK(c){ if(c<=0) return 1; return c<=3 ? CYC_K[c-1] : CYC_K[2]*Math.pow(CYC_INF_STEP, c-3); } // 裝備樓層成長倍率：只乘樓層項（基礎值/詞綴同軸）
 
 // blessCyc() 於 v455 隨 blessMult()／BLESS_CYC 一併刪除：祝福全改百分比後沒有死值需要縮放。
 

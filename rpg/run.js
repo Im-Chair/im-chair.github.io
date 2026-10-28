@@ -223,7 +223,7 @@ function showDoors(){
   if(rb) rb.style.display = R.hasRope ? '' : 'none';
   const rgb = document.getElementById('retreat-gold-btn');
   if(rgb) rgb.style.display = (!R.hasRope && R.gold > 0 && R.floor > 1) ? '' : 'none';   // 無繩時可花 9 成碎銀逃脫
-  /* 深度區塊的底＝該域的橫幅。REALMS[].bg 那六張以前只在進域那一瞬間出現一次，
+  /* 深度區塊的底＝該域的橫幅。REALMS[].bg 那五張以前只在進域那一瞬間出現一次，
      之後整趟再也看不到——拿來當底，零新素材就有「你人在哪」的實感。 */
   const _dp = $('d-depth');
   if(_dp) _dp.style.backgroundImage = (zz && zz.bg) ? `url("ui/${zz.bg}.webp?v=${window.IMG_VER}")` : 'none';

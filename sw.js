@@ -1,4 +1,4 @@
-const CACHE = 'arcade-v53';
+const CACHE = 'arcade-v54';
 // RPG 敵人圖示：檔名＝ENEMIES／首領／域限精英的 key。v385 起 50 隻全數有圖，已無 SVG 回落。
 const RPG_MON = [
   'slime','bat','skel','thief','rat','garg','spider',
@@ -20,7 +20,7 @@ const RPG_UI = [
   'pot_purge','pot_stone','ev_box','ev_can','ev_scroll','ev_dice','ev_rope',
   'ev_door','ev_shrine','ev_mine','ev_cart','ev_cyst','ev_root','ev_lava','ev_confess',
   'ev_well','ev_crack','ev_cycle','ev_merchant',
-  'realm0','realm1','realm2','realm3','realm4','realm5',
+  'realm0','realm1','realm2','realm3','realm4',
 ].map(k => `/rpg/ui/${k}.webp`);
 // RPG 裝備圖示（v382）：武器看 wtype、護甲／飾品看名稱，見 data.js 的 ITEM_ICON
 const RPG_EQ = [
