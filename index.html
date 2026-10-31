@@ -153,6 +153,8 @@
     .game-card:nth-child(7) { animation-delay: 0.48s; }
     .game-card:nth-child(8) { animation-delay: 0.54s; }
     .game-card:nth-child(9) { animation-delay: 0.60s; }
+    .game-card:nth-child(10) { animation-delay: 0.66s; }
+    .game-card:nth-child(11) { animation-delay: 0.72s; }
 
     .game-card::before {
       content: '';
@@ -524,7 +526,7 @@
       </div>
     </a>
     <!-- 珠界：歸一之子 -->
-    <a class="game-card available" href="./pokemo/" data-game="pokemo">
+    <a class="game-card available" href="./pokemo/" data-icon="icons/pokemo.webp">
       <div class="card-top">
         <div class="card-icon">🔮</div>
         <span class="card-status ready">可遊玩</span>
@@ -631,7 +633,8 @@
 
   document.querySelectorAll('.game-card[data-game]').forEach(card => {
     const g = card.dataset.game;
-    const text = RECORD[g](lsGet(`arcade-${g}-stats`) || {});
+    // 沒在 RECORD 登記的遊戲就不顯示紀錄（避免整段首頁腳本中斷）
+    const text = RECORD[g] ? RECORD[g](lsGet(`arcade-${g}-stats`) || {}) : '';
     let anchor = card.querySelector('.card-desc');
     if (text) {
       const el = document.createElement('div');

@@ -33,6 +33,7 @@
 | 6 | `icon-tower-orbs` | 1024×1024 | `icons/tower-orbs.webp` | 同上 | ★★★ |
 | 6b | `icon-drift-ark` | 1024×1024 | `icons/drift-ark.webp` | 同上（漂流方舟） | ★★★ |
 | 6c | `icon-tetris` | 1024×1024 | `icons/tetris.webp` | 同上（俄羅斯方塊） | ★★★ |
+| 6d | `icon-pokemo` | 1024×1024 | `icons/pokemo.webp` | 同上（珠界：歸一之子） | ★★★ |
 | 7 | `solitaire-back` | 1024×1536（直式） | `solitaire/back.webp`（300×420） | 接龍牌背 | ★★ |
 | 8 | `solitaire-felt` | 1024×1024 | `solitaire/felt.webp`（512，鋪滿） | 接龍桌布 | ★★ |
 | 9 | `minesweeper-flag` | 1024×1024 透明 | `minesweeper/flag.webp`（96） | 掃雷旗子 | ★ |
@@ -77,6 +78,7 @@
 | `icon-tower-orbs` | 同樣風格，下一張主題：**轉珠** —— 一顆發光的魔法寶珠，下方是一座剪影高塔。 |
 | `icon-drift-ark` | 同樣風格，下一張主題：**海上漂流** —— 從斜上方看的一艘小木筏，中間立著一根掛破帆的桅杆，周圍是幾道發光的波紋與一兩個漂浮的木箱。 |
 | `icon-tetris` | 同樣風格，下一張主題：**俄羅斯方塊** —— 一個發光的 T 形方塊正往下落，下方是兩三排疊得參差的方塊，最底下一整排正在發亮消除。 |
+| `icon-pokemo` | 同樣風格，下一張主題：**珠獸與寶珠** —— 一顆發光的收服寶珠懸在半空，珠內隱約映出一隻小獸的剪影，下方是一片荒原地平線。 |
 
 ### 驗收
 

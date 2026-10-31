@@ -5,7 +5,7 @@
     python tools/process_art.py --src X --dst Y   # 測試用：指定來源與輸出根目錄
 
 原圖檔名（.png / .jpg / .webp 皆可），缺的會略過，所以可以一張一張補：
-    icon-sudoku / icon-minesweeper / icon-bulls-cows / icon-solitaire / icon-rpg / icon-tower-orbs / icon-drift-ark / icon-tetris
+    icon-sudoku / icon-minesweeper / icon-bulls-cows / icon-solitaire / icon-rpg / icon-tower-orbs / icon-drift-ark / icon-tetris / icon-pokemo
     solitaire-back / solitaire-felt
     minesweeper-flag / minesweeper-mine
     relic-<id> / trait-<id> / boss-<id> / event-<id> / node-<id> / unlock-<id>（轉珠之塔地城，id 見下方 RG_ART）
@@ -98,7 +98,7 @@ RG_ART = {
 # 原圖名 → (輸出路徑, 處理函式)
 JOBS = {
     **{f'icon-{g}': (f'icons/{g}.webp', lambda im: icon(im, 256))
-       for g in ['sudoku', 'minesweeper', 'bulls-cows', 'solitaire', 'rpg', 'tower-orbs', 'drift-ark', 'tetris']},
+       for g in ['sudoku', 'minesweeper', 'bulls-cows', 'solitaire', 'rpg', 'tower-orbs', 'drift-ark', 'tetris', 'pokemo']},
     'solitaire-back': ('solitaire/back.webp', lambda im: card_back(im, 300, 420)),
     'solitaire-felt': ('solitaire/felt.webp', lambda im: seamless_tile(im, 512)),
     'minesweeper-flag': ('minesweeper/flag.webp', lambda im: sprite(im, 96)),
