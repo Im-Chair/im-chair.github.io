@@ -17,3 +17,6 @@ rpg/魔符設計草案.md
 rpg/貪婪深淵_v417_開發規格.docx
 rpg/_smoke.js
 rpg/_audit_assets.js
+# 珠界：只公開打包好的單檔 index.html，開發檔（原始碼、素材、文件、PDF、測試）只留本機
+pokemo/*
+!pokemo/index.html
