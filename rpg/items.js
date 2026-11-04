@@ -41,7 +41,7 @@ function pickWeaponType(){
 }
 
 function makeItem(floor, bonus, cyc, forceRar){
-  const ri = (forceRar != null) ? forceRar : rollRarity(floor, bonus||0), rar = RARITIES[ri];   // forceRar：指定稀有度（在骰詞綴前決定，詞綴才會依該稀有度正確生成）
+  const ri = (forceRar != null) ? forceRar : rollRarity(floor, bonus||0, cyc), rar = RARITIES[ri];   // v461：明確輪迴要一起傳（營地發委託獎勵時 R 為 null，否則被當本源骰）   // forceRar：指定稀有度（在骰詞綴前決定，詞綴才會依該稀有度正確生成）
   const slot = pick(['w','w','a','a','t']);
   const it = {id:uid++, slot, rar:ri, up:0, banked:false, affixes:[]};
   const cc = (cyc != null) ? cyc : ((R && R.cycle>0) ? R.cycle : 0);   // 明確輪迴優先（營地生裝備用），否則讀當前 run
@@ -207,14 +207,14 @@ function renderMarket(){
   if(!hasRune && marketStall === 1) marketStall = 0;      // 切分頁後若符文攤消失，自動退回裝備攤
   let bar = hasRune
     ? `<div class="mk-tab${marketStall===1?' on':''}" onclick="switchMarketStall(1)" style="padding:8px 4px">符文</div>`
-    : `<div class="mk-tab" style="padding:8px 4px;opacity:.35;cursor:default" onclick="toast('這個貨源還沒有符文——輪迴 I 之後才有')">符文</div>`;
+    : `<div class="mk-tab" style="padding:8px 4px;opacity:.35;cursor:default" onclick="notice('輪迴 I 之後開放')">符文</div>`;
   // 魔符攤跟掉落同一個開關：沒買魔符格＝玩家還沒選擇這個系統，商人也不該開始賣。
   // 比照符文攤的作法灰掉並給提示，不是整個藏起來——玩家要看得到「這裡之後會有東西」。
   const hasSigil = sigilSlots() > 0;
   if(!hasSigil && marketStall === 2) marketStall = 0;
   bar += hasSigil
     ? `<div class="mk-tab${marketStall===2?' on':''}" onclick="switchMarketStall(2)" style="padding:8px 4px">魔符</div>`
-    : `<div class="mk-tab" style="padding:8px 4px;opacity:.35;cursor:default" onclick="toast('開啟魔符格之後，這裡才會有魔符可買')">魔符</div>`;
+    : `<div class="mk-tab" style="padding:8px 4px;opacity:.35;cursor:default" onclick="notice('開啟魔符格後開放')">魔符</div>`;
   if(marketStall === 1){
     bar += `<div class="mk-re gem${(G.gems||0)<1?' poor':''}" onclick="rerollMarket()">`
          + `<svg class="ic"><use href="#ic-dice"/></svg><svg class="ic"><use href="#ic-gem"/></svg> 1</div>`;
@@ -318,11 +318,11 @@ function rerollMarket(){
   const m = marketStock(), t = m.tabs[m.ti];
   const ctx = {cyc:t.cyc, floor:t.floor, eq:t.eq};
   if(marketStall === 1){                       // 符文攤：固定 1 顆寶石
-    if((G.gems||0) < 1){ toast('<svg class="ic"><use href="#ic-gem"/></svg> 不夠'); return; }
+    if((G.gems||0) < 1){ notice('<svg class="ic"><use href="#ic-gem"/></svg> 不夠'); return; }
     G.gems -= 1; t.runes = rollMarketRunes(ctx);
   } else if(marketStall === 0){
     const c = marketRerollCost(t);
-    if(G.gold < c){ toast('碎銀不夠'); return; }
+    if(G.gold < c){ notice('碎銀不夠'); return; }
     G.gold -= c; t.boxes = rollMarketBoxes(ctx, m.ti === 0);
   } else return;
   save(); renderMarket();                      // 只換這一頁這一攤，ti / marketStall 都不動
@@ -332,7 +332,7 @@ function buyBox(i){
   const b = marketTab().boxes[i];
   if(!b || b.sold) return;
   const price = boxPrice(b);
-  if(G.gold < price){ toast('碎銀不夠'); return; }
+  if(G.gold < price){ notice('碎銀不夠'); return; }
   G.gold -= price;
   b.sold = true;
   if(b.type==='mat'){
@@ -366,8 +366,8 @@ function peekSigilBox(i){
 function buySigilBox(i){
   const b = (marketTab().sigils||[])[i];
   if(!b || b.sold) return;
-  if(sigilSlots() <= 0){ toast('開啟魔符格之後，這裡才會有魔符可買'); return; }   // 攤位已擋，這裡防繞過
-  if((G.gems||0) < SIGIL_GEM_PRICE){ toast('<svg class="ic"><use href="#ic-gem"/></svg> 不夠'); return; }
+  if(sigilSlots() <= 0){ notice('開啟魔符格後開放'); return; }   // 攤位已擋，這裡防繞過
+  if((G.gems||0) < SIGIL_GEM_PRICE){ notice('<svg class="ic"><use href="#ic-gem"/></svg> 不夠'); return; }
   /* 盒子是補貨時抽的，中間可能已經從掉落拿到同一支——那就當場從現有池子換一支，
      否則玩家花 50 鑽買到重複的。池子空了＝已經集滿，直接退掉不收錢。 */
   let sid = b.sid;
@@ -390,7 +390,7 @@ function buyRune(i){
   const t = marketTab(); const s = t && t.runes && t.runes[i];
   if(!s || s.sold) return;
   const price = runeGemPrice(s.rune);
-  if((G.gems||0) < price){ toast('<svg class="ic"><use href="#ic-gem"/></svg> 不夠'); return; }
+  if((G.gems||0) < price){ notice('<svg class="ic"><use href="#ic-gem"/></svg> 不夠'); return; }
   G.gems -= price; s.sold = true;
   if(!G.runeBag) G.runeBag = [];
   G.runeBag.push(s.rune);
@@ -522,11 +522,11 @@ function grantSigil(sid){                              // 入帳唯一入口（�
 /* 買魔符格。價格讀 SIGIL_SLOT_COST，本源通關才開放。 */
 function sigilSlotCost(){ return SIGIL_SLOT_COST[sigilSlots()] || null; }
 function buySigilSlot(){
-  if(!G.orig.done){ toast('通關本源之後才能開啟魔符格'); return; }
+  if(!G.orig.done){ notice('通關本源後開放'); return; }
   const c = sigilSlotCost();
-  if(!c){ toast('魔符格已經買滿了'); return; }
-  if(c.gold && G.gold < c.gold){ toast('碎銀不夠'); return; }
-  if(c.gems && (G.gems||0) < c.gems){ toast('<svg class="ic"><use href="#ic-gem"/></svg> 不夠'); return; }
+  if(!c){ notice('魔符格已經買滿了'); return; }
+  if(c.gold && G.gold < c.gold){ notice('碎銀不夠'); return; }
+  if(c.gems && (G.gems||0) < c.gems){ notice('<svg class="ic"><use href="#ic-gem"/></svg> 不夠'); return; }
   if(c.gold) G.gold -= c.gold;
   if(c.gems) G.gems -= c.gems;
   G.sigils.slots = sigilSlots() + 1;
@@ -671,7 +671,7 @@ function gearVisible(){
 }
 /* 切分頁或改篩選一律清空選取：選取是用 id 存的，留著會指到看不見的東西。 */
 function gearTabTo(t){
-  if(t === 'sigil'){ toast('魔符尚未開放'); return; }
+  if(t === 'sigil'){ notice('魔符尚未開放'); return; }
   gearTab = t; sellSel.clear(); renderGear();
 }
 function gearFilterTo(f){ stashFilter = f; sellSel.clear(); renderGear(); }
@@ -899,10 +899,10 @@ function smithTier(up){ // 下一級(up+1)：材料、數量、素質增益、�
 function tryUpgrade(sl){
   const it = G.equip[sl]; if(!it) return;
   const cap = RARITIES[it.rar].upCap;
-  if(it.up >= cap){ toast('已達此稀有度的精煉上限'); return; }
+  if(it.up >= cap){ notice('已達此稀有度的精煉上限'); return; }
   const cost = smithCost(it), tier = smithTier(it.up);
-  if(G.gold < cost){ toast('碎銀不夠'); return; }
-  if(tier.mat && (G.mats[tier.mat]||0) < tier.qty){ toast(`缺少材料：${MATS[tier.mat].n} ×${tier.qty}`); return; }
+  if(G.gold < cost){ notice('碎銀不夠'); return; }
+  if(tier.mat && (G.mats[tier.mat]||0) < tier.qty){ notice(`缺少材料：${MATS[tier.mat].n} ×${tier.qty}`); return; }
   G.gold -= cost;
   if(tier.mat) G.mats[tier.mat] -= tier.qty;
   if(Math.random() < tier.rate){
@@ -941,7 +941,7 @@ function reforgeCtx(it){   // 重鑄用的強度情境：新裝備讀出身；�
 }
 function doReforge(){
   const slot = reforgeSlot, it = G.equip[slot]; if(!it) return;
-  const cost = reforgeCostWithLocks(it, reforgeLocks); if(G.gold < cost){ toast('碎銀不夠'); return; }
+  const cost = reforgeCostWithLocks(it, reforgeLocks); if(G.gold < cost){ notice('碎銀不夠'); return; }
   G.gold -= cost; it.rf = (it.rf||0) + 1;
   const ctx = reforgeCtx(it);
   const legs = it.affixes.filter(a=>AFFIXES[a.k].leg);

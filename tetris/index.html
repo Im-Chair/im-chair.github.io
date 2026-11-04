@@ -916,6 +916,7 @@ body {
     function stop() { clearTimeout(t1); clearInterval(t2); b.classList.remove('on'); }
     b.addEventListener('pointerdown', function (e) {
       e.preventDefault();
+      stop(); // 第二指按下時先清掉前一次的計時器，避免殘留 interval
       b.classList.add('on');
       fn();
       if (rep) t1 = setTimeout(function () { t2 = setInterval(fn, rep.arr); }, rep.das);
@@ -931,6 +932,7 @@ body {
   bindBtn('bHold', function () { hold(); });
   $('bPause').addEventListener('click', function () {
     if (state === 'playing') pause(); else if (state === 'paused') resume();
+    this.blur(); // 焦點不留在按鈕上，否則按 Enter 會再觸發一次 click
   });
   $('ovBtn').addEventListener('click', primary);
 
@@ -970,6 +972,11 @@ body {
   /* ---------- input: keyboard ---------- */
   document.addEventListener('keydown', function (e) {
     var k = e.key;
+    // 一次性動作（硬降、暫停、暫存、Enter）按住不重複觸發
+    if (e.repeat && (k === ' ' || k === 'c' || k === 'C' || k === 'Shift' || k === 'p' || k === 'P' || k === 'Escape' || k === 'Enter')) {
+      if (k === ' ' || k === 'Enter') e.preventDefault();
+      return;
+    }
     if (k === 'ArrowLeft') { move(-1); e.preventDefault(); }
     else if (k === 'ArrowRight') { move(1); e.preventDefault(); }
     else if (k === 'ArrowDown') { softDrop(); e.preventDefault(); }
@@ -980,7 +987,7 @@ body {
     else if (k === 'p' || k === 'P' || k === 'Escape') {
       if (state === 'playing') pause(); else if (state === 'paused') resume();
     }
-    else if (k === 'Enter' && state !== 'playing') { primary(); }
+    else if (k === 'Enter' && state !== 'playing') { primary(); e.preventDefault(); }
   });
   document.addEventListener('visibilitychange', function () { if (document.hidden) pause(); });
 

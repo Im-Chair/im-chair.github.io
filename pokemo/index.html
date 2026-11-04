@@ -166,7 +166,7 @@ textarea{height:90px;font-size:12px}
     <button class="pri" id="btnCont" style="display:none">繼續遊戲</button>
     <button class="pri" id="btnNew">新遊戲</button>
     <button id="btnImp">匯入存檔碼</button>
-    <div class="ver">原型 v1.16 ・ 110 種怪物 ・ 前九章可玩</div>
+    <div class="ver">原型 v1.17 ・ 110 種怪物 ・ 前九章可玩</div>
   </div>
 
   <div id="sMap" class="screen">
@@ -278,6 +278,7 @@ AK.forEach((a,ai)=>FAM[a].forEach((f,li)=>f.n.forEach((nm,k)=>{
 SP.boss_light={id:'boss_light',no:0,name:'熾天使長・拉斐',attr:3,rar:7,hp:190,atk:28,rec:12,boss:{c:3,r:0},guardOnly:true};
 SP.boss_water={id:'boss_water',no:0,name:'滄海祭司・涅瑞',attr:0,rar:7,hp:190,atk:28,rec:12,boss:{c:0,r:0},guardOnly:true};
 SP.boss_wood={id:'boss_wood',no:0,name:'森之古鹿・苔角',attr:2,rar:7,hp:190,atk:28,rec:12,boss:{c:2,r:0},guardOnly:true};
+SP.boss_fire={id:'boss_fire',no:0,name:'赤燼炎主・焚角',attr:1,rar:7,hp:190,atk:28,rec:12,boss:{c:1,r:0},guardOnly:true};   // 第 3 章首領（燼的隊伍）；首領圖第 1 列第 2 格
 SP.boss_light2={id:'boss_light2',no:0,name:'典藏天鷲',attr:3,rar:7,hp:205,atk:31,rec:13,boss:{c:1,r:1},guardOnly:true};
 SP.boss_dark={id:'boss_dark',no:0,name:'深淵之牙',attr:4,rar:7,hp:220,atk:33,rec:14,boss:{c:0,r:1},guardOnly:true};
 SP.boss_aether={id:'boss_aether',no:0,name:'艾瑟爾殘響',attr:3,rar:7,hp:260,atk:40,rec:16,boss:{c:3,r:0},guardOnly:true};
@@ -372,7 +373,7 @@ const hstr=s=>[...String(s)].reduce((a,c)=>(a*31+c.charCodeAt(0))>>>0,7);
 const _skc={};
 function skillList(sp){   // 回傳 [[學習等級,技能id]...]
   const key=sp.line||sp.id;if(_skc[key])return _skc[key];
-  const f=FAMS[sp.attr],h=hstr(key),L=f.length,A=f[h%L],B=f[(h%L+1+((h>>3)%(L-1)))%L];
+  const f=FAMS[sp.attr],h=hstr(key),L=f.length,A=f[h%L],B=f[((h%L+1+((h>>3)%(L-1)))%L+L)%L];   // h>>3 可能是負數：取餘數後再轉回 0～L-1
   const t=(F,k)=>SKF[F][Math.min(k,SKF[F].length)-1];
   let ids=[t(A,1),t(B,1),t(A,2),t(B,2),t(A,3)];
   if(ids[4]===ids[2]){const C=f.find(x=>x!==A&&x!==B&&SKF[x].length>=2);ids[4]=t(C,2)}
@@ -395,7 +396,18 @@ function freshPlayer(){const s=MAPS.grass.spawn;return{v:1,name:'旅人',map:'gr
 function save(){try{localStorage.setItem(SAVE_KEY,JSON.stringify(P))}catch(e){}}
 function loadSave(){try{const s=localStorage.getItem(SAVE_KEY);return s?JSON.parse(s):null}catch(e){return null}}
 const exportCode=()=>btoa(unescape(encodeURIComponent(JSON.stringify(P))));
-function importCode(c){try{const o=JSON.parse(decodeURIComponent(escape(atob(c.trim()))));if(!o||o.v!==1||!Array.isArray(o.team))return false;P=o;save();return true}catch(e){return false}}
+function importCode(c){try{const o=JSON.parse(decodeURIComponent(escape(atob(c.trim()))));if(!o||o.v!==1||!Array.isArray(o.team))return false;
+  // 舊版／不完整的存檔碼：以新遊戲的欄位為底補齊，去掉資料裡已不存在的怪物；隊伍是空的就視為無效
+  const n=Object.assign(freshPlayer(),o),okMon=m=>m&&typeof m==='object'&&SP[m.id]&&!SP[m.id].guardOnly;
+  ['springs','cores','letters','scrolls','team','box'].forEach(k=>{if(!Array.isArray(n[k]))n[k]=[]});
+  ['dex','flags'].forEach(k=>{if(!n[k]||typeof n[k]!=='object'||Array.isArray(n[k]))n[k]={}});
+  n.items=Object.assign({potion:0,candy:0},o.items&&typeof o.items==='object'?o.items:{});['potion','candy'].forEach(k=>n.items[k]=Math.max(0,Math.floor(Number(n.items[k])||0)));
+  n.team=n.team.filter(okMon).slice(0,6);n.box=n.box.filter(okMon);if(!n.team.length)return false;
+  n.uid=Math.max(Number(n.uid)||0,...[...n.team,...n.box].map(m=>Number(m.uid)||0));
+  [...n.team,...n.box].forEach(m=>{m.lv=clamp(Math.floor(Number(m.lv)||1),1,60);m.exp=Math.max(0,Number(m.exp)||0);if(!Number.isFinite(Number(m.uid))||!m.uid)m.uid=++n.uid});
+  if(!MAPS[n.map])n.map='grass';const ms=MAPS[n.map].spawn;if(!Number.isFinite(n.x)||!Number.isFinite(n.y)){n.x=ms.x;n.y=ms.y}
+  n.hpFrac=Number.isFinite(n.hpFrac)?clamp(n.hpFrac,0,1):1;n.flags.intro=1;
+  P=n;save();return true}catch(e){return false}}
 
 /* ================= 介面工具 ================= */
 let cur='sTitle';
@@ -616,7 +628,7 @@ const MAPS={
   state(m,f){if(f.guardDone){m[4][13]=T.PATH;m[3][13]=T.PATH}},   // 打贏賽倫：關門打開，往北的路接上碎鏡海岸
   warps:[{x:13,y:3,to:'coast',tx:15.0,ty:37.3,face:1,need:'guardDone'}],
   onTile(t){
-   if(t===T.GATE)return['巨大的關門緊閉著。守衛就站在門前，看起來不會輕易放行。'];
+   if(t===T.GATE)return['關門關得死死的。守衛就站在門口。'];
    return null;
   }
  },
@@ -683,7 +695,7 @@ const MAPS={
    {id:'yanpo',ch:'yanpo',x:7,y:30,name:'鹽婆',col:'#7a6a8a',hair:'#eee',talk:()=>c2Yanpo()},
    {id:'bo',ch:'bo',x:20,y:30,name:'柏',col:'#3d5f8a',hair:'#3a2a1a',talk:()=>c2Bo()},
    {id:'chaosheng',ch:'chaosheng',x:16,y:13,name:'海巡長 潮生',col:'#22496e',hair:'#555',hideIf:'c2_done',talk:()=>c2Chaosheng()},
-   {id:'chaosheng2',ch:'chaosheng',x:12,y:10,name:'海巡長 潮生',col:'#22496e',hair:'#555',showIf:'c2_done',talk:()=>say([['潮生','艙門我打開了。海巡隊裡，有人不高興。']])},
+   {id:'chaosheng2',ch:'chaosheng',x:12,y:10,name:'海巡長 潮生',col:'#22496e',hair:'#555',showIf:'c2_done',talk:()=>say([['潮生','艙門我開了。隊上有人不太高興。……隨他們去。']])},
    {id:'xiaodou2',ch:'xiaodou',x:12,y:33,name:'小豆',col:'#e0a030',hair:'#4a2a10',showIf:'c2_done',talk:()=>c2Xiaodou()}
   ],
   warps:[{x:14,y:39,to:'grass',tx:13.5,ty:5.6,face:0},{x:15,y:39,to:'grass',tx:13.5,ty:5.6,face:0},{x:3,y:13,to:'ember',tx:3.5,ty:29.5,face:3,need:'c2_done'}],
@@ -697,7 +709,7 @@ const MAPS={
   onTile(t,x,y){
    if(t===T.GATE)return c2Gate();
    if(t===T.DOOR&&x===19&&y===29)return c2Post();
-   if(t===T.SIGN&&x===2&&y===13&&P.flags.c2_done)return['【岩岸山道】','往北：赤燼荒原','穿過路口旁的荒地即可前往。'];
+   if(t===T.SIGN&&x===2&&y===13&&P.flags.c2_done)return['【岩岸山道】','往北：赤燼荒原','落石已經清掉了。'];
    return null;
   }
  },
@@ -705,7 +717,7 @@ const MAPS={
   ch:3,name:'赤燼荒原',w:30,h:34,build:buildEmber,encBase:[0,6,1,0,0],edges:[{side:'n',attr:2},{side:'s',attr:0}],
   art:{tiles:'tiles_ember',tree1:'tree1_ember',tree2:'tree2_ember',house:'house_ember',fountain:'fountain_ember',sign:'sign_ember',gate:'gate_ember',rock:'rock_ember',bush:'bush_ember'},
   props:{'9,18':'ashbarrel'},battleBg:'ember',ground:[[0,0],[1,0],[2,0],[3,3],[0,1]],water:[[0,2],[1,2]],waterAlpha:[0.65,1],encRate:0.12,
-  spawn:{x:3.5,y:29.5},home:{x:15.5,y:27.5},homeName:'灰燼村',area:(x,y)=>y>=25?'灰燼村':y<=7?'焦林關口':x>=20?'熔岩裂地':'赤燼荒原',
+  spawn:{x:3.5,y:29.5},home:{x:15.5,y:28.5},homeName:'灰燼村',area:(x,y)=>y>=25?'灰燼村':y<=7?'焦林關口':x>=20?'熔岩裂地':'赤燼荒原',
   npcs:[
    {id:'adu3',ch:'adu',x:5,y:27,name:'旅商阿杜',col:'#9c7045',hair:'#47301d',talk:()=>c3Adu()},
    {id:'moen3',ch:'moen',x:23,y:27,name:'慰問隊長 莫恩',col:'#54769a',hair:'#ccb68c',talk:()=>c3Moen()},
@@ -716,13 +728,13 @@ const MAPS={
   ],
   warps:[{x:2,y:29,to:'coast',tx:4.5,ty:13.5,face:3},{x:14,y:3,to:'marsh',tx:3.5,ty:30.5,face:3,need:'c3_done'},{x:15,y:3,to:'marsh',tx:3.5,ty:30.5,face:3,need:'c3_done'}],signs:{'13,20':['【村口焦痕】'],'8,18':['【油桶殘骸】'],'22,24':['【慰問隊名單】']},
   state(m,f){if(f.c3_done){m[3][14]=T.PATH;m[3][15]=T.PATH}},
-  onTile(t,x,y){if(t===T.SIGN&&x===13&&y===20)return c3Site('burn');if(t===T.SIGN&&x===8&&y===18)return c3Site('oil');if(t===T.SIGN&&x===22&&y===24)return c3Site('list');if(t===T.GATE&&y===3)return['【焦林小徑】','北方道路尚未打通。燼守在這裡。'];return null}
+  onTile(t,x,y){if(t===T.SIGN&&x===13&&y===20)return c3Site('burn');if(t===T.SIGN&&x===8&&y===18)return c3Site('oil');if(t===T.SIGN&&x===22&&y===24)return c3Site('list');if(t===T.GATE&&y===3)return['【焦林小徑】','往北的路還沒通。'];return null}
  },
  marsh:{
   ch:4,name:'霧語沼林',w:30,h:34,build:buildMarsh,encBase:[0,1,6,0,0],edges:[{side:'n',attr:1},{side:'s',attr:1}],
   art:{tiles:'tiles_marsh',tree1:'tree1_marsh',tree2:'tree2_marsh',house:'house_marsh',fountain:'fountain_marsh',sign:'sign_marsh',gate:'gate_marsh',rock:'rock_marsh',bush:'bush_marsh'},
   props:{'5,24':'house_marsh','11,16':'marshgrave','18,22':'house_marsh'},battleBg:'marsh',ground:[[0,0],[1,0],[2,0],[3,3],[0,1]],water:[[0,2],[1,2]],waterAlpha:[0.55,0.9],encRate:0.12,
-  gates:[{x:14.5,y:5}],spawn:{x:3.5,y:30.5},home:{x:14.5,y:28.5},homeName:'霧語湯鋪',area:(x,y)=>y>=25?'霧語湯鋪':y<=7?'風口崖':'霧語沼林',
+  gates:[{x:14.5,y:5}],spawn:{x:3.5,y:30.5},home:{x:14.5,y:29.5},homeName:'霧語湯鋪',area:(x,y)=>y>=25?'霧語湯鋪':y<=7?'風口崖':'霧語沼林',
   npcs:[
    {id:'taiyi4',ch:'taiyi',x:6,y:27,name:'苔姨',col:'#627e48',hair:'#385331',talk:()=>c4Taiyi()},
    {id:'liechya4',ch:'liechya',x:15,y:7,name:'獵牙',col:'#49633b',hair:'#284328',talk:()=>c4Liechya()},
@@ -732,13 +744,13 @@ const MAPS={
   ],
   warps:[{x:2,y:29,to:'ember',tx:14.5,ty:4.5,face:3},{x:14,y:3,to:'sky',tx:14.5,ty:30.5,face:3,need:'c4_done'},{x:15,y:3,to:'sky',tx:14.5,ty:30.5,face:3,need:'c4_done'}],signs:{'10,17':['【無名墓碑】'],'19,18':['【獵牙家族譜】']},
   state(m,f){if(f.c4_done){m[3][14]=T.PATH;m[3][15]=T.PATH}},
-  onTile(t,x,y){if(t===T.SIGN&&x===10&&y===17)return c4Site('grave');if(t===T.SIGN&&x===19&&y===18)return c4Site('family');if(t===T.GATE&&y===3)return['【風口崖】','北方的雲海太濃。暫時還看不見上島的路。'];return null}
+  onTile(t,x,y){if(t===T.SIGN&&x===10&&y===17)return c4Site('grave');if(t===T.SIGN&&x===19&&y===18)return c4Site('family');if(t===T.GATE&&y===3)return['【風口崖】','雲太厚了，看不到浮島。'];return null}
  },
  sky:{
   ch:5,name:'天穹浮島',w:30,h:34,build:buildSky,encBase:[0,0,0,7,1],edges:[{side:'n',attr:4},{side:'s',attr:2}],
   art:{tiles:'tiles_sky',tree1:'tree1_sky',tree2:'tree2_sky',house:'house_sky',fountain:'fountain_sky',sign:'sign_sky',gate:'gate_sky',rock:'rock_sky',bush:'bush_sky'},
   props:{'5,24':'house_sky','11,16':'special_sky','22,21':'house_sky'},battleBg:'sky',ground:[[0,0],[1,0],[2,0],[3,3],[0,1]],water:[[0,2],[1,2]],waterAlpha:[0.55,0.9],encRate:0.12,
-  gates:[{x:14.5,y:5}],spawn:{x:14.5,y:30.5},home:{x:14.5,y:28.5},homeName:'雲港',area:(x,y)=>y>=25?'雲港':y<=7?'浮島檔案館':'天穹浮島',
+  gates:[{x:14.5,y:5}],spawn:{x:14.5,y:30.5},home:{x:14.5,y:29.5},homeName:'雲港',area:(x,y)=>y>=25?'雲港':y<=7?'浮島檔案館':'天穹浮島',
   npcs:[
    {id:'yunque5',ch:'yunque',x:6,y:27,name:'雲雀',col:'#845c3f',hair:'#543a25',talk:()=>c5Yunque()},
    {id:'jiale5',ch:'jiale',x:16,y:18,name:'伽勒',col:'#dfc782',hair:'#d9c8aa',talk:()=>c5Jiale()},
@@ -748,13 +760,13 @@ const MAPS={
   ],
   warps:[{x:2,y:29,to:'marsh',tx:14.5,ty:4.5,face:3},{x:14,y:3,to:'abyss',tx:14.5,ty:30.5,face:3,need:'c5_done'},{x:15,y:3,to:'abyss',tx:14.5,ty:30.5,face:3,need:'c5_done'}],signs:{'9,15':['【借閱簿】'],'20,17':['【抄寫房草稿】']},
   state(m,f){if(f.c5_done){m[3][14]=T.PATH;m[3][15]=T.PATH}},
-  onTile(t,x,y){if(t===T.SIGN&&x===9&&y===15)return c5Site('ledger');if(t===T.SIGN&&x===20&&y===17)return c5Site('drafts');if(t===T.GATE&&y===3)return['【浮島檔案館】','館藏記錄區尚未開放。先去找學者伽勒。'];return null}
+  onTile(t,x,y){if(t===T.SIGN&&x===9&&y===15)return c5Site('ledger');if(t===T.SIGN&&x===20&&y===17)return c5Site('drafts');if(t===T.GATE&&y===3)return['【浮島檔案館】','記錄區還沒開放。'];return null}
  },
  abyss:{
   ch:6,name:'無光深淵',w:30,h:34,build:buildAbyss,encBase:[0,0,0,1,7],edges:[{side:'n',attr:3},{side:'s',attr:3}],
   art:{tiles:'tiles_abyss',tree1:'tree1_abyss',tree2:'tree2_abyss',house:'house_abyss',fountain:'fountain_abyss',sign:'sign_abyss',gate:'gate_abyss',rock:'rock_abyss',bush:'bush_abyss'},
   props:{'5,24':'house_abyss','13,10':'special_abyss','20,18':'special_abyss'},battleBg:'abyss',ground:[[0,0],[1,0],[2,0],[3,3],[0,1]],water:[[0,2],[1,2]],waterAlpha:[0.55,0.9],encRate:0.13,
-  gates:[{x:14.5,y:5}],spawn:{x:14.5,y:30.5},home:{x:14.5,y:28.5},homeName:'深淵營地',area:(x,y)=>y>=25?'深淵營地':y<=7?'裂痕底層':'無光深淵',
+  gates:[{x:14.5,y:5}],spawn:{x:14.5,y:30.5},home:{x:14.5,y:29.5},homeName:'深淵營地',area:(x,y)=>y>=25?'深淵營地':y<=7?'裂痕底層':'無光深淵',
   npcs:[
    {id:'huiya6',ch:'huiya',x:6,y:27,name:'灰鴉',col:'#777584',hair:'#484650',talk:()=>c6Huiya()},
    {id:'xiaomiao6',ch:'xiaomiao',x:9,y:20,name:'小苗',col:'#643f79',hair:'#342044',showIf:'c6_crow',talk:()=>c6Xiaomiao()},
@@ -763,24 +775,24 @@ const MAPS={
    {id:'heifeng6',ch:'heifeng',x:15,y:7,name:'黑鋒',col:'#362a34',hair:'#17131b',hideIf:'c6_done',talk:()=>c6Heifeng()},
    {id:'xiaodou6',ch:'xiaodou',x:22,y:27,name:'小豆',col:'#e0a030',hair:'#4a2a10',showIf:'c6_done',hideIf:'c6_song',talk:()=>c6Xiaodou()}
   ],
-  warps:[{x:2,y:29,to:'sky',tx:2.5,ty:29.5,face:3}],signs:{'13,10':['【五人之環壁畫】'],'20,18':['【刮痕石板】']},
-  onTile(t,x,y){if(t===T.SIGN&&x===13&&y===10)return c6Site('mural');if(t===T.SIGN&&x===20&&y===18)return c6Site('will');if(t===T.GATE&&y===3)return['【裂痕底層】','北方岩壁封死了去路。'];return null},
+  signs:{'13,10':['【五人之環壁畫】'],'20,18':['【刮痕石板】']},
+  onTile(t,x,y){if(t===T.SIGN&&x===13&&y===10)return c6Site('mural');if(t===T.SIGN&&x===20&&y===18)return c6Site('will');if(t===T.GATE&&y===3)return['【裂痕底層】','北邊的岩壁把路封死了。'];return null},
   state(m,f){if(f.c6_done){m[3][14]=T.PATH;m[3][15]=T.PATH}},
-  warps:[{x:14,y:3,to:'capital',tx:14.5,ty:31.5,face:1,need:'c6_done'},{x:15,y:3,to:'capital',tx:14.5,ty:31.5,face:1,need:'c6_done'}]
+  warps:[{x:2,y:29,to:'sky',tx:3.5,ty:29.5,face:3},{x:14,y:3,to:'capital',tx:14.5,ty:31.5,face:1,need:'c6_done'},{x:15,y:3,to:'capital',tx:14.5,ty:31.5,face:1,need:'c6_done'}]
  },
  capital:{
   ch:7,name:'守界盟王都',w:30,h:34,build:buildRoyal,encBase:[1,1,1,4,1],edges:[{side:'s',attr:4},{side:'n',attr:3}],encRate:.13,
-  battleBg:'sky',ground:[[0,0],[1,0],[2,0],[3,3],[0,1]],spawn:{x:14.5,y:31.5},home:{x:14.5,y:28.5},homeName:'王都廣場',area:(x,y)=>y>=25?'平民街區':y>=17?'檔案廳':'王城庭院',
+  battleBg:'sky',ground:[[0,0],[1,0],[2,0],[3,3],[0,1]],spawn:{x:14.5,y:31.5},home:{x:14.5,y:27.5},homeName:'王都廣場',area:(x,y)=>y>=25?'平民街區':y>=17?'檔案廳':'王城庭院',
   gates:[{x:14.5,y:13}],houses:[[4,7],[19,7]],
-  npcs:[{id:'lia7',ch:'lia',x:8,y:27,name:'莉亞',col:'#bd7890',hair:'#69433e',talk:()=>c7Lia()},{id:'ran7',ch:'ran',x:21,y:27,name:'冉',col:'#65718d',hair:'#322c38',talk:()=>c7Ran()},{id:'steel7',ch:'steel',x:15,y:11,name:'衛兵長鋼',col:'#61728a',hair:'#424d62',hideIf:'c7_steel',talk:()=>c7Steel()},{id:'aorui7',ch:'aorui',x:15,y:6,name:'盟長奧瑞',col:'#c7c4b8',hair:'#eee',showIf:'c7_steel',hideIf:'c7_done',talk:()=>c7Aorui()},{id:'seren7',ch:'guard',x:21,y:6,name:'賽倫',col:'#8a93a8',hair:'#b33',showIf:'c7_done',talk:()=>say([['賽倫','我會陪你走到王座。這一路的證據沒有替我們決定答案，但我們不能再把它們藏起來。']])},{id:'xiaodou7',ch:'xiaodou',x:22,y:28,name:'小豆',col:'#e0a030',hair:'#4a2a10',showIf:'c7_done',hideIf:'c7_song',talk:()=>c7Xiaodou()}],
+  npcs:[{id:'lia7',ch:'lia',x:8,y:27,name:'莉亞',col:'#bd7890',hair:'#69433e',talk:()=>c7Lia()},{id:'ran7',ch:'ran',x:21,y:27,name:'冉',col:'#65718d',hair:'#322c38',talk:()=>c7Ran()},{id:'steel7',ch:'steel',x:15,y:11,name:'衛兵長鋼',col:'#61728a',hair:'#424d62',hideIf:'c7_steel',talk:()=>c7Steel()},{id:'aorui7',ch:'aorui',x:15,y:6,name:'盟長奧瑞',col:'#c7c4b8',hair:'#eee',showIf:'c7_steel',hideIf:'c7_done',talk:()=>c7Aorui()},{id:'seren7',ch:'guard',x:21,y:6,name:'賽倫',col:'#8a93a8',hair:'#b33',showIf:'c7_done',talk:()=>say([['賽倫','我陪你走到王座。答案還不知道，可是這些東西，不能再藏了。']])},{id:'xiaodou7',ch:'xiaodou',x:22,y:28,name:'小豆',col:'#e0a030',hair:'#4a2a10',showIf:'c7_done',hideIf:'c7_song',talk:()=>c7Xiaodou()}],
   warps:[{x:14,y:30,to:'abyss',tx:14.5,ty:4.5,face:0},{x:15,y:30,to:'abyss',tx:14.5,ty:4.5,face:0},{x:14,y:2,to:'throne',tx:14.5,ty:30.5,face:0,need:'c7_done'},{x:15,y:2,to:'throne',tx:14.5,ty:30.5,face:0,need:'c7_done'}],
   signs:{'8,18':['【修訂令・甲】'],'21,18':['【修訂令・乙】'],'14,21':['【修訂令・丙】'],'22,8':['【盟長書房】']},
   state(m,f){if(f.c7_archive){m[12][14]=T.PATH;m[12][15]=T.PATH;m[13][14]=T.PATH;m[13][15]=T.PATH}if(f.c7_steel){for(let y=6;y<=9;y++)for(let x=13;x<=16;x++)m[y][x]=T.PATH}},
-  onTile(t,x,y){if(t===T.SIGN&&y===18&&x===8)return c7Site('a');if(t===T.SIGN&&y===18&&x===21)return c7Site('b');if(t===T.SIGN&&y===21&&x===14)return c7Site('c');if(t===T.SIGN&&y===8&&x===22)return c7Site('study');if(t===T.GATE&&y===13)return c7Gate();return null}
+  onTile(t,x,y){if(t===T.SIGN&&y===18&&x===8)return c7Site('a');if(t===T.SIGN&&y===18&&x===21)return c7Site('b');if(t===T.SIGN&&y===21&&x===14)return c7Site('c');if(t===T.SIGN&&y===8&&x===22)return c7Study();if(t===T.GATE&&y===13)return c7Gate();return null}
  },
  throne:{
   ch:8,name:'歸一王座',w:30,h:34,build:buildThrone,encBase:[1,1,1,1,1],encRate:.08,battleBg:'abyss',ground:[[0,0],[1,0],[2,0],[3,3],[0,1]],spawn:{x:14.5,y:30.5},home:{x:14.5,y:24.5},homeName:'歸一王座',area:()=> '歸一王座外殿',
-  npcs:[{id:'lamp8',ch:'lamp',x:14,y:23,name:'小燈',col:'#e5c87e',hair:'#efe1aa',hideIf:'c8_started',talk:()=>c8Intro()},{id:'lamp8again',ch:'lamp',x:14,y:23,name:'小燈',col:'#e5c87e',hair:'#efe1aa',showIf:'c8_started',talk:()=>say([['小燈','路還在。記憶不一定完整，但你可以自己走進去看看。']])}],
+  npcs:[{id:'lamp8',ch:'lamp',x:14,y:23,name:'小燈',col:'#e5c87e',hair:'#efe1aa',hideIf:'c8_started',talk:()=>c8Intro()},{id:'lamp8again',ch:'lamp',x:14,y:23,name:'小燈',col:'#e5c87e',hair:'#efe1aa',showIf:'c8_started',talk:()=>say([['小燈','光門還開著。想再看，就進去吧。']])}],
   warps:[{x:6,y:14,to:'memory1',tx:13.5,ty:27.5,face:1,need:'c8_started'},{x:11,y:14,to:'memory2',tx:13.5,ty:27.5,face:1,need:'c8_m1'},{x:18,y:14,to:'memory3',tx:13.5,ty:27.5,face:1,need:'c8_m2'},{x:23,y:14,to:'memory4',tx:13.5,ty:27.5,face:1,need:'c8_m3'},{x:14,y:33,to:'capital',tx:14.5,ty:4.5,face:0}],
   signs:{'6,14':['回憶一：歸一前夜'],'11,14':['回憶二：取走光核'],'18,14':['回憶三：失敗的儀式'],'23,14':['回憶四：艾瑟爾的懺悔']},
   onTile(t,x,y){if(t===T.SIGN&&[[6,14],[11,14],[18,14],[23,14]].some(([a,b])=>a===x&&b===y))return c8Portal(x);return null}
@@ -800,7 +812,7 @@ const MAPS={
   signs:{'14,3':['【上一層】'],'8,12':['【卷頁回聲】']},onTile(t,x,y){if(t===T.SIGN&&x===14&&y===3)return towerStairs();return null}
  }
 };
-function memoryMap(stage){const key='c8_m'+stage;return{ch:8,name:['','歸一前夜','取走光核','失敗的儀式','艾瑟爾的懺悔'][stage],w:26,h:30,build:()=>buildMemory(stage),encBase:[1,1,1,1,1],encRate:.11,battleBg:'abyss',ground:[[0,0],[1,0],[2,0],[3,3],[0,1]],spawn:{x:13.5,y:27.5},home:{x:13.5,y:27.5},homeName:'歸一王座',area:()=>['','回憶：歸一前夜','回憶：取走光核','回憶：失敗的儀式','回憶：艾瑟爾的懺悔'][stage],npcs:[{id:'lamp_m'+stage,ch:'lamp',x:7,y:14,name:'小燈',col:'#e5c87e',hair:'#efe1aa',talk:()=>c8Lamp(stage)},{id:'anc_m'+stage,ch:'steel',x:13,y:20,name:'先祖守衛',col:'#a7a8b2',hair:'#dedde2',hideIf:key+'_guard',talk:()=>c8Guard(stage)},{id:'echo_m'+stage,ch:'aether',x:13,y:8,name:stage===4?'艾瑟爾殘響':'記憶回聲',col:'#e6dcb5',hair:'#e7c56b',showIf:key+'_guard',hideIf:stage===4?'c8_done':key,talk:()=>stage===4?c8Aether():c8Memory(stage)}],warps:[{x:13,y:29,to:'throne',tx:14.5,ty:26.5,face:1,need:key}] ,onTile(t,x,y){if(t===T.SIGN&&x===13&&y===12)return c8Memory(stage);return null}}}
+function memoryMap(stage){const key='c8_m'+stage;return{ch:8,name:['','歸一前夜','取走光核','失敗的儀式','艾瑟爾的懺悔'][stage],w:26,h:30,build:()=>buildMemory(stage),encBase:[1,1,1,1,1],encRate:.11,battleBg:'abyss',ground:[[0,0],[1,0],[2,0],[3,3],[0,1]],spawn:{x:13.5,y:27.5},home:{x:13.5,y:27.5},homeName:'歸一王座',area:()=>['','回憶：歸一前夜','回憶：取走光核','回憶：失敗的儀式','回憶：艾瑟爾的懺悔'][stage],npcs:[{id:'lamp_m'+stage,ch:'lamp',x:7,y:14,name:'小燈',col:'#e5c87e',hair:'#efe1aa',talk:()=>c8Lamp(stage)},{id:'anc_m'+stage,ch:'steel',x:13,y:20,name:'先祖守衛',col:'#a7a8b2',hair:'#dedde2',hideIf:key+'_guard',talk:()=>c8Guard(stage)},{id:'echo_m'+stage,ch:'aether',x:13,y:8,name:stage===4?'艾瑟爾殘響':'記憶回聲',col:'#e6dcb5',hair:'#e7c56b',showIf:key+'_guard',hideIf:stage===4?'c8_done':key,talk:()=>stage===4?c8Aether():c8Memory(stage)}],warps:[{x:13,y:29,to:'throne',tx:14.5,ty:26.5,face:1}] ,onTile(t,x,y){if(t===T.SIGN&&x===13&&y===12)return c8Memory(stage);return null}}}
 function buildMapData(d){
   const m=d.build?d.build():parseRows(d.rows,d.w,d.h);
   (d.houses||[]).forEach(([x,y])=>addHouse(m,x,y));
@@ -1068,47 +1080,47 @@ function update(dt){
 /* 史冊殘卷：t 標題｜src 來源｜x 原文（背包顯示）｜flaw 藏著的矛盾（第 9 章執筆者會逐條指出；目前不顯示）
    依《故事設定集 v1.3》「殘卷矛盾總表」；第 2 卷以後的原文尚未撰寫 */
 const SCROLLS=[
- {t:'史冊殘卷・壹',src:'古碑畫面',x:'教科書說，初代珠師艾瑟爾獨力擊敗了暴君歸一王。但這份手稿寫著：「珠核本有五枚，由五位守護者各執其一。歸一，並非野心，而是為了縫合大地的裂痕……」',flaw:'奪核者的臉被磨平。是誰磨的，為什麼要磨？'},
- {t:'史冊殘卷・貳',src:'航海日誌',x:'歸航號的航海日誌，最後一頁：「守界盟令：歸航號不得靠岸。為防疫病，艙門由外封死。」前面幾十頁，記著每一位乘客的名字，和每天分到的水。',flaw:'最後三頁的筆跡和前面不同'},
- {t:'史冊殘卷・參',src:'灰婆婆的口述',x:'灰婆婆記得火起時，村口有人把路封住，火從外圈往裡逼。她說那一夜有四十多人沒能回家；慰問隊名單上卻多了四十個名字。她已記不清火起的時辰，也說不出封路者的臉。',flaw:'她說的人數，和慰問隊名單差了四十人；口述不能證明誰點火或下令'},
- {t:'史冊殘卷・肆',src:'獵牙家族譜',x:'家族譜只留下「石頭別賣，別問」這句代代相傳的規矩。末頁被撕走，旁邊的註記寫著「木核被當成幸運石」，卻沒有記下哪一代開始這麼叫。',flaw:'最後一代的頁面被撕走；苔姨與獵牙對撕頁者的說法不同'},
- {t:'史冊殘卷・伍',src:'艾瑟爾日記',x:'殘頁上只有一行：「我拿了不該拿的。」紙張沒有日期，來源不明；它被夾在艾瑟爾日記的抄本裡，但無法證明是艾瑟爾親筆。',flaw:'日記是抄本，原本只有瑟菲和館長見過，這行可能是後人加的'},
- {t:'史冊殘卷・陸',src:'歸一王遺言',x:'斗篷人記得歸一王曾說：「先救還活著的人，不要再追究。」石板只剩「先救還活著的人」幾字；後半句與說話者身分都只有斗篷人的記憶。',flaw:'刮掉的下半只有斗篷人記得，他是唯一的來源'},
- {t:'史冊殘卷・柒',src:'史冊修訂令',flaw:'修訂令上的印章，與同期其他文件不同'},
- {t:'史冊殘卷・捌',src:'五核記憶',flaw:'珠核只保存「持有者希望被記得」的樣子，不等於事實'}
+ {t:'史冊殘卷・壹',src:'古碑畫面',x:'課本上說，初代珠師艾瑟爾一個人打倒了暴君歸一王。這份手稿卻寫著：「珠核本有五枚，由五位守護者各執其一。歸一，並非野心，而是為了縫合大地的裂痕……」',flaw:'奪核者的臉被磨平。是誰磨的，為什麼要磨？'},
+ {t:'史冊殘卷・貳',src:'航海日誌',x:'歸航號航海日誌的最後一頁：「守界盟令：歸航號不得靠岸。為防疫病，艙門由外封死。」前面幾十頁，記著每個乘客的名字，還有每天分到多少水。',flaw:'最後三頁的筆跡和前面不同'},
+ {t:'史冊殘卷・參',src:'灰婆婆的口述',x:'灰婆婆說，火燒起來的時候，村口有人把路堵了，火是從外面往裡燒的。那一夜有四十幾個人沒回家——慰問隊的名單上，卻多出四十個名字。幾點起的火、堵路的人長什麼樣子，她都記不得了。',flaw:'她說的人數，和慰問隊名單差了四十人；口述不能證明誰點火或下令'},
+ {t:'史冊殘卷・肆',src:'獵牙家族譜',x:'族譜上只剩一句代代傳下來的規矩：「石頭別賣，別問。」最後一頁被撕掉了。邊角有人註了一句「木核被當成幸運石」，沒寫是哪一代開始這樣叫的。',flaw:'最後一代的頁面被撕走；苔姨與獵牙對撕頁者的說法不同'},
+ {t:'史冊殘卷・伍',src:'艾瑟爾日記',x:'一張殘頁，只有一行字：「我拿了不該拿的。」沒有日期，也不知道從哪裡來。它夾在艾瑟爾日記的抄本裡，可是沒人能證明那是艾瑟爾親手寫的。',flaw:'日記是抄本，原本只有瑟菲和館長見過，這行可能是後人加的'},
+ {t:'史冊殘卷・陸',src:'歸一王遺言',x:'斗篷人記得歸一王說過：「先救還活著的人，不要再追究。」石板上只剩「先救還活著的人」幾個字。後半句、還有說這句話的是誰，都只存在斗篷人的記憶裡。',flaw:'刮掉的下半只有斗篷人記得，他是唯一的來源'},
+ {t:'史冊殘卷・柒',src:'史冊修訂令',x:'王都檔案廳的修訂令。原稿寫的是「眾人共同封住裂痕」，後來被改成「艾瑟爾獨自封印」。改過的地方蓋著一枚印，跟同一年其他公文上的印不太一樣。',flaw:'修訂令上的印章，與同期其他文件不同'},
+ {t:'史冊殘卷・捌',src:'五核記憶',x:'五枚珠核留下的回聲：圍著裂痕的五個人、一隻發抖著伸向光核的手、炸開的儀式，還有一句「我拿了不該拿的」。每一段都斷在最想看清楚的地方。',flaw:'珠核只保存「持有者希望被記得」的樣子，不等於事實'}
 ];
 function questHint(){
   const f=P.flags;
   if(f.c8_done){
-    if(f.towerEnding&&!f.tower_song)return CURID==='grass'?'到古碑旁找小豆，聽她唱完第九段歌。':'回到翠風草原，在無盡之塔外找小豆。';
-    if(CURID!=='tower')return f.towerEnding?`第九章結局已記錄。無盡之塔仍可繼續攀登，目前第 ${f.towerFloor||1} 層。`:'主線已結束。前往翠風草原西側的古碑，進入無盡之塔。';
+    if(f.towerEnding&&!f.tower_song)return CURID==='grass'?'小豆在古碑附近等你。':'回翠風草原，小豆在塔外等你。';
+    if(CURID!=='tower')return f.towerEnding?`結局已記錄。塔還能往上爬，目前在第 ${f.towerFloor||1} 層。`:'翠風草原西邊的古碑，是無盡之塔的入口。';
     const floor=Number(f.towerFloor)||1;
-    if(floor===10&&f.towerReady&&!f.tower_boss)return '找老周，聽他說明自己與史官家族的關係。';
-    if(floor===10&&f.tower_boss&&!f.towerEnding)return '聽老周說明四種結局，選擇八卷殘卷的去向。';
-    if(f.towerEnding&&floor===10)return `結局已記錄。可以從上一層繼續攀登；目前第 ${floor} 層。`;
-    return f.towerReady?`第 ${floor} 層已通過，走到北側石階前往上一層。`:`前往第 ${floor} 層中央，擊敗本層挑戰者。`;
+    if(floor===10&&f.towerReady&&!f.tower_boss)return '老周在北邊等你。';
+    if(floor===10&&f.tower_boss&&!f.towerEnding)return '八卷殘卷要怎麼處理，還沒決定。';
+    if(f.towerEnding&&floor===10)return `結局已記錄。目前第 ${floor} 層，可以繼續往上。`;
+    return f.towerReady?`第 ${floor} 層：北邊的石階已經亮了。`:`第 ${floor} 層：挑戰者在中央等著。`;
   }
-  if(f.c7_done){if(!f.c8_started)return '從王都北側的五核光橋前往歸一王座，找小燈。';if(!f.c8_m1)return CURID==='memory1'?'先擊敗先祖守衛，再觸碰前夜的記憶回聲。':'進入左側第一段回憶：歸一前夜。';if(!f.c8_m2)return CURID==='memory2'?'先擊敗先祖守衛，再觸碰白曜房間的回憶。':'進入第二段回憶：取走光核。';if(!f.c8_m3)return CURID==='memory3'?'先擊敗先祖守衛，再觸碰儀式的回憶。':'進入第三段回憶：失敗的儀式。';if(!f.c8_m4)return CURID==='memory4'?'先擊敗先祖守衛，再聽艾瑟爾殘響的懺悔。':'進入最後一段回憶：艾瑟爾的懺悔。';return '與艾瑟爾殘響交談，完成最後的追問。';}
-  if(f.c7_steel){if(!f.c7_done)return CURID==='capital'?'到王城庭院找盟長奧瑞，聽他說明光核。':'回到王都找盟長奧瑞。';}
-  if(f.c6_done&&!f.c7_done){if(CURID!=='capital')return '從裂痕底層北側的出口前往守界盟王都。';if(!f.c7_lia)return '到平民街區找麵包坊莉亞。';if(!f.c7_ran)return '找檔案官冉，取得檔案庫鑰匙。';if(!f.c7_a||!f.c7_b||!f.c7_c)return '進入檔案廳，查看三份不同年代的修訂令。';if(!f.c7_steel)return '到北側檔案廳入口找衛兵長鋼。';if(!f.c7_study)return '進入盟長書房，查看光核保管記錄。';return '回去找盟長奧瑞。';}
-  if(f.c6_done){if(!f.c6_cloak)return '去找出現在深淵石板旁的斗篷人。';if(!f.c6_song)return '去營地找小豆聽第六段歌謠。';return '第 6 章完成。從北側通道前往守界盟王都。';}
-  if(f.c5_done){if(CURID!=='abyss')return '從天穹浮島北側的檔案館通道前往無光深淵。';if(!f.c6_crow)return '去找情報商灰鴉。';if(!f.c6_mural)return '調查裂痕底層的五人壁畫。';if(!f.c6_will)return '查看被刮去下半段的遺言石板。';if(!f.c6_list)return '去北側找黑鋒，看看他的復仇名單。';if(!f.c6_cloak)return '找出現在石板旁的斗篷人，聽他的回憶。';if(!f.c6_review)return '把壁畫、名單和回憶帶回去找灰鴉。';return '帶著疑問去找黑鋒。';}
-  if(f.c4_done){if(CURID!=='sky')return '從霧語沼林北側的風口崖前往天穹浮島。';if(!f.c5_yunque)return '到雲港找飛行信差雲雀。';if(!f.c5_jiale)return '去史冊展找學者伽勒。';if(!f.c5_page)return '找館員紙魚看日記殘頁。';if(!f.c5_ledger)return '調查檔案館的借閱簿。';if(!f.c5_drafts)return '檢查抄寫房裡的修訂草稿。';if(!f.c5_review)return '把看到的資料帶去找伽勒。';return '去檔案館北側找瑟菲。';}
-  if(f.c3_done){if(CURID!=='marsh')return '從赤燼荒原北側的焦林小徑前往霧語沼林。';if(!f.c4_taiyi)return '去找湯鋪老闆苔姨。';if(!f.c4_grave)return '調查沼林裡那座無名墓碑。';if(!f.c4_family)return '查看獵牙家族譜的殘頁。';if(!f.c4_review)return '把墓碑與族譜的線索帶回去問苔姨。';return '去北方風口找獵牙。';}
-  if(f.c2_done){if(!f.c3_moen)return CURID==='ember'?'去找慰問隊長莫恩，了解村落災後情況。':'從碎鏡海岸西側岩岸山道前往赤燼荒原，找慰問隊長莫恩。';if(!f.c3_burn)return '調查村口外圈向內的焦痕。';if(!f.c3_oil)return '檢查焦痕旁的油桶殘骸。';if(!f.c3_list)return '看看慰問隊帳篷旁的紀念名單。';if(!f.c3_testimony)return '去找灰婆婆，聽聽她記得的那一夜。';if(!f.c3_review)return '把線索帶回去找莫恩。';return '去焦林關口找燼。';}
+  if(f.c7_done){if(!f.c8_started)return '王都北邊的光橋通往歸一王座。小燈在王座前。';if(!f.c8_m1)return CURID==='memory1'?'先祖守衛擋在回聲前面。':'回憶一：王座左手邊第一道光門。';if(!f.c8_m2)return CURID==='memory2'?'先祖守衛擋在回聲前面。':'回憶二：第二道光門。';if(!f.c8_m3)return CURID==='memory3'?'先祖守衛擋在回聲前面。':'回憶三：第三道光門。';if(!f.c8_m4)return CURID==='memory4'?'先祖守衛擋在殘響前面。':'回憶四：最右邊的光門。';return '艾瑟爾殘響還有話沒說完。';}
+  if(f.c7_steel){if(!f.c7_done)return CURID==='capital'?'盟長奧瑞在王城庭院。':'盟長奧瑞在王都的王城庭院。';}
+  if(f.c6_done&&!f.c7_done){if(CURID!=='capital')return '裂痕底層北邊的出口通往王都。';if(!f.c7_lia)return '平民街區的麵包坊：莉亞。';if(!f.c7_ran)return '檔案官冉手上有檔案庫的鑰匙。';if(!f.c7_a||!f.c7_b||!f.c7_c)return '檔案廳裡有三份不同年代的修訂令。';if(!f.c7_steel)return '衛兵長鋼守在檔案廳北邊。';if(!f.c7_study)return '盟長書房裡有光核的保管簿。';return '盟長奧瑞在等你回話。';}
+  if(f.c6_done){if(!f.c6_cloak)return '斗篷人在深淵的石板旁邊。';if(!f.c6_song)return '小豆在營地。';return '北邊的通道通往守界盟王都。';}
+  if(f.c5_done){if(CURID!=='abyss')return '檔案館北邊的通道通往無光深淵。';if(!f.c6_crow)return '營地裡有個賣消息的，叫灰鴉。';if(!f.c6_mural)return '裂痕底層有一面五人壁畫。';if(!f.c6_will)return '有塊石板的下半段被刮掉了。';if(!f.c6_list)return '黑鋒在北邊，手上有一份名單。';if(!f.c6_cloak)return '斗篷人在石板旁邊。';if(!f.c6_review)return '灰鴉在營地。';return '黑鋒在北邊。';}
+  if(f.c4_done){if(CURID!=='sky')return '霧語沼林北邊的風口崖通往天穹浮島。';if(!f.c5_yunque)return '雲港：飛行信差雲雀。';if(!f.c5_jiale)return '史冊展的導覽是學者伽勒。';if(!f.c5_page)return '館員紙魚在整理日記副本。';if(!f.c5_ledger)return '檔案館有本借閱簿。';if(!f.c5_drafts)return '抄寫房裡有修訂草稿。';if(!f.c5_review)return '伽勒在展場。';return '瑟菲在檔案館北邊的館長室。';}
+  if(f.c3_done){if(CURID!=='marsh')return '赤燼荒原北邊的焦林小徑通往霧語沼林。';if(!f.c4_taiyi)return '湯鋪的老闆叫苔姨。';if(!f.c4_grave)return '沼林裡有座沒有名字的墓碑。';if(!f.c4_family)return '獵牙家的族譜少了一頁。';if(!f.c4_review)return '苔姨在湯鋪。';return '獵牙在北邊風口。';}
+  if(f.c2_done){if(!f.c3_moen)return CURID==='ember'?'慰問隊長莫恩在帳篷那邊。':'碎鏡海岸西邊的岩岸山道通往赤燼荒原。';if(!f.c3_burn)return '村口的地上有焦痕。';if(!f.c3_oil)return '焦痕旁邊有個燒壞的油桶。';if(!f.c3_list)return '慰問隊帳篷旁貼著一張名單。';if(!f.c3_testimony)return '灰婆婆記得那一夜。';if(!f.c3_review)return '莫恩在帳篷那邊。';return '燼守在焦林關口。';}
   if(f.guardDone){
-    if(!f.c2_jing)return CURID==='grass'?'穿過北邊打開的關門，前往碎鏡海岸。':'去碼頭找漁夫阿鯨。';
-    if(!f.c2_chain)return '去看看北邊禁區的門。';
-    if(!f.c2_box)return '去漁村問問那艘沉船的事。';
-    if(!f.c2_bo)return '去海巡隊哨所查歷任巡長的名錄。';
-    if(!f.c2_roster)return '進海巡隊哨所看名錄。';
-    if(!f.c2_dive)return '回碼頭找阿鯨。';
-    return '去禁區門口找海巡長潮生。';
+    if(!f.c2_jing)return CURID==='grass'?'北邊的關門開了，外面是碎鏡海岸。':'碼頭邊有個叫阿鯨的漁夫。';
+    if(!f.c2_chain)return '禁區的門在北邊。';
+    if(!f.c2_box)return '沉船的事，漁村裡有人知道。';
+    if(!f.c2_bo)return '海巡員柏守在哨所門口。';
+    if(!f.c2_roster)return '哨所裡掛著歷任巡長的名錄。';
+    if(!f.c2_dive)return '阿鯨在碼頭。';
+    return '海巡長潮生守在禁區門口。';
   }
-  if(!f.q1)return '去跟老周談談。他似乎對你的吊墜很在意。';
-  if(!f.stele)return '西邊草原有一塊古碑。帶著吊墜去摸摸它。';
-  if(!f.truth1)return '找斗篷人談談，問清楚古碑的真相。';
-  return '帶著銅印去北邊關口，挑戰守衛賽倫。';
+  if(!f.q1)return '老周在鎮上。';
+  if(!f.stele)return '古碑在西邊草原。';
+  if(!f.truth1)return '斗篷人在草原上。';
+  return '北邊關口：守衛賽倫。';
 }
 async function interactTile(t,tx,ty){
   G.lock=true;G.joy.x=G.joy.y=0;
@@ -1117,58 +1129,58 @@ async function interactTile(t,tx,ty){
   else if(custom){await say(custom)}
   else if(t===T.FOUNT){
     P.hpFrac=1;P.springs=P.springs||[];if(!P.springs.includes(CURID))P.springs.push(CURID);save();
-    await say(['療癒泉的水清澈見底。你的夥伴們精神一振，體力全部恢復了！']);
+    await say(['泉水冰冰涼涼的。夥伴們的體力都恢復了。']);
     const dest=P.springs.filter(id=>id!==CURID&&MAPS[id]);
     if(dest.length){   // 走過的療癒泉彼此相通，可以傳送
-      const r=await modal('<h3>療癒泉</h3><p>傳送到其他療癒泉</p>',[{t:'留在這裡'},...dest.map(id=>({t:MAPS[id].name,c:'pri'}))]);
+      const r=await modal('<h3>療癒泉</h3><p>去過的泉水是相通的。</p>',[{t:'留在這裡'},...dest.map(id=>({t:MAPS[id].name,c:'pri'}))]);
       if(r>0){const d=MAPS[dest[r-1]];await changeMap(dest[r-1],d.home.x,d.home.y,0);return}
     }
   }
   else if(t===T.GATE){await say(['門關著。'])}
-  else if(t===T.SIGN){await say((CUR.signs&&CUR.signs[tx+','+ty])||['告示牌上的字跡模糊不清。'])}
-  else if(t===T.DOOR){await say(['門鎖著，裡面似乎沒有人。'])}
+  else if(t===T.SIGN){await say((CUR.signs&&CUR.signs[tx+','+ty])||['字被雨泡糊了，看不清楚。'])}
+  else if(t===T.DOOR){await say(['門鎖著。'])}
   G.lock=false;G.bump=0.8;
 }
 async function interactNpc(n){
   G.lock=true;G.joy.x=G.joy.y=0;
   const f=P.flags;
   if(n.id==='zhou'){
-    if(f.guardDone){await say([['老周','你的眼神……越來越像你父親了。繼續走下去吧。']])}
+    if(f.guardDone){await say([['老周','過關啦？……你走路的樣子，跟你爹一模一樣。去吧。']])}
     else if(!f.q1){
-      await say([['老周','這一帶的野生珠獸不兇，多練練再往北走。累了就去廣場的療癒泉。'],['老周','……等一下。你脖子上那枚吊墜，讓我看看。'],['老周','果然。那是歸一會的舊紋章。孩子，你一直被告訴「歸一會是惡人」，對吧？'],
-        ['老周','守界盟的守衛不會把你放在眼裡——除非你知道你是誰。西邊草原有一塊古碑，十五年前我見過，上面刻的字跟史冊不一樣。'],['老周','帶著吊墜去摸摸它。看完再決定，要不要走北邊的關口。']]);
-      f.q1=1;toast('新目標：去西邊草原找古碑');
-    }else if(!f.stele){await say([['老周','古碑在西邊草原，高草的外緣。帶著吊墜去摸它。']])}
-    else if(!f.truth1){await say([['老周','你看見了。……去找那個斗篷人吧，他知道更多。']])}
-    else{await say([['老周','真相不會自己走到人面前。守衛現在會正眼看你了，但別大意，賽倫是真的強。']])}
+      await say([['老周','草叢裡那些小傢伙不兇。多跟牠們打打，再往北走。'],['老周','……等等。你脖子上那個，拿出來我看看。'],['老周','果然是它。孩子，大家都跟你說歸一會是壞人，對吧？'],
+        ['老周','西邊草原有塊古碑。十五年前我看過一次，上面刻的跟史冊寫的不一樣。'],['老周','戴著吊墜去摸摸看。看完了，再決定要不要往北走。']]);
+      f.q1=1;
+    }else if(!f.stele){await say([['老周','古碑在西邊，高草外圍那一帶。']])}
+    else if(!f.truth1){await say([['老周','看到了吧。……去找那個披斗篷的，他知道的比我多。']])}
+    else{await say([['老周','賽倫那孩子這下會正眼看你了。可別小看他，他是真的能打。']])}
     save();
   }else if(n.id==='xiaodou'){
-    if(f.towerEnding){const last=['','♪「新的史冊寫完了，名字仍待人回答。」','♪「每一頁都留問號，不同歌聲傳向遠方。」','♪「八卷歸還到原處，最後一頁留白。」','♪「紙灰飛過無名碑，歌裡沒有誰對誰錯。」'][f.towerEnding];if(!f.tower_song){await say([['小豆','我把前八段又唱了一遍，這次我想把最後一句交給你。'],`♪「五色的珠核閃閃亮，艾瑟爾舉起光之杖，」`,`♪「一步一步走向王座，故事沒有唱完。」`,last]);f.tower_song=1;save()}else await say([['小豆','最後一句我記下來了。以後聽見不同版本，我也會把它們都唱進去。']]);
+    if(f.towerEnding){const last=['','♪「新的史冊寫完了，名字仍待人回答。」','♪「每一頁都留問號，不同歌聲傳向遠方。」','♪「八卷歸還到原處，最後一頁留白。」','♪「紙灰飛過無名碑，歌裡沒有誰對誰錯。」'][f.towerEnding];if(!f.tower_song){await say([['小豆','前面八段我又從頭唱了一遍。最後一句……我想照你選的唱。'],`♪「五色的珠核閃閃亮，艾瑟爾舉起光之杖，」`,`♪「一步一步走向王座，故事沒有唱完。」`,last]);f.tower_song=1;save()}else await say([['小豆','最後一句我記起來了。以後聽到別的版本，我也一起唱進去。']]);
     }else{const song=['♪「五色的珠核閃閃亮，艾瑟爾舉起光之杖，」','♪「一步一步走向王座，歸一王倒在火光旁。」','♪「守界盟，守四方，史冊記下好時光。」'];
-    if(f.guardDone){await say([['小豆','聽說賽倫大人輸了？……騙人的吧。守界盟才不會輸。'],['小豆','我還是要加入守界盟。等我把下一段歌學會，再唱給你聽！']])}
-    else{await say([['小豆','你也要去北邊的關口嗎？等我長大，我也要加入守界盟！'],['小豆','我會唱守界盟的歌喔，你聽——'],...song]);f.song=1}
+    if(f.guardDone){await say([['小豆','欸，聽說賽倫大人輸了？騙人的吧！守界盟才不會輸。'],['小豆','反正我長大還是要加入守界盟。等我學會下一段，再唱給你聽！']])}
+    else{await say([['小豆','你也要去北邊關口喔？我長大也要加入守界盟！'],['小豆','我會唱守界盟的歌喔，你聽——'],...song]);f.song=1}
     save();}
   }else if(n.id==='hana'){
-    await say([['阿花',`草叢裡有野生珠獸喔！把「符」珠消滿 ${TUNE.need} 個，就有機會收服牠們。`],['阿花','對手血量越低、等級比牠高越多、稀有度越低，就越容易成功！但如果先把牠打倒就沒機會囉。']]);
+    await say([['阿花',`草叢裡會跑出野生珠獸。消掉「符」珠，攢滿 ${TUNE.need} 個就能試著收服牠。`],['阿花','牠血越少、等級比你低越多、越常見，就越好抓。可是打倒就抓不到了喔。']]);
   }else if(n.id==='stele'){
-    if(f.c8_done){await enterTower();return}
-    if(!f.q1){await say(['一塊風化的古碑，字跡模糊，看不出寫了什麼。'])}
+    if(f.c8_done){await enterTower();G.lock=false;G.bump=0.8;return}
+    if(!f.q1){await say(['一塊風化的石碑。字都磨平了。'])}
     else if(!f.stele){
-      await say(['你伸手觸碰古碑，胸前的吊墜忽然發燙。','碑面的苔蘚褪去，浮現出一行行光字——','「珠核本有五枚，由五位守護者各執其一。歸一，並非野心，而是為了縫合大地的裂痕。」','「守界盟的先祖，在歸一之日前夜，奪走了其中一枚。」','畫面一閃，你看見火光、倒下的人影，以及一個與你面容相似的背影——他把吊墜交給了一個嬰兒。',
-        '……那個嬰兒，是你。','你喘著氣收回手。史冊上寫的，似乎不是全部。']);
-      f.stele=1;toast('目標更新：找斗篷人談談');
-    }else{await say(['古碑靜靜地發著微光。你已經看過它想讓你看的東西了。'])}
+      await say(['手一碰到石碑，胸前的吊墜就燙了起來。','苔蘚一片片剝落，底下浮出發光的字——','「珠核本有五枚，由五位守護者各執其一。歸一，並非野心，而是為了縫合大地的裂痕。」','「守界盟的先祖，在歸一之日前夜，奪走了其中一枚。」','眼前一閃：火光、倒下的人影，還有一個背影——長得跟你很像。他把吊墜塞進一個嬰兒的襁褓。',
+        '……那個嬰兒是你。','你抽回手，喘了好幾口氣。']);
+      f.stele=1;
+    }else{await say(['石碑還亮著淡淡的光。'])}
     save();
   }else if(n.id==='cloak'){
     if(!f.stele){
-      const lines=[['斗篷人','……你身上有舊時代的氣味。'],['斗篷人','守界盟的守衛會檢查每個過關的人。史冊上寫的，並不全是真的，孩子。']];
-      if(!f.cloakGift){lines.push('斗篷人塞給你兩瓶回復藥，轉身消失在草叢邊。');P.items.potion+=2;f.cloakGift=1}
+      const lines=[['斗篷人','……你身上有舊時代的味道。'],['斗篷人','關口的守衛會盤查每個人。史冊上寫的，別全信。']];
+      if(!f.cloakGift){lines.push('斗篷人塞給你兩瓶回復藥，一轉身就走進草叢裡了。');P.items.potion+=2;f.cloakGift=1}
       await say(lines);
     }else if(!f.truth1){
-      await say([['斗篷人','……你的眼神變了。你摸過古碑了。'],['斗篷人','守界盟之所以是「正派」，是因為贏的人寫了史冊。他們改寫了那一夜。'],['斗篷人','賽倫不是壞人，但他只相信史冊。拿出吊墜，讓他看你是誰——然後打贏他，他才會開始懷疑自己守護的是什麼。'],
-        '斗篷人把一枚小小的銅印放進你手心：「這是歸一會舊部的通行印。有它，守衛才會認出你。」']);
-      f.truth1=1;toast('真相已揭開：守衛會認出你了');
-    }else{await say([['斗篷人','去吧。北邊的關口在等你。']])}
+      await say([['斗篷人','你摸過古碑了。眼神不一樣了。'],['斗篷人','守界盟是「正派」，因為史冊是他們寫的。那一夜被改過。'],['斗篷人','賽倫不是壞人，他只是信史冊。讓他看看吊墜，再打贏他。他才會開始懷疑。'],
+        '斗篷人把一枚小銅印放進你手心。',['斗篷人','歸一會舊部的通行印。守衛認得這個。']]);
+      f.truth1=1;
+    }else{await say([['斗篷人','去吧。']])}
     save();
   }else if(n.id==='guard'){
     if(await guardEvent())return;
@@ -1178,40 +1190,38 @@ async function interactNpc(n){
 }
 async function guardEvent(){
   if(!P.flags.truth1){
-    await say([['賽倫','站住。無通行資格者，不得靠近關口。'],'賽倫看了你一眼，目光又移回遠方。在他眼裡，你只是路過的旅人。']);
-    if(P.flags.q1&&!P.flags.stele)toast('提示：先去西邊草原找古碑');else if(P.flags.stele)toast('提示：先去找斗篷人談談');else toast('提示：去跟老周談談');
+    await say([['賽倫','站住。沒有通行資格的人，不准靠近關口。'],'賽倫瞄了你一眼，就把視線移開了。']);
     return false;
   }
   const avg=teamAvg();
-  await say([['賽倫','站住。依守界盟令，通過此關者須接受珠核檢查。'],['賽倫','……等等。你胸前那枚吊墜，還有手裡的銅印——這是歸一會舊部的東西。'],['賽倫','你是……歸一之子。好，守界盟的珠核檢查，我親自來。']]);
+  await say([['賽倫','站住。依守界盟令，過關的人都要接受珠核檢查。'],['賽倫','……等一下。那個吊墜，還有你手上的銅印——是歸一會的東西。'],['賽倫','原來你就是歸一之子。好，這場檢查我親自來。']]);
   if(!await levelCheck('守衛：賽倫',CHAPTERS[1].guard))return false;
   await startGuardBattle();
   return true;
 }
 async function levelCheck(title,L){   // 隊伍平均等級太低時先提醒；回傳 true＝開打
   const avg=teamAvg();if(avg>=L[0]+GUARD_WARN_GAP)return true;
-  const r=await modal(`<h3>${title}</h3><div class="note">對方隊伍 Lv${L[0]}～${L[L.length-1]}，你的隊伍平均 Lv${avg.toFixed(1)}。</div>`,[{t:'先去練等'},{t:'現在就挑戰',c:'warn'}]);
+  const r=await modal(`<h3>${title}</h3><div class="note">對方 Lv${L[0]}～${L[L.length-1]}，你的隊伍平均 Lv${avg.toFixed(1)}。</div>`,[{t:'晚點再來'},{t:'開打',c:'warn'}]);
   return r===1;
 }
 async function afterGuardWin(){
   P.flags.guardDone=1;P.scrolls.push(0);P.items.potion+=3;P.items.candy+=2;P.hpFrac=1;
   refreshMap();
   save();
-  await say([['賽倫','……好強的珠力。你的戰法，不像是本地人。'],['賽倫','這個，是我在關口舊牆裡找到的。本該上繳守界盟，但……上面的字跡，不是我們的人寫的。'],
-   '你獲得了【史冊殘卷・壹】、回復藥 ×3、經驗糖 ×2。',
-   ['賽倫','過去吧。……希望你看見的，是比史冊更真實的東西。'],
-   '賽倫讓開了道路。關門緩緩升起。']);
-  toast('已取得：史冊殘卷・壹　關門北邊通往碎鏡海岸');
+  await say([['賽倫','……好強。你的打法，不像這一帶的人。'],['賽倫','這個給你。我在關口舊牆的縫裡找到的。照規矩要上繳，可是……上面的字不是我們的人寫的。'],
+   '獲得【史冊殘卷・壹】、回復藥 ×3、經驗糖 ×2。',
+   ['賽倫','過去吧。希望你在外面看到的，比史冊上的真。'],
+   '關門慢慢升了起來。']);
 }
 
 /* ================= 賽倫的信 ================= */
 const LETTERS=[
- {t:'賽倫的信（一）',x:['致 持銅印者：','依守界盟令，本人已返回王都覆命，關口之事已如實呈報。','覆命之後，本人調閱史冊原本，逐卷重讀，至今沒有找到不對的地方。','只有一件事想問：古碑上的字，是誰刻的？','——守界盟關口守衛　賽倫']},
- {t:'賽倫的信（二）',x:['致 持銅印者：','聽說你到了碎鏡海岸。','我查了封鎖令。史冊記的年份，和海巡隊受命的年份，差了三年。','守界盟做事，必有我不知道的理由。','——賽倫']},
- {t:'賽倫的信（三）',x:['致 持銅印者：','我聽說赤燼荒原的慰問隊正在重建村落。檔案只記下災後的救助，沒有寫最初的起火原因。','我以前總以為史冊沒有記載，便代表事情無從查起。現在我不敢這樣說了。','請替我向村民問候。','——賽倫']},
- {t:'賽倫的信（四）',x:['致 持銅印者：','最近收到沼林的例行報告。幾個家族不願把傳下來的東西交給守界盟登記。','我以前會把這看成抗命。現在我想先問：他們在防著什麼？','——賽倫']}
- ,{t:'賽倫的信（五）',x:['致 持銅印者：','我去看了雲上的史冊展。展板只列出一個經核准的版本。瑟菲說她見過不同抄本，最後仍照核准版本抄寫。','我開始明白，照規矩抄寫也會留下選擇。','——賽倫']}
- ,{t:'賽倫的信（六）',x:['致 持銅印者：','深淵的名單上有我家人的名字。黑鋒說那是復仇的理由，我卻只看見更多可能受傷的人。','斗篷人記得王曾說要停下追究；那是他的記憶，不能替任何人下判決。','——賽倫']}
+ {t:'賽倫的信（一）',x:['給 持銅印的人：','我回王都覆命了，關口的事照實報上去。','回來以後，我把史冊原本從頭讀了一遍，沒找到哪裡不對。','只是一直想問：古碑上的字，是誰刻的？','——關口守衛 賽倫']},
+ {t:'賽倫的信（二）',x:['給 持銅印的人：','聽說你到海岸了。','我查了封鎖令。史冊寫的年份，跟海巡隊接到命令的年份，差了三年。','守界盟做事，應該有我不知道的理由。我是這樣告訴自己的。','——賽倫']},
+ {t:'賽倫的信（三）',x:['給 持銅印的人：','聽說赤燼荒原的慰問隊在幫村子重建。檔案裡只寫了災後救助，起火的原因一個字都沒有。','以前我覺得史冊沒寫，就是查不到。現在不敢這麼說了。','替我向村裡的人問好。','——賽倫']},
+ {t:'賽倫的信（四）',x:['給 持銅印的人：','沼林的例行報告送來了。有幾個家族不肯把祖傳的東西拿去登記。','換作以前，我會說那是抗命。現在我只想知道：他們在防誰？','——賽倫']}
+ ,{t:'賽倫的信（五）',x:['給 持銅印的人：','我去看了雲上的史冊展。展板上只有核准過的那一版。','瑟菲說她看過別的抄本，最後還是照核准版抄了。','原來照規矩抄，也是一種選擇。','——賽倫']}
+ ,{t:'賽倫的信（六）',x:['給 持銅印的人：','聽說你要下深淵。那裡有人列了一份名單，說是要報仇。聽說上面有我家人的名字。','如果你見到列名單的人，替我問一句：上面每個人，他都查過嗎？','——賽倫']}
 ];
 async function showLetter(i){   // 第一次才會收到；之後可在背包「殘卷」頁重看
   if(!P.letters)P.letters=[];if(P.letters.includes(i))return;
@@ -1226,84 +1236,83 @@ const C2_BO_TEAM=[['waterD1',8,'trainer'],['waterC1',9,'trainer']];
 const C2_GUARD_TEAM=()=>{const L=CHAPTERS[2].guard;return[['waterC2',L[0],'guard'],['boss_water',L[2],'boss'],['waterD2',L[1],'guard']]};
 async function c2Ajing(){
   const f=P.flags;
-  if(f.c2_done){await say([['阿鯨','鹽婆說要把音樂盒上的名字刻成碑，放在碼頭邊。']]);return}
-  if(f.c2_dive){await say([['阿鯨','潮生大叔在禁區門口等你。']]);return}
+  if(f.c2_done){await say([['阿鯨','鹽婆說，要把音樂盒底下那些名字刻成碑，就放在碼頭邊。']]);return}
+  if(f.c2_dive){await say([['阿鯨','潮生大叔在禁區門口等你。……他臉超臭的，小心點。']]);return}
   if(f.c2_roster){
-    await say([['阿鯨','名錄的事我聽說了。……好，趁潮退，我們從碼頭下去。'],
-      '你和阿鯨從碼頭潛入海中，沿著海底的岩溝往北游。',
-      '沉船斜躺在禁區的內灣底下。船身上的字還看得出來——「歸航號」。',
-      '艙門從外面被木板釘死了。釘子已經鏽穿。',
-      '阿鯨撬開一角，你們擠進船艙。裡面散落著小鞋子、碗，還有一本用油布包著的航海日誌。',
-      '你獲得了【史冊殘卷・貳】。',
-      '你們浮上水面時，碼頭上站著一個人。',
-      ['潮生','……你們下去了。'],['潮生','到禁區門口來。']]);
-    f.c2_dive=1;if(!P.scrolls.includes(1))P.scrolls.push(1);save();toast('已取得：史冊殘卷・貳');return;
+    await say([['阿鯨','名錄的事我聽說了。……走，趁退潮，從碼頭下去。'],
+      '你跟著阿鯨下水，沿著海底的岩溝往北游。',
+      '沉船斜躺在禁區內灣的海底。船身上的字還認得出來：「歸航號」。',
+      '艙門被人從外面用木板釘死了。釘子早就鏽穿。',
+      '阿鯨撬開一角，你們擠了進去。小鞋子、碗……還有一本用油布包好的航海日誌。',
+      '獲得【史冊殘卷・貳】。',
+      '浮上水面的時候，碼頭上站著一個人。',
+      ['潮生','……你們下去了。'],['潮生','來禁區門口。']]);
+    f.c2_dive=1;if(!P.scrolls.includes(1))P.scrolls.push(1);save();return;
   }
   if(!f.c2_jing){
-    await say([['阿鯨','喂，你是從關口那邊來的吧？'],['阿鯨','我叫阿鯨。這片海我從小游到大，只有北邊那塊不准下去。'],
-      ['阿鯨','禁區裡沉了一艘船。海巡隊說那是不祥的船，誰都不准靠近。'],['阿鯨','我一直想潛下去看看。你有興趣的話，先去北邊那道門看看。']]);
-    f.c2_jing=1;save();toast('新目標：去看北邊禁區的門');return;
+    await say([['阿鯨','喂，你從關口那邊過來的吧？'],['阿鯨','我叫阿鯨。這片海我從小游到大，就北邊那塊不准下去。'],
+      ['阿鯨','禁區裡沉了一艘船。海巡隊說那船不吉利，誰都不准靠近。'],['阿鯨','我一直想下去看看……你有興趣的話，先去北邊那道門瞧瞧。']]);
+    f.c2_jing=1;save();return;
   }
-  if(!f.c2_chain){await say([['阿鯨','禁區的門在北邊，潮生大叔就守在那裡。']]);return}
+  if(!f.c2_chain){await say([['阿鯨','門在北邊。潮生大叔整天守在那裡。']]);return}
   await say([['阿鯨','那艘船的事，漁村裡最清楚的是鹽婆。她以前是船醫。']]);
 }
 async function c2Gate(){
   const f=P.flags;
   if(!f.c2_jing||f.c2_chain){await say(['禁區的門被鐵鏈鎖住了。']);return true}
-  await say(['鐵鏈在門上纏了好幾圈，大鎖扣在門的這一側。','從禁區裡面，搆不到鎖。']);
-  f.c2_chain=1;save();toast('新目標：去漁村問問那艘船的事');return true;
+  await say(['鐵鏈纏了好幾圈，大鎖扣在門外這一側。','從裡面根本搆不到。']);
+  f.c2_chain=1;save();return true;
 }
 async function c2Yanpo(){
   const f=P.flags;
-  if(f.c2_done){await say([['鹽婆','我要把盒底的名字刻成碑，放在碼頭邊。']]);return}
-  if(f.c2_box){await say([['鹽婆','海巡隊的哨所裡，掛著歷任巡長的名字。你去看看是從哪一年開始的。']]);return}
-  if(!f.c2_chain){await say([['鹽婆','外地來的孩子啊。海風大，別在外頭待太晚。']]);return}
-  await say([['鹽婆','……你去看過禁區的門了。'],['鹽婆','我奶奶以前常說，她是從海裡被撈起來的。那年她六歲。'],
+  if(f.c2_done){await say([['鹽婆','盒底那些名字，我想刻成碑。就放碼頭邊，讓他們看得到海。']]);return}
+  if(f.c2_box){await say([['鹽婆','哨所牆上掛著歷任巡長的名字。你去看看，是從哪一年開始的。']]);return}
+  if(!f.c2_chain){await say([['鹽婆','外地來的孩子啊。海風大，晚上別在外頭晃。']]);return}
+  await say([['鹽婆','……你去看過禁區那道門了。'],['鹽婆','我奶奶常說，她是被人從海裡撈起來的。那年她六歲。'],
     '鹽婆從櫃子裡拿出一個生鏽的音樂盒，轉了幾圈發條。',
-    '旋律斷斷續續。盒底刻著三個字：「歸航號」。下面是一排排名字，有幾個名字後面註著年紀：四歲、七歲、兩歲。',
-    ['鹽婆','她說，船沒有沉在暴風裡。剩下的，她到死都沒說。'],
-    ['鹽婆','海巡隊的哨所裡，掛著歷任巡長的名字。你去看看是從哪一年開始的。']]);
-  f.c2_box=1;save();toast('新目標：去海巡隊哨所');
+    '旋律斷斷續續的。盒底刻著「歸航號」三個字，底下是一排排名字。有幾個後面註著年紀：四歲、七歲、兩歲。',
+    ['鹽婆','她說，那艘船不是沉在暴風雨裡的。其他的，她到死都沒講。'],
+    ['鹽婆','哨所牆上掛著歷任巡長的名字。你去看看，是從哪一年開始的。']]);
+  f.c2_box=1;save();
 }
 async function c2Bo(){
   const f=P.flags;
-  if(f.c2_done){await say([['柏','海巡隊有人說想進禁區看看。我不會去。我會繼續守。']]);return}
-  if(f.c2_bo){await say([['柏','我還是相信師父。']]);return}
+  if(f.c2_done){await say([['柏','隊上有人說想進禁區看看。我不去。我會繼續守著。']]);return}
+  if(f.c2_bo){await say([['柏','……我還是相信師父。']]);return}
   if(!f.c2_box){await say([['柏','我是海巡員柏。禁區的事，師父說了算。']]);return}
-  await say([['柏','你在打聽禁區的事？'],['柏','師父守那道門守了三十年。外地人別來亂。'],['柏','要進哨所，先過我這關。']]);
+  await say([['柏','你在打聽禁區的事？'],['柏','師父守那道門三十年了。外地人少來攪和。'],['柏','想進哨所？先過我這關。']]);
   if(!await levelCheck('海巡員：柏',C2_BO_TEAM.map(x=>x[1])))return;
-  await startTeamBattle({kind:'trainer',foes:C2_BO_TEAM,foeName:'柏',intro:'海巡員・柏 發起了挑戰！',combo:CHAPTERS[2].combo.map(c=>c-1),
+  await startTeamBattle({kind:'trainer',foes:C2_BO_TEAM,foeName:'柏',intro:'柏擋在哨所門口。',combo:CHAPTERS[2].combo.map(c=>c-1),
     onWin:async()=>{P.flags.c2_bo=1;save();await say([['柏','……進去吧。名錄就掛在牆上。']])}});
   return 'battle';
 }
 async function c2Post(){
   const f=P.flags;
   if(!f.c2_box||f.c2_roster){await say(['門鎖著。']);return true}
-  if(!f.c2_bo){await say(['哨所門前站著海巡員柏。']);return true}
-  await say(['哨所的牆上掛著一塊木牌，刻著歷任海巡長的名字。','第一位巡長的名字下面刻著：「奉封鎖令，守此海域。」','在他之前，一個名字都沒有。']);
-  f.c2_roster=1;save();toast('新目標：回碼頭找阿鯨');return true;
+  if(!f.c2_bo){await say(['柏站在門口，不讓你過。']);return true}
+  await say(['牆上掛著一塊木牌，刻著歷任海巡長的名字。','第一個名字底下刻著：「奉封鎖令，守此海域。」','在他之前，一個名字也沒有。']);
+  f.c2_roster=1;save();return true;
 }
 async function c2Chaosheng(){
   const f=P.flags;
-  if(!f.c2_dive){await say([['潮生','禁區由海巡隊看守。不管你是誰，都不能靠近。']]);return}
-  await say([['潮生','那本日誌，給我看。'],'潮生翻了幾頁，手停住了。',
-    ['潮生','我爹守這道門，我爺爺也守。他們只跟我說：門不能開。'],['潮生','從來沒有人說過為什麼。'],
-    ['潮生','……守了三十年的東西，不能讓一個外地人幾句話就推翻。拿出你的本事來。']]);
+  if(!f.c2_dive){await say([['潮生','禁區歸海巡隊管。不管你是誰，都別靠近。']]);return}
+  await say([['潮生','那本日誌，給我。'],'潮生翻了幾頁，手停住了。',
+    ['潮生','我爹守這道門，我爺爺也守。他們只跟我說：門不能開。'],['潮生','從來沒人說過為什麼。'],
+    ['潮生','……守了三十年的東西，不能憑一個外地人幾句話就推翻。拿出本事來。']]);
   if(!await levelCheck('海巡長：潮生',CHAPTERS[2].guard))return;
-  await startTeamBattle({kind:'guard',foes:C2_GUARD_TEAM(),foeName:'潮生',intro:'海巡長・潮生 發起了挑戰！',onWin:afterC2Win,combo:CHAPTERS[2].combo});
+  await startTeamBattle({kind:'guard',foes:C2_GUARD_TEAM(),foeName:'潮生',intro:'潮生不肯讓路。',onWin:afterC2Win,combo:CHAPTERS[2].combo});
   return 'battle';
 }
 async function afterC2Win(){
   const f=P.flags;f.c2_done=1;if(!P.cores.includes(0))P.cores.push(0);P.items.potion+=3;P.items.candy+=2;P.hpFrac=1;
   refreshMap();save();
-  await say([['潮生','……'],'潮生取下腰間的鑰匙，解開了鐵鏈。',['潮生','艙門我會親自打開。那些人，該上岸了。'],
-    '潮生把一個舊羅盤交給你。羅盤的玻璃底下，嵌著一顆藍色的珠子。','你獲得了【水核】、回復藥 ×3、經驗糖 ×2。',
-    ['潮生','山道那邊的落石，我會叫人清掉。往北，是赤燼荒原。']]);
-  toast('已取得：水核');
+  await say([['潮生','……'],'潮生取下腰間的鑰匙，解開了鐵鏈。',['潮生','艙門我會親手打開。那些人，該上岸了。'],
+    '他把一個舊羅盤塞給你。羅盤的玻璃底下，嵌著一顆藍色的珠子。','獲得【水核】、回復藥 ×3、經驗糖 ×2。',
+    ['潮生','山道那邊的落石，我叫人去清。往北走，就是赤燼荒原。']]);
   await showLetter(1);
 }
 async function c2Xiaodou(){
-  await say([['小豆','我跟著運魚的車過來的！'],['小豆','第二段我學會了，你聽——'],
+  await say([['小豆','我跟運魚的車一起過來的！'],['小豆','第二段我學會了，你聽——'],
     '♪「黑帆的船想上岸，海巡隊員守在灘，」','♪「一道鐵門鎖住浪，從此海上不再亂。」']);
   P.flags.song2=1;save();
 }
@@ -1311,203 +1320,202 @@ async function c2Xiaodou(){
 /* ================= 第 3 章：赤燼荒原 ================= */
 const C3_GUARD_TEAM=()=>{const L=CHAPTERS[3].guard;return[['fireA2',L[0],'guard'],['boss_fire',L[1],'boss'],['fireD2',L[2],'guard']]};
 async function c3Site(kind){
- const f=P.flags;if(!f.c3_moen){await say(['荒原上的災後調查被慰問隊接手了。先去找莫恩。']);return true}
+ const f=P.flags;if(!f.c3_moen){await say(['一個慰問隊員攔住你：「這裡要先問過莫恩隊長。」']);return true}
  if(kind==='burn'){
-  if(f.c3_burn){await say(['焦痕仍由村外向內延伸。它能說明火勢蔓延的方向，不能指出第一個火源。']);return true}
-  await say(['村口外的地面發黑、裂開。燒痕從外圈往村內延伸，幾處門框也朝外倒塌。','如果火是從村子中央開始，這些痕跡不太吻合；但風向、二次燃燒和倒塌時間都可能改變痕跡。']);f.c3_burn=1;toast('線索記錄：焦痕方向');
+  if(f.c3_burn){await say(['焦痕還是從村外往裡延伸。看得出火往哪邊燒，看不出火從哪裡起。']);return true}
+  await say(['村口外的地面燒得發黑、龜裂。焦痕從外圈往村裡延伸，幾個門框也是朝外倒的。','火如果是從村子中間燒起來，痕跡不該是這樣。……不過風向、復燃、房子倒的先後，都可能讓痕跡變樣。']);f.c3_burn=1;
  }else if(kind==='oil'){
-  if(f.c3_oil){await say(['油桶底部的模糊印記仍看得見。後勤物資到過這裡，但印記沒有寫誰把桶放下。']);return true}
-  if(!f.c3_burn){await say(['焦黑的桶身陷在灰土裡，先查看村口的焦痕，才能分辨它的位置。']);return true}
-  await say(['油桶底部有被燒壞的守界盟後勤印記。','它證明物資曾送到荒原，不能證明誰下令放火，也可能是救援隊事後搬來的燃料。']);f.c3_oil=1;toast('線索記錄：後勤印記');
+  if(f.c3_oil){await say(['桶底那個模糊的印記還在。物資確實送到過這裡，是誰把桶放下的，看不出來。']);return true}
+  if(!f.c3_burn){await say(['燒黑的鐵桶半埋在灰土裡。單看它，看不出什麼。村口那片焦痕也許有關係。']);return true}
+  await say(['桶底有個燒壞的印記——守界盟後勤處的章。','這只能說明物資送來過。是誰下令放火、還是救援隊後來搬來的燃料，都說不準。']);f.c3_oil=1;
  }else if(kind==='list'){
-  if(f.c3_list){await say(['名單的總數比村民紀念碑多四十個名字。名單有日期和隊伍章，沒有逐一核對欄。']);return true}
-  await say(['慰問隊帳篷旁貼著一張紀念名單。末尾多出四十個名字，旁邊寫著「待家屬確認」。','它可能是預先登記的失蹤者，也可能是重複或錯列的名字；光看名單無法知道。']);f.c3_list=1;toast('線索記錄：多出的四十個名字');
+  if(f.c3_list){await say(['名單比村裡紀念碑上的名字多了四十個。有日期、有隊章，就是沒有核對欄。']);return true}
+  await say(['帳篷旁貼著一張紀念名單。最後面多了四十個名字，旁邊寫著「待家屬確認」。','是先登記的失蹤者？重複寫了？還是寫錯了？光看名單，看不出來。']);f.c3_list=1;
  }
  save();return true;
 }
 async function c3Moen(){
  const f=P.flags;
- if(!f.c3_moen){await say([['莫恩','你是從海岸過來的旅人？先喝口水。毯子和藥草都在帳篷裡，誰都可以拿。'],['莫恩','史冊說歸一王焚毀了這座村子。我一直照著這個說法替村民申請補給。'],['莫恩','我不是來審問誰的。我只想讓活下來的人今晚有地方睡。村口的焦痕、那只油桶和名單，你都可以看。']]);f.c3_moen=1;toast('新目標：調查村口、油桶與慰問名單')}
- else if(f.c3_burn&&f.c3_oil&&f.c3_list&&f.c3_testimony&&!f.c3_review){await say([['莫恩','名單上多出的四十個名字，我一直當成確認中的失蹤者。灰婆婆記得的數字卻對不上。'],['莫恩','後勤印記讓我想起那批物資。章是真的，命令欄是空的。這些東西不夠證明史冊錯在哪裡，但我不能再說它們完全吻合。'],['莫恩','我會先把名單交給村民逐戶確認。北邊的燼知道這裡的人怎麼活過來的。你若要見他，帶著這些疑問去。']]);f.c3_review=1;toast('莫恩不再替史冊背書；去焦林關口找燼')}
- else if(f.c3_review)await say([['莫恩','我先把名單一戶一戶核對。若名字寫錯了，至少不能再讓錯誤留在紀念碑上。'],['莫恩','至於那場火，幾個線索仍拼不出下令者。']]);
- else await say([['莫恩','帳篷裡有水和毯子。村口那幾處線索都可以看看。']]);save();
+ if(!f.c3_moen){await say([['莫恩','從海岸來的？先喝口水吧。毯子跟藥草都在帳篷裡，缺什麼就拿。'],['莫恩','史冊說是歸一王燒了這座村子。我一直照這個說法，幫村民申請補給。'],['莫恩','我不是來審問誰的，只想讓活下來的人今晚有地方睡。村口的焦痕、那個油桶、那張名單——想看就去看。']]);f.c3_moen=1}
+ else if(f.c3_burn&&f.c3_oil&&f.c3_list&&f.c3_testimony&&!f.c3_review){await say([['莫恩','那四十個名字，我一直當成還在確認的失蹤者。可是灰婆婆記得的數字對不上。'],['莫恩','油桶上那個章……是真的。可是命令欄是空的。這些證明不了史冊錯在哪，但我也沒辦法再說它們都對得上了。'],['莫恩','名單我會拿去讓村民一戶一戶確認。北邊的燼，最清楚這裡的人是怎麼熬過來的。你要找他，就帶著這些問題去。']]);f.c3_review=1}
+ else if(f.c3_review)await say([['莫恩','名單我在一戶一戶對。寫錯的名字，至少不能再刻上紀念碑。'],['莫恩','那場火……到現在還拼不出是誰下的令。']]);
+ else await say([['莫恩','帳篷裡有水跟毯子。村口那幾樣東西，你隨時可以去看。']]);save();
 }
 async function c3Huipo(){
- const f=P.flags;if(!f.c3_moen){await say([['灰婆婆','外地孩子，別往東邊的熱石走。先去問問帳篷裡的人吧。']]);return}
- if(!f.c3_burn){await say([['灰婆婆','我記得有人把村口封住了。可我這把年紀，先後、多少人，說不準。先看看地上的焦痕吧。']]);return}
- if(!f.c3_testimony){await say([['灰婆婆','火起時，村口那邊有人喊著不准出去。也可能是叫大家別往火裡跑。那時風很大，我只看見影子。'],['灰婆婆','我記得四十多個人沒回來。名單上多四十個名字？也許有人替失蹤的人先寫了名字，也許我記錯了。'],['灰婆婆','我能給你的只有這段記憶。別把我的話寫成判決。']]);f.c3_testimony=1;if(!P.scrolls.includes(2))P.scrolls.push(2);toast('取得史冊殘卷・參：灰婆婆的口述')}
- else await say([['灰婆婆','記憶會漏，也會把後來聽見的事混在一起。你替我記下這點就好。']]);save();
+ const f=P.flags;if(!f.c3_moen){await say([['灰婆婆','外地孩子，東邊的石頭燙得很，別亂走。先去帳篷那邊問問吧。']]);return}
+ if(!f.c3_burn){await say([['灰婆婆','我記得……有人把村口堵住了。可我這把年紀，誰先誰後、有幾個人，說不準。你先去看看地上的焦痕吧。']]);return}
+ if(!f.c3_testimony){await say([['灰婆婆','火燒起來的時候，村口那邊有人喊不准出去。……也可能是叫大家別往火裡跑。那時風好大，我只看到影子。'],['灰婆婆','我記得四十幾個人沒回來。名單上多了四十個？也許是有人先替失蹤的寫了名字，也許是我記錯了。'],['灰婆婆','我能給你的，就這段記憶。別把我說的話當成判決。']]);f.c3_testimony=1;if(!P.scrolls.includes(2))P.scrolls.push(2);toast('取得史冊殘卷・參')}
+ else await say([['灰婆婆','人老了，記憶會漏，還會把後來聽到的事混進去。你記得這點就好。']]);save();
 }
 async function c3Adu(){
- const f=P.flags;if(!f.c3_moen){await say([['阿杜','想買消息？先去帳篷看看吧，這一帶的消息都繞不開莫恩。']]);return}
- if(!f.c3_adu){await say([['阿杜','名單上多了四十個名字？這消息我賣給村民，也賣給守界盟。兩邊都付了錢，兩邊都說我偏袒另一邊。'],['阿杜','我把後勤印記的拓片也賣過一份。拓片是真的，印記也是真的；至於桶是誰搬來的，沒人付錢告訴我。'],['阿杜','消息有價，消息的來源也有價。你自己留個心眼。']]);f.c3_adu=1;toast('線索補充：阿杜曾把同一消息賣給雙方')}
- else await say([['阿杜','我賣消息，不替消息作證。別把我的貨當成答案。']]);save();
+ const f=P.flags;if(!f.c3_moen){await say([['阿杜','想買消息？先去帳篷那邊轉轉吧。這一帶的事，都繞不開莫恩。']]);return}
+ if(!f.c3_adu){await say([['阿杜','名單多了四十個名字？這消息我賣給村民，也賣給守界盟。兩邊都付了錢，兩邊都說我偏心對方。'],['阿杜','油桶上那個章，我也賣過一份拓片。拓片是真的，章也是真的。至於桶是誰搬來的——沒人出錢問我。'],['阿杜','消息有價，消息從哪來也有價。你自己多留個心眼。']]);f.c3_adu=1}
+ else await say([['阿杜','我賣消息，不幫消息作證。別把我的貨當答案。']]);save();
 }
 async function c3Xiaohuo(){
- if(!P.flags.c3_done){await say([['小火','我叫小火。莫恩讓我幫忙把毯子送去南邊。'],['小火','大家總問誰放的火，好像知道名字，屋子就會自己長回來。先把活著的人照顧好吧。']]);return}
- await say([['小火','我不跟你走。我想留在這裡幫忙把名單一戶一戶對完。'],['小火','如果有人來問那場火，我會告訴他：我們還在。']]);
+ if(!P.flags.c3_done){await say([['小火','我叫小火。莫恩叫我把毯子送去南邊。'],['小火','大家一直問是誰放的火。好像知道名字，房子就會自己長回來一樣。先照顧還活著的人啦。']]);return}
+ await say([['小火','我不跟你走。我要留下來，幫忙把名單一戶一戶對完。'],['小火','以後要是有人來問那場火，我會跟他說：我們還在。']]);
 }
 async function c3Jin(){
- const f=P.flags;if(!f.c3_review){await say([['燼','莫恩還沒看完那些東西。你若只想拿走我的碎片，現在就回去。'],['燼','先把村口的痕跡、油桶、名單和灰婆婆的話都看過，再來。']]);return}
- await say([['燼','你身上掛著歸一會的紋章。史冊說你們的王燒了我的村子。'],['燼','我不知道誰先點火，也不知道誰下令封路。我只知道我失去了家。莫恩看過那些證據了嗎？'],['燼','我不會因為幾個印記就原諒你。讓我看看你是不是真的願意帶著疑問走下去。']]);
+ const f=P.flags;if(!f.c3_review){await say([['燼','莫恩還沒看完那些東西。你要是只想來拿碎片，現在就回去。'],['燼','村口的痕跡、油桶、名單、灰婆婆的話……都看過了，再來。']]);return}
+ await say([['燼','你身上掛著歸一會的紋章。史冊說，是你們的王燒了我的村子。'],['燼','誰先點的火、誰下令堵的路，我不知道。我只知道我沒有家了。……莫恩看過那些證據了？'],['燼','別以為幾個印記就能讓我原諒你。讓我看看，你是不是真的願意帶著這些問題走下去。']]);
  if(!await levelCheck('守衛：燼',CHAPTERS[3].guard))return;
- await startTeamBattle({kind:'guard',foes:C3_GUARD_TEAM(),foeName:'燼',intro:'荒原守衛・燼 發起了挑戰！',combo:CHAPTERS[3].combo,onWin:afterC3Win});return 'battle';
+ await startTeamBattle({kind:'guard',foes:C3_GUARD_TEAM(),foeName:'燼',intro:'燼握緊了拳頭。',combo:CHAPTERS[3].combo,onWin:afterC3Win});return 'battle';
 }
 async function afterC3Win(){
  const f=P.flags;f.c3_done=1;f.fireFragment=1;P.scrolls=P.scrolls||[];if(!P.scrolls.includes(2))P.scrolls.push(2);P.items.potion+=3;P.items.candy+=2;P.hpFrac=1;refreshMap();save();
- await say([['燼','……拿去。不是給你，是給死去的人。'],['燼','這是火核碎片，不是完整的火核。它不能替任何人證明誰放了第一把火。'],['莫恩','我會留下來，把名單一個個核實。救助不該等到我們把過去判清楚。'],['燼','我還是不原諒你。也別替我說我原諒了。'],['小火','我不跟你走。我會留在村裡，陪莫恩把名字找回來。'],'你取得了【史冊殘卷・參】、火核碎片、回復藥 ×3、經驗糖 ×2。']);toast('第 3 章完成：取得火核碎片');
+ await say([['燼','……拿去。不是給你，是給死掉的人。'],['燼','這是火核的碎片，不是完整的火核。它證明不了誰點了第一把火。'],['莫恩','我會留下來，把名單一個一個核對。救人不該等到把過去算清楚。'],['燼','我還是不原諒你。也別替我說我原諒了。'],['小火','我不跟你走喔。我要留在村裡，陪莫恩把名字找回來。'],'獲得火核碎片、回復藥 ×3、經驗糖 ×2。']);
 }
 async function c3Xiaodou(){
- const f=P.flags;await say([['小豆','第三段歌我是在灰燼村學的。大家都記得那場火，可沒有人記得它從哪裡開始。你聽——'],'♪「灰落在村口，火光照著空屋，」','♪「名字寫在紙上，誰也數不清楚。」','♪「若你問誰先點火，風把歌聲吹遠了。」']);f.c3_song=1;save();
+ const f=P.flags;await say([['小豆','第三段是我在灰燼村學的。大家都記得那場火，可是沒人記得它是從哪裡燒起來的。你聽——'],'♪「灰落在村口，火光照著空屋，」','♪「名字寫在紙上，誰也數不清楚。」','♪「若你問誰先點火，風把歌聲吹遠了。」']);f.c3_song=1;save();
 }
 
 /* ================= 第 4 章：霧語沼林 ================= */
 const C4_GUARD_TEAM=()=>{const L=CHAPTERS[4].guard;return[['woodA2',L[0],'guard'],['boss_wood',L[1],'boss'],['woodD2',L[2],'guard']]};
 async function c4Site(kind){
- const f=P.flags;if(!f.c4_taiyi){await say(['沼林的路標被霧氣遮住了。先到湯鋪找苔姨問路。']);return true}
+ const f=P.flags;if(!f.c4_taiyi){await say(['霧太濃，路標都看不清楚。湯鋪的人應該認得路。']);return true}
  if(kind==='grave'){
-  if(f.c4_grave){await say(['墓碑上的名字全被刮去。石材和刻痕都比守界盟成立的年代更早，仍看不出是誰動的手。']);return true}
-  await say(['石碑上沒有名字，表面留下密密的刮痕。底座刻著的年份，比守界盟的建盟紀年早了好幾代。','這只能說明墓碑曾被立起又被抹去；它沒有留下死者的身分，也沒有說明為什麼要刮掉名字。']);f.c4_grave=1;toast('線索記錄：早於守界盟的無名墓碑');
+  if(f.c4_grave){await say(['墓碑上的名字全被刮掉了。石頭跟刻痕都比守界盟還老，可是看不出是誰動的手。']);return true}
+  await say(['碑上沒有名字，只有密密麻麻的刮痕。底座刻的年份，比守界盟建盟還早好幾代。','有人立了這塊碑，後來又有人把名字刮掉。埋的是誰、為什麼要刮，都沒留下。']);f.c4_grave=1;
  }else if(kind==='family'){
-  if(f.c4_family){await say(['家族譜的末頁仍然缺著。舊註記只說「石頭別賣，別問」，沒有記錄誰最先把它叫作幸運石。']);return true}
-  await say(['獵牙家族譜抄本的末頁被整齊撕走。前一頁只有一句代代相傳的家訓：「石頭別賣，別問。」','抄本邊角把一顆綠石稱作幸運石，年代不明；家訓本身沒有提到珠核。']);f.c4_family=1;toast('線索記錄：族譜末頁缺失');
+  if(f.c4_family){await say(['族譜最後一頁還是缺著。舊註記只寫「石頭別賣，別問」，沒寫是誰先叫它幸運石的。']);return true}
+  await say(['獵牙家族譜的抄本，最後一頁被撕得很整齊。前一頁只有一句家訓：「石頭別賣，別問。」','角落有人把一顆綠石頭叫作「幸運石」，看不出是哪年寫的。家訓裡沒提到珠核。']);f.c4_family=1;
  }
  save();return true;
 }
 async function c4Taiyi(){
  const f=P.flags;
- if(!f.c4_taiyi){await say([['苔姨','新面孔啊。先坐下喝口熱湯，這片沼林的霧散得慢。'],['苔姨','我們家每年歸一日都煮「歸一湯」。食譜上的日期能證明那天辦過節慶，至於慶祝什麼，老人們說法不一樣。'],['苔姨','北邊有座沒名字的墓碑，獵牙家譜也少了一頁。你若想看，我不會攔你。']]);f.c4_taiyi=1;toast('新目標：調查無名墓碑與獵牙家譜')}
- else if(f.c4_grave&&f.c4_family&&!f.c4_review){await say([['苔姨','墓碑比守界盟古，族譜又把最後一頁撕掉。可我外婆說是上一代撕的，獵牙卻說那頁早就不在了。'],['苔姨','「歸一湯」也只是家裡傳下來的節日食譜，不能證明當年那場儀式到底為了什麼。這些事情，我都只知道一點。'],['苔姨','獵牙在北邊風口。他把那顆綠石當幸運石，從來沒說它有多重要。你可以直接去問他。']]);f.c4_review=1;toast('新目標：去北方風口找獵牙')}
- else if(f.c4_done)await say([['苔姨','湯一直熱著。獵牙把那顆石頭交給你後，還說那只是普通石頭。']]);
- else if(!f.c4_grave)await say([['苔姨','先去看看北邊的無名墓碑。那塊石頭比守界盟還老。']]);
- else if(!f.c4_family)await say([['苔姨','獵牙家裡傳下來的族譜在東側木屋，末頁的事可以問問他。']]);
- else await say([['苔姨','墓碑和族譜都看過了嗎？我外婆和獵牙對撕掉末頁的人說法不同。']]);save();
+ if(!f.c4_taiyi){await say([['苔姨','新面孔啊。先坐下來喝碗熱湯，這片沼林的霧散得慢。'],['苔姨','我們家每年歸一日都煮「歸一湯」。食譜上的日期是真的，那天確實在過節。至於在慶祝什麼……老人家每個說法都不一樣。'],['苔姨','北邊有座沒名字的墓碑，獵牙家的族譜也少了一頁。想去看，我不攔你。']]);f.c4_taiyi=1}
+ else if(f.c4_grave&&f.c4_family&&!f.c4_review){await say([['苔姨','墓碑比守界盟還老，族譜又被撕掉最後一頁。我外婆說是上一代撕的，獵牙那孩子卻說那頁本來就沒有。'],['苔姨','歸一湯也只是家裡傳下來的節日菜，證明不了當年那場儀式是為了什麼。這些事，我都只知道一點點。'],['苔姨','獵牙在北邊風口。他把那顆綠石頭當幸運石，從來沒說過它有多重要。你直接去問他吧。']]);f.c4_review=1}
+ else if(f.c4_done)await say([['苔姨','湯一直熱著喔。獵牙把石頭交給你以後，還一直說那只是普通石頭。']]);
+ else if(!f.c4_grave)await say([['苔姨','北邊那座沒名字的墓碑，去看過了嗎？那塊石頭比守界盟還老。']]);
+ else if(!f.c4_family)await say([['苔姨','獵牙家的族譜在東邊木屋。最後一頁的事，可以問問他。']]);
+ else await say([['苔姨','獵牙在北邊風口。湯我幫你留著。']]);save();
 }
 async function c4Ache(){
- const f=P.flags;if(!f.c4_taiyi){await say([['阿澈','我在追一張通緝令。霧太濃，看不清前面的路。']]);return}
- if(!f.c4_ache){await say([['阿澈','等一下！我腳卡進樹根底下了，能拉我一把嗎？'],['阿澈','謝了。我追的是七爪頭目貼的告示，說獵牙偷了家族的東西。可這張告示沒寫日期，也沒有任何證人簽名。'],['阿澈','我還是得按規矩辦事……只是這次先欠你一個人情。']]);f.c4_ache=1;toast('阿澈記下了你救他的事')}
- else await say([['阿澈','七爪頭目的通緝令沒有證人簽名。我會再查一次，但不會因為欠你人情就當它不存在。']]);save();
+ const f=P.flags;if(!f.c4_taiyi){await say([['阿澈','我在追一張通緝令。霧這麼濃，前面什麼都看不到。']]);return}
+ if(!f.c4_ache){await say([['阿澈','等、等一下！我腳卡在樹根底下了，拉我一把！'],['阿澈','……謝了。我在追七爪頭目貼的告示，說獵牙偷了他家的東西。可是那張告示沒日期，也沒有證人簽名。'],['阿澈','規矩我還是得照辦。不過這次，算我欠你一次。']]);f.c4_ache=1}
+ else await say([['阿澈','七爪那張通緝令沒有證人簽名，我會再查一次。可別以為我欠你人情，就會當它不存在。']]);save();
 }
 async function c4Qizhua(){
  const f=P.flags;if(!f.c4_taiyi){await say([['七爪頭目','外地人，這是沼林的事。去找苔姨喝湯吧。']]);return}
- if(f.c4_done){await say([['七爪頭目',f.c4_qizhuaHelp?'你替我去找過獵牙。那是我自己的恩怨，往後我會自己處理。':'你沒替我出頭也沒關係。沼林的路，我自己走。']]);return}
- if(!f.c4_qizhuaAsked){await say([['七爪頭目','獵牙拿著我家的石頭，還把我當笑話。幫我去教訓他一頓，我就告訴你家族譜的事。'],['七爪頭目','我的仇不是全沼林的仇。你可以拒絕，自己去查那塊墓碑和族譜。']]);const choice=await modal('<h3>七爪頭目的請求</h3><p>要替他向獵牙報仇嗎？</p>',[{t:'不替他報仇'},{t:'答應幫忙',c:'warn'}]);f.c4_qizhuaAsked=1;if(choice===1)f.c4_qizhuaHelp=1;save();await say([[ '七爪頭目',choice===1?'好。你找獵牙比試時，替我問問那顆石頭。':'……我就知道。那你自己去問他吧。']]);return}
- await say([['七爪頭目',f.c4_qizhuaHelp?'你答應過替我問那顆石頭。':'那塊墓碑和我家的事，未必是同一件事。']]);
+ if(f.c4_done){await say([['七爪頭目',f.c4_qizhuaHelp?'你幫我去找過獵牙了。那是我自己的恩怨，以後我自己處理。':'你沒幫我出頭也無所謂。沼林的路，我自己走。']]);return}
+ if(!f.c4_qizhuaAsked){await say([['七爪頭目','獵牙拿著我家的石頭，還把我當笑話看。你去幫我教訓他一頓。'],['七爪頭目','我的仇，又不是整個沼林的仇。不想幫就算了。']]);const choice=await modal('<h3>七爪頭目的請求</h3><p>要幫他找獵牙報仇嗎？</p>',[{t:'不幫'},{t:'答應他',c:'warn'}]);f.c4_qizhuaAsked=1;if(choice===1)f.c4_qizhuaHelp=1;save();await say([[ '七爪頭目',choice===1?'好。你跟獵牙比試的時候，順便問問那顆石頭。':'……就知道。那你自己去問他吧。']]);return}
+ await say([['七爪頭目',f.c4_qizhuaHelp?'你答應過，要幫我問那顆石頭。':'那座墓碑跟我家的事，不一定是同一回事。']]);
 }
 async function c4Liechya(){
- const f=P.flags;if(f.c4_done){await say([['獵牙','木核現在不在我身上了。那顆石頭以前也沒讓我比較走運。']]);return}
- if(!f.c4_review){await say([['獵牙','先把墓碑和家譜都看過，再來找我。那塊石頭只是掛在我脖子上的東西。']]);return}
- const lines=[['獵牙','苔姨把她知道的都告訴你了？那座墓碑沒名字，我家的族譜也沒末頁。'],['獵牙','我戴這顆綠石，只是覺得它好看。家裡的人叫它幸運石，我也沒問過為什麼。']];
- if(f.c4_qizhuaHelp)lines.push(['獵牙','七爪叫你來替他報仇？那是他和我的事。你要問石頭，我可以跟你比一場；我不會把它說成別的東西。']);
- else lines.push(['獵牙','你來問石頭的事？好啊，讓我看看你一路走來有沒有變強。']);
+ const f=P.flags;if(f.c4_done){await say([['獵牙','木核已經不在我身上啦。那顆石頭以前也沒讓我比較走運。']]);return}
+ if(!f.c4_review){await say([['獵牙','墓碑跟族譜先去看過，再來找我。這顆石頭只是掛在我脖子上的東西而已。']]);return}
+ const lines=[['獵牙','苔姨把她知道的都跟你說了？那座墓碑沒名字，我家族譜也沒有最後一頁。'],['獵牙','這顆綠石頭，我戴著只是覺得好看。家裡人叫它幸運石，我也沒問過為什麼。']];
+ if(f.c4_qizhuaHelp)lines.push(['獵牙','七爪叫你來幫他報仇？那是我跟他的事。你想問石頭，就跟我打一場。我不會把它講成別的東西。']);
+ else lines.push(['獵牙','來問石頭的事？好啊，讓我看看你這一路有沒有變強。']);
  await say(lines);
  if(!await levelCheck('守衛：獵牙',CHAPTERS[4].guard))return;
- await startTeamBattle({kind:'guard',foes:C4_GUARD_TEAM(),foeName:'獵牙',intro:'沼林獵人・獵牙 發起了挑戰！',combo:CHAPTERS[4].combo,onWin:afterC4Win});return 'battle';
+ await startTeamBattle({kind:'guard',foes:C4_GUARD_TEAM(),foeName:'獵牙',intro:'獵牙咧嘴一笑，擺好了架勢。',combo:CHAPTERS[4].combo,onWin:afterC4Win});return 'battle';
 }
 async function afterC4Win(){
  const f=P.flags;f.c4_done=1;P.cores=P.cores||[];if(!P.cores.includes(2))P.cores.push(2);P.scrolls=P.scrolls||[];if(!P.scrolls.includes(3))P.scrolls.push(3);P.items.potion+=3;P.items.candy+=2;P.hpFrac=1;refreshMap();save();
- await say([['獵牙','哈！你贏了。拿去吧。這石頭我戴了好多年，還是常常迷路。'],['獵牙','苔姨說它叫木核？好吧，那你拿去。對我來說它一直只是石頭。'],['獵牙','七爪的事我自己會解決。別替我說我原諒他了。'],'你取得了【史冊殘卷・肆】、木核、回復藥 ×3、經驗糖 ×2。']);
- toast('第 4 章完成：取得木核');
+ await say([['獵牙','哈！你贏了。拿去吧。這石頭我戴了好多年，還是一天到晚迷路。'],['獵牙','苔姨說它叫木核？好吧，那就給你。對我來說，它一直都只是石頭。'],['獵牙','七爪的事我自己會解決。別替我說我原諒他了。'],'獲得【史冊殘卷・肆】、木核、回復藥 ×3、經驗糖 ×2。']);
 }
 async function c4Xiaodou(){
- const f=P.flags;await say([['小豆','我在湯鋪聽到第四段歌。有人說獵牙脖子上的石頭，是王送給英雄的護符。你聽——'],'♪「王把綠石交給英雄，說它會帶來好運，」','♪「英雄戴著走過森林，怪物都不敢追，」','♪「他把石頭丟給旅人，說只是普通的石頭。」']);f.c4_song=1;save();
+ const f=P.flags;await say([['小豆','第四段是在湯鋪聽來的。有人說，獵牙脖子上那顆石頭，是王送給英雄的護身符。你聽——'],'♪「王把綠石交給英雄，說它會帶來好運，」','♪「英雄戴著走過森林，怪物都不敢追，」','♪「他把石頭丟給旅人，說只是普通的石頭。」']);f.c4_song=1;save();
 }
 
 /* ================= 第 5 章：天穹浮島 ================= */
 const C5_GUARD_TEAM=()=>{const L=CHAPTERS[5].guard;return[['lightA2',L[0],'guard'],['boss_light2',L[1],'boss'],['lightD2',L[2],'guard']]};
 async function c5Site(kind){
- const f=P.flags;if(!f.c5_jiale){await say(['檔案館的牌子寫著：請先聽伽勒講解展區規則。']);return true}
+ const f=P.flags;if(!f.c5_jiale){await say(['入口的牌子寫著：參觀前，請先聽導覽說明。']);return true}
  if(kind==='ledger'){
-  if(f.c5_ledger){await say(['借閱簿的舊欄位仍看得出被刮除的名字。抄本只留下每年同一天有人查閱艾瑟爾日記的記錄，沒有留下查閱者身分。']);return true}
-  await say(['借閱簿記錄一名讀者年年在同一天查閱艾瑟爾日記；後來的抄本裡，那一欄的名字被刮掉了。','這能證明記錄遭刪，不足以證明是誰刪的，也不知道那位讀者看見什麼。']);f.c5_ledger=1;toast('線索記錄：借閱簿的名字遭刮除');
+  if(f.c5_ledger){await say(['借閱簿舊欄位上的刮痕還在。抄本只留下有人每年同一天來借艾瑟爾日記，沒留下是誰。']);return true}
+  await say(['借閱簿上，有個讀者每年都在同一天借艾瑟爾日記。到了後來的抄本，那一欄的名字被刮掉了。','記錄被刪過，這點錯不了。是誰刪的、那個人在日記裡看到了什麼，就不知道了。']);f.c5_ledger=1;
  }else{
-  if(f.c5_drafts){await say(['抄寫房的草稿有數種墨色和修訂痕跡。年代能證明文本被改過，無法單獨指出每次是誰改的。']);return true}
-  await say(['草稿上有幾處句子被替換，紙張與墨水顏色也不完全相同。','紙張年代只能指出它們不是同一時間寫成；留下的痕跡沒有署名。']);f.c5_drafts=1;toast('線索記錄：抄寫房有多次修訂');
+  if(f.c5_drafts){await say(['草稿上有好幾種墨色和修改痕跡。看得出改過好幾次，看不出每次是誰改的。']);return true}
+  await say(['草稿上有幾句話被換掉了，紙跟墨水的顏色也不太一樣。','不是同一時間寫的。可是一個署名都沒有。']);f.c5_drafts=1;
  }
  save();return true;
 }
-async function c5Yunque(){const f=P.flags;if(!f.c5_yunque){await say([['雲雀','歡迎來到天穹浮島！我把你從風口崖載上來，飛行站就在南邊。'],['雲雀','北邊的檔案館正在辦史冊展。伽勒先生每天都帶人導覽。']]);f.c5_yunque=1;toast('新目標：去史冊展找伽勒')}else await say([['雲雀','下次雲層散一點，我就帶你看看其他浮島。現在先去檔案館吧。']]);save()}
-async function c5Jiale(){const f=P.flags;if(!f.c5_yunque){await say([['伽勒','展覽還沒開放。先去雲港報到。']]);return}
- if(!f.c5_jiale){await say([['伽勒','歡迎來看守界盟整理的史冊展。展板依核准版本編排，能讓人快速讀懂英雄如何取回光。'],['伽勒','抄寫員照章工作，不表示每個人都看過全部版本。你可以問館員紙魚，他在整理日記副本。']]);f.c5_jiale=1;toast('新目標：查閱日記、借閱簿與修訂草稿')}
- else if(f.c5_page&&f.c5_ledger&&f.c5_drafts&&!f.c5_review){await say([['伽勒','那行「我拿了不該拿的」很刺眼，卻沒有上下文。借閱簿少了名字，草稿也沒有署名。'],['伽勒','瑟菲承認看過不同版本。若你想聽她怎麼選擇，就把這些問題帶到館長室。']]);f.c5_review=1;toast('新目標：到北側館長室找瑟菲')}
- else if(f.c5_done)await say([['伽勒','我仍相信整理史冊有其必要；但我會把不同版本也留下索引。']]);else await say([['伽勒','把日記、借閱簿與修訂草稿都看過，再來找我談。']]);save();
+async function c5Yunque(){const f=P.flags;if(!f.c5_yunque){await say([['雲雀','到啦！歡迎來到天穹浮島。坐我的飛艇還習慣吧？'],['雲雀','北邊的檔案館在辦史冊展。伽勒先生每天都會帶人導覽，去看看嘛。']]);f.c5_yunque=1}else await say([['雲雀','等雲散一點，我再帶你去別的浮島晃晃。']]);save()}
+async function c5Jiale(){const f=P.flags;if(!f.c5_yunque){await say([['伽勒','展覽還沒開放。請先去雲港報到。']]);return}
+ if(!f.c5_jiale){await say([['伽勒','歡迎來看史冊展。展板是照核准版本排的，一看就懂英雄是怎麼把光帶回來的。'],['伽勒','抄寫員照章辦事，不代表每個人都看過全部的版本。想多了解的話，問問館員紙魚吧，他在整理日記副本。']]);f.c5_jiale=1}
+ else if(f.c5_page&&f.c5_ledger&&f.c5_drafts&&!f.c5_review){await say([['伽勒','「我拿了不該拿的」……這句很刺眼，可是前後文都沒有。借閱簿少了名字，草稿也沒人署名。'],['伽勒','瑟菲承認她看過不同的版本。你想聽她怎麼選的，就把這些問題帶去館長室吧。']]);f.c5_review=1}
+ else if(f.c5_done)await say([['伽勒','我還是覺得史冊需要有人整理。不過以後，不同的版本我也會一起編進索引。']]);else await say([['伽勒','日記、借閱簿、修訂草稿，都看過了嗎？看完再來聊。']]);save();
 }
-async function c5Zhiyu(){const f=P.flags;if(!f.c5_jiale){await say([['紙魚','展覽還沒開始。先聽伽勒先生說明吧。']]);return}if(!f.c5_page){await say([['紙魚','我在舊卷裡找到一張日記殘頁。上面只有一句：「我拿了不該拿的。」'],['紙魚','我不能證明是艾瑟爾親筆。原本不在我手上，這張紙也沒有日期。']]);f.c5_page=1;P.scrolls=P.scrolls||[];if(!P.scrolls.includes(4))P.scrolls.push(4);toast('取得史冊殘卷・伍：艾瑟爾日記殘頁')}else await say([['紙魚','那頁沒有更多字了。我只敢說它被夾在日記副本裡，不能保證它從哪裡來。']]);save()}
-async function c5Sefei(){const f=P.flags;if(f.c5_done){await say([['瑟菲','我不會說哪一本就是真相。我會把看過的不同版本都記進索引。']]);return}if(!f.c5_review){await say([['瑟菲','你還沒看過展區和抄寫房的資料。等你把問題整理好，再來找我。']]);return}
- await say([['瑟菲','我看過不同版本。最後，我仍照核准的版本抄寫。'],['瑟菲','我當時認為，只要抄得準確，就不必替內容負責。現在我知道，只留下哪一本，本身也是選擇。'],['瑟菲','日記的那一句，我不會替它補上解釋。我也不會告發你。']]);if(!await levelCheck('守衛：瑟菲',CHAPTERS[5].guard))return;
- await startTeamBattle({kind:'guard',foes:C5_GUARD_TEAM(),foeName:'瑟菲',intro:'檔案官・瑟菲 發起了挑戰！',combo:CHAPTERS[5].combo,onWin:afterC5Win});return 'battle';
+async function c5Zhiyu(){const f=P.flags;if(!f.c5_jiale){await say([['紙魚','展、展覽還沒開始……請先聽伽勒先生說明。']]);return}if(!f.c5_page){await say([['紙魚','我在舊卷裡翻到一張日記殘頁。上面只有一句：「我拿了不該拿的。」'],['紙魚','我、我不敢說這是艾瑟爾親筆寫的。原本不在我這裡，這張紙也沒有日期。']]);f.c5_page=1;P.scrolls=P.scrolls||[];if(!P.scrolls.includes(4))P.scrolls.push(4);toast('取得史冊殘卷・伍')}else await say([['紙魚','那頁真的沒有別的字了。我只能說它夾在日記副本裡……從哪來的，我不敢保證。']]);save()}
+async function c5Sefei(){const f=P.flags;if(f.c5_done){await say([['瑟菲','我不會說哪一本才是真相。我看過的版本，都會記進索引。']]);return}if(!f.c5_review){await say([['瑟菲','展場跟抄寫房的資料，你還沒看完。整理好問題再來。']]);return}
+ await say([['瑟菲','對，我看過不同的版本。最後，我還是照核准的那份抄了。'],['瑟菲','那時候我以為，只要抄得準，內容就不歸我負責。現在知道了：留下哪一本，本身就是選擇。'],['瑟菲','日記那一句，我不會幫它補解釋。我也不會去告發你。']]);if(!await levelCheck('守衛：瑟菲',CHAPTERS[5].guard))return;
+ await startTeamBattle({kind:'guard',foes:C5_GUARD_TEAM(),foeName:'瑟菲',intro:'瑟菲闔上了手上的抄本。',combo:CHAPTERS[5].combo,onWin:afterC5Win});return 'battle';
 }
-async function afterC5Win(){const f=P.flags;f.c5_done=1;P.cores=P.cores||[];if(!P.cores.includes(3))P.cores.push(3);P.scrolls=P.scrolls||[];if(!P.scrolls.includes(4))P.scrolls.push(4);P.items.potion+=3;P.items.candy+=2;P.hpFrac=1;refreshMap();save();await say([['瑟菲','這是日記的抄本。你拿去吧。我會當作沒見過你。'],['瑟菲','我沒有加入你，也沒有替這份抄本作保。'],'你取得了【史冊殘卷・伍】、光核、回復藥 ×3、經驗糖 ×2。']);toast('第 5 章完成：取得光核')}
-async function c5Xiaodou(){const f=P.flags;await say([['小豆','我聽到第五段歌，是雲上的人找回了遺失的光。至於光是怎麼不見的，他們沒唱。你聽——'],'♪「白羽越過雲海，英雄拾起金色的光，」','♪「城門為他打開，鐘聲把歸途照亮，」','♪「誰曾把光帶走，歌裡沒有說。」']);f.c5_song=1;save()}
+async function afterC5Win(){const f=P.flags;f.c5_done=1;P.cores=P.cores||[];if(!P.cores.includes(3))P.cores.push(3);P.scrolls=P.scrolls||[];if(!P.scrolls.includes(4))P.scrolls.push(4);P.items.potion+=3;P.items.candy+=2;P.hpFrac=1;refreshMap();save();await say([['瑟菲','這是日記的抄本。拿去吧。我會當作沒見過你。'],'她把一顆淡金色的珠子壓在抄本上，一起推過來。',['瑟菲','館裡收著它很多年了。我沒有站到你那邊，也不替這份抄本擔保。'],'獲得日記抄本、光核、回復藥 ×3、經驗糖 ×2。'])}
+async function c5Xiaodou(){const f=P.flags;await say([['小豆','第五段說，雲上的人把遺失的光找回來了。可是光是怎麼不見的，歌裡沒唱。你聽——'],'♪「白羽越過雲海，英雄拾起金色的光，」','♪「城門為他打開，鐘聲把歸途照亮，」','♪「誰曾把光帶走，歌裡沒有說。」']);f.c5_song=1;save()}
 
 /* ================= 第 6 章：無光深淵 ================= */
 const C6_GUARD_TEAM=()=>{const L=CHAPTERS[6].guard;return[['darkB2',L[0],'guard'],['boss_dark',L[1],'boss'],['darkD2',L[2],'guard']]};
-async function c6Site(kind){const f=P.flags;if(!f.c6_crow){await say(['先去找灰鴉。他說過，深淵裡的消息要自己查來源。']);return true}
- if(kind==='mural'){if(f.c6_mural){await say(['壁畫畫著五個人圍住裂痕，不像史冊上的英雄獨自奪核。石面也有後世補刻的痕跡，年代還不能確定。']);return true}await say(['岩壁上刻著五個人圍住一道裂痕的壁畫；五人的手都伸向中央。','雕刻邊緣有不同年代的修補痕，不能確定整幅壁畫是否同時完成。']);f.c6_mural=1;toast('線索記錄：五人圍住裂痕的壁畫')}
- else{if(f.c6_will){await say(['遺言石板的下半部被刮掉。能讀到的只剩「先救還活著的人」，但沒有名字，也沒有日期。']);return true}await say(['石板下半部被刮掉，只留下幾個字：「先救還活著的人。」','沒有署名和日期。這句話是不是歸一王說的，單靠石板無法確認。']);f.c6_will=1;toast('線索記錄：被刮去下半段的遺言石板')}
+async function c6Site(kind){const f=P.flags;if(!f.c6_crow){await say(['四周黑漆漆的，什麼都看不清楚。營地裡的人應該有燈。']);return true}
+ if(kind==='mural'){if(f.c6_mural){await say(['壁畫上，五個人圍著裂痕——跟史冊裡英雄一個人奪核不太一樣。石面上有後來補刻的痕跡，年代說不準。']);return true}await say(['岩壁上刻著五個人，圍著一道裂痕，五雙手都伸向中間。','邊緣有不同年代修補過的痕跡。整幅是不是同一時間刻的，看不出來。']);f.c6_mural=1}
+ else{if(f.c6_will){await say(['石板的下半段被刮掉了，只剩「先救還活著的人」幾個字。沒有名字，也沒有日期。']);return true}await say(['石板下半段被刮掉了，只留下一句：「先救還活著的人。」','沒有署名，沒有日期。是不是歸一王說的，光看石板沒辦法確定。']);f.c6_will=1}
  save();return true;
 }
-async function c6Huiya(){const f=P.flags;if(!f.c6_crow){await say([['灰鴉','想知道深淵裡的事？消息可以買到，可信度要自己判斷。先看看岩壁和石板吧。']]);f.c6_crow=1;toast('新目標：調查壁畫、石板和黑鋒的名單')}
- else if(f.c6_mural&&f.c6_will&&f.c6_list&&f.c6_cloak&&!f.c6_review){await say([['灰鴉','壁畫可能補刻，石板沒有署名，黑鋒的名單則把無辜的人也列了進去。斗篷人的回憶是另一種來源，也有記憶的限制。'],['灰鴉','這些東西不能互相抵銷，也沒有一件能替你判定誰完全正確。你若還要往前，就去找黑鋒。']]);f.c6_review=1;toast('新目標：去北側找黑鋒')}
- else if(f.c6_done)await say([['灰鴉','黑鋒交出暗核，不代表名單上的傷害就此消失。']]);else await say([['灰鴉','線索都看完了嗎？我只替你把來源分清楚，不會替任何一邊下判決。']]);save();
+async function c6Huiya(){const f=P.flags;if(!f.c6_crow){await say([['灰鴉','想知道深淵裡的事？消息我有，可不可信，你自己判斷。'],['灰鴉','燈借你。先去看看岩壁上的畫，還有那塊石板，看完再來找我。']]);f.c6_crow=1}
+ else if(f.c6_mural&&f.c6_will&&f.c6_list&&f.c6_cloak&&!f.c6_review){await say([['灰鴉','壁畫可能補刻過，石板沒署名，黑鋒的名單連無辜的人都寫進去了。斗篷人的回憶又是另一回事——人的記憶也會出錯。'],['灰鴉','這些東西不會互相抵銷，也沒有哪一件能告訴你誰完全對。還想往前走，就去找黑鋒吧。']]);f.c6_review=1}
+ else if(f.c6_done)await say([['灰鴉','黑鋒交出暗核，不代表名單上的傷就這樣沒了。']]);else await say([['灰鴉','都看完了嗎？我只幫你把來源分清楚，不幫任何一邊下判決。']]);save();
 }
-async function c6Xiaomiao(){await say([['小苗','你是歸一王的後代，對吧？只要推翻守界盟，大家就會自由！'],['小苗','黑鋒大哥說有一份名單。只要把名單上的人都找出來，仇就能報完。'],['小苗','我不太懂那些古文字，但我願意跟著你走。']]);P.flags.c6_xiaomiao=1;save()}
-async function c6Yexiao(){await say([['夜梟','黑鋒的名單比你那些紙重要。你若連一點狠勁都沒有，就別自稱歸一之子。'],['夜梟','我會看著你。別以為過了這裡，大家就會跟你走。']]);P.flags.c6_yexiao=1;save()}
-async function c6Heifeng(){const f=P.flags;if(f.c6_done){await say([['黑鋒','我把暗核交出來，不是說我原諒了守界盟。名單上的人也還欠我一個交代。']]);return}
- if(!f.c6_list){await say([['黑鋒','我手上有一份復仇名單。上面的人都該為那場災難付出代價。'],['黑鋒','……賽倫家人的名字也在上面。你看清楚了，再決定要不要站在我面前。']]);f.c6_list=1;toast('線索記錄：黑鋒的復仇名單含有賽倫家人');save();return}
- if(!f.c6_review){await say([['黑鋒','看過壁畫、石板和我的名單了？等你把所有來源都聽過，再回來。']]);return}
- await say([['黑鋒','壁畫上五個人一起伸手。石板只留下要救活人的一句話。你要拿這些東西叫我放下仇恨？'],['黑鋒','賽倫家人也在我的名單上。她若是守界盟的人，就該知道失去家人是什麼滋味。'],['黑鋒','別拿幾句話替我做決定。要阻止我，就用你的實力。']]);if(!await levelCheck('守衛：黑鋒',CHAPTERS[6].guard))return;
- await startTeamBattle({kind:'guard',foes:C6_GUARD_TEAM(),foeName:'黑鋒',intro:'深淵守衛・黑鋒 發起了挑戰！',combo:CHAPTERS[6].combo,onWin:afterC6Win});return 'battle';
+async function c6Xiaomiao(){await say([['小苗','你是歸一王的後代對吧？只要把守界盟推翻，大家就自由了！'],['小苗','黑鋒大哥說他有一份名單。把上面的人都找出來，仇就報完了。'],['小苗','那些古文字我是看不太懂啦……可是我願意跟著你！']]);P.flags.c6_xiaomiao=1;save()}
+async function c6Yexiao(){await say([['夜梟','黑鋒的名單，比你那幾張破紙重要多了。連這點狠勁都沒有，就別自稱歸一之子。'],['夜梟','我會盯著你。別以為過了這裡，大家就會跟你走。']]);P.flags.c6_yexiao=1;save()}
+async function c6Heifeng(){const f=P.flags;if(f.c6_done){await say([['黑鋒','暗核我交出來了，不代表我原諒守界盟。名單上的人，還欠我一個交代。']]);return}
+ if(!f.c6_list){await say([['黑鋒','我手上有一份名單。上面每個人，都該為那場災難付出代價。'],['黑鋒','……賽倫家人的名字也在上面。看清楚了，再決定要不要站在我面前。']]);f.c6_list=1;save();return}
+ if(!f.c6_review){await say([['黑鋒','壁畫、石板、我的名單，都看過了？等你把該聽的都聽完，再回來。']]);return}
+ await say([['黑鋒','壁畫上五個人一起伸手，石板上只剩一句救活人的話。你想拿這些叫我放下？'],['黑鋒','賽倫的家人也在名單上。他們既然是守界盟的人，就該知道失去家人是什麼滋味。'],['黑鋒','別拿幾句話替我做決定。想攔我，就拿出實力來。']]);if(!await levelCheck('守衛：黑鋒',CHAPTERS[6].guard))return;
+ await startTeamBattle({kind:'guard',foes:C6_GUARD_TEAM(),foeName:'黑鋒',intro:'黑鋒喚出了他的珠獸。',combo:CHAPTERS[6].combo,onWin:afterC6Win});return 'battle';
 }
-async function afterC6Win(){const f=P.flags;f.c6_done=1;P.cores=P.cores||[];if(!P.cores.includes(4))P.cores.push(4);P.scrolls=P.scrolls||[];if(!P.scrolls.includes(5))P.scrolls.push(5);P.items.potion+=4;P.items.candy+=2;P.hpFrac=1;refreshMap();save();await say([['黑鋒','我輸了。暗核你拿走，但我不會收回那份名單。'],['黑鋒','交出珠核不會讓我原諒誰，也不會讓受傷的人復原。'],'你取得了【史冊殘卷・陸】、暗核、回復藥 ×4、經驗糖 ×2。']);toast('第 6 章完成：取得暗核')}
-async function c6Cloak(){const f=P.flags;await say([['斗篷人','你也看到了那塊石板。那是我記得的話：他說先救還活著的人，不要再追究。'],['斗篷人','我曾是歸一王的侍從。可我只剩自己的記憶，刮去的原文已經無法驗證。也許我記住的是他說過的，也許是我多年來希望他說過的。'],['斗篷人','別把我當成活著的史冊。我只是那晚沒有死的人。']]);f.c6_cloak=1;save()}
-async function c6Xiaodou(){const f=P.flags;await say([['小豆','深淵的人唱黑暗被英雄斬斷，卻沒有唱壁畫上五個人一起伸手。你聽——'],'♪「黑夜伸出利爪，英雄拔劍斬斷，」','♪「深淵的火光熄滅，天邊露出一線，」','♪「五個人伸出的手，歌裡沒有唱完。」']);f.c6_song=1;save()}
+async function afterC6Win(){const f=P.flags;f.c6_done=1;P.cores=P.cores||[];if(!P.cores.includes(4))P.cores.push(4);P.scrolls=P.scrolls||[];if(!P.scrolls.includes(5))P.scrolls.push(5);P.items.potion+=4;P.items.candy+=2;P.hpFrac=1;refreshMap();save();await say([['黑鋒','我輸了。暗核你拿走。名單，我不會收回。'],['黑鋒','交出珠核，不會讓我原諒誰，也不會讓受傷的人好起來。'],'獲得【史冊殘卷・陸】、暗核、回復藥 ×4、經驗糖 ×2。'])}
+async function c6Cloak(){const f=P.flags;await say([['斗篷人','你也看到那塊石板了。……那是我記得的話。他說，先救還活著的人，不要再追究。'],['斗篷人','我以前是歸一王的侍從。可我手上只有自己的記憶，刮掉的原文已經沒辦法對照了。也許那是他真的說過的，也許是我這些年一直希望他說過的。'],['斗篷人','別把我當成活的史冊。我只是那天晚上沒死的人。']]);f.c6_cloak=1;save()}
+async function c6Xiaodou(){const f=P.flags;await say([['小豆','深淵的人唱英雄把黑暗砍斷了，可是沒唱壁畫上那五個人一起伸手。你聽——'],'♪「黑夜伸出利爪，英雄拔劍斬斷，」','♪「深淵的火光熄滅，天邊露出一線，」','♪「五個人伸出的手，歌裡沒有唱完。」']);f.c6_song=1;save()}
 
 /* ================= 第 7 章：守界盟王都 ================= */
 const C7_STEEL_TEAM=()=>{const L=CHAPTERS[7].guard;return[['lightB2',L[0],'trainer'],['waterB2',L[1],'guard'],['darkD2',L[2],'boss']]};
-async function c7Lia(){const f=P.flags;if(!f.c7_lia){await say([['莉亞','麵包坊的地窖能通到舊地道。你是夜吧？賽倫跟我說了深淵的事。'],['莉亞','街上的人不是檔案裡的一行字。有人怕真相引發搶奪，也有人怕只要不說，權力就永遠不必交代。'],['莉亞','我可以替你引開巡查。檔案官冉在東邊，他手上有鑰匙，但別把他的目的當成你的目的。']]);f.c7_lia=1;toast('新目標：找冉並調查檔案修訂令')}else await say([['莉亞','地窖出口已替你留著。居民不該被當成任何一派的籌碼。']]);save()}
-async function c7Ran(){const f=P.flags;if(!f.c7_lia){await say([['冉','先去找莉亞。她知道怎麼避開巡查。']]);return}if(!f.c7_ran){await say([['冉','我可以給你檔案庫鑰匙。奧瑞若倒下，長老會就得重新分權。'],['冉','我想改變權力結構；你想查清楚發生過什麼。這兩件事剛好同路，不代表目的相同。'],['冉','修訂令分散在檔案廳三個年代的櫃架上。看完再決定要不要用這把鑰匙。']]);f.c7_ran=1;toast('新目標：調查三份史冊修訂令')}else await say([['冉','鑰匙仍然給你。你看見的紀錄若只拿來換一個新掌權者，事情不會因此變簡單。']]);save()}
-async function c7Site(kind){const f=P.flags;if(!f.c7_ran){await say(['檔案櫃鎖著。先去找莉亞，再向冉取得檔案庫鑰匙。']);return true}const key='c7_'+kind;if(f[key]){const lines={a:'修訂令甲把「王獨自封印裂痕」改成「王取走光核」。頁邊印章與同年代的公文不同。',b:'修訂令乙只改了一句主詞，底稿沒有留下作者。它證明文字被改過，不能證明修改者知道什麼。',c:'修訂令丙把異議欄整頁裁去。裁切年份和裝訂年份對不上，仍無法確認是誰下令。'};await say([lines[kind]]);return true}const lines={a:['第一份修訂令：原稿寫著「眾人共同封住裂痕」，後來改成「艾瑟爾獨自封印」。印章與同期其他文件不同。'],b:['第二份修訂令只動了一個主詞；底稿上的作者欄空白，沒有記錄誰提出修改。'],c:['第三份修訂令的異議欄整頁被裁走。紙張年代與裝訂記錄不一致，仍不能判定由誰執行。']};await say(lines[kind]);f[key]=1;if(f.c7_a&&f.c7_b&&f.c7_c){f.c7_archive=1;refreshMap();toast('三份修訂令已看完：去找衛兵長鋼')}else toast('線索記錄：史冊修訂令');save();return true}
-async function c7Gate(){if(!P.flags.c7_archive){await say(['檔案廳內門鎖著。先看完三份修訂令。']);return true}return['檔案廳內門已開。衛兵長鋼守在通往王城庭院的路上。']}
-async function c7Steel(){const f=P.flags;if(f.c7_steel){await say([['鋼','命令是攔住你，並沒有叫我羞辱或傷害居民。你已經通過了。']]);return}if(!f.c7_archive){await say([['鋼','我奉命守住檔案廳。先把檔案看完，再來談通行。']]);return}await say([['鋼','我奉命攔截你。這道命令不會讓我私自加刑，也不會讓我把居民當人質。'],['鋼','把修訂令交給盟長之前，你得先通過我。']]);if(!await levelCheck('衛兵長：鋼',CHAPTERS[7].guard))return;await startTeamBattle({kind:'guard',foes:C7_STEEL_TEAM(),foeName:'衛兵長鋼',intro:'王都衛兵長鋼發起挑戰！',combo:CHAPTERS[7].combo,onWin:afterC7Steel});return'battle'}
-async function afterC7Steel(){P.flags.c7_steel=1;P.items.potion+=4;P.items.candy+=2;P.hpFrac=1;refreshMap();save();await say([['鋼','我輸了。規矩到這裡就夠了。王城庭院的門我會打開。'],'你取得回復藥 ×4、經驗糖 ×2。']);toast('王城庭院已開放')}
-async function c7Aorui(){const f=P.flags;if(!f.c7_study){await say([['奧瑞','我知道史冊被修訂過。我不可能知道每一次修改的完整理由，更不知道最初那晚所有人看見了什麼。'],['奧瑞','我每年都去無名碑前祭拜。我害怕公開光核會讓各派爭奪它，重演裂痕那晚的災難。這個恐懼是真的，但它也讓我掌握了決定誰能知道的權力。'],['奧瑞','書房裡有光核的保管簿與交接封印。看完後再來找我。']]);f.c7_aurui=1;toast('新目標：查看盟長書房的光核保管記錄')}else if(!f.c7_done){await say([['奧瑞','你看過記錄了。光核本來就該由五位守護者共同保管。我不會阻止你帶走它，但也不會替你保證另一份史冊就不會成為新的命令。'],['賽倫','我會和夜一起走。不是因為所有疑問都有答案，而是我不能再把疑問鎖起來。']]);await afterC7Win()}else await say([['奧瑞','保管簿拓本交給你了。請記得：寫下另一個版本的人，也會決定留下誰的聲音。']]);save()}
-async function c7Study(){const f=P.flags;if(!f.c7_aurui){await say(['書房封印尚未解開。先和奧瑞談談。']);return true}if(!f.c7_study){await say(['保管簿記下光核從檔案館移交後的保管紀錄；登記欄沒有五位守護者共同簽名。','封印可以由守界盟長單獨解除。簿冊能證明保管程序，不能證明奧瑞知道光核當年如何被取走。']);f.c7_study=1;toast('線索記錄：光核保管簿');save()}else await say(['光核的保管簿沒有更多頁。']);return true}
-async function afterC7Win(){const f=P.flags;f.c7_done=1;P.cores=P.cores||[];if(!P.cores.includes(3))P.cores.push(3);P.scrolls=P.scrolls||[];if(!P.scrolls.includes(6))P.scrolls.push(6);P.items.potion+=3;P.items.candy+=2;P.hpFrac=1;refreshMap();save();await say([['奧瑞','這是光核的保管簿拓本。我不會說把紀錄交給你，就能補回那些被刪去的句子。'],['賽倫','祖母曾說過另一個版本。我一直以為那只是家族故事。現在我會把它也寫進紀錄，並標明它從哪裡來。'],'你取得了【史冊殘卷・柒】、光核保管簿拓本、回復藥 ×3、經驗糖 ×2。','賽倫加入旅程。北側的五核光橋已開啟。']);toast('第 7 章完成：前往歸一王座')}
-async function c7Xiaodou(){const f=P.flags;await say([['小豆','王都的歌把五色都唱回王座，好像大家終於能回家。可我聽見有一節旋律被改過。你聽——'],'♪「白牆照亮歸途，五色映在王座，」','♪「英雄把光帶回，鐘聲說故事已妥，」','♪「誰替誰寫下歸來，歌裡沒有說。」']);f.c7_song=1;save()}
+async function c7Lia(){const f=P.flags;if(!f.c7_lia){await say([['莉亞',`麵包坊的地窖可以通到舊地道。你是${P.name}吧？賽倫跟我說過深淵的事了。`],['莉亞','街上的人可不是檔案裡的一行字。有人怕真相一公開，大家會搶破頭；也有人覺得只要不說，掌權的就永遠不用交代。'],['莉亞','巡邏的我幫你引開。檔案官冉在東邊，鑰匙在他手上——不過他想要的，不一定是你想要的。']]);f.c7_lia=1}else await say([['莉亞','地窖的出口我幫你留著。街上的人，不該被當成任何一邊的籌碼。']]);save()}
+async function c7Ran(){const f=P.flags;if(!f.c7_lia){await say([['冉','先去找莉亞。她知道怎麼避開巡邏。']]);return}if(!f.c7_ran){await say([['冉','檔案庫的鑰匙可以給你。奧瑞要是倒了，長老會就得重新分權。'],['冉','我想改的是權力怎麼分，你想查的是當年發生了什麼。剛好順路而已，別以為我們目的一樣。'],['冉','修訂令分散在檔案廳三個年代的櫃子上。看完再決定，這把鑰匙要怎麼用。']]);f.c7_ran=1}else await say([['冉','鑰匙還是給你。你看到的東西，要是只拿來換一個新的掌權者，事情不會變簡單。']]);save()}
+async function c7Site(kind){const f=P.flags;if(!f.c7_ran){await say(['檔案櫃鎖著。']);return true}const key='c7_'+kind;if(f[key]){const lines={a:'第一份修訂令：「眾人共同封住裂痕」被改成「艾瑟爾獨自封印」。改過的地方蓋的印，跟同時期的公文對不上。',b:'第二份修訂令只動了一個主詞，底稿上沒有作者。看得出被改過，看不出改的人知道什麼。',c:'第三份修訂令的異議欄被整頁裁掉。裁切跟裝訂的年份對不上，還是查不出是誰下的令。'};await say([lines[kind]]);return true}const lines={a:['第一份修訂令：原稿寫著「眾人共同封住裂痕」，後來被改成「艾瑟爾獨自封印」。改過的地方蓋的印，跟同時期其他公文不一樣。'],b:['第二份修訂令只動了一個主詞。底稿的作者欄是空的，沒人知道是誰提的。'],c:['第三份修訂令的異議欄，整頁被裁掉了。紙的年代跟裝訂記錄對不上——是誰動的手，還是不知道。']};await say(lines[kind]);f[key]=1;if(f.c7_a&&f.c7_b&&f.c7_c){f.c7_archive=1;refreshMap();toast('檔案廳的內門開了')}save();return true}
+async function c7Gate(){if(!P.flags.c7_archive){await say(['檔案廳的內門鎖著。']);return true}return['內門開著。']}
+async function c7Steel(){const f=P.flags;if(f.c7_steel){await say([['鋼','命令是攔住你，沒叫我羞辱你，也沒叫我動居民。你已經過了。']]);return}if(!f.c7_archive){await say([['鋼','檔案廳歸我看守。你要找的東西還在裡面吧？看完再來。']]);return}await say([['鋼','我奉命攔你。這道命令不會讓我私下動刑，也不會讓我拿居民當人質。'],['鋼','修訂令想交到盟長手上？先過我這關。']]);if(!await levelCheck('衛兵長：鋼',CHAPTERS[7].guard))return;await startTeamBattle({kind:'guard',foes:C7_STEEL_TEAM(),foeName:'衛兵長鋼',intro:'鋼抬起手，衛兵們往後退開。',combo:CHAPTERS[7].combo,onWin:afterC7Steel});return'battle'}
+async function afterC7Steel(){P.flags.c7_steel=1;P.items.potion+=4;P.items.candy+=2;P.hpFrac=1;refreshMap();save();await say([['鋼','我輸了。規矩到這裡就夠了。王城庭院的門，我會打開。'],'獲得回復藥 ×4、經驗糖 ×2。'])}
+async function c7Aorui(){const f=P.flags;if(!f.c7_study){await say([['奧瑞','我知道史冊被改過。每一次為什麼改，我不可能全知道；那一夜每個人看到了什麼，我更不知道。'],['奧瑞','每年我都去無名碑前祭拜。我怕光核一公開，各派就會搶，那晚的災難又會重來。這份害怕是真的……可它也讓我握住了決定誰能知道的權力。'],['奧瑞','書房裡有光核的保管簿跟交接封印。看完再來找我。']]);f.c7_aurui=1}else if(!f.c7_done){await say([['奧瑞','你看過記錄了。你帶著的那顆光核，是從浮島檔案館出來的吧？照保管簿，它早該收在我的書房裡。'],['奧瑞','光核本來就該由五個守護者一起保管。我不追回來，可我也沒辦法保證，另一份史冊不會變成新的命令。'],['賽倫',`我跟${P.name}一起走。不是因為所有問題都有答案了，是因為我不能再把問題鎖起來。`]]);await afterC7Win()}else await say([['奧瑞','保管簿的拓本給你了。記住：寫下另一個版本的人，也在決定要留下誰的聲音。']]);save()}
+async function c7Study(){const f=P.flags;if(!f.c7_aurui){await say(['書房門上貼著封條。']);return true}if(!f.c7_study){await say(['保管簿記著光核從檔案館移交過來以後的紀錄。登記欄上，沒有五個守護者的共同簽名。','封印只要盟長一個人就解得開。至於奧瑞知不知道光核當年是怎麼被拿走的，簿子上看不出來。']);f.c7_study=1;save()}else await say(['保管簿沒有其他頁了。']);return true}
+async function afterC7Win(){const f=P.flags;f.c7_done=1;P.cores=P.cores||[];if(!P.cores.includes(3))P.cores.push(3);P.scrolls=P.scrolls||[];if(!P.scrolls.includes(6))P.scrolls.push(6);P.items.potion+=3;P.items.candy+=2;P.hpFrac=1;refreshMap();save();await say([['奧瑞','這是光核保管簿的拓本。……把紀錄交給你，也補不回那些被刪掉的句子。'],['賽倫','奶奶以前跟我講過另一個版本。我一直以為那只是家裡的故事。這次，我會把它也寫進紀錄，註明是從哪來的。'],'獲得【史冊殘卷・柒】、光核保管簿拓本、回復藥 ×3、經驗糖 ×2。','賽倫加入了旅程。王都北邊的五核光橋亮了起來。'])}
+async function c7Xiaodou(){const f=P.flags;await say([['小豆','王都的歌把五種顏色都唱回王座了，好像大家終於可以回家。可是我聽得出來，有一段旋律被改過。你聽——'],'♪「白牆照亮歸途，五色映在王座，」','♪「英雄把光帶回，鐘聲說故事已妥，」','♪「誰替誰寫下歸來，歌裡沒有說。」']);f.c7_song=1;save()}
 
 /* ================= 第 8 章：歸一王座 ================= */
-async function c8Intro(){const f=P.flags;if(![0,2,3,4].every(i=>(P.cores||[]).includes(i))||!f.fireFragment){await say(['王座後的五個凹槽仍未共鳴。帶齊水、木、光、暗核與燼交付的火核碎片，再來喚醒回憶。']);return}await say([['小燈','五枚珠核留下的不是一段完整的影像，而是持有者記得的片段。'],['小燈','我不會告訴你我從哪裡來。跟著光走，自己看看每段記憶缺了什麼。'],['賽倫','我會陪你走完，但不替你下結論。']]);f.c8_started=1;save();toast('新目標：依序走進四段回憶')}
-async function c8Portal(x){const n=x===6?1:x===11?2:x===18?3:4;const f=P.flags;if(!f.c8_started){await say(['先到王座中央找小燈。']);return true}if(n>1&&!f['c8_m'+(n-1)]){await say(['前一段回憶尚未走完。']);return true}await say([`裂痕中的五色光門映出「${['','歸一前夜','取走光核','失敗的儀式','艾瑟爾的懺悔'][n]}」。`]);return true}
+async function c8Intro(){const f=P.flags;if(![0,2,3,4].every(i=>(P.cores||[]).includes(i))||!f.fireFragment){await say(['王座後面的五個凹槽沒有反應。珠核還沒到齊。']);return}await say([['小燈','五枚珠核留下的，不是一整段影像，是拿著它們的人記得的片段。'],['小燈','我從哪裡來，我不會說。跟著光走吧，自己去看每段記憶少了什麼。'],['賽倫','我陪你走完。結論，我不替你下。']]);f.c8_started=1;save()}
+async function c8Portal(x){const n=x===6?1:x===11?2:x===18?3:4;const f=P.flags;if(!f.c8_started){await say(['光門還沒亮。']);return true}if(n>1&&!f['c8_m'+(n-1)]){await say(['光很微弱。前面那段回憶還沒走完。']);return true}await say([`五色的光門裡，映出「${['','歸一前夜','取走光核','失敗的儀式','艾瑟爾的懺悔'][n]}」。`]);await changeMap('memory'+n,13.5,27.5,1);return true}
 const C8_GUARDS=[null,[['woodB2',42,'trainer'],['lightC2',44,'guard']],[['waterB2',42,'trainer'],['fireC2',44,'guard']],[['darkB2',42,'trainer'],['woodD2',44,'guard']],[['fireB2',42,'trainer'],['darkC2',44,'guard']]];
-async function c8Lamp(stage){const f=P.flags;if(f['c8_m'+stage+'_guard']){await say([['小燈','守衛已經退開。記憶還在前面。']]);return}await say([['小燈','這裡也有守界盟先祖留下的守衛。他們守著回聲，不代表回聲就是完整的真相。']]);}
-async function c8Guard(stage){const f=P.flags,key='c8_m'+stage+'_guard';if(f[key]){await say(['守衛已經退開。']);return}if(stage>1&&!f['c8_m'+(stage-1)]){await say(['前一段回憶還沒有完成。']);return}const L=CHAPTERS[8].guard,team=C8_GUARDS[stage].map(([id,lv,role],i)=>[id,L[i],role]);if(!await levelCheck(`先祖守衛：回憶${stage}`,L))return;await startTeamBattle({kind:'trainer',foes:team,foeName:'先祖守衛',intro:`回憶${stage}的守界盟先祖守衛發起挑戰！`,combo:CHAPTERS[8].combo,onWin:()=>afterC8Guard(stage)});return'battle'}
-async function afterC8Guard(stage){const key='c8_m'+stage+'_guard';P.flags[key]=1;P.hpFrac=1;save();await say([`守衛的身影散成淡光。前方的回憶變得清晰了一些。`]);toast(`回憶${stage}的道路已打開`)}
-async function c8Memory(stage){const f=P.flags,key='c8_m'+stage;if(f[key]){await say(['五色回聲已經淡去。你記得它留下的空白。']);return true}if(!f[key+'_guard']){await say(['先和小燈交談，再通過前方的先祖守衛。']);return true}const scenes={1:['五個守護者圍住裂痕，輪流說出封印的方法。有人提到輪流持核，有人只說先救人。畫面沒有顯示每個人是否同意。','其中一人的影像被光斑遮住。這段回憶記得眾人都在場，卻沒有替每個人的選擇作證。'],2:['艾瑟爾走進白曜的房間。他的手在發抖，伸向光核。','回聲沒有記下他說服過誰，也沒有留下完整理由。畫面在他拿起光核後跳了一格。'],3:['五核缺了一枚，儀式的光向四周炸開。歸一王朝裂痕走去，其他人被震倒。','畫面在他消失前斷掉。你看不見他是否成功，也看不見其他守護者之後做了什麼。']};await say(scenes[stage]);f[key]=1;save();toast(`回憶${stage}已記錄；前往下一道光門`);return true}
-async function c8Aether(){const f=P.flags;if(!f.c8_m4_guard){await say([['艾瑟爾殘響','先祖守衛還沒有退開。等你走過那段回憶，我再說。']]);return}if(f.c8_done){await say([['艾瑟爾殘響','我的記憶只到這裡。往後怎麼寫，是你們的事。']]);return}if(!f.c8_m4){await say([['艾瑟爾殘響','我拿了不該拿的。'],['艾瑟爾殘響','這是我記得的樣子。光核在我手裡時，我以為自己還能補救。可這段回聲沒有記住所有人的話，也可能把我希望被原諒的部分留得太清楚。'],['賽倫','我不會用他的懺悔替所有人結案。']]);f.c8_m4=1;save()}await say([['艾瑟爾殘響','打破我吧。別讓我的回憶成為最後一份命令。']]);await startTeamBattle({kind:'guard',foes:[['boss_aether',CHAPTERS[8].guard[2],'boss']],foeName:'艾瑟爾殘響',intro:'艾瑟爾的記憶殘響浮現！',combo:CHAPTERS[8].combo,onWin:afterC8Win});return'battle'}
-async function afterC8Win(){const f=P.flags;f.c8_done=1;P.scrolls=P.scrolls||[];if(!P.scrolls.includes(7))P.scrolls.push(7);P.hpFrac=1;refreshMap();save();await say([['艾瑟爾殘響','我記得的就只有這些。不要替我補完。'],['賽倫','我會把每一種說法都標明來源。之後的人可以不同意我們，也可以繼續查。'],'殘響消散，留下【史冊殘卷・捌】。畫面轉黑。','主線到此結束。古碑上的光重新亮起，無盡之塔已向你開放。']);await changeMap('grass',17.5,31.5,1);toast('主線完成：前往古碑，挑戰無盡之塔')}
+async function c8Lamp(stage){const f=P.flags;if(f['c8_m'+stage+'_guard']){await say([['小燈','守衛退開了。記憶就在前面。']]);return}await say([['小燈','這裡也有守界盟先祖留下的守衛。他們守著回聲……可守著，不代表回聲就是全部。']]);}
+async function c8Guard(stage){const f=P.flags,key='c8_m'+stage+'_guard';if(f[key]){await say(['守衛已經退開了。']);return}if(stage>1&&!f['c8_m'+(stage-1)]){await say(['前一段回憶還沒走完。']);return}const L=CHAPTERS[8].guard,team=C8_GUARDS[stage].map(([id,lv,role],i)=>[id,L[i],role]);if(!await levelCheck(`先祖守衛：回憶${stage}`,L))return;await startTeamBattle({kind:'trainer',foes:team,foeName:'先祖守衛',intro:'先祖守衛擋住了去路。',combo:CHAPTERS[8].combo,onWin:()=>afterC8Guard(stage)});return'battle'}
+async function afterC8Guard(stage){const key='c8_m'+stage+'_guard';P.flags[key]=1;P.hpFrac=1;save();await say([`守衛的身影散成淡淡的光。前面的回憶清楚了一點。`])}
+async function c8Memory(stage){const f=P.flags,key='c8_m'+stage;if(f[key]){await say(['回聲已經淡了，只剩那些空白。']);return true}if(!f[key+'_guard']){await say(['先祖守衛擋在前面，靠不過去。']);return true}if(stage===4){await say(['光紋一路延伸到前面，停在艾瑟爾殘響腳下。']);return true}const scenes={1:['五個守護者圍著裂痕，一個接一個說封印的辦法。有人說輪流持核，有人只說先救人。誰點了頭、誰沒有，看不出來。','其中一個人的臉，被光斑蓋住了。'],2:['艾瑟爾走進白曜的房間。他的手在發抖，伸向光核。','他有沒有說服過誰、為什麼要拿，回聲裡都沒有。他拿起光核的那一刻，畫面跳掉了一格。'],3:['五核少了一枚。儀式的光往四面八方炸開，其他人都被震倒了。歸一王朝裂痕走過去。','畫面在他消失前斷掉了。他成功了沒有、其他守護者後來做了什麼，都看不到。']};await say(scenes[stage]);f[key]=1;save();return true}
+async function c8Aether(){const f=P.flags;if(!f.c8_m4_guard){await say([['艾瑟爾殘響','先祖守衛還沒退開。等你走過那段回憶，我再說。']]);return}if(f.c8_done){await say([['艾瑟爾殘響','我記得的就到這裡。之後怎麼寫，是你們的事。']]);return}if(!f.c8_m4){await say([['艾瑟爾殘響','我拿了不該拿的。'],['艾瑟爾殘響','這是我記得的樣子。光核在我手上的時候，我以為還來得及補救。……可這段回聲沒記住所有人說的話，也許把我希望被原諒的部分，留得太清楚了。'],['賽倫','我不會拿他的懺悔，替所有人結案。']]);f.c8_m4=1;save()}await say([['艾瑟爾殘響','打碎我吧。別讓我的記憶，變成最後一道命令。']]);await startTeamBattle({kind:'guard',foes:[['boss_aether',CHAPTERS[8].guard[2],'boss']],foeName:'艾瑟爾殘響',intro:'殘響的輪廓亮了起來。',combo:CHAPTERS[8].combo,onWin:afterC8Win});return'battle'}
+async function afterC8Win(){const f=P.flags;f.c8_done=1;P.scrolls=P.scrolls||[];if(!P.scrolls.includes(7))P.scrolls.push(7);P.hpFrac=1;refreshMap();save();await say([['艾瑟爾殘響','我記得的就只有這些。別替我補完。'],['賽倫','每一種說法，我都會註明來源。以後的人可以不同意我們，也可以繼續查。'],'殘響散了，地上留下【史冊殘卷・捌】。眼前暗了下來。']);await changeMap('grass',17.5,31.5,1);toast('主線結束。古碑後的無盡之塔開放了')}
 /* ================= 第 9 章：無盡之塔與四種結局 ================= */
 function towerFloor(){return Math.max(1,Number(P.flags.towerFloor)||1)}
-async function enterTower(){if(!P.flags.c8_done){await say(['古碑仍然沉睡。']);return}if(P.scrolls.length<8){await say(['八卷殘卷尚未集齊，古碑後的道路仍未顯現。']);return}P.flags.towerFloor=Math.max(1,Number(P.flags.towerFloor)||1);save();await changeMap('tower',14.5,29.5,1);}
-async function towerIntro(){const f=P.flags;if(f.tower_intro){await say([['老周','塔裡的每一層都可能把舊人和舊說法帶回來。往上走之前，先聽聽身邊的人怎麼看。']]);return}await say([['老周','八卷都在你手上了。這座塔會把你一路遇過的人、爭論和記錄重新帶到你面前。'],['老周','不必急著回答每一個問題。上一層的石階在北邊。']]);f.tower_intro=1;save()}
-async function towerFriend(which){const lines={hana:[['阿花','我不是來替哪一本史冊作證的。我帶了幾瓶藥，塔裡受傷就回來找泉水。']],yunque:[['雲雀','樓層越高，守衛越強。我會把塔內的傳送陣位置記下來，但你得自己選何時上去。']],xiaodou:[['小豆','老周叫我把故事唱熟一點。可是這次我想先聽聽大家怎麼說，再唱最後一句。']]};await say(lines[which])}
+async function enterTower(){if(!P.flags.c8_done){await say(['古碑靜靜的，沒有反應。']);return}if((P.scrolls||[]).length<8){await say(['古碑亮了一下，又暗下去。殘卷好像還沒湊齊。']);return}P.flags.towerFloor=Math.max(1,Number(P.flags.towerFloor)||1);save();await changeMap('tower',14.5,29.5,1);}
+async function towerIntro(){const f=P.flags;if(f.tower_intro){await say([['老周','塔裡每一層，都可能把以前的人跟說法帶回來。往上走之前，先聽聽身邊的人怎麼說吧。']]);return}await say([['老周','八卷都在你手上了。這座塔會把你一路上遇到的人、吵過的事、讀過的記錄，再擺到你面前。'],['老周','不用急著每個問題都回答。上樓的石階在北邊。']]);f.tower_intro=1;save()}
+async function towerFriend(which){const lines={hana:[['阿花','我可不是來幫哪本史冊作證的喔。帶了幾瓶藥，受傷了就回來泡泉水。']],yunque:[['雲雀','越往上，守衛越強。塔裡的傳送陣我幫你記著位置，什麼時候上去，你自己決定。']],xiaodou:[['小豆','老周叫我把故事唱熟一點。可是這次，我想先聽大家怎麼說，再唱最後一句。']]};await say(lines[which])}
 const C9_TOWER_TEAM={1:[['waterB2','trainer'],['woodB2','guard']],2:[['lightB2','guard'],['boss_light','boss'],['lightC2','guard']],3:[['fireA2','guard'],['fireB2','guard'],['fireD2','boss']],4:[['lightA2','guard'],['boss_light2','boss'],['lightD2','guard']],5:[['woodA2','guard'],['boss_wood','boss'],['woodD2','guard']],6:[['darkB2','guard'],['boss_dark','boss'],['darkD2','guard']],7:[['darkA2','trainer'],['darkC2','guard'],['fireD2','guard']],8:[['lightB2','guard'],['boss_light','boss'],['woodD2','guard']],10:[['woodA2','guard'],['boss_wood','boss'],['woodD2','guard']]};
 const C9_TOWER_NAMES={1:'新兵星',2:'賽倫',3:'燼',4:'瑟菲',5:'獵牙',6:'黑鋒',7:'夜梟',8:'賽倫',9:'無名史冊',10:'獵牙'};
-async function towerChallenge(){const f=P.flags,floor=towerFloor();if(f.towerReady){await say(['本層的挑戰已經完成。北側石階可以前往上一層。']);return}const lv=Math.min(60,40+floor),mul=floor>20?1+(floor-20)*.06:1;let list,roleName=C9_TOWER_NAMES[floor]||((floor%5===0)?'獵牙':'塔內挑戰者');
+async function towerChallenge(){const f=P.flags,floor=towerFloor();if(f.towerReady){await say(['這一層的挑戰結束了。北邊的石階亮著。']);return}const lv=Math.min(60,40+floor),mul=floor>20?1+(floor-20)*.06:1;let list,roleName=C9_TOWER_NAMES[floor]||((floor%5===0)?'獵牙':'塔內挑戰者');
  if(floor===9)list=[['darkB2','guard'],['boss_manuscript','boss'],['lightC2','guard']];
  else if(floor%5===0)list=C9_TOWER_TEAM[10];
  else list=C9_TOWER_TEAM[floor]||C9_TOWER_TEAM[((floor-1)%8)+1];
  const team=list.map(([id,role])=>[id,lv,role]);
- const lines={2:[['賽倫','這一層不是檢查你站在哪一邊。我想知道你願不願意把來源和推論分開。']],3:[['燼','塔裡的故事不會讓我原諒誰。我要看看你會不會把我的傷痛寫成你的證據。']],4:[['瑟菲','我會替每一份抄本記下來源。這次，我也想看看你如何處理彼此衝突的版本。']],5:[['獵牙','我每五層就來一次。別以為打贏我，那顆石頭的來歷就變清楚了。']],6:[['黑鋒','別把我留在塔裡的影子當成我原諒了誰。名單上的傷害還在。']],7:[['夜梟','你一路都在找答案。可要是你的新史冊又把別人的聲音刪掉呢？']],8:[['賽倫','這些卷頁彼此衝突。先把差異留下，再決定你願不願意下結論。']],9:[['卷頁回聲','書頁、墨水和被改寫的段落凝成一個形體。它不是第九位守衛，只是有人把家族記錄化成了戰鬥。']],10:[['獵牙','我說過每五層見一次。打完這場，前面就只剩你和老周。']]};
- if(lines[floor])await say(lines[floor]);else await say([[roleName,'每一層都有不同的記錄。打倒我不代表你已經看懂它。']]);
- await startTeamBattle({kind:'guard',foes:team,foeName:roleName,intro:floor===9?'無名史冊由書頁與墨跡翻湧而成！':`${roleName} 在第 ${floor} 層發起挑戰！`,combo:CHAPTERS[9].combo,mul,onWin:()=>afterTowerFloor(floor)});return'battle'}
-async function afterTowerFloor(floor){const f=P.flags;f.towerReady=1;f.towerCleared=Math.max(Number(f.towerCleared)||0,floor);P.items.potion=(P.items.potion||0)+1;if(floor%5===0)P.items.candy=(P.items.candy||0)+1;save();await say([`${floor===9?'無名史冊的書頁散落一地，墨跡慢慢乾涸。':`第 ${floor} 層的挑戰者退下了。`}`,floor%5===0?'你取得回復藥 ×1、經驗糖 ×1。':'你取得回復藥 ×1。','北側石階亮起。']);toast(`第 ${floor} 層完成`)}
-async function compareTowerScrolls(){const f=P.flags,floor=towerFloor(),key='tower_cmp'+floor;const pairs={2:['殘卷壹：古碑說有五位守護者共同持核。','殘卷柒：修訂令把「眾人共同封印」改成「艾瑟爾獨自封印」。'],4:['殘卷貳：航海日誌記著封艙命令。','殘卷參：倖存者記得火場外有人封路，但記憶不清。'],6:['殘卷肆：家族譜留下「石頭別賣，別問」。','殘卷伍：日記抄本只剩「我拿了不該拿的」。'],8:['殘卷陸：斗篷人記得王說過不要追究。','殘卷捌：珠核回聲只保存持有者希望留下的記憶。']};if(!pairs[floor])return;if(f[key]){await say(['這兩卷的並讀記錄已存下。']);return}await say([['卷頁回聲',pairs[floor][0]],['卷頁回聲',pairs[floor][1]],'兩份記錄能相互呼應，也各自留下缺口。你想把它們怎麼並列？']);const r=await modal(`<h3>並讀第 ${floor} 層的兩卷殘卷</h3><p>選擇你要留下的讀法。這個選擇不會替證據判真偽。</p>`,[{t:'只記下兩卷相同的部分'},{t:'記下差異，也保留來源缺口',c:'pri'},{t:'資料不足，暫不作判斷'}]);f[key]=1;if(r>0)f.towerNoticed=(Number(f.towerNoticed)||0)+1;save();await say([r===0?'你只摘錄了相同之處。':r===1?'你在兩卷旁註記差異和來源。':'你把兩卷並排存下，沒有填補空白。']);}
-async function towerStairs(){const f=P.flags,floor=towerFloor();if(!f.towerReady){await say([`先通過第 ${floor} 層的挑戰，石階才會亮起。`]);return true}if(floor===10&&!f.towerEnding){await say(['第十層的石階仍封著。先和老周談完。']);return true}f.towerFloor=floor+1;f.towerReady=0;refreshMap();save();await say([`你踏上石階，來到無盡之塔第 ${f.towerFloor} 層。`]);toast(`無盡之塔・第 ${f.towerFloor} 層`);return true}
-async function towerAuthor(){const f=P.flags;if(f.towerEnding){await towerAfterword();return}if(f.tower_boss){await chooseTowerEnding();return}await say([['老周','你一路找線索時，我也一路安排它們出現的次序。老周，是史官家族的後代。'],['老周','我陪你走，不代表我知道那一夜的全部。我只知道每一條路、每一份記錄，都會影響你先看見什麼。'],['老周','我沒有權替你決定八卷該去哪裡。可我仍想知道，你是否願意在知道這些之後繼續走。']]);if((Number(f.towerNoticed)||0)>=3)await say([['老周','你在至少三組並讀記錄旁留下了差異和疑問。你沒有把空白抹掉，這一點我會記住。']]);await say([['老周','我不會向你要求原諒。若你要阻止我繼續安排別人的故事，就用一場戰鬥作結。']]);const lv=60,mul=towerFloor()>20?1+(towerFloor()-20)*.06:1;await startTeamBattle({kind:'guard',foes:[['waterB2',lv,'guard'],['fireB2',lv,'guard'],['woodD2',lv,'boss']],foeName:'老周',intro:'史官後代・老周發起最後挑戰！',combo:CHAPTERS[9].combo,mul,onWin:afterTowerAuthor});return'battle'}
-async function afterTowerAuthor(){P.flags.tower_boss=1;P.flags.towerReady=1;save();await say([['老周','你贏了。八卷我都還給你。它們不再由我保管，也不會替你選擇。'],['老周','你可以公布、標明存疑、留白，或燒掉它們。我不會告訴你哪一個才算正確。']]);await chooseTowerEnding()}
-async function chooseTowerEnding(){const f=P.flags;if(f.towerEnding){await towerAfterword();return}const choice=await modal('<h3>八卷殘卷要如何處理？</h3><p>四種選擇沒有正解，也沒有隱藏門檻。選擇會記錄為本次結局。</p>',[{t:'公開：用夜的版本寫成新史冊',c:'pri'},{t:'公開並註明存疑：連同來源和矛盾一起公布'},{t:'留白：把八卷交還各地保存'},{t:'燒毀：親手燒掉所有殘卷',c:'warn'}]);f.towerEnding=choice+1;if(choice===3)f.scrollsBurned=1;save();const endingLines={1:[['老周','守界盟失去了對史冊的壟斷。城鎮裡有人撕下舊版本，也有人把你的新版本抄成另一種口號。'],['賽倫','改寫的權力換了主人，並沒有消失。'] ],2:[['老周','各地開始重查八卷的來源。新的註記沒有立刻帶來一致答案，但每個版本都能被追問。'],['小豆','有人唱古碑，有人唱火場。我想把兩種聲音都記下來。'] ],3:[['老周','八卷被送回各地保存。沒有人再替它們加上最後一段結論，有些地方也可能慢慢失去自己的那一卷。'],['賽倫','留下空白也是一種決定。我會把保存的人和時間一併記下。'] ],4:[['老周','火光吞掉八卷。舊史冊仍然存在，另一種說法失去了文字證據。這能阻止它們再被奪用，也讓許多人的記錄難以復原。'],['賽倫','我不會替你說這樣就能讓傷害消失。'] ]};await say(endingLines[f.towerEnding]);await say(['八卷的去向已記錄。塔外的小豆正在等你。']);await changeMap('grass',17.5,31.5,1);toast('第九章結局已記錄；去找小豆聽完歌謠')}
-async function towerAfterword(){const f=P.flags;if(!f.towerEnding){await say([['老周','先決定八卷要去哪裡。我不會替你選。']]);return}const endings=['','你選擇公開夜寫下的版本。','你選擇公開證據，並標明每一處存疑。','你選擇把八卷交還各地，讓最後一頁保持空白。','你選擇燒毀所有殘卷。'];await say([['老周',endings[f.towerEnding]],['老周','無盡之塔還能繼續往上。往後每一層都不會替你改寫這個選擇。']])}
+ const lines={2:[['賽倫','這一層不是要看你站哪一邊。我想知道，你能不能把「來源」跟「推論」分開。']],3:[['燼','塔裡的故事，不會讓我原諒誰。我要看你會不會把我的痛，寫成你的證據。']],4:[['瑟菲','每一份抄本，我都會記下來源。這次我想看看，互相矛盾的版本，你要怎麼處理。']],5:[['獵牙','我每五層就來一次喔。別以為打贏我，那顆石頭的來歷就會變清楚。']],6:[['黑鋒','別把我留在塔裡的影子，當成我原諒了誰。名單上的傷還在。']],7:[['夜梟','你一路都在找答案。要是你的新史冊，又把別人的聲音刪掉呢？']],8:[['賽倫','這些卷頁互相矛盾。先把差別留下來，再決定要不要下結論。']],9:['書頁、墨水、被改寫過的段落，一層層疊成了人形。'],10:[['獵牙','說好每五層見一次的。打完這場，前面就只剩你跟老周了。']]};
+ if(lines[floor])await say(lines[floor]);else await say([[roleName,'每一層都有不一樣的記錄。打倒我，不代表你看懂了。']]);
+ await startTeamBattle({kind:'guard',foes:team,foeName:roleName,intro:floor===9?'無名史冊翻湧而起。':`${roleName}在第 ${floor} 層等著你。`,combo:CHAPTERS[9].combo,mul,onWin:()=>afterTowerFloor(floor)});return'battle'}
+async function afterTowerFloor(floor){const f=P.flags;f.towerReady=1;f.towerCleared=Math.max(Number(f.towerCleared)||0,floor);P.items.potion=(P.items.potion||0)+1;if(floor%5===0)P.items.candy=(P.items.candy||0)+1;save();await say([`${floor===9?'無名史冊的書頁散了一地，墨跡慢慢乾了。':`第 ${floor} 層的挑戰者退下了。`}`,floor%5===0?'獲得回復藥 ×1、經驗糖 ×1。':'獲得回復藥 ×1。','北邊的石階亮了。'])}
+async function compareTowerScrolls(){const f=P.flags,floor=towerFloor(),key='tower_cmp'+floor;const pairs={2:['殘卷壹：古碑說有五位守護者共同持核。','殘卷柒：修訂令把「眾人共同封印」改成「艾瑟爾獨自封印」。'],4:['殘卷貳：航海日誌記著封艙命令。','殘卷參：倖存者記得火場外有人封路，但記憶不清。'],6:['殘卷肆：家族譜留下「石頭別賣，別問」。','殘卷伍：日記抄本只剩「我拿了不該拿的」。'],8:['殘卷陸：斗篷人記得王說過不要追究。','殘卷捌：珠核回聲只保存持有者希望留下的記憶。']};if(!pairs[floor])return;if(f[key]){await say(['這兩卷已經並讀過了。']);return}await say([['卷頁回聲',pairs[floor][0]],['卷頁回聲',pairs[floor][1]],'兩份記錄對得上一部分，也各自缺了一塊。']);const r=await modal(`<h3>第 ${floor} 層：並讀兩卷殘卷</h3><p>要怎麼記下來？</p>`,[{t:'只記兩卷相同的地方'},{t:'記下差異，也標出來源的缺口',c:'pri'},{t:'資料不夠，先不下判斷'}]);f[key]=1;if(r>0)f.towerNoticed=(Number(f.towerNoticed)||0)+1;save();await say([r===0?'你只抄下相同的部分。':r===1?'你在兩卷旁邊註明了差異跟來源。':'你把兩卷並排存好，空白的地方沒有補。']);}
+async function towerStairs(){const f=P.flags,floor=towerFloor();if(!f.towerReady){await say([`第 ${floor} 層的挑戰者還在，石階沒有亮。`]);return true}if(floor===10&&!f.towerEnding){await say(['第十層的石階還封著。老周還在等你。']);return true}f.towerFloor=floor+1;f.towerReady=0;refreshMap();save();await say([`你爬上石階。無盡之塔，第 ${f.towerFloor} 層。`]);return true}
+async function towerAuthor(){const f=P.flags;if(f.towerEnding){await towerAfterword();return}if(f.tower_boss){await chooseTowerEnding();return}await say([['老周','你一路找線索的時候，我也一路在安排它們出現的順序。……我是史官家族的後人。'],['老周','陪你走，不代表我知道那一夜的全部。我只知道，每一條路、每一份記錄，都會影響你先看到什麼。'],['老周','八卷該去哪裡，我沒資格替你決定。可我還是想知道，知道了這些，你還願不願意走下去。']]);if((Number(f.towerNoticed)||0)>=3)await say([['老周','至少有三組並讀，你把差異跟疑問都留了下來，沒把空白抹掉。這點，我會記住。']]);await say([['老周','我不會求你原諒。你要是想阻止我繼續安排別人的故事，就用一場對戰做個了結吧。']]);const lv=60,mul=towerFloor()>20?1+(towerFloor()-20)*.06:1;await startTeamBattle({kind:'guard',foes:[['waterB2',lv,'guard'],['fireB2',lv,'guard'],['woodD2',lv,'boss']],foeName:'老周',intro:'老周喚出了他的珠獸。',combo:CHAPTERS[9].combo,mul,onWin:afterTowerAuthor});return'battle'}
+async function afterTowerAuthor(){P.flags.tower_boss=1;P.flags.towerReady=1;save();await say([['老周','你贏了。八卷都還給你。我不會再保管它們，也不會替你選。'],['老周','公開、標明存疑、留白，還是燒掉，都可以。哪一個才對，我不會告訴你。']]);await chooseTowerEnding()}
+async function chooseTowerEnding(){const f=P.flags;if(f.towerEnding){await towerAfterword();return}const choice=await modal('<h3>八卷殘卷要怎麼處理？</h3><p>選了，就是這次的結局。</p>',[{t:'公開：照我們整理的版本，寫成新的史冊',c:'pri'},{t:'公開，並註明存疑：來源跟矛盾一起公布'},{t:'留白：把八卷送回各地保存'},{t:'燒掉：親手燒掉所有殘卷',c:'warn'}]);f.towerEnding=choice+1;if(choice===3)f.scrollsBurned=1;save();const endingLines={1:[['老周','守界盟再也不能獨佔史冊。有人把舊版本撕了，也有人把你的新版本抄成另一種口號。'],['賽倫','改寫的權力只是換了主人，沒有消失。'] ],2:[['老周','各地開始重新查八卷的來源。新的註記沒有馬上帶來一致的答案，但每個版本都能被追問了。'],['小豆','有人唱古碑，有人唱火場。兩種我都想記下來。'] ],3:[['老周','八卷送回了各地。沒有人再替它們加最後一段結論。……有些地方，也許會慢慢弄丟自己那一卷。'],['賽倫','留白也是一種決定。誰保管、什麼時候交出去的，我會一起記下來。'] ],4:[['老周','火把八卷都吞了。舊史冊還在，另一種說法卻沒了文字證據。它們不會再被拿去利用，可很多人的記錄，也找不回來了。'],['賽倫','別指望我說，這樣傷害就會消失。'] ]};await say(endingLines[f.towerEnding]);await say(['塔外，小豆好像在等你。']);await changeMap('grass',17.5,31.5,1)}
+async function towerAfterword(){const f=P.flags;if(!f.towerEnding){await say([['老周','先決定八卷要去哪。我不替你選。']]);return}const endings=['','你把我們整理的版本公開了。','你把證據公開，每一處存疑都標了出來。','你把八卷送回各地，最後一頁留白。','你把殘卷都燒了。'];await say([['老周',endings[f.towerEnding]],['老周','塔還能繼續往上。往後的每一層，都不會改掉你這個選擇。']])}
 /* ================= 隊伍計算 ================= */
 function teamInfo(){return P.team.map(m=>({m,sp:SP[m.id],s:st(m)}))}
 function teamAvg(){return P.team.reduce((a,m)=>a+m.lv,0)/Math.max(1,P.team.length)}
@@ -1697,7 +1705,7 @@ async function startGuardBattle(){
   G.lock=true;
   const L=CHAPTERS[1].guard;
   await startTeamBattle({kind:'guard',foes:[[NEWMON?'lightB2':'lightB3',L[0],'guard'],['boss_light',L[2],'boss'],[NEWMON?'lightC2':'lightC4',L[1],'guard']],
-    foeName:'賽倫',intro:'守界盟守衛・賽倫 發起了挑戰！',onWin:afterGuardWin,combo:CHAPTERS[1].combo});
+    foeName:'賽倫',intro:'賽倫放出了他的珠獸。',onWin:afterGuardWin,combo:CHAPTERS[1].combo});
 }
 async function startTeamBattle(cfg){   // 對人戰（守衛／小兵）：foes＝[[怪物id, 等級, 'guard'|'boss'|'trainer'], ...]
   G.lock=true;G.joy.x=G.joy.y=0;
@@ -1718,7 +1726,7 @@ async function beginBattle(cfg){
   $('#bRun').style.visibility=B.kind==='wild'?'visible':'hidden';
   renderBattle();msg(cfg.intro);
   await fade(false);
-  await sleep(500);msg('拖曳珠子，連成 3 顆以上消除！');B.busy=false;
+  await sleep(500);msg('拖曳珠子，連成 3 顆就會消除。');B.busy=false;
 }
 function msg(t){$('#bMsg').textContent=t}
 const needNow=()=>Math.max(10,TUNE.need-((B&&B.cut)||0));
@@ -1811,7 +1819,7 @@ function calcDamage(groups,combo){   // 對目前目標的總傷害（測試與�
 const aliveFoes=()=>B.foes.filter(f=>f.hp>0);
 function retarget(){if(B.enemy&&B.enemy.hp>0)return;const i=B.foes.findIndex(f=>f.hp>0);if(i>=0){B.tgt=i;B.enemy=B.foes[i]}}
 async function handleDowns(){   // 處理倒下的對手；全部倒下就結束戰鬥（回傳 true）
-  for(const f of B.foes)if(f.hp<=0&&!f.down){f.down=true;B.exp+=Math.floor((6+f.lv*5)*rarMul(f.sp.rar));msg(`${f.sp.name} 倒下了！`);renderBattle();await sleep(700)}
+  for(const f of B.foes)if(f.hp<=0&&!f.down){f.down=true;B.exp+=Math.floor((6+f.lv*5)*rarMul(f.sp.rar));msg(`${f.sp.name} 倒下了。`);renderBattle();await sleep(700)}
   if(!aliveFoes().length){await sleep(200);await endBattle('win');return true}
   retarget();renderBattle();return false;
 }
@@ -1834,9 +1842,9 @@ async function foeSkillAction(){
    const target=aliveFoes().slice().sort((a,b)=>a.hp/a.maxHp-b.hp/b.maxHp)[0],h=Math.min(target.maxHp-target.hp,Math.round(target.maxHp*k.v));target.hp+=h;
    note=`${f.sp.name} 使用【${k.n}】，${target.sp.name} 回復 ${h}`;
  }else if(k.t==='shield'){
-   B.foeShield=1;B.foeShieldV=k.v;note=`${f.sp.name} 使用【${k.n}】，守衛隊伍抵擋下一回合部分傷害`;
+   B.foeShield=1;B.foeShieldV=k.v;note=`${f.sp.name} 使用【${k.n}】，下一回合受到的傷害會減少`;
  }else if(k.t==='amp'){
-   B.foeAmp=k.v;note=`${f.sp.name} 使用【${k.n}】，本回合攻擊強化`;
+   B.foeAmp=k.v;note=`${f.sp.name} 使用【${k.n}】，這回合的攻擊變強了`;
  }
  msg(note);renderBattle();await sleep(550);return note;
 }
@@ -1871,16 +1879,16 @@ async function afterMove(){
   B.amp=1;if(B.foeShield>0)B.foeShield--;
   $('#eSpr').classList.remove('flash');void $('#eSpr').offsetWidth;$('#eSpr').classList.add('flash');
   pop('-'+dmg,'#ffe27a',true);
-  msg(`${combo} Combo！造成 ${dmg} 傷害`+(capped?'（已達傷害上限）':'')+(charmGain&&B.canCap?`，符 +${charmGain}`:''));
+  msg(`${combo} Combo，${dmg} 傷害`+(capped?'（已達單回合上限）':'')+(charmGain&&B.canCap?`，符 +${charmGain}`:''));
   // 回復
   renderBattle();await sleep(700);
   if(await handleDowns())return;
   // 收服判定
   if(B.canCap&&B.charm>=needNow()){
     B.charm-=needNow();
-    const p=capChance();msg(`符之力達到 ${needNow()}！收服判定中…（${Math.round(p*100)}%）`);renderBattle();await sleep(1100);
+    const p=capChance();msg(`收服中……（${Math.round(p*100)}%）`);renderBattle();await sleep(1100);
     if(Math.random()<p){await onCapture();return}
-    msg('收服失敗……牠掙脫了！');pop('失敗','#ff8a8a',true);await sleep(900);
+    msg('牠掙脫了。');pop('失敗','#ff8a8a',true);await sleep(900);
   }
   if(B.foeCombo){
     const who=B.foeName||'對手',skillNote=await foeSkillAction();
@@ -1891,7 +1899,7 @@ async function afterMove(){
     const rawDamage=foeTeamDamage(turn.groups,enemyAlive,turn.combo);
     const d=B.shield>0&&rawDamage>0?Math.max(1,Math.round(rawDamage*(1-B.shieldV))):rawDamage;B.teamHp=Math.max(0,B.teamHp-d);
     if(d>0){$('#bTop').classList.remove('shake');void $('#bTop').offsetWidth;$('#bTop').classList.add('shake')}
-    const result=d?`${turn.combo} Combo！同屬性怪物攻擊，隊伍受到 ${d} 傷害`:matching?'守衛隊伍攻擊':'沒有消到守衛隊伍的屬性珠，無怪物攻擊';
+    const result=d?`${turn.combo} Combo，隊伍受到 ${d} 傷害`:matching?'對手出手了，沒有造成傷害':'對手沒消到自己屬性的珠，沒有出手';
     msg(`${who}：${result}${skillNote?'；'+skillNote:''}`);
   }else{
     const alive=aliveFoes();alive.forEach(f=>f.cd--);
@@ -1902,7 +1910,7 @@ async function afterMove(){
       d=Math.max(1,Math.round(d*B.foeScale));if(B.shield>0)d=Math.max(1,Math.round(d*(1-B.shieldV)));
       B.teamHp=Math.max(0,B.teamHp-d);atk.forEach(f=>f.cd=f.cdMax);
       $('#bTop').classList.remove('shake');void $('#bTop').offsetWidth;$('#bTop').classList.add('shake');
-      msg(`${who} 發動攻擊！隊伍受到 ${d} 傷害`);
+      msg(`${who} 攻擊，隊伍受到 ${d} 傷害`);
     }
   }
   if(B.shield>0)B.shield--;
@@ -1916,7 +1924,7 @@ async function useSkill(i){
   const m=P.team[i];if(!m)return;
   const id=skillOf(m),k=SKILLS[id],sp=SP[m.id],s=st(m),e=B.enemy;
   const cost=skCost(m);if((B.skch[i]||0)<cost){toast(`【${k.n}】還需消除 ${cost-(B.skch[i]||0)} 顆${ATTR[sp.attr]}珠`);return}
-  if(k.t==='charm'&&!B.canCap){toast('這場戰鬥沒有符，無法使用');return}
+  if(k.t==='charm'&&!B.canCap){toast('這場戰鬥沒有符。');return}
   if((k.t==='lure'||k.t==='seal')&&!B.canCap){toast('只對野生珠獸有效');return}
   B.busy=true;
   const cells=(f)=>{const a=[];for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)if(grid[r][c]&&f(grid[r][c]))a.push(grid[r][c]);return a};
@@ -1955,7 +1963,7 @@ async function onCapture(){
   P.dex[e.sp.id]=2;
   let where='加入了隊伍';
   if(P.team.length<6)P.team.push(m);else{P.box.push(m);where='被送進了倉庫'}
-  pop('收服成功！','#7dff8c',true);msg(`收服成功！${e.sp.name} ${where}`);
+  pop('收服成功！','#7dff8c',true);msg(`收服成功：${e.sp.name} ${where}`);
   B.exp+=Math.floor((6+e.lv*5)*rarMul(e.sp.rar));
   await sleep(1300);
   await endBattle('capture',`${e.sp.name} Lv${e.lv} ${where}！`);
@@ -1971,10 +1979,10 @@ async function endBattle(res,extra){
     P.hpFrac=clamp(B.teamHp/B.teamMax,0.05,1);
     let drop='';
     if(B.kind==='wild'&&Math.random()<.3){if(Math.random()<.8){P.items.potion++;drop='撿到了回復藥 ×1'}else{P.items.candy++;drop='撿到了經驗糖 ×1'}}
-    report=`<h3>${res==='capture'?'收服成功！':'戰鬥勝利！'}</h3>${extra?`<p>${extra}</p>`:''}<p>全隊獲得 ${B.exp} 經驗值${drop?'<br>'+drop:''}</p>${ups.length?'<p style="color:#ffd84a">'+ups.join('<br>')+'</p>':''}`;
+    report=`<h3>${res==='capture'?'收服成功':'勝利'}</h3>${extra?`<p>${extra}</p>`:''}<p>全隊獲得 ${B.exp} 經驗值${drop?'<br>'+drop:''}</p>${ups.length?'<p style="color:#ffd84a">'+ups.join('<br>')+'</p>':''}`;
   }else if(res==='lose'){
     P.hpFrac=1;P.x=CUR.home.x;P.y=CUR.home.y;
-    report=`<h3>戰敗……</h3><p>你被送回了${CUR.homeName}，夥伴們在療癒泉旁恢復了體力。</p>`;
+    report=`<h3>戰敗</h3><p>你在${CUR.homeName}醒來。夥伴們的體力恢復了。</p>`;
   }else if(res==='run'){
     P.hpFrac=clamp(B.teamHp/B.teamMax,0.05,1);
   }
@@ -1990,7 +1998,7 @@ async function endBattle(res,extra){
 }
 $('#bRun').onclick=async()=>{
   if(!B||B.busy||B.over||B.kind!=='wild')return;
-  B.busy=true;msg('成功逃跑了！');await sleep(600);await endBattle('run');
+  B.busy=true;msg('逃走了。');await sleep(600);await endBattle('run');
 };
 
 /* ================= 背包 ================= */
@@ -2055,7 +2063,7 @@ $('#bagBody').onclick=async e=>{
   else if(a==='join'){P.team.push(P.box.splice(i,1)[0])}
   else if(a==='swap'){const k=await pickMon('要換下哪一隻？',P.team);if(k>=0){const t=P.team[k];P.team[k]=P.box[i];P.box[i]=t}}
   else if(a==='potion'){P.items.potion--;P.hpFrac=Math.min(1,P.hpFrac+.5);toast('隊伍體力回復了')}
-  else if(a==='candy'){const k=await pickMon('讓誰升級？',P.team);if(k>=0){P.items.candy--;const u=addExp(P.team[k],expNeed(P.team[k].lv)-P.team[k].exp);toast(u[0]||'經驗值增加了')}}
+  else if(a==='candy'){const k=await pickMon('讓誰升級？',P.team);if(k>=0&&P.team[k].lv>=60)toast('已達等級上限 Lv60，無法使用經驗糖');else if(k>=0){P.items.candy--;const u=addExp(P.team[k],expNeed(P.team[k].lv)-P.team[k].exp);toast(u[0]||'經驗值增加了')}}
   else if(a==='skill'){
     const m=[...P.team,...P.box].find(x=>x.uid===+b.dataset.uid);
     if(m){
@@ -2092,20 +2100,20 @@ async function newGame(){
   await modal(`<h3>你的名字</h3><input id="nameIn" maxlength="6" placeholder="最多 6 個字" value="夜">`,[{t:'決定',c:'pri'}]);
   P.name=($('#nameIn').value||'旅人').trim().slice(0,6)||'旅人';
   await say([
-    ['老周',`來了啊，${P.name}。滿十六歲了呢。`],
-    ['老周','鎮上的規矩，成年的孩子可以從我這領走一位夥伴。這三隻，我替你保管很久了。'],
+    ['老周',`來啦，${P.name}。十六歲了啊。`],
+    ['老周','鎮上的規矩，成年的孩子可以從我這裡領走一隻夥伴。這三隻，我替你顧很久了。'],
     ['老周','還有……這個你收好。'],
     '老周遞給你一枚舊吊墜，上面刻著五色交織的圓環。',
-    ['老周','記住——在外頭，絕對不要讓守界盟的人看見它。'],
+    ['老周','記住，在外面絕對不能讓守界盟的人看到它。'],
     [P.name,'為什麼？'],
-    ['老周','……等你走得夠遠，自然會明白。']
+    ['老周','……等你走得夠遠，就知道了。']
   ]);
   const id=await chooseStarter();
   P.team.push(newMon(id,5));P.dex[id]=2;P.flags.intro=1;save();
   await fade(true);show('sMap');await fade(false);
   await say([
-    ['老周','消掉盤面上的「符」，就能與野生的珠獸締結羈絆——這是我們這一脈教你的第一件事。'],
-    ['老周','往北穿過草原，就是守界盟的關口。路上多練練，累了就來廣場的療癒泉。']
+    ['老周','消掉盤面上的「符」，就能跟野生珠獸結下羈絆。這是我們這一脈的第一課。'],
+    ['老周','往北穿過草原，就是守界盟的關口。路上多練練，累了就來廣場泡泉水。']
   ]);
   startMapLoop();G.lock=false;
 }
@@ -2121,7 +2129,7 @@ function chooseStarter(){
     $('#stOk').onclick=async()=>{
       if(!sel)return;
       const sp=SP[sel];
-      const r=await modal(`<h3>就決定是 ${sp.name} 嗎？</h3><p>${ATTR[sp.attr]}屬性。其他屬性的夥伴，之後可以靠收服來湊齊。</p>`,[{t:'再想想'},{t:'決定',c:'pri'}]);
+      const r=await modal(`<h3>${sp.name}，可以嗎？</h3><p>${ATTR[sp.attr]}屬性。</p>`,[{t:'再想想'},{t:'就牠了',c:'pri'}]);
       if(r===1){$('#stOk').onclick=null;res(sel)}
     };
   });
@@ -2145,7 +2153,7 @@ async function continueGame(){
   };
   $('#btnImp').onclick=async()=>{
     await modal('<h3>匯入存檔碼</h3><textarea id="impBox" placeholder="貼上存檔碼"></textarea>',[{t:'取消'},{t:'匯入',c:'pri'}]).then(r=>{
-      if(r===1){if(importCode($('#impBox').value)){location.reload()}else toast('存檔碼無效')}
+      if(r===1){if(importCode($('#impBox').value)){location.reload()}else modal('<h3>存檔碼無效</h3><p>請確認貼上的是完整的存檔碼。</p>')}
     });
   };
   addEventListener('resize',()=>{if(cur==='sMap')resizeMap();if(cur==='sBattle')resizeBoard()});

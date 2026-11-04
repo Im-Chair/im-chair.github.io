@@ -13,7 +13,7 @@
      IMG_VER：圖片版號。只在「真的換圖」時才 +1。
      為什麼要拆：圖片有 121 張、共 3.0 MB。以前圖也掛 RPG_VER，結果從 393 推到 420 這 27 次進版，
      每一次都讓全部圖換成新 URL——瀏覽器整批重抓、SW 快取每版累積一整套重複 entry，而圖根本沒動。 -->
-<script>window.RPG_VER='460';window.IMG_VER='4';document.write('<link rel="stylesheet" href="style.css?v='+RPG_VER+'">');</script>
+<script>window.RPG_VER='462';window.IMG_VER='4';document.write('<link rel="stylesheet" href="style.css?v='+RPG_VER+'">');</script>
 </head>
 <body>
 
@@ -167,7 +167,7 @@
     <div class="hot" data-fx=".855" data-fy=".19" data-fw=".29" data-fh=".28" onclick="openSmith()"></div>
     <div class="hot" data-fx=".13" data-fy=".455" data-fw=".28" data-fh=".24" onclick="openGear()"></div>
     <div class="hot" data-fx=".50" data-fy=".46" data-fw=".38" data-fh=".28" onclick="openDivePicker()"></div>
-    <div class="hot" id="hot-market" data-fx=".855" data-fy=".60" data-fw=".29" data-fh=".23" onclick="if(G.rec.deep>=30)openMarket();else toast('深入 30 層後解鎖深淵黑市')"></div>
+    <div class="hot" id="hot-market" data-fx=".855" data-fy=".60" data-fw=".29" data-fh=".23" onclick="if(G.rec.deep>=30)openMarket();else notice('深入 30 層後開放')"></div>
     <div class="hot" data-fx=".21" data-fy=".79" data-fw=".38" data-fh=".21" onclick="openSaveMgr()"></div>
     <!-- 圖鑑：暫時關閉（改建中）。熱區保留，openCodex 內以 CODEX_ENABLED 擋下並回 toast -->
     <div class="hot" id="hot-codex" data-fx=".82" data-fy=".855" data-fw=".34" data-fh=".19" onclick="openCodex()"></div>

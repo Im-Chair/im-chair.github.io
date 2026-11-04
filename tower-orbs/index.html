@@ -449,6 +449,7 @@ function mini(c,o={}){return miniD(CARD[c.id],{lv:lvOf(c),lock:c.lock,nw:c.nw,te
 let AC=null;
 function beep(f,d=.09,t='sine',v=.07){
   if(!S.snd)return;
+  try{if(localStorage.getItem('arcade-sound')==='off')return}catch(_){} // 首頁的音效總開關
   try{
     AC=AC||new (window.AudioContext||window.webkitAudioContext)();
     const o=AC.createOscillator(),g=AC.createGain();o.type=t;o.frequency.value=f;g.gain.value=v;
@@ -1099,17 +1100,18 @@ function cellAt(x,y){return{r:clamp(Math.floor(y/cellS),0,ROWS-1),c:clamp(Math.f
 function bpos(e){const rc=$('#board').getBoundingClientRect();return{x:e.clientX-rc.left-2,y:e.clientY-rc.top-2}}
 function moveHeld(p){const d=B.drag,x=clamp(p.x-cellS/2,0,cellS*(COLS-1)),y=clamp(p.y-cellS/2,0,cellS*(ROWS-1));d.o.el.style.transition='none';d.o.el.style.transform=`translate(${x}px,${y}px)`}
 function releaseHeld(){const d=B.drag;if(!d)return;d.o.el.classList.remove('held');posOrb(d.o,d.r,d.c,true);B.drag=null}
+// 拖曳只認按下的那根手指（pid）：第二指放開或滑動不能搶走或提早結算轉珠；滑鼠只認左鍵
 document.addEventListener('pointerdown',e=>{
-  if(!B||B.phase!=='idle'||!e.target.closest('#board'))return;
+  if(!B||B.phase!=='idle'||!e.target.closest('#board')||e.button!==0)return;
   e.preventDefault();
   const tt=$('#tut');if(tt){tt.remove();S.tut=1;save()}
   const p=bpos(e),{r,c}=cellAt(p.x,p.y),o=G[r][c];
-  B.drag={r,c,o};B.phase='hold';o.el.classList.add('held');
+  B.drag={r,c,o,pid:e.pointerId};B.phase='hold';o.el.classList.add('held');
   try{$('#board').setPointerCapture(e.pointerId)}catch(_){}
   moveHeld(p);
 });
 document.addEventListener('pointermove',e=>{
-  if(!B||!B.drag)return;
+  if(!B||!B.drag||e.pointerId!==B.drag.pid)return;
   const p=bpos(e),d=B.drag,t=cellAt(p.x,p.y);moveHeld(p);
   let g=0;
   while((d.r!==t.r||d.c!==t.c)&&g++<12){
@@ -1120,8 +1122,8 @@ document.addEventListener('pointermove',e=>{
     if(B.phase==='hold'){B.phase='drag';startTimer()}
   }
 });
-function endDrag(){
-  if(!B||!B.drag)return;
+function endDrag(e){
+  if(!B||!B.drag||(e&&e.pointerId!==B.drag.pid))return;
   if(B.phase==='hold'){releaseHeld();B.phase='idle'}
   else if(B.phase==='drag')endMove();
 }
@@ -1257,7 +1259,8 @@ async function playerAttack(){
       const tg=c.all?B.enemies.filter(e=>e.hp>0):[curTarget()];
       for(const e of tg){
         if(!e||e.hp<=0)continue;
-        const r=rel(m.attr,e.attr),d=Math.max(1,Math.round(m.atk*om(c.n)*cm*lb*r*am*RH('dmg',1,m,c,e))-e.def);
+        const r=rel(m.attr,e.attr),hm=RH('dmg',1,m,c,e);if(!hm)continue; // 被封印的屬性（倍率 0）完全不造成傷害，不吃保底 1
+        const d=Math.max(1,Math.round(m.atk*om(c.n)*cm*lb*r*am*hm)-e.def);
         const o=dealt.get(e)||{d:0,r};o.d+=d;dealt.set(e,o);
       }
     }
@@ -1381,6 +1384,6 @@ function init(){
 document.addEventListener('DOMContentLoaded',init); // rogue.js 在本 script 之後載入，等它也跑完再初始化
 try{if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js').catch(()=>{})}catch(e){}
 </script>
-<script src="rogue.js?v=6"></script>
+<script src="rogue.js?v=10"></script>
 </body>
 </html>

@@ -32,7 +32,7 @@ function renderClassSelect(){
 }
 
 function confirmClass(){
-  if(!pendingClass){ toast('先選一個職業'); return; }
+  if(!pendingClass){ notice('先選一個職業'); return; }
   let c;
   if(pendingCreate || !G){ c = newSave(); ACC.chars.push(c); ACC.active = ACC.chars.length-1; G = c; R = null; B = null; }
   else { c = G; }
@@ -133,7 +133,7 @@ function copySave(){
 function fallbackCopy(t){   // 舊瀏覽器 / 非安全內容的退路
   t.select(); t.setSelectionRange(0,999999);
   try{ document.execCommand('copy'); toast('已複製'); }
-  catch(e){ toast('複製失敗，請手動選取'); }
+  catch(e){ notice('複製失敗，請手動選取'); }
 }
 
 function importSaveUI(){
@@ -156,9 +156,10 @@ function importSave(){
     localStorage.setItem(ACC_KEY, JSON.stringify(acc));
     G = null; R = null; B = null; load();
     closeSheet();
-    if(G && G.cls){ renderCamp(); showScreen('s-camp'); } else { showScreen('s-title'); }
+    // v461：走 selectChar 接回探索（含戰鬥轉門、已結算推進），以前直接進營地，進行中的探索被晾在記憶體裡
+    if(G) selectChar(ACC.active); else { showScreen('s-title'); }
     toast('匯入成功');
-  }catch(e){ toast('匯入失敗：存檔碼無效'); }
+  }catch(e){ notice('匯入失敗：存檔碼無效'); }
 }
 
 function openCodex(){
@@ -298,7 +299,7 @@ function openBlessInfo(k){
 }
 
 function openBag(){
-  if(!R || !R.bag.length){ toast('行囊是空的'); return; }
+  if(!R || !R.bag.length){ notice('行囊是空的'); return; }
   openSheet(bagListHtml('bag') + '<button class="btn" style="margin-top:14px" onclick="closeSheet()">關閉</button>');
 }
 

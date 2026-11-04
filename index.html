@@ -155,6 +155,8 @@
     .game-card:nth-child(9) { animation-delay: 0.60s; }
     .game-card:nth-child(10) { animation-delay: 0.66s; }
     .game-card:nth-child(11) { animation-delay: 0.72s; }
+    .game-card:nth-child(12) { animation-delay: 0.78s; }
+    .game-card:nth-child(13) { animation-delay: 0.84s; }
 
     .game-card::before {
       content: '';
@@ -392,7 +394,7 @@
         <span class="card-status ready">可遊玩</span>
       </div>
       <div class="card-name">數獨</div>
-      <div class="card-desc">四種難度，筆記模式，計時挑戰。</div>
+      <div class="card-desc">每題保證只有一個解。卡住了就開筆記、用提示，或每天挑一題每日題衝連勝。</div>
       <div class="card-footer">
         <div class="card-tags">
           <span class="tag">益智</span>
@@ -410,7 +412,7 @@
         <span class="card-status ready">可遊玩</span>
       </div>
       <div class="card-name">掃雷</div>
-      <div class="card-desc">三種難度，插旗模式，計時挑戰。</div>
+      <div class="card-desc">第一下保證安全，之後全靠推理。每日盤大家同一張，比比看誰掃得快。</div>
       <div class="card-footer">
         <div class="card-tags">
           <span class="tag">邏輯</span>
@@ -428,7 +430,7 @@
         <span class="card-status ready">可遊玩</span>
       </div>
       <div class="card-name">幾A幾B</div>
-      <div class="card-desc">猜4位不重複數字，A對位置，B對數字。</div>
+      <div class="card-desc">猜一組四位數，線索只有「幾A幾B」。你能用幾步把答案逼出來？</div>
       <div class="card-footer">
         <div class="card-tags">
           <span class="tag">推理</span>
@@ -446,7 +448,7 @@
         <span class="card-status ready">可遊玩</span>
       </div>
       <div class="card-name">接龍</div>
-      <div class="card-desc">翻1張或翻3張，悔棋無限，經典紙牌。</div>
+      <div class="card-desc">經典紙牌接龍，翻一張或翻三張任選。走錯就悔棋，最後一鍵自動收牌。</div>
       <div class="card-footer">
         <div class="card-tags">
           <span class="tag">紙牌</span>
@@ -464,7 +466,7 @@
         <span class="card-status ready">可遊玩</span>
       </div>
       <div class="card-name">貪婪深淵</div>
-      <div class="card-desc">看穿敵人意圖的回合戰鬥。深入一層，或帶著一切撤退。</div>
+      <div class="card-desc">每扇門後可能是寶箱，也可能是死亡。看穿敵人下一步再出手：繼續往下貪，還是帶著戰利品撤退？</div>
       <div class="card-footer">
         <div class="card-tags">
           <span class="tag">Roguelite</span>
@@ -481,7 +483,7 @@
         <span class="card-status ready">可遊玩</span>
       </div>
       <div class="card-name">轉珠之塔</div>
-      <div class="card-desc">拖動轉珠、屬性相剋，爬塔、抽卡、養成，致敬神魔之塔。</div>
+      <div class="card-desc">拖曳轉珠湊連擊，屬性相剋打出爆發。抽卡組隊爬塔，或闖進每次都不一樣的地城。</div>
       <div class="card-footer">
         <div class="card-tags">
           <span class="tag">轉珠</span>
@@ -498,7 +500,7 @@
         <span class="card-status ready">可遊玩</span>
       </div>
       <div class="card-name">漂流方舟</div>
-      <div class="card-desc">在末日海面打撈漂流物，擴建木筏、研究科技，航向遠洋。</div>
+      <div class="card-desc">世界沉進海裡，你只剩一塊木筏。打撈漂流物、擴建船屋，航向還有人活著的地方。</div>
       <div class="card-footer">
         <div class="card-tags">
           <span class="tag">生存建造</span>
@@ -515,7 +517,7 @@
         <span class="card-status ready">可遊玩</span>
       </div>
       <div class="card-name">俄羅斯方塊</div>
-      <div class="card-desc">經典消行，滑動操作、暫存方塊，還能和電腦互丟垃圾行對戰。</div>
+      <div class="card-desc">手指一滑就能玩的經典消行。練熟手感之後，去跟電腦互丟垃圾行。</div>
       <div class="card-footer">
         <div class="card-tags">
           <span class="tag">益智</span>
@@ -532,12 +534,63 @@
         <span class="card-status ready">可遊玩</span>
       </div>
       <div class="card-name">珠界：歸一之子</div>
-      <div class="card-desc">探索荒原、收服珠獸，以轉珠戰鬥追查被改寫的歷史。</div>
+      <div class="card-desc">收服珠獸，用轉珠戰鬥闖過九章主線，一路追查被人改寫的歷史。</div>
       <div class="card-footer">
         <div class="card-tags">
           <span class="tag">RPG</span>
           <span class="tag">轉珠</span>
           <span class="tag">前九章</span>
+        </div>
+        <span class="card-arrow">→</span>
+      </div>
+    </a>
+    <!-- 晨昏線前哨 -->
+    <a class="game-card available" href="./outpost/" data-game="outpost" data-icon="icons/outpost.webp">
+      <div class="card-top">
+        <div class="card-icon">🛰️</div>
+        <span class="card-status ready">可遊玩</span>
+      </div>
+      <div class="card-name">晨昏線前哨</div>
+      <div class="card-desc">殖民船迫降，艦長殉職，指揮權落到你這個補給官手上。撐過 50 天等救援，或者決定不走了。</div>
+      <div class="card-footer">
+        <div class="card-tags">
+          <span class="tag">經營</span>
+          <span class="tag">多結局</span>
+          <span class="tag">存檔</span>
+        </div>
+        <span class="card-arrow">→</span>
+      </div>
+    </a>
+    <!-- 深掘礦工 -->
+    <a class="game-card available" href="./deep-miner/" data-game="deep-miner" data-icon="icons/deep-miner.webp">
+      <div class="card-top">
+        <div class="card-icon">⛏️</div>
+        <span class="card-status ready">可遊玩</span>
+      </div>
+      <div class="card-name">深掘！像素礦工</div>
+      <div class="card-desc">祖父下了老礦坑就沒再回來。拿起他的十字鎬往下挖，一頁一頁撿回他的日記。</div>
+      <div class="card-footer">
+        <div class="card-tags">
+          <span class="tag">挖掘</span>
+          <span class="tag">劇情</span>
+          <span class="tag">存檔</span>
+        </div>
+        <span class="card-arrow">→</span>
+      </div>
+    </a>
+    <!-- 霓虹彈幕狂想曲 -->
+    <a class="game-card available" href="./neon-danmaku/" data-game="neon-danmaku" data-icon="icons/neon-danmaku.webp">
+      <div class="card-top">
+        <div class="card-icon">⚡</div>
+        <span class="card-status ready">可遊玩</span>
+      </div>
+      <div class="card-name">霓虹彈幕狂想曲</div>
+      <div class="card-desc">城市 AI 中毒了，你是駭客偷放進去的防毒程式。鑽過滿版彈幕打穿五關，查出病毒到底想幹嘛。</div>
+      <div class="card-footer">
+        <div class="card-tags">
+          <span class="tag">彈幕射擊</span>
+          <span class="tag">五關劇情</span>
+          <span class="tag">無盡模式</span>
         </div>
         <span class="card-arrow">→</span>
       </div>
@@ -560,7 +613,7 @@
 
   <div class="stats">
     <div class="stat">
-      <span class="stat-value" id="game-count">9</span>
+      <span class="stat-value" id="game-count">12</span>
       <span class="stat-label">遊戲</span>
 </div>
     <div class="stat">
@@ -589,7 +642,9 @@
     d.getFullYear() + '.' + String(d.getMonth()+1).padStart(2,'0');
 
   // 遊玩次數（localStorage）
-  const plays = parseInt(localStorage.getItem('arcade-plays') || '0');
+  // 儲存被封鎖（無痕、擋網站資料）時 getItem 會丟錯，包起來免得整段腳本中斷
+  let plays = 0;
+  try { plays = parseInt(localStorage.getItem('arcade-plays')) || 0; } catch (e) {}
   document.getElementById('play-count').textContent = plays;
 
   // 卡片上的最佳紀錄＋「進行中」標記（資料由各遊戲寫入：arcade-<遊戲>-stats / -save）
@@ -616,6 +671,18 @@
       if (st.solo?.best?.score) parts.push(`🏆 ${st.solo.best.score} 分`);
       if (st.vs?.wins) parts.push(`⚔️ ${st.vs.wins} 勝`);
       return parts.join(' · ');
+    },
+    'outpost': st => {
+      const n = st.story?.endings?.length || 0;
+      return st.story?.wins ? `🏆 結局 ${n} 種 · 最少損失 ${st.story.best?.lost ?? 0} 人` : '';
+    },
+    'deep-miner': st => {
+      if (st.story?.best?.days != null) return `🏆 ${st.story.best.days} 天找到營地`;
+      return st.story?.deepest ? `⛏️ 最深 ${st.story.deepest} m` : '';
+    },
+    'neon-danmaku': st => {
+      const best = Math.max(st.story?.best?.score || 0, st.endless?.best?.score || 0);
+      return best ? `🏆 ${best.toLocaleString()} 分` : '';
     },
   };
   // 每日挑戰（各遊戲寫入 arcade-<遊戲>-daily：{ last: { date, won }, streak, lastWin }）
@@ -702,8 +769,10 @@
   // 點進遊戲時記錄
   document.querySelectorAll('.game-card.available').forEach(card => {
     card.addEventListener('click', () => {
-      const n = parseInt(localStorage.getItem('arcade-plays') || '0') + 1;
-      localStorage.setItem('arcade-plays', n);
+      try {
+        const n = (parseInt(localStorage.getItem('arcade-plays')) || 0) + 1;
+        localStorage.setItem('arcade-plays', n);
+      } catch (e) {}
     });
   });
 </script>

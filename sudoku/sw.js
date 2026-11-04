@@ -1,4 +1,5 @@
-const CACHE = 'sudoku-v2';
+const CACHE = 'sudoku-v3';
+// v3：只快取成功回應（res.ok）、離線沒命中時回 Response.error()。
 // v2：原本預快取的是根目錄首頁（'/'），數獨本身從沒被存進快取；改成數獨自己的檔案。
 const ASSETS = [
   '/sudoku/', '/sudoku/index.html', '/sudoku/manifest.json',
@@ -26,10 +27,13 @@ self.addEventListener('fetch', e => {
   e.respondWith(
     fetch(e.request)
       .then(res => {
-        const copy = res.clone();
-        caches.open(CACHE).then(c => c.put(e.request, copy));
+        // 只存成功的回應，部署中途的 404／5xx 不能蓋掉好的快取
+        if (res.ok) {
+          const copy = res.clone();
+          caches.open(CACHE).then(c => c.put(e.request, copy));
+        }
         return res;
       })
-      .catch(() => caches.match(e.request, { ignoreSearch: true }))
+      .catch(() => caches.match(e.request, { ignoreSearch: true }).then(m => m || Response.error()))
   );
 });

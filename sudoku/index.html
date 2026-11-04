@@ -453,15 +453,50 @@ function generateSudoku(level, rnd = Math.random) {
   const total = clues[level] || 36;
   const indices = shuffle(Array.from({length: 81}, (_, i) => i));
 
+  // 逐格試挖：挖掉後若不再是唯一解就放回去，保證題目只有一個答案（否則合法填法會被判錯、永遠過不了關）。
+  // 線索數是目標下限；專家盤偶爾挖不到 22 會多留幾個。亂數只用在上面的洗牌，每日題仍可重現。
   let removed = 0;
   const puzzle = [...flat];
   for (const idx of indices) {
     if (removed >= 81 - total) break;
     puzzle[idx] = 0;
-    removed++;
+    if (countSolutions(puzzle, 2) === 1) removed++;
+    else puzzle[idx] = flat[idx];
   }
 
   return { puzzle, solution: flat };
+}
+
+// 數解（數到 limit 就停）：位元遮罩 + 每次挑候選最少的空格
+function countSolutions(cells, limit) {
+  const g = [...cells];
+  const rowM = new Array(9).fill(0), colM = new Array(9).fill(0), boxM = new Array(9).fill(0);
+  const box = i => Math.floor(Math.floor(i / 9) / 3) * 3 + Math.floor((i % 9) / 3);
+  for (let i = 0; i < 81; i++) if (g[i]) {
+    const b = 1 << g[i];
+    rowM[Math.floor(i / 9)] |= b; colM[i % 9] |= b; boxM[box(i)] |= b;
+  }
+  let count = 0;
+  (function solve() {
+    let best = -1, bestFree = 0, bestN = 10;
+    for (let i = 0; i < 81; i++) {
+      if (g[i]) continue;
+      const free = ~(rowM[Math.floor(i / 9)] | colM[i % 9] | boxM[box(i)]) & 0x3FE;
+      let n = 0; for (let m = free; m; m &= m - 1) n++;
+      if (n < bestN) { best = i; bestFree = free; bestN = n; if (n <= 1) break; }
+    }
+    if (best < 0) { count++; return; }
+    if (!bestN) return;
+    const r = Math.floor(best / 9), c = best % 9, bx = box(best);
+    for (let v = 1; v <= 9 && count < limit; v++) {
+      const b = 1 << v;
+      if (!(bestFree & b)) continue;
+      g[best] = v; rowM[r] |= b; colM[c] |= b; boxM[bx] |= b;
+      solve();
+      g[best] = 0; rowM[r] &= ~b; colM[c] &= ~b; boxM[bx] &= ~b;
+    }
+  })();
+  return count;
 }
 
 // ── State ──
@@ -604,6 +639,8 @@ function renderBest() {
 }
 
 function newGame(level, daily = null) {
+  // 換局前先把目前這局存起來，另一邊的存檔才會帶到最新的已過秒數
+  if (state.puzzle.length && !state.complete) saveGame();
   // 一般局換一般局：舊局算放棄。牽涉每日挑戰的切換不記（兩邊進度各自存）
   if (!state.daily && !daily && !state.complete && state.puzzle.length && hasProgress()) recordResult(state.level, false);
   if (!daily) normalLevel = level;
@@ -703,6 +740,7 @@ function inputNumber(num) {
 }
 
 function eraseCell() {
+  if (state.complete) return; // 結束後不能再動盤面（輸了再撤銷／提示會重複記一筆勝利）
   const idx = state.selected;
   if (idx < 0 || state.given[idx]) return;
   const snap = snapshot();
@@ -715,7 +753,7 @@ function eraseCell() {
 }
 
 function useHint() {
-  if (state.hints <= 0 || state.selected < 0) return;
+  if (state.complete || state.hints <= 0 || state.selected < 0) return;
   const idx = state.selected;
   if (state.given[idx] || state.board[idx] === state.solution[idx]) return;
   const snap = snapshot();
@@ -731,7 +769,7 @@ function useHint() {
 }
 
 function undo() {
-  if (!state.history.length) return;
+  if (state.complete || !state.history.length) return;
   const prev = state.history.pop();
   SFX.soft();
   state.board = prev.board;
@@ -931,10 +969,15 @@ document.getElementById('daily-btn').addEventListener('click', () => {
 });
 
 // ── New game ──（每日挑戰中＝回一般模式，每日題不能重來）
-document.getElementById('new-game-btn').addEventListener('click', () => newGame(state.daily ? normalLevel : state.level));
+// 從每日回一般模式時，先接回原本解到一半的一般局，沒有才開新題
+function nextGame() {
+  if (state.daily) { if (!loadGame(SAVE_KEY)) newGame(normalLevel); }
+  else newGame(state.level);
+}
+document.getElementById('new-game-btn').addEventListener('click', nextGame);
 document.getElementById('win-new-btn').addEventListener('click', () => {
   document.getElementById('win-screen').classList.remove('show');
-  newGame(state.daily ? normalLevel : state.level);
+  nextGame();
 });
 document.getElementById('share-btn').addEventListener('click', async () => {
   const ok = await copyText(dailyShareText());

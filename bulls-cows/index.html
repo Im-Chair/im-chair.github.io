@@ -433,6 +433,7 @@ function loadGame(key = SAVE_KEY) {
   answer = d.answer;
   startTime = Date.now() - (d.elapsed || 0) * 1000;
   for (const g of d.guesses) { input = g; submit(true); }
+  saveGame(); // newGame() 會清掉存檔，重播不會重存，這裡寫回去
   return true;
 }
 
@@ -445,12 +446,21 @@ function generateAnswer(rnd = Math.random) {
   return digits.slice(0, 4);
 }
 
+let resultTimer = null; // 延遲顯示結算的 timer id（newGame 時取消）
+
+// 從每日回一般模式時，先接回一般存檔裡的舊局，沒有才開新局
+function backToNormal() {
+  if (daily) { if (!loadGame(SAVE_KEY)) newGame(); }
+  else newGame();
+}
+
 function newGame(dailyDate = null) {
+  clearTimeout(resultTimer); resultTimer = null; // 取消上一局還沒顯示的結算，避免蓋在新局上
   // 一般局換一般局：舊局算放棄。牽涉每日挑戰的切換不動存檔（兩邊進度各自保留）
   if (!daily && !dailyDate) {
     if (!gameOver && guesses.length) recordResult('classic', false); // 中途放棄算一局
-    lsSet(SAVE_KEY, null);
   }
+  if (!dailyDate) lsSet(SAVE_KEY, null); // 新開一般局＝舊的一般存檔作廢
   daily = dailyDate;
   document.getElementById('mode-tag').hidden = !daily;
   document.getElementById('daily-btn').classList.toggle('active', !!daily);
@@ -567,7 +577,7 @@ function submit(replaying = false) {
       // rows：每次猜測的 [A, B]，分享時畫成格子（只有數量、不洩漏位置）
       finishDaily(daily, true, { guesses: attempts, time: elapsed, answer: answer.join(''),
         rows: guesses.map(g => { const r = evaluate(g, answer); return [r.a, r.b]; }) });
-      setTimeout(showDailyResult, 400);
+      resultTimer = setTimeout(() => { resultTimer = null; showDailyResult(); }, 400);
       return;
     }
     lsSet(SAVE_KEY, null);
@@ -582,7 +592,7 @@ function submit(replaying = false) {
     document.getElementById('result-title').textContent = '答對了！';
     document.getElementById('share-btn').hidden = true;
     document.getElementById('result-btn').textContent = '再來一局';
-    setTimeout(() => document.getElementById('overlay').classList.add('show'), 400);
+    resultTimer = setTimeout(() => { resultTimer = null; document.getElementById('overlay').classList.add('show'); }, 400);
   } else {
     input = [];
     document.getElementById('attempt-num').textContent = attempts + 1;
@@ -632,8 +642,8 @@ document.querySelectorAll('.num-btn[data-n]').forEach(btn => {
 document.getElementById('del-btn').addEventListener('click', deleteDigit);
 document.getElementById('submit-btn').addEventListener('click', () => submit());
 // 每日挑戰中按「新遊戲」／結算按鈕＝回一般模式（每日題不能重來）
-document.getElementById('result-btn').addEventListener('click', () => newGame());
-document.getElementById('new-game-btn').addEventListener('click', () => newGame());
+document.getElementById('result-btn').addEventListener('click', backToNormal);
+document.getElementById('new-game-btn').addEventListener('click', backToNormal);
 document.getElementById('daily-btn').addEventListener('click', () => {
   const today = dateStr();
   if (dailyInfo().last?.date === today) { showDailyResult(); return; } // 今天猜過了

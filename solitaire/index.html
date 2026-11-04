@@ -352,10 +352,10 @@ function curElapsed() {
 }
 
 function saveGame() {
-  if (G.won || !G.history.length) { lsSet(SAVE_KEY, null); return; } // 翻牌庫不算步數，所以用「有沒有操作過」判斷
+  if (G.won || !G.started) { lsSet(SAVE_KEY, null); return; } // 翻牌庫不算步數，所以用「有沒有操作過」判斷（悔棋清空 history 也不影響）
   const { stock, waste, foundations, tableau, drawMode, score, moves } = G;
   lsSet(SAVE_KEY, { stock, waste, foundations, tableau, drawMode, score, moves,
-    history: G.history.slice(-SAVE_HISTORY), elapsed: curElapsed() });
+    history: G.history.slice(-SAVE_HISTORY), elapsed: curElapsed(), started: true });
 }
 
 function loadGame() {
@@ -366,6 +366,7 @@ function loadGame() {
   Object.assign(G, {
     stock: d.stock, waste: d.waste, foundations: d.foundations, tableau: d.tableau,
     score: d.score, moves: d.moves, history: d.history || [], elapsed: d.elapsed || 0,
+    started: d.started !== false, // 舊存檔沒這欄位，視為已開始
   });
   startTimer();
   render();
@@ -395,7 +396,8 @@ function shuffle(arr) {
 }
 
 function newGame(drawMode = G.drawMode) {
-  if (G.history?.length && !G.won) recordResult('draw' + G.drawMode, false); // 中途放棄算一局
+  clearTimeout(finishTimer); finishing = false; // 取消上一局自動收牌殘留的排程
+  if (G.started && !G.won) recordResult('draw' + G.drawMode, false); // 中途放棄算一局
   lsSet(SAVE_KEY, null);
   stopTimer(); // 先停舊局的計時器（原本在 G 換掉後才停，舊 interval 會殘留）
   const deck = shuffle(freshDeck());
@@ -418,6 +420,7 @@ function newGame(drawMode = G.drawMode) {
     score: 0,
     moves: 0,
     history: [],
+    started: false, // 第一次有效操作後設 true（不受悔棋清空 history 影響）
     startTime: Date.now(),
     elapsed: 0,
     timerInterval: null,
@@ -457,7 +460,7 @@ function snapshot() {
     score: G.score, moves: G.moves,
   });
 }
-function pushHistory() { G.history.push(snapshot()); if (G.history.length > 60) G.history.shift(); }
+function pushHistory() { G.started = true; G.history.push(snapshot()); if (G.history.length > 60) G.history.shift(); }
 function undo() {
   if (!G.history.length) return;
   const prev = JSON.parse(G.history.pop());
@@ -492,6 +495,7 @@ function foundationFor(card) {
 
 // ── Stock click ──
 function clickStock() {
+  if (!G.stock.length && !G.waste.length) return; // 兩邊都空不算操作
   pushHistory();
   SFX.soft();
   G.selected = null;
@@ -747,6 +751,7 @@ document.addEventListener('pointerdown', () => { suppressClick = false; }, true)
 
 // ── 自動收牌 ──
 let finishing = false;
+let finishTimer = 0; // 自動收牌的排程 id，newGame 時要取消
 function canAutoFinish() {
   return !G.won && !finishing && !G.stock.length && !G.waste.length
     && G.tableau.some(c => c.length) && G.tableau.every(c => c.every(x => x.faceUp));
@@ -765,7 +770,7 @@ function autoFinish() {
       SFX.tone(500 + G.foundations.reduce((n, f) => n + f.length, 0) * 12, { dur: 0.05 }); // 越收越高
       render();
       if (G.foundations.every(f => f.length === 13)) { finishing = false; checkWin(); return; }
-      setTimeout(step, 70);
+      finishTimer = setTimeout(step, 70);
       return;
     }
     finishing = false; render(); // 理論上全翻開一定收得完，保險起見停住
@@ -969,6 +974,12 @@ function renderTableau() {
 }
 
 // ── Controls ──
+// 縮放或轉向後重算牌高與疊距（rAF 節流）
+let resizeRaf = 0;
+window.addEventListener('resize', () => {
+  if (resizeRaf) return;
+  resizeRaf = requestAnimationFrame(() => { resizeRaf = 0; render(); });
+});
 document.getElementById('undo-btn').addEventListener('click', () => { if (!finishing) undo(); });
 document.getElementById('finish-btn').addEventListener('click', autoFinish);
 document.getElementById('new-btn').addEventListener('click', () => newGame());

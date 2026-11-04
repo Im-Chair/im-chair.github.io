@@ -110,7 +110,7 @@ function tryStart(floor){
   const cycle = pendingMode==='orig' ? 0 : pendingMode;
   if(floor > 1){
     const fee = tpFee(floor, pendingMode);   // 與選單顯示同一支，不要在這裡重算
-    if(G.gold < fee){ toast('傳送費不夠（需 '+fee+' <svg class="ic"><use href="#ic-gold"/></svg>）'); return; }
+    if(G.gold < fee){ notice('傳送費不夠（需 '+fee+' <svg class="ic"><use href="#ic-gold"/></svg>）'); return; }
     G.gold -= fee;
   }
   startRun(floor, cycle);
@@ -137,7 +137,11 @@ function startRun(startFloor, cycle){
   enterFloor();
 }
 
+/* v461：floorDone＝本層的門已用掉（戰鬥打贏／進了營火・寶箱・事件門），獎勵可能已入帳。
+   讀檔接回時若已結算，直接走 afterLoot（本源通關→bankRun，否則 nextFloor），不可在同層重抽門——
+   以前一律 showDoors，關分頁重開就能在同一層無限刷戰利品與首領。旗標在 nextFloor 推進樓層時清掉。 */
 function resumeRun(){
+  if(R.floorDone){ afterLoot(); return; }
   showDoors();
 }
 
@@ -371,7 +375,7 @@ function renderDoorPotions(){
     const d = document.createElement('div'); d.className='potion';
     d.innerHTML = `<span class="pi">${uiIcon(pt.img,'pi-img',pt.i)}</span>${pt.n}${n>1?' ×'+n:''}`;
     d.onclick = ()=>{
-      if(!pt.any){ toast('只能在戰鬥中使用'); return; }
+      if(!pt.any){ notice('只能在戰鬥中使用'); return; }
       usePotion(k, false);
       showDoors();
     };
@@ -382,6 +386,8 @@ function renderDoorPotions(){
 function enterDoor(d){
   R.doors = null;
   R.lastDoor = d.t;
+  // v461：非戰鬥門一進門就算本層已結算（獎勵散在各事件結果裡，逐一標記會漏）；戰鬥門在 winBattle 標記
+  if(d.t==='rest' || d.t==='chest' || d.t==='event') R.floorDone = true;
   if(d.t==='fight') startBattle(makeEncounter(R.floor, 0));
   else if(d.t==='elite'){
     const roll = Math.random();
@@ -437,6 +443,7 @@ function nextFloor(){
   if(hasCurse('bloodtax')){ R.hp = Math.max(1, R.hp - 3); toast('血稅：-3 生命'); }
   const before = realmFor(R.floor);
   R.floor++;
+  R.floorDone = false;   // v461：新的一層，結算旗標歸零（見 resumeRun）
   bountyProgress('reach');
   // 最深紀錄改由 bankRun 在「成功回營」時更新（死亡＝不記錄）
   save();
@@ -873,7 +880,7 @@ const EVENTS = {
         }
         else {
           const d = Math.max(4, Math.round(playerMaxHp()*0.07));
-          R.hp = Math.max(1, R.hp - d); R.floor++;
+          R.hp = Math.max(1, R.hp - d);   // v461：拿掉多餘的 R.floor++——按鈕的 nextFloor 已經 +1，兩次會跳過首領層與 50／100 層
           showEventScreen('🚪','門後','你踏進去，腳下沒有地板。\n\n摔到了更深的地方——直接抵達下一層，失去 '+d+' 點生命。',
             [{n:'爬起來', f:()=>nextFloor()}]);
         }
@@ -929,7 +936,7 @@ const EVENTS = {
     const cost = 20 + R.floor*3;
     showEventScreen('🪙','許願池','聚落中央有個積水的石坑，底下鋪滿了各族丟進去的銅板——願望大多沒實現，哥布林倒是撈得很勤。',
       [{n:`投入 ${cost} 碎銀許願`, f:()=>{
-        if(R.gold < cost){ toast('碎銀不夠'); return; }
+        if(R.gold < cost){ notice('碎銀不夠'); return; }
         R.gold -= cost;
         const r = Math.random();
         if(r<0.5){ const b = grantBless();
@@ -1043,9 +1050,11 @@ const EVENTS = {
     if(R.bag.length){
       choices.push({n:'🔥 以物立契（熔掉行囊中一件裝備）', f:()=>{
         const c = R.bag.slice(0,6).map(it=>({cls:'itembtn', n: itemRowHtml(it, {compact:true}), f:()=>{
-          const i = R.bag.findIndex(x=>x.id===it.id);
-          if(i>=0) R.bag.splice(i,1);
-          sacrifice(()=>{}, '物契');
+          // v461：跟血契一樣選完招式才付代價；以前先熔掉，再按「還是算了」裝備就白白消失
+          sacrifice(()=>{
+            const i = R.bag.findIndex(x=>x.id===it.id);
+            if(i>=0) R.bag.splice(i,1);
+          }, '物契');
         }}));
         c.push({n:'捨不得', f:()=>EVENTS.scroll()});
         showEventScreen('📜','殘卷・獻祭','殘卷要吃東西。選一件——它不挑，但要真的痛。', c);
@@ -1087,13 +1096,13 @@ function merchantLabel(st){
 function buyMerchant(idx){
   const st = R.shop[idx];
   if(!st || st.sold) return;
-  if(R.gold < st.price){ toast('碎銀不夠'); return; }
+  if(R.gold < st.price){ notice('碎銀不夠'); return; }
   if(st.kind==='gear'){ R.bag.push(st.it); toast('入手 '+st.it.name); }
   else if(st.kind==='oil'){ const b = grantBless(); toast(b.n); }
   else if(st.kind==='quench'){ R.quench = {k:'ptouch', v:3, battles:3}; toast('刀刃泛起烏青色'); }
   else if(st.kind==='mat'){ G.mats[st.mat]++; toast('入手 '+MATS[st.mat].n); }
   else if(st.kind==='rope'){ R.hasRope = true; R.ropeSeen = true; toast('<svg class="ic"><use href="#ic-rope"/></svg> 入手逃脫之繩'); }
-  else { if(!potAdd(st.k)){ toast('背不下了'); return; } toast('買到了'); }
+  else { if(!potAdd(st.k)){ notice('背不下了'); return; } toast('買到了'); }
   R.gold -= st.price;
   st.sold = true;
   save();
@@ -1132,17 +1141,17 @@ function tryDropRope(chance, srcLabel){ // 逃脫之繩掉落：單趟唯一
 }
 
 function retreat(){
-  if(!R.hasRope){ toast('沒有逃脫之繩'); return; }
+  if(!R.hasRope){ notice('沒有逃脫之繩'); return; }
   retreatFlow('<svg class="ic big"><use href="#ic-rope"/></svg>', `你在第 ${R.floor} 層拉了繩子。貪婪是美德，活著兌現它更是。`);
 }
 function retreatByGold(){
-  if(R.gold <= 0){ toast('沒有碎銀可付'); return; }
+  if(R.gold <= 0){ notice('沒有碎銀可付'); return; }
   const cost = Math.ceil(R.gold*0.9);
   openSheet(`<h3>花錢買一條命</h3><p class="base">沒有繩子，也能用錢開路——扣掉手上 9 成碎銀（${cost}<svg class="ic"><use href="#ic-gold"/></svg>，剩 ${R.gold-cost}），活著離開並記錄這趟深度。</p>
     <div class="row" style="margin-top:16px"><button class="btn primary" onclick="doRetreatByGold()">花 ${cost}<svg class="ic"><use href="#ic-gold"/></svg> 逃脫</button><button class="btn" onclick="closeSheet()">再想想</button></div>`);
 }
 function doRetreatByGold(){
-  if(R.gold <= 0){ toast('沒有碎銀可付'); return; }
+  if(R.gold <= 0){ notice('沒有碎銀可付'); return; }
   const cost = Math.ceil(R.gold*0.9);
   R.gold -= cost; closeSheet();
   retreatFlow('<svg class="ic big"><use href="#ic-gold"/></svg>', `你在第 ${R.floor} 層撒錢開路——${cost} 碎銀換一條命。深淵收了買路財，放你走。`);
@@ -1316,7 +1325,7 @@ function finalizeBounties(){   // 只有活著回營（逃脫/通關）才把「
 }
 function acceptBounty(i){
   const b = G.bounties[i]; if(!b || b.state!=='offer') return;
-  if(G.bounties.filter(x=>x.state==='active').length >= MAX_ACTIVE){ toast(`同時最多接 ${MAX_ACTIVE} 個委託`); return; }
+  if(G.bounties.filter(x=>x.state==='active').length >= MAX_ACTIVE){ notice(`同時最多接 ${MAX_ACTIVE} 個委託`); return; }
   b.state = 'active'; save(); renderBounty();
 }
 function abandonBounty(i){

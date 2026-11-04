@@ -234,6 +234,7 @@ function regenMana(){
 
 function startPlayerTurn(first){
   if(B.over) return;
+  B.enemyActing = false;   // v461：敵方回合結束，解除 endTurn 的防重入鎖
   if(!first){ B.energy = B.maxEnergy + (B.carryAp||0); B.carryAp = 0; if(!sumAffix('wall')) B.block = 0; }
   B.rung = 0;   // 咒鈴：換點額度每回合重置
   if(first){ const pl = sumAffix('plate');   // 守勢祝福：每「場」戰鬥開始一次，獲得 (plate% × 最大生命) 的格擋
@@ -249,7 +250,7 @@ function startPlayerTurn(first){
   if(B.st.stunImm){ B.st.stunImm--; if(!B.st.stunImm) delete B.st.stunImm; }
   if(B.st.stun){ B.st.stun--;
     if(!B.st.stun){ delete B.st.stun; B.st.stunImm = 2; }
-    log('你被暈眩了，這回合無法行動。','sys'); renderBattle(); setTimeout(()=>enemyTurn(), 900); return; }
+    log('你被暈眩了，這回合無法行動。','sys'); B.enemyActing = true; renderBattle(); setTimeout(()=>enemyTurn(), 900); return; }
   if(B.charge){
     const need = B.charge.cost - B.charge.paid;
     if(B.energy >= need){
@@ -259,13 +260,13 @@ function startPlayerTurn(first){
       const sk = SK(sid);
       log(`蓄力完成——【${sk.n}】釋放！`,'sys');
       castSkill(sk);
-      if(B.over) return;
+      if(!B || B.over) return;   // v461：castSkill 內被荊棘反噬致死時 playerDie 會把 B 清成 null
     } else {
       B.charge.paid += B.energy;
       B.energy = 0;
       log(`蓄力中（${fmtPts(B.charge.paid)}/${fmtPts(B.charge.cost)}）……`,'sys');
       renderBattle();
-      setTimeout(()=>enemyTurn(), 900);
+      setTimeout(()=>endTurn(), 900);   // v461：走 endTurn 而非直呼 enemyTurn，敵人燃燒跳傷與共鳴/囤積清除才不會被蓄力跳過
       return;
     }
   }
@@ -448,7 +449,8 @@ function SK(sid){
   return sk;
 }
 function skillCostU(sk){ // 行動點：普攻1／中2／大3（輔招吃 fixed），不再乘武器
-  if(sk.fixed) return sk.fixed * (sk.costMul||1);
+  // v461：fixed:0（換血、囤積＝免費）是合法值，用 != null 判；以前 0 被當 falsy 掉到 costW → NaN 行動點
+  if(sk.fixed != null) return sk.fixed * (sk.costMul||1);
   return Math.max(0.5, sk.costW * (sk.costMul||1));
 }
 // 魔力成本＝最大魔力的%（前後期皆成立）；魔典 manaCut 折扣在此唯一入口套用，
@@ -459,10 +461,10 @@ function skillManaC(sk){ return Math.round(playerMaxMana() * (sk.manaPct||0)/100
    成本 40% 必須高於基礎回魔 25%，否則只放物理普攻（不耗魔）的施法職會被回魔完全補上＝白拿永久第 4 點。 */
 function ringBell(){
   const w = weaponType();
-  if(!B || B.over || !w.apCost) return;
-  if(B.rung) return toast('本回合已經搖過鈴了');
+  if(!B || B.over || B.enemyActing || !w.apCost) return;
+  if(B.rung) return notice('本回合已搖過鈴');
   const cost = Math.round(playerMaxMana() * w.apCost/100);
-  if((R.mana||0) < cost) return toast(`魔力不足（需要 ${cost}）`);
+  if((R.mana||0) < cost) return notice(`魔力不足（需要 ${cost}）`);
   R.mana -= cost; B.rung = 1; B.energy += 1;
   log(`搖響${w.n}：燃燒 ${cost} 魔力，換得 1 行動點。`,'sys');
   renderBattle(); save();
@@ -679,12 +681,12 @@ function skillBlocked(sk){
   return null;
 }
 function useSkill(sid){
-  if(B.over || B.charge) return;
+  if(!B || B.over || B.charge || B.enemyActing) return;   // v461：死亡後 B 為 null；敵方回合延遲期間不可出招
   const sk = SK(sid);
   const blocked = skillBlocked(sk);
-  if(blocked){ toast(blocked); return; }
+  if(blocked){ notice(blocked); return; }
   const cost = skillCostU(sk), mc = skillManaC(sk);
-  if(mc > 0 && (R.mana||0) < mc){ toast('法力不足'); return; }
+  if(mc > 0 && (R.mana||0) < mc){ notice('法力不足'); return; }
   if(cost > B.maxEnergy){
     // 蓄力制 (§6)：僅限先天費用超過每回合上限的招（斧大招）；一般「點數不足」不給蓄
     if(cost > B.energy){
@@ -693,11 +695,11 @@ function useSkill(sid){
       B.energy = 0;
       log(`開始蓄力【${sk.n}】——本回合剩餘行動全數投入（${fmtPts(B.charge.paid)}/${fmtPts(cost)}）。`,'sys');
       renderBattle();
-      setTimeout(()=>enemyTurn(), 700);
+      setTimeout(()=>endTurn(), 700);   // v461：同 startPlayerTurn 蓄力中，走 endTurn
       return;
     }
   } else if(cost > B.energy){
-    toast('行動點不足'); return;
+    notice('行動點不足'); return;
   }
   B.energy -= cost;
   if(mc > 0) R.mana -= mc;
@@ -802,6 +804,7 @@ function castSkill(sk){
             mult = sk.mult + sk.debuffAmp * Math.min(4, kinds);
           }
           dealToEnemy(mult, sk, sk);
+          if(!B || B.over) return;   // v461：荊棘反噬致死 → playerDie 已清掉 B，不可再往下結算
         }
         B.ti = aliveEs().includes(B.es[ti0]) ? ti0 : (B.es.indexOf(aliveEs()[0]) >= 0 ? B.es.indexOf(aliveEs()[0]||B.es[0]) : 0);
       }
@@ -813,6 +816,7 @@ function castSkill(sk){
         let mult = sk.mult;
         if(sk.poisonAmp) mult = sk.mult + sk.poisonAmp * Math.min(GARROTE_AMP_CAP, tgt().st.poison||0);
         dealToEnemy(mult, sk, sk);
+        if(!B || B.over) return;   // v461：同上
       }
     }
   }
@@ -945,7 +949,9 @@ function onEnemySlain(e){
 }
 
 function endTurn(){
-  if(B.over) return;
+  // v461：防重入。enemyTurn 延遲 500ms 才動，期間「結束回合」與自動結束計時器會各觸發一次 → 敵人連動兩回合
+  if(!B || B.over || B.enemyActing) return;
+  B.enemyActing = true;
   // 囤積：把沒用完的行動點結轉到下回合（上限 apKeep），額度只在登記的那一回合有效。
   B.carryAp = B.apKeep ? Math.min(B.apKeep, Math.max(0, Math.floor(B.energy))) : 0;
   if(B.carryAp) log(`囤積：${fmtPts(B.carryAp)} 點行動點結轉到下回合。`,'sys');
@@ -980,6 +986,7 @@ function tickBurn(who, zone, name){
 
 function enemyTurn(){
   setTimeout(()=>{
+    if(!B || B.over) return;   // v461：延遲期間戰鬥已結束（死亡清掉 B、或藥水收尾）就不再行動
     // _ra 只用來判斷「要不要跳提示」與狀態條的層數；倍率本身由 moveVal() → rageMulOf() 算，不要在這裡再乘一次
     const _ra = B.rageAt || RAGE.at;
     if(B.turn >= _ra && !B.rageWarned){ B.rageWarned = true; log('深淵不耐煩了——敵人陷入狂怒，傷害開始遞增！','sys'); }
@@ -1017,7 +1024,7 @@ function enemyTurn(){
           const times = mv.x || 1;
           let totalDealt = 0;
           for(let i=0;i<times;i++){
-            if(R.hp<=0) break;
+            if(R.hp<=0 || e.hp<=0) break;   // v461：被荊棘／尖壁／反射膜／風棘打死就停手，不再打完剩下的連擊
             let d = mval.hit;
             if(B.st.vuln) d = Math.round(d*1.5);
             if(Math.random()*100 < dodgeRate()){
@@ -1054,6 +1061,7 @@ function enemyTurn(){
             if(mv.t==='s' && d>0){ const steal = Math.min(R.gold, 10 + R.floor*2); R.gold -= steal; if(steal) log(`${e.n} 偷走了 ${steal} 碎銀！`,'sys'); }
           }
           if(mv.ap && totalDealt>0) applyStatus(B.st, mv.ap, null);
+          if(e.hp<=0){ log(e.n+' 倒下了。','sys'); onEnemySlain(e); }   // v461：反傷擊殺也要觸發貪食／延燒／委託
           break;
         }
         case 'd': e.block += val; log(`${e.n} 進入防禦（+${val} 格擋）。`); break;
@@ -1081,6 +1089,7 @@ function afterEnemyAct(){
 
 function winBattle(){
   if(B.over) return; B.over = true;
+  R.floorDone = true;   // v461：獎勵即將入帳＝本層已結算，讀檔不得在同層重打（見 run.js resumeRun）
   R.kills += B.es.length;
   if(B.boss) G.rec.boss++;
   let firstKillBonus = 0;
@@ -1232,18 +1241,20 @@ function afterLoot(){
 }
 
 function usePotion(k, inBattle){
-  if(!R.pots || !R.pots[k]) return;
+  if(!R || !R.pots || !R.pots[k]) return;              // v461：死亡結算延遲期間 R 已清空
+  if(inBattle && (!B || B.over || B.enemyActing)) return;   // v461：敵方回合延遲期間不可用藥
   if(k==='heal'){ const v = potPower(k); const h = healPlayer(v);   // v457：戰鬥外以前繞過管線，同一瓶藥在同一層會回不同的血
     const mm = playerMaxMana();
     if(mm > 0){ R.mana = Math.min(mm, (R.mana||0) + Math.round(mm*POT_MANA_PCT)); }
     toast(`回復 ${h} 血${mm>0?`＋${Math.round(POT_MANA_PCT*100)}%法力`:''}`); if(inBattle){ log(`喝下治療藥水，回復 ${h} 血${B&&B.st.wound?'（重傷減半）':''}。`,'heal'); floatDmg('player-zone','+'+h,'heal'); } }
-  else if(k==='energy'){ if(!inBattle) return toast('只能在戰鬥中用'); B.energy += 2; log('灌下烈酒，+2 行動點。','sys'); }
-  else if(k==='bomb'){ if(!inBattle) return toast('只能在戰鬥中用'); const v = potPower(k); const e = tgt(); e.hp -= v; applyStatus(e.st, {vuln:2}); log(`火油瓶對 ${e.n} 炸出 ${v} 傷害，火光中破綻畢露（易傷 2）。`,'dmg'); floatDmg('ez-'+B.ti,'-'+v,''); }
-  else if(k==='purge'){ B ? (B.st = {}) : null; toast('負面狀態已清除'); if(inBattle) log('淨化藥水洗去了所有異常。','sys'); }
-  else if(k==='wrath'){ if(!inBattle) return toast('只能在戰鬥中用'); B.potRage = true; log('狂暴藥劑燒進血管——本場戰鬥傷害 +50%！','sys'); }
-  else if(k==='stone'){ if(!inBattle) return toast('只能在戰鬥中用'); const v = potPower(k); B.block += v; log(`石膚藥劑：+${v} 格擋。`,'sys'); }
-  else if(k==='holy'){ if(!inBattle) return toast('只能在戰鬥中用'); const v = potPower(k);
-    for(const e of aliveEs()){ e.hp -= v; floatDmg('ez-'+B.es.indexOf(e),'-'+v,''); }
+  else if(k==='energy'){ if(!inBattle) return notice('只能在戰鬥中用'); B.energy += 2; log('灌下烈酒，+2 行動點。','sys'); }
+  else if(k==='bomb'){ if(!inBattle) return notice('只能在戰鬥中用'); const v = potPower(k); const e = tgt(); e.hp -= v; applyStatus(e.st, {vuln:2}); log(`火油瓶對 ${e.n} 炸出 ${v} 傷害，火光中破綻畢露（易傷 2）。`,'dmg'); floatDmg('ez-'+B.ti,'-'+v,''); if(e.hp<=0) onEnemySlain(e); }
+  // v461：戰鬥外 B 是上一場的殘留物件，清它沒有意義；要清的是帶進下一場的 R.pendingStatus
+  else if(k==='purge'){ if(inBattle) B.st = {}; else R.pendingStatus = null; toast('負面狀態已清除'); if(inBattle) log('淨化藥水洗去了所有異常。','sys'); }
+  else if(k==='wrath'){ if(!inBattle) return notice('只能在戰鬥中用'); B.potRage = true; log('狂暴藥劑燒進血管——本場戰鬥傷害 +50%！','sys'); }
+  else if(k==='stone'){ if(!inBattle) return notice('只能在戰鬥中用'); const v = potPower(k); B.block += v; log(`石膚藥劑：+${v} 格擋。`,'sys'); }
+  else if(k==='holy'){ if(!inBattle) return notice('只能在戰鬥中用'); const v = potPower(k);
+    for(const e of aliveEs()){ e.hp -= v; floatDmg('ez-'+B.es.indexOf(e),'-'+v,''); if(e.hp<=0) onEnemySlain(e); }   // v461：藥水擊殺同樣觸發 onEnemySlain
     log(`聖水潑灑——所有敵人受到 ${v} 傷害。`,'sys'); }
   R.pots[k]--; if(!R.pots[k]) delete R.pots[k];
   save();
@@ -1255,7 +1266,7 @@ function usePotion(k, inBattle){
 }
 
 function openBattlePotions(){
-  if(!potTotal()){ toast('沒有藥水'); return; }
+  if(!potTotal()){ notice('沒有藥水'); return; }
   let html = '<h3>道具</h3><div class="item-list" style="margin-top:10px">';
   for(const [k,n] of Object.entries(R.pots)){
     const p = POTIONS[k];

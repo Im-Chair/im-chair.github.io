@@ -1,0 +1,2191 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="晨昏線前哨">
+<meta name="theme-color" content="#060a12">
+<title>晨昏線前哨</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+/* 版面：手機直式一屏。上方標頭＋資源格，中間分頁可捲動，底部是拇指操作列。桌面版右側固定顯示日誌。 */
+:root {
+  --bg: #060a12;
+  --panel: rgba(13, 21, 36, .86);
+  --panel2: #101b2e;
+  --line: #1c2a40;
+  --line2: #2b3d5a;
+  --fg: #e2e8f0;
+  --dim: #8797ad;
+  --mute: #56667e;
+  --cy: #22d3ee;
+  --cy-d: #0e7490;
+  --am: #fbbf24;
+  --gr: #34d399;
+  --rd: #fb7185;
+  --vi: #a78bfa;
+  --bl: #60a5fa;
+  --f-hud: 'Orbitron', system-ui, sans-serif;
+  --f-num: 'Share Tech Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  --f-ui: system-ui, -apple-system, 'PingFang TC', 'Noto Sans TC', 'Microsoft JhengHei', sans-serif;
+  color-scheme: dark;
+}
+[hidden] { display: none !important; }
+* { box-sizing: border-box; }
+html { height: 100%; }
+body {
+  height: 100%;
+  margin: 0;
+  color: var(--fg);
+  font-family: var(--f-ui);
+  font-size: 14px;
+  /* 晨昏線：下方是永遠卡在地平線的暮光，上方是夜側 */
+  background:
+    radial-gradient(140% 55% at 50% 118%, rgba(251, 146, 60, .20), rgba(251, 146, 60, 0) 62%),
+    radial-gradient(90% 40% at 50% -10%, rgba(34, 211, 238, .07), rgba(34, 211, 238, 0) 70%),
+    linear-gradient(180deg, #04070e, #0a1120 70%, #120f18);
+  background-color: var(--bg);
+  background-attachment: fixed;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  overscroll-behavior: none;
+}
+button { font: inherit; color: inherit; cursor: pointer; }
+button:disabled { cursor: not-allowed; }
+#app {
+  height: 100%;
+  height: 100dvh;
+  max-width: 560px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: calc(8px + env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px)) calc(8px + env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px));
+}
+
+/* 標頭 */
+.top { display: flex; align-items: center; gap: 8px; }
+.home, .ibtn {
+  flex: none;
+  width: 40px; height: 40px;
+  display: grid; place-items: center;
+  border-radius: 10px;
+  background: var(--panel);
+  border: 1px solid var(--line2);
+  text-decoration: none;
+  font-size: 18px;
+  color: var(--fg);
+}
+.home:hover, .ibtn:hover { border-color: var(--cy-d); }
+.ttl { flex: 1; min-width: 0; line-height: 1.15; }
+.ttl b { display: block; font-size: 17px; letter-spacing: .08em; color: #cffafe; text-shadow: 0 0 10px rgba(34, 211, 238, .45); white-space: nowrap; }
+.ttl small { display: block; font-family: var(--f-hud); font-size: 9px; letter-spacing: .22em; color: var(--mute); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.day {
+  flex: none;
+  font-family: var(--f-hud);
+  padding: 4px 10px;
+  border-radius: 10px;
+  background: var(--panel);
+  border: 1px solid rgba(34, 211, 238, .35);
+  text-align: center;
+  line-height: 1.05;
+}
+.day small { display: block; font-size: 8px; color: var(--dim); letter-spacing: .15em; }
+.day b { font-size: 18px; color: var(--cy); }
+.day i { font-style: normal; font-size: 11px; color: var(--mute); }
+
+/* 資源格 */
+.res { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
+.tile {
+  min-width: 0;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 5px 6px 5px;
+  position: relative;
+  overflow: hidden;
+}
+.tile .lb { display: block; font-size: 10px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tile .v { display: block; font-family: var(--f-num); font-size: 15px; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tile .v small { font-size: 10px; color: var(--mute); }
+.tile .r { display: block; font-family: var(--f-num); font-size: 10px; color: var(--mute); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tile .r.up { color: var(--gr); }
+.tile .r.dn { color: var(--rd); }
+.tile.warn { border-color: rgba(251, 113, 133, .55); box-shadow: inset 0 0 12px rgba(251, 113, 133, .12); }
+.t-power .v { color: var(--am); }
+.t-food .v { color: var(--gr); }
+.t-parts .v { color: #cbd5e1; }
+.t-research .v { color: var(--vi); }
+.t-pop .v { color: var(--bl); }
+.t-pods .v { color: #7dd3fc; }
+.t-crystal .v { color: #f0abfc; }
+.t-def .v { color: var(--cy); }
+
+/* 士氣／異蟲活動條 */
+.bars { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.bar { font-size: 10px; color: var(--dim); }
+.bar .bh { display: flex; justify-content: space-between; margin-bottom: 3px; }
+.bar .bh b { font-family: var(--f-num); font-weight: 400; font-size: 11px; }
+.bar .track { height: 6px; border-radius: 6px; background: #0b1322; border: 1px solid var(--line); overflow: hidden; }
+.bar .fill { height: 100%; width: 0; border-radius: 6px; transition: width .35s; }
+#bMorale .fill { background: linear-gradient(90deg, #f43f5e, #fbbf24 45%, #34d399); }
+#bHost .fill { background: linear-gradient(90deg, #64748b, #f97316 60%, #ef4444); }
+#bMorale .bh b { color: var(--gr); }
+#bHost .bh b { color: #fdba74; }
+
+/* 分頁 */
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); }
+.tab {
+  flex: 1;
+  padding: 9px 0 8px;
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  color: var(--dim);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: .05em;
+}
+.tab.on { color: var(--cy); border-bottom-color: var(--cy); background: linear-gradient(0deg, rgba(34, 211, 238, .08), transparent); }
+.pane { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 2px 1px 8px; }
+.pane::-webkit-scrollbar, .logs::-webkit-scrollbar { width: 5px; }
+.pane::-webkit-scrollbar-thumb, .logs::-webkit-scrollbar-thumb { background: var(--cy-d); border-radius: 3px; }
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px 11px;
+}
+.sec { font-size: 11px; color: var(--mute); letter-spacing: .12em; margin: 12px 2px 6px; }
+.sec:first-child { margin-top: 2px; }
+.grid { display: grid; grid-template-columns: 1fr; gap: 7px; }
+.people .prow { display: flex; justify-content: space-between; gap: 8px; padding: 3px 0; font-size: 13px; }
+.people .prow span { color: var(--dim); }
+.people .prow b { font-family: var(--f-num); font-weight: 400; text-align: right; }
+.people .acts { display: flex; gap: 6px; margin-top: 8px; }
+.people .acts .btn { flex: 1; }
+
+.item { display: flex; gap: 10px; align-items: flex-start; }
+.item .em {
+  flex: none;
+  width: 40px; height: 40px;
+  display: grid; place-items: center;
+  font-size: 21px;
+  border-radius: 10px;
+  background: #0b1424;
+  border: 1px solid var(--line2);
+}
+.item .body { flex: 1; min-width: 0; }
+.item .nm { display: flex; align-items: baseline; gap: 6px; font-weight: 700; font-size: 14px; }
+.item .nm small { font-family: var(--f-num); font-weight: 400; font-size: 12px; color: var(--cy); }
+.item p { margin: 3px 0 5px; font-size: 12px; color: var(--dim); line-height: 1.5; }
+.item .eff { font-family: var(--f-num); font-size: 11px; color: #94a3b8; }
+.item .side { flex: none; align-self: center; }
+.item.done { border-color: rgba(52, 211, 153, .35); }
+.item.done .em { border-color: rgba(52, 211, 153, .5); }
+.item.locked { opacity: .55; }
+
+.btn {
+  min-height: 40px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--line2);
+  background: #13203a;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.btn small { font-family: var(--f-num); font-weight: 400; font-size: 11px; color: var(--dim); margin-left: 3px; }
+.btn.pri { background: linear-gradient(180deg, #0891b2, #0e7490); border-color: #22d3ee; color: #ecfeff; box-shadow: 0 0 14px rgba(34, 211, 238, .25); }
+.btn.pri small { color: #cffafe; }
+.btn.vio { background: linear-gradient(180deg, #6d28d9, #5b21b6); border-color: #a78bfa; color: #f5f3ff; }
+.btn.vio small { color: #ddd6fe; }
+.btn:disabled { background: #0d1626; border-color: var(--line); color: var(--mute); box-shadow: none; }
+.btn:disabled small { color: var(--mute); }
+.btn:not(:disabled):active { transform: scale(.97); }
+.badge { font-size: 11px; padding: 2px 8px; border-radius: 999px; border: 1px solid rgba(52, 211, 153, .5); color: var(--gr); white-space: nowrap; }
+
+.note { font-size: 12px; color: var(--dim); line-height: 1.6; margin: 0 2px 8px; }
+.logs { font-size: 12px; line-height: 1.5; }
+.lg { display: flex; gap: 6px; padding: 4px 0; border-bottom: 1px dashed rgba(43, 61, 90, .45); }
+.lg .d { flex: none; font-family: var(--f-num); color: var(--mute); width: 26px; }
+.lg .tg { flex: none; font-size: 10px; padding: 0 5px; border-radius: 4px; border: 1px solid var(--line2); color: var(--dim); height: 17px; line-height: 15px; }
+.lg .m { flex: 1; min-width: 0; color: #cbd5e1; }
+.lg.ok .tg { color: var(--gr); border-color: rgba(52, 211, 153, .45); }
+.lg.warn .tg { color: var(--am); border-color: rgba(251, 191, 36, .45); }
+.lg.alert .tg { color: var(--rd); border-color: rgba(251, 113, 133, .5); }
+.lg.alert .m { color: #fecdd3; }
+.lg.story .tg { color: var(--cy); border-color: rgba(34, 211, 238, .5); }
+
+/* 底部 */
+.ticker {
+  font-size: 12px;
+  color: var(--dim);
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: rgba(8, 14, 26, .8);
+  border: 1px solid var(--line);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-height: 30px;
+}
+.ticker b { font-family: var(--f-num); font-weight: 400; color: var(--mute); margin-right: 6px; }
+.ctrl { display: flex; gap: 6px; }
+.ctrl .btn { min-height: 52px; }
+#bAuto, #bSpeed { flex: none; width: 64px; font-size: 12px; padding: 4px; line-height: 1.2; }
+#bAuto.on { background: #3b2a08; border-color: var(--am); color: #fde68a; }
+#bNext { flex: 1; font-size: 16px; letter-spacing: .1em; }
+#bNext small { display: block; margin: 0; font-size: 10px; letter-spacing: 0; }
+.side-log { display: none; }
+
+/* 覆蓋視窗 */
+.ov {
+  position: fixed; inset: 0; z-index: 50;
+  display: flex; align-items: center; justify-content: center;
+  padding: calc(12px + env(safe-area-inset-top, 0px)) 12px calc(12px + env(safe-area-inset-bottom, 0px));
+  background: rgba(2, 5, 12, .82);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+.sheet {
+  width: 100%;
+  max-width: 540px;
+  max-height: 100%;
+  overflow-y: auto;
+  background: linear-gradient(180deg, #0f1a2e, #0a1222);
+  border: 1px solid rgba(34, 211, 238, .4);
+  border-radius: 16px;
+  padding: 16px 16px 14px;
+  box-shadow: 0 0 40px rgba(34, 211, 238, .14), 0 20px 60px rgba(0, 0, 0, .5);
+  animation: pop .22s ease-out;
+}
+@keyframes pop { from { opacity: 0; transform: translateY(10px) scale(.98); } to { opacity: 1; transform: none; } }
+.sheet.alert { border-color: rgba(251, 113, 133, .55); box-shadow: 0 0 40px rgba(251, 113, 133, .14), 0 20px 60px rgba(0, 0, 0, .5); }
+.sheet.story { border-color: rgba(251, 191, 36, .45); box-shadow: 0 0 40px rgba(251, 191, 36, .1), 0 20px 60px rgba(0, 0, 0, .5); }
+.etag { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line2); color: var(--dim); letter-spacing: .05em; }
+.sheet.story .etag { color: var(--am); border-color: rgba(251, 191, 36, .5); }
+.sheet.alert .etag { color: var(--rd); border-color: rgba(251, 113, 133, .5); }
+.sheet h2 { margin: 8px 0 10px; font-size: 19px; letter-spacing: .04em; }
+.ebody { font-size: 14px; line-height: 1.75; }
+.ebody .narr { margin: 0 0 10px; color: #b6c3d4; }
+.say { display: flex; gap: 9px; margin: 0 0 10px; }
+.ava {
+  flex: none;
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  font-size: 14px; font-weight: 700;
+  color: #06101c;
+  background: var(--c, #94a3b8);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--c, #94a3b8) 45%, transparent);
+  margin-top: 2px;
+}
+.say .who { font-size: 12px; font-weight: 700; color: var(--c, #cbd5e1); }
+.say .who small { font-weight: 400; color: var(--mute); margin-left: 4px; }
+.say p { margin: 1px 0 0; color: #e2e8f0; }
+.choices { display: flex; flex-direction: column; gap: 7px; margin-top: 14px; }
+.choice {
+  text-align: left;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #0d1729;
+  border: 1px solid var(--line2);
+  line-height: 1.5;
+}
+.choice b { display: block; font-size: 14px; }
+.choice small { display: block; font-size: 12px; color: var(--dim); margin-top: 2px; }
+.choice:not(:disabled):hover { border-color: var(--cy); background: #0f2033; }
+.choice:not(:disabled):active { transform: scale(.985); }
+.choice:disabled { opacity: .5; }
+.choice:disabled small { color: var(--rd); }
+.result { margin-top: 14px; padding: 11px 12px; border-radius: 12px; background: rgba(34, 211, 238, .06); border: 1px solid rgba(34, 211, 238, .25); font-size: 14px; line-height: 1.75; }
+.result p { margin: 0 0 8px; }
+.result p:last-child { margin: 0; }
+.result .fx { font-family: var(--f-num); font-size: 12px; color: var(--cy); }
+.sheet .btn.wide { width: 100%; margin-top: 12px; min-height: 46px; }
+
+.intro h1 { margin: 2px 0 2px; font-size: 26px; letter-spacing: .12em; color: #cffafe; text-shadow: 0 0 16px rgba(34, 211, 238, .5); }
+.intro .en { font-family: var(--f-hud); font-size: 10px; letter-spacing: .3em; color: var(--mute); }
+.intro .prose { font-size: 14px; line-height: 1.85; color: #c3cfdd; margin-top: 12px; }
+.intro .prose p { margin: 0 0 10px; }
+.intro .goal { margin: 12px 0 4px; padding: 10px 12px; border-radius: 12px; border: 1px solid rgba(251, 191, 36, .4); background: rgba(251, 191, 36, .06); font-size: 13px; line-height: 1.6; color: #fde68a; }
+.intro .meta { font-size: 12px; color: var(--mute); margin-top: 8px; text-align: center; }
+.row2 { display: flex; gap: 8px; margin-top: 12px; }
+.row2 .btn { flex: 1; min-height: 48px; }
+
+.help h3 { font-size: 13px; color: var(--cy); margin: 14px 0 4px; letter-spacing: .06em; }
+.help p, .help li { font-size: 13px; line-height: 1.7; color: #c3cfdd; margin: 0 0 4px; }
+.help ul { padding-left: 18px; margin: 0; }
+.help b { color: #e2e8f0; }
+
+.end h2 { font-size: 24px; text-align: center; margin: 6px 0 4px; }
+.end .sub { text-align: center; font-size: 12px; color: var(--dim); letter-spacing: .1em; }
+.end .prose { font-size: 14px; line-height: 1.85; color: #c3cfdd; margin-top: 12px; }
+.end .prose p { margin: 0 0 10px; }
+.end .stat { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
+.end .stat div { background: #0b1424; border: 1px solid var(--line); border-radius: 10px; padding: 6px 9px; font-size: 11px; color: var(--dim); }
+.end .stat b { display: block; font-family: var(--f-num); font-weight: 400; font-size: 16px; color: var(--fg); }
+.end.win h2 { color: var(--gr); }
+.end.lose h2 { color: var(--rd); }
+.end .endings { font-size: 12px; color: var(--mute); text-align: center; margin-top: 10px; }
+
+@media (max-width: 360px) {
+  .tile .v { font-size: 13px; }
+  .ttl b { font-size: 15px; }
+}
+@media (min-width: 640px) {
+  .grid { grid-template-columns: 1fr 1fr; }
+  .grid .item { flex-direction: column; }
+  .grid .item .side { align-self: stretch; }
+  .grid .item .side .btn { width: 100%; }
+}
+/* 桌面：右側固定日誌，資源一排 */
+@media (min-width: 980px) {
+  #app {
+    max-width: 1200px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 340px;
+    grid-template-rows: auto auto auto auto minmax(0, 1fr) auto;
+    grid-template-areas: "top top" "res res" "bars side" "tabs side" "pane side" "ctrl side";
+    column-gap: 14px;
+    row-gap: 10px;
+    padding-top: 16px;
+    padding-bottom: 16px;
+  }
+  .top { grid-area: top; }
+  .res { grid-area: res; grid-template-columns: repeat(8, 1fr); gap: 8px; }
+  .tile { padding: 8px 10px; }
+  .tile .v { font-size: 18px; }
+  .tile .lb, .tile .r { font-size: 11px; }
+  .bars { grid-area: bars; }
+  .tabs { grid-area: tabs; }
+  .pane { grid-area: pane; }
+  .ctrl { grid-area: ctrl; }
+  .ticker { display: none; }
+  #tabLog { display: none; }
+  .side-log { grid-area: side; display: flex; flex-direction: column; min-height: 0; }
+  .side-log .logs { flex: 1; overflow-y: auto; padding-right: 4px; }
+  .side-log h4 { margin: 0 0 6px; font-family: var(--f-hud); font-size: 11px; letter-spacing: .2em; color: var(--cy); }
+  .grid { grid-template-columns: 1fr 1fr 1fr; }
+  .ctrl .btn { min-height: 48px; }
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="top">
+    <a class="home" href="../" aria-label="回首頁">🏠</a>
+    <div class="ttl"><b>晨昏線前哨</b><small>LONG NIGHT · OUTPOST LOG</small></div>
+    <div class="day"><small>DAY</small><b id="uDay">01</b><i>/50</i></div>
+    <button class="ibtn" id="bHelp" type="button" aria-label="指揮手冊">📘</button>
+  </header>
+
+  <section class="res" id="res"></section>
+
+  <section class="bars">
+    <div class="bar" id="bMorale"><div class="bh"><span>士氣</span><b>0</b></div><div class="track"><div class="fill"></div></div></div>
+    <div class="bar" id="bHost"><div class="bh"><span>異蟲活動</span><b>0</b></div><div class="track"><div class="fill"></div></div></div>
+  </section>
+
+  <nav class="tabs" id="tabs">
+    <button class="tab on" type="button" data-tab="build">建設</button>
+    <button class="tab" type="button" data-tab="tech">科研</button>
+    <button class="tab" type="button" data-tab="field">外勤</button>
+    <button class="tab" type="button" data-tab="log" id="tabLog">日誌</button>
+  </nav>
+
+  <main class="pane" id="pane"></main>
+
+  <div class="ticker" id="ticker"></div>
+
+  <footer class="ctrl">
+    <button class="btn" id="bAuto" type="button">▶<br>自動</button>
+    <button class="btn" id="bSpeed" type="button">×1<br>速度</button>
+    <button class="btn pri" id="bNext" type="button">下一日 ▸<small>空白鍵</small></button>
+  </footer>
+
+  <aside class="side-log card">
+    <h4>指揮日誌</h4>
+    <div class="logs" id="logSide"></div>
+  </aside>
+</div>
+
+<!-- 序章／標題 -->
+<div class="ov" id="ovIntro" hidden>
+  <div class="sheet intro">
+    <div class="en">LONG NIGHT COLONY · HD 4417c</div>
+    <h1>晨昏線前哨</h1>
+    <div class="prose">
+      <p>長夜號原本要去的是十一光年外的另一顆星。主引擎在航程第 212 天炸了。</p>
+      <p>韓靜艦長用剩下的推力，把船帶進最近的一顆行星：HD 4417c。它永遠只用同一面對著恆星，白天那一面燙得能讓岩石冒泡，夜晚那一面冷到空氣結霜。能活人的，只有中間那條窄窄的晨昏線。太陽永遠卡在地平線上，不升，也不落。</p>
+      <p>船落地了。艦長沒有。</p>
+      <p>你是補給官，指揮順位第四。前面三個人，一個跟艦長一起留在艦橋，兩個還躺在醫官的手術檯上。所以現在是你。</p>
+      <p>求救信標還活著。最近的救援船「啟明號」回覆：五十天後抵達。醒著的有十二個人，冬眠艙裡還睡著四十八個。</p>
+    </div>
+    <div class="goal">撐過 50 天，讓越多人活著越好。<br>你在路上做的決定，會決定救援船來的那天，你們選擇怎麼離開——或者不離開。</div>
+    <div class="row2" id="introBtns"></div>
+    <div class="meta" id="introMeta"></div>
+  </div>
+</div>
+
+<!-- 事件 -->
+<div class="ov" id="ovEvent" hidden>
+  <div class="sheet" id="evSheet">
+    <span class="etag" id="evTag"></span>
+    <h2 id="evTitle"></h2>
+    <div class="ebody" id="evBody"></div>
+    <div id="evFoot"></div>
+  </div>
+</div>
+
+<!-- 手冊 -->
+<div class="ov" id="ovHelp" hidden>
+  <div class="sheet help">
+    <span class="etag">指揮手冊</span>
+    <h2>代理指揮官須知</h2>
+    <h3>目標</h3>
+    <p>救援船啟明號會在<b>第 50 天</b>抵達。在那之前，讓醒著的人和冬眠艙裡的人都活下來。全船共 60 人，結算時看你保住了幾個。</p>
+    <p><b>失敗：</b>醒著的人全部死亡，或士氣歸零（大家不再聽你的）。</p>
+    <h3>資源</h3>
+    <ul>
+      <li><b>⚡ 電力</b>：光伏陣列產生。農場、研究站等設施和冬眠艙都要吃電。<b>電力不夠時，冬眠艙會有人死去</b>，生產只剩半速，士氣下降。蓄電槽能提高上限。</li>
+      <li><b>🌾 糧食</b>：醒著的人每人每天吃 1。斷糧會餓死人。</li>
+      <li><b>🔩 物資</b>：蓋東西用。前期靠外勤拆長夜號殘骸（拆完就沒了），之後要靠鑽採機。</li>
+      <li><b>🧪 研究</b>：研究站產出，用來解鎖科技。</li>
+      <li><b>💎 灰晶</b>：鑽採機挖出的高純度礦物。某些科技需要它，第 50 天也許也用得到。</li>
+    </ul>
+    <h3>人力與冬眠艙</h3>
+    <p>每座設施需要人手。<b>醒著的人少於人力需求時，所有設施依比例降低效率。</b>你可以從冬眠艙喚醒人（要床位、糧食和電），醒來的人能工作，但也要吃飯。冬眠艙裡的人不吃飯，只吃電。</p>
+    <h3>異蟲與防禦</h3>
+    <p>鑽採機會讓地底的「異蟲」越來越躁動。<b>異蟲活動</b>越高，襲擊越頻繁、越兇；到 100 會引來蟲潮。襲擊時會拿<b>防禦值</b>（防禦塔）對上<b>威脅值</b>（隨天數與異蟲活動上升）判定結果：擋下、小損失，或重創。上方的防禦格會顯示目前的預估威脅。</p>
+    <h3>外勤與事件</h3>
+    <p>每天可以派一次外勤隊。固定的日子會發生主線事件，其他日子則可能有突發狀況。你的選擇會被記住，影響之後的劇情與結局。</p>
+    <h3>結局</h3>
+    <p>結局不只一種。走到第 50 天時，你手上有什麼、你和這顆星球之間發生過什麼，決定故事怎麼收尾。</p>
+    <h3>操作</h3>
+    <p>按「下一日」或<b>空白鍵</b>推進一天；「自動」會依速度連續推進，遇到事件會停下等你選擇，選完自動接著跑。進度每天自動存檔。</p>
+    <button class="btn pri wide" type="button" data-close="ovHelp">知道了</button>
+  </div>
+</div>
+
+<!-- 結局 -->
+<div class="ov" id="ovEnd" hidden>
+  <div class="sheet end" id="endSheet">
+    <div class="sub" id="endSub"></div>
+    <h2 id="endTitle"></h2>
+    <div class="prose" id="endProse"></div>
+    <div class="stat" id="endStat"></div>
+    <div class="endings" id="endEndings"></div>
+    <div class="row2">
+      <a class="btn" href="../" style="display:grid;place-items:center;text-decoration:none;">回首頁</a>
+      <button class="btn pri" type="button" id="bAgain">再寫一次紀錄</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// =========================================================================
+// 晨昏線前哨：遊戲核心（不碰 DOM，可在 node 裡直接跑模擬）
+// =========================================================================
+var Core = (function () {
+  'use strict';
+
+  var rng = Math.random;
+  function R() { return rng(); }
+  function ri(a, b) { return a + Math.floor(R() * (b - a + 1)); }
+
+  var MAX_DAY = 50;
+  var TOTAL = 60;                 // 長夜號上的倖存者（醒著 12 ＋ 冬眠 48）
+  var STORM_FROM = 30, STORM_TO = 37;
+
+  // ---------- 角色 ----------
+  var CAST = {
+    ge:   { name: '老葛',   ab: '葛', role: '工程組長', c: '#fbbf24' },
+    su:   { name: '蘇芮',   ab: '蘇', role: '科學組長', c: '#22d3ee' },
+    lin:  { name: '林語禾', ab: '林', role: '醫官',     c: '#f472b6' },
+    zhou: { name: '小周',   ab: '周', role: '通訊官',   c: '#a78bfa' },
+    fang: { name: '方以寧', ab: '方', role: '拾穗號生態工程師', c: '#34d399' }
+  };
+
+  // ---------- 設施 ----------
+  // use：每日耗電；out：每座產出（效率 100% 時）；staff：需要幾個人手
+  var BUILD = {
+    solar:   { name: '光伏陣列', emoji: '☀️', cost: 50,  staff: 1, use: 0, desc: '斜斜對著永遠不落的太陽。晨昏線上的光很淡，所以要很多片。' },
+    farm:    { name: '水耕農場', emoji: '🌱', cost: 60,  staff: 2, use: 4, desc: '吃電、吃水、吃人力，但吐得出糧食。' },
+    habitat: { name: '居住艙',   emoji: '🏠', cost: 70,  staff: 0, use: 2, desc: '多 6 張床。醒來的人總要有地方睡。' },
+    lab:     { name: '研究站',   emoji: '🔬', cost: 90,  staff: 2, use: 5, desc: '蘇芮的地盤。產出研究點數，用來解鎖科技。' },
+    drill:   { name: '鑽採機',   emoji: '⛏️', cost: 80,  staff: 3, use: 6, desc: '打進熱泉口底下，挖出物資和灰晶。地底下的東西不喜歡它。' },
+    turret:  { name: '防禦塔',   emoji: '🛡️', cost: 90,  staff: 1, use: 3, desc: '自動標靶的電磁砲塔。異蟲來的時候，靠它。' },
+    lounge:  { name: '交誼艙',   emoji: '☕', cost: 80,  staff: 1, use: 3, desc: '有咖啡、有一台舊投影機。每天慢慢把士氣補回來（最多算 3 座）。' },
+    battery: { name: '蓄電槽',   emoji: '🔋', cost: 60,  staff: 0, use: 0, desc: '電力上限 +80。風暴季的時候你會感謝它。' }
+  };
+  var BUILD_ORDER = ['solar', 'farm', 'habitat', 'lab', 'drill', 'turret', 'lounge', 'battery'];
+  var SOLAR_OUT = 14, FARM_OUT = 9, LAB_OUT = 5, DRILL_PARTS = 10, DRILL_CRYSTAL = 2, TURRET_DEF = 10, BEDS_PER = 6, BATTERY_CAP = 80;
+
+  // ---------- 科技 ----------
+  var TECH = {
+    tracking:  { name: '光伏追日',       emoji: '🌅', cost: 30, desc: '光伏陣列產電 +30%。' },
+    cryo:      { name: '冬眠艙節能',     emoji: '🧊', cost: 30, desc: '冬眠艙維生耗電 -40%。林醫官排第一順位的研究。' },
+    mycel:     { name: '菌絲農法',       emoji: '🍄', cost: 45, desc: '水耕農場產糧 +40%。' },
+    medbay:    { name: '野戰醫療',       emoji: '🩺', cost: 40, desc: '襲擊與急症造成的死亡減少。' },
+    targeting: { name: '標靶演算',       emoji: '🎯', cost: 50, desc: '防禦塔火力 +50%。' },
+    silent:    { name: '低噪鑽頭',       emoji: '🔇', cost: 50, desc: '鑽採機引起的異蟲活動 -50%。' },
+    decode:    { name: '拾穗號檔案解讀', emoji: '📜', cost: 60, desc: '研究 +2/日。拾穗號在這裡待過，他們一定知道些什麼。',
+                 req: function (s) { return !!s.flags.ruinsKnown; }, reqText: '要先找到那個訊號的來源' },
+    fusion:    { name: '小型核融合爐',   emoji: '⚛️', cost: 100, crystal: 40, desc: '每天穩定 +50 電力。需要 40 灰晶當燃料芯。' }
+  };
+  var TECH_ORDER = ['cryo', 'tracking', 'mycel', 'medbay', 'targeting', 'silent', 'decode', 'fusion'];
+
+  // ---------- 狀態 ----------
+  function newState() {
+    return {
+      v: 1, day: 1,
+      res: { power: 60, food: 80, parts: 120, research: 0, crystal: 0 },
+      awake: 12, pods: 48, morale: 65, hostility: 5,
+      b: { solar: 2, farm: 1, habitat: 1, lab: 0, drill: 0, turret: 0, lounge: 0, battery: 0 },
+      tech: {}, flags: {}, wreck: 400, field: false, drillPauseUntil: 0,
+      queue: ['s1'], recent: [], cool: {}, log: [], over: false, ending: null
+    };
+  }
+  // 讀檔時補齊欄位、擋掉壞資料
+  function sanitize(o) {
+    var s = newState();
+    if (!o || typeof o !== 'object' || o.v !== 1) return null;
+    ['day', 'awake', 'pods', 'morale', 'hostility', 'wreck', 'drillPauseUntil'].forEach(function (k) { if (typeof o[k] === 'number') s[k] = o[k]; });
+    if (o.res) Object.keys(s.res).forEach(function (k) { if (typeof o.res[k] === 'number') s.res[k] = o.res[k]; });
+    if (o.b) Object.keys(s.b).forEach(function (k) { if (typeof o.b[k] === 'number') s.b[k] = o.b[k]; });
+    ['tech', 'flags', 'cool'].forEach(function (k) { if (o[k] && typeof o[k] === 'object') s[k] = o[k]; });
+    ['queue', 'recent', 'log'].forEach(function (k) { if (Array.isArray(o[k])) s[k] = o[k]; });
+    s.queue = s.queue.filter(function (id) { return !!EVENTS[id]; });
+    s.field = !!o.field;
+    s.over = !!o.over; s.ending = o.ending || null;
+    clampAll(s);
+    return s;
+  }
+
+  function stormActive(s) {
+    var f = s.flags;
+    return s.day >= STORM_FROM && s.day <= STORM_TO && !!(f.reinforced || f.stowed || f.braved);
+  }
+  function drillsOn(s) { return !s.flags.pact && s.day >= (s.drillPauseUntil || 0); }
+  function costOf(s, id) {
+    var c = BUILD[id].cost * Math.pow(1.22, s.b[id]) * (s.flags.engPath ? 0.85 : 1);
+    return Math.round(c);
+  }
+
+  function rates(s) {
+    var b = s.b, t = s.tech, f = s.flags, on = drillsOn(s);
+    var need = 0, use = 0;
+    BUILD_ORDER.forEach(function (k) {
+      if (k === 'drill' && !on) return;
+      need += b[k] * BUILD[k].staff;
+      use += b[k] * BUILD[k].use;
+    });
+    var eff = need > 0 ? Math.min(1, s.awake / need) : 1;
+    if (s.morale < 25) eff *= 0.8;
+    var storm = 1;
+    if (stormActive(s)) storm = f.reinforced ? 0.75 : f.stowed ? 0.5 : 0.6;
+    var gen = b.solar * SOLAR_OUT * (t.tracking ? 1.3 : 1) * storm * eff + (t.fusion ? 50 : 0);
+    var pod = s.pods * 0.5 * (t.cryo ? 0.6 : 1) * (f.podsFirst ? 0.85 : 1) * (f.rewired ? 0.9 : 1);
+    var food = b.farm * FARM_OUT * (t.mycel ? 1.4 : 1) * eff * (f.dieback ? 0.7 : 1) + (f.fungusFarm ? 4 : 0);
+    var dm = f.engPath ? 1.4 : f.sciPath ? 0.8 : f.compromise ? 0.9 : 1;
+    if (f.purge) dm *= 1.5;
+    var parts = on ? b.drill * DRILL_PARTS * dm * eff : 0;
+    var crystal = on ? b.drill * DRILL_CRYSTAL * dm * eff : 0;
+    var research = b.lab * LAB_OUT * (f.sciPath ? 1.3 : 1) * eff + (t.decode ? 2 : 0);
+    var hm = (f.engPath ? 1.4 : f.sciPath ? 0.6 : f.compromise ? 0.85 : 1) * (t.silent ? 0.5 : 1);
+    var host = (on && !f.purge) ? b.drill * 1.6 * hm : 0;
+    host -= f.pact ? 2 : 1;
+    // 士氣每日變化，拆成幾項讓玩家看得懂（停電、斷糧的扣分另外在結算時算）
+    var beds = 10 + b.habitat * BEDS_PER;
+    var mp = [['永遠的黃昏', -0.45]];
+    if (b.lounge) mp.push(['交誼艙', Math.min(3, b.lounge) * 1.4 * Math.min(1, eff + 0.2)]);
+    if (f.lamps) mp.push(['模擬日照', 0.5]);
+    if (s.res.food >= s.awake * 2) mp.push(['吃得飽', 0.5]);
+    if (s.awake > beds) mp.push(['床位不夠', -1]);
+    if (stormActive(s)) mp.push(['風暴', -0.5]);
+    var morale = 0;
+    mp.forEach(function (p) { morale += p[1]; });
+    return {
+      eff: eff, need: need, gen: gen, use: use, pod: pod,
+      power: gen - use - pod, food: food, eat: s.awake, foodNet: food - s.awake,
+      parts: parts, crystal: crystal, research: research, host: host, morale: morale, moraleParts: mp,
+      beds: beds, cap: 120 + b.battery * BATTERY_CAP
+    };
+  }
+
+  function defense(s) {
+    var r = rates(s);
+    return Math.round(s.b.turret * TURRET_DEF * (s.tech.targeting ? 1.5 : 1) * Math.min(1, r.eff + 0.3) + (s.flags.barricade ? 8 : 0));
+  }
+  function threatOf(s, mult) {
+    return Math.round((6 + s.day * 0.9 + s.hostility * 0.45) * (mult || 1));
+  }
+
+  // ---------- 小工具 ----------
+  function num(x) { return (typeof x === 'number' && isFinite(x)) ? x : 0; }
+  function clampAll(s) {
+    var r = s.res;
+    Object.keys(r).forEach(function (k) { r[k] = Math.max(0, num(r[k])); });
+    s.awake = Math.max(0, Math.round(num(s.awake)));
+    s.pods = Math.max(0, Math.round(num(s.pods)));
+    s.morale = Math.min(100, Math.max(0, num(s.morale)));
+    s.hostility = Math.min(100, Math.max(0, num(s.hostility)));
+    s.wreck = Math.max(0, num(s.wreck));
+    Object.keys(s.b).forEach(function (k) { s.b[k] = Math.max(0, Math.round(num(s.b[k]))); });
+    var cap = 120 + s.b.battery * BATTERY_CAP;
+    if (r.power > cap) r.power = cap;
+  }
+  var RES_KEYS = { power: 1, food: 1, parts: 1, research: 1, crystal: 1 };
+  function add(s, d) {
+    Object.keys(d).forEach(function (k) {
+      if (RES_KEYS[k]) s.res[k] = num(s.res[k]) + d[k];
+      else s[k] = num(s[k]) + d[k];
+    });
+    clampAll(s);
+  }
+  function log(s, tag, msg, type) {
+    s.log.push({ d: s.day, tag: tag, msg: msg, type: type || 'info' });
+    if (s.log.length > 150) s.log.splice(0, s.log.length - 150);
+  }
+  function has(s, k) { return !!s.flags[k]; }
+  function suOK(s) { return !s.flags.suLost; }
+  function lost(s) { return TOTAL + (s.flags.fangAwake ? 1 : 0) - (s.awake + s.pods); }
+
+  // 隨機毀掉一座外圍設施，回傳名稱
+  function wreckBuilding(s, pool) {
+    pool = pool || ['solar', 'farm', 'lab', 'drill', 'turret', 'lounge'];
+    var bag = [];
+    pool.forEach(function (k) { for (var i = 0; i < s.b[k]; i++) bag.push(k); });
+    if (!bag.length) return '';
+    var k = bag[Math.floor(R() * bag.length)];
+    s.b[k]--;
+    return BUILD[k].name;
+  }
+  function kill(s, n) {
+    n = Math.min(s.awake, Math.max(0, n));
+    s.awake -= n;
+    return n;
+  }
+
+  // 威脅判定：防禦值×(0.8~1.2) 對上威脅值
+  function check(s, mult) {
+    var d = defense(s), str = threatOf(s, mult);
+    var roll = d * (0.8 + R() * 0.4);
+    var tier = roll >= str ? 0 : roll >= str * 0.55 ? 1 : 2;
+    return { tier: tier, d: d, str: str };
+  }
+  // 依嚴重度套用損失，回傳描述
+  function applyLoss(s, tier, sev) {
+    var med = s.tech.medbay ? 1 : 0, out = [];
+    if (tier === 0) return '';
+    if (sev === 'minor') {
+      if (tier === 1) { add(s, { parts: -15, morale: -2 }); out.push('損失 15 物資'); }
+      else {
+        add(s, { parts: -30, food: -10, morale: -5 }); out.push('損失 30 物資、10 糧食');
+        if (R() < 0.3 - med * 0.15 && kill(s, 1)) out.push('1 人死亡');
+      }
+    } else if (sev === 'major') {
+      if (tier === 1) {
+        var d1 = kill(s, R() < 0.5 * (1 - med * 0.5) ? 1 : 0); if (d1) out.push(d1 + ' 人死亡');
+        var w1 = wreckBuilding(s); if (w1) out.push(w1 + '被毀');
+        add(s, { morale: -4 });
+      } else {
+        var d2 = kill(s, ri(2, 3) - med); if (d2) out.push(d2 + ' 人死亡');
+        var w2 = wreckBuilding(s); if (w2) out.push(w2 + '被毀');
+        add(s, { food: -20, morale: -8 }); out.push('損失 20 糧食');
+      }
+    } else { // huge
+      if (tier === 1) {
+        var d3 = kill(s, ri(1, 2) - med); if (d3) out.push(d3 + ' 人死亡');
+        var w3 = wreckBuilding(s); if (w3) out.push(w3 + '被毀');
+        add(s, { morale: -6 });
+      } else {
+        var d4 = kill(s, ri(3, 5) - med); if (d4) out.push(d4 + ' 人死亡');
+        var w4 = wreckBuilding(s); if (w4) out.push(w4 + '被毀');
+        var w5 = wreckBuilding(s); if (w5) out.push(w5 + '被毀');
+        add(s, { food: -30, morale: -12 }); out.push('損失 30 糧食');
+      }
+    }
+    return out.join('、');
+  }
+  // 威脅事件的標準結算文字
+  function fight(s, mult, sev, words) {
+    var c = check(s, mult);
+    var loss = applyLoss(s, c.tier, sev);
+    var head = '防禦 ' + c.d + ' 對上威脅 ' + c.str + '——';
+    var txt = c.tier === 0 ? head + words[0] : c.tier === 1 ? head + words[1] : head + words[2];
+    if (loss) txt += '\n（' + loss + '）';
+    log(s, '防禦', '防禦 ' + c.d + ' / 威脅 ' + c.str + '：' + ['擋下', '小損', '重創'][c.tier] + (loss ? '，' + loss : ''), c.tier === 0 ? 'ok' : 'alert');
+    return { text: txt, tier: c.tier };
+  }
+
+  // =========================================================================
+  // 事件
+  // lines(s) → [[角色 key 或 ''(旁白), 文字], …]
+  // choices(s) → [{ text, hint, req(s), why, run(s) → 結果文字 }]
+  // =========================================================================
+  var EVENTS = {};
+
+  // ---------------- 主線 ----------------
+  EVENTS.s1 = {
+    kind: 'story', title: '迫降之後', tag: '主線 · 第 1 天',
+    lines: function () {
+      return [
+        ['', '長夜號斜插在一片黑色碎石坡上，船尾還在冒煙。太陽卡在地平線上，像一盞忘了關的燈。'],
+        ['ge', '指揮，先講結論。主反應爐裂了，我救得回來的只有兩組光伏板跟一點備用電。不夠。冬眠艙一天要吃掉二十幾度電，再加上農場，撐不了多久。'],
+        ['lin', '冬眠艙裡四十八個人。斷電超過幾個小時，就會開始有人醒不來。我不是在給你壓力，我是在講事實。'],
+        ['ge', '所以我說，先把主引擎艙拆了。裡面的零件夠我們蓋好幾座東西。但拆的時候，要切掉三號艙段的電。'],
+        ['lin', '三號艙段有冬眠艙。'],
+        ['ge', '……我知道。'],
+        ['su', '還有一件事。艦長跟其他人，還在艦橋。大家都知道，可是沒有人敢上去。']
+      ];
+    },
+    choices: function () {
+      return [
+        { text: '冬眠艙優先，電一度都不准動。', hint: '電力 -15、冬眠艙耗電永久 -15%、士氣 +3',
+          run: function (s) {
+            s.flags.podsFirst = true; add(s, { power: -15, morale: 3 });
+            return '林醫官點了點頭，什麼都沒說。老葛嘆了口氣，帶人去拆比較不要緊的外殼板。拆得很慢，但三號艙段的燈一盞都沒熄。';
+          } },
+        { text: '拆引擎艙。我們需要零件，現在就要。', hint: '物資 +70、冬眠艙 -3 人',
+          run: function (s) {
+            s.flags.salvageFirst = true; add(s, { parts: 70, pods: -3 });
+            return '切電之後第四十分鐘，三號艙段有三具艙體的指示燈轉紅。林醫官親手把它們關掉。\n老葛的人那天一句話都沒講，只是一直拆。拆下來的東西確實很多。';
+          } },
+        { text: '先把艦長他們帶下來。今天，我們先送人。', hint: '糧食 -10、士氣 +12',
+          run: function (s) {
+            s.flags.funeral = true; add(s, { food: -10, morale: 12 });
+            return '你們在船邊的坡地上挖了十一個坑。沒有牧師，是小周念了一段艦長在出發典禮上講過的話。她念到一半念不下去，是老葛接著念完的。\n那天晚上——如果這裡有晚上的話——大家第一次坐在一起吃了飯。';
+          } }
+      ];
+    }
+  };
+
+  EVENTS.s5 = {
+    kind: 'story', title: '雜訊裡的聲音', tag: '主線 · 第 5 天',
+    lines: function () {
+      return [
+        ['zhou', '指、指揮，你聽一下這個。'],
+        ['', '喇叭裡是一片沙沙的雜訊，中間夾著很規律的嗶聲：三短、一長，每十七秒重複一次。'],
+        ['zhou', '方向是夜側，大概四十公里。不是我們的頻段，也不是啟明號的。我比對過了，不是任何現役船隻的格式。'],
+        ['su', '四十公里，在夜側邊緣。你知道這代表什麼嗎？代表在我們之前，有人來過這顆星球。我想去看。給我兩個人跟一台履帶車就好。'],
+        ['ge', '履帶車的電池是我們僅剩的備用電。拜託，我們連第二座農場都還沒蓋好。']
+      ];
+    },
+    choices: function () {
+      return [
+        { text: '讓蘇芮帶隊去看。', hint: '糧食 -15、電力 -20、研究 +20；外勤可以提早去夜側廢墟',
+          req: function (s) { return s.res.food >= 15 && s.res.power >= 20; }, why: '需要 15 糧食、20 電力',
+          run: function (s) {
+            s.flags.ruinsEarly = true; s.flags.ruinsKnown = true;
+            add(s, { food: -15, power: -20, research: 20 });
+            return '蘇芮回來的時候眉毛上結著霜，眼睛亮得嚇人。\n「是一座基地。很舊，被冰埋了一半，門是封住的。可是外牆上有字，中文跟英文都有。」\n她把照片丟上螢幕：一個褪了色的標誌，一束麥穗。\n（外勤新增：夜側廢墟）';
+          } },
+        { text: '記下座標，先把基地顧好。', hint: '士氣 +2；第 20 天才會去訊號來源',
+          run: function (s) {
+            s.flags.ruinsLater = true; add(s, { morale: 2 });
+            return '老葛拍拍你的肩膀：「做得對。」\n蘇芮沒說什麼，但你後來看到，她把那組座標設成了平板的桌布。';
+          } },
+        { text: '用剩下的頻寬，照同樣的節奏回呼。', hint: '研究 +10、異蟲活動 +8',
+          run: function (s) {
+            s.flags.replied = true; add(s, { research: 10, hostility: 8 });
+            return '小周照著那個節奏，三短一長，送了回去。\n什麼都沒有回來。只是從那天起，地底感測器的讀數變得有點吵。蘇芮說，那大概是地殼在冷縮。\n大概。';
+          } }
+      ];
+    }
+  };
+
+  EVENTS.s8 = {
+    kind: 'story', title: '第一次接觸', tag: '主線 · 第 8 天',
+    lines: function () {
+      return [
+        ['', '輪休時段，水耕農場的主水管被咬斷了。'],
+        ['lin', '值班的阿哲看到了。他說那東西大概跟狗一樣大，殼是灰色的，很多腳。牠沒有攻擊他，牠只是把水管咬斷，拖著一截走了。阿哲現在在我那邊，手抖到拿不住杯子。'],
+        ['ge', '管子上的齒痕很整齊，像機器切的。我不喜歡這個。'],
+        ['su', '牠拿走的是含銅的那一截。你們有注意到嗎？牠不是在找吃的，牠在找金屬。']
+      ];
+    },
+    choices: function () {
+      return [
+        { text: '沿著基地拉一圈通電圍籬。', hint: '物資 -40、防禦永久 +8',
+          req: function (s) { return s.res.parts >= 40; }, why: '需要 40 物資',
+          run: function (s) {
+            s.flags.barricade = true; add(s, { parts: -40 });
+            return '老葛帶人沿著基地拉了一圈帶電的鋼索。之後幾天，圍籬上偶爾會出現焦痕，但再也沒有東西進來。\n至少暫時沒有。';
+          } },
+        { text: '設陷阱，抓一隻回來研究。', hint: '研究 +25、士氣 -3',
+          run: function (s) {
+            s.flags.captured = true; add(s, { research: 25, morale: -3 });
+            return '陷阱是蘇芮設計的。抓到的那隻在籠子裡待了兩天就不動了。\n解剖的時候，蘇芮在牠的消化道裡找到一層細細的、會發光的膜。「這像是……把岩石轉成別的東西的工廠。」\n她的報告寫了十二頁，沒有人看完。';
+          } },
+        { text: '在農場外圍灑毒餌。', hint: '糧食 -10、異蟲活動 +10',
+          run: function (s) {
+            s.flags.poisoned = true; add(s, { food: -10, hostility: 10 });
+            return '第二天早上，毒餌附近躺了七隻。第三天，十幾隻。第四天開始，地底感測器的讀數就沒停過。\n老葛說這叫有效。蘇芮說這叫宣戰。';
+          } }
+      ];
+    }
+  };
+
+  EVENTS.s12 = {
+    kind: 'story', title: '兩條路', tag: '主線 · 第 12 天',
+    lines: function () {
+      return [
+        ['', '你一走進會議艙就知道不妙。蘇芮跟老葛分坐長桌兩頭，中間的位子空著，是留給你的。'],
+        ['ge', '我直說。往東三公里那排熱泉口底下，全是灰晶，純度高到我以為儀器壞了。我們要電、要零件、要蓋防禦塔，那裡什麼都有。給我幾台鑽機、兩個禮拜，我讓這裡變成真的基地。'],
+        ['su', '那排熱泉口是那些生物的巢。我追蹤了十天，牠們每一隻最後都往那裡走。你在那裡鑽，就是在別人家客廳鑽洞。'],
+        ['ge', '牠們是蟲。'],
+        ['su', '牠們是我們還不了解的東西。這兩件事不一樣。'],
+        ['lin', '我插個話。醫療艙這禮拜多了四個傷患，都是被抓傷的。不管你們選哪條，拜託選快一點。']
+      ];
+    },
+    choices: function () {
+      return [
+        { text: '站蘇芮這邊：謹慎開採，先弄懂牠們。', hint: '研究站 +30%、鑽採機產出 -20%、鑽採引起的異蟲活動 -40%',
+          run: function (s) {
+            s.flags.sciPath = true; add(s, { morale: -2 });
+            return '老葛把椅子往後一推，站了起來。「好。你是指揮。」\n走到門口他又回頭：「出事的時候，記得是誰說要跟蟲講道理的。」\n蘇芮等他走遠了才吐出一口氣，跟你說了聲謝謝，聲音很小。';
+          } },
+        { text: '站老葛這邊：全力開採。', hint: '鑽採機產出 +40%、建造便宜 15%、鑽採引起的異蟲活動 +40%',
+          run: function (s) {
+            s.flags.engPath = true; add(s, { morale: -2 });
+            return '老葛當天下午就把第一台鑽機拖到了熱泉口。\n蘇芮把她的追蹤資料備份了三份，其中一份放在你桌上，上面貼著一張便條：「至少請你看一下。」';
+          } },
+        { text: '各退一步：鑽，但只鑽外圍。', hint: '鑽採機產出 -10%、異蟲活動 -15%、士氣 -5',
+          run: function (s) {
+            s.flags.compromise = true; add(s, { morale: -5 });
+            return '會議結束的時候沒有人滿意。這大概代表你做對了一半。\n也可能兩邊都做錯了。';
+          } }
+      ];
+    }
+  };
+
+  EVENTS.s16 = {
+    kind: 'story', title: '永遠的黃昏', tag: '主線 · 第 16 天',
+    lines: function () {
+      return [
+        ['lin', '指揮，有空嗎？不是急事。……好吧，也算是。'],
+        ['lin', '這禮拜有九個人來找我拿安眠藥。太陽永遠在同一個位置，身體不知道什麼時候該睡。睡不好脾氣就差，脾氣差就有人在餐廳打架。昨天是兩個工程組的，為了一包辣椒醬。'],
+        ['lin', '我想了三個辦法，都不完美。你挑。']
+      ];
+    },
+    choices: function () {
+      return [
+        { text: '在居住艙裝模擬日照，照艦上時間開關燈。', hint: '物資 -50、之後士氣每日 +0.5',
+          req: function (s) { return s.res.parts >= 50; }, why: '需要 50 物資',
+          run: function (s) {
+            s.flags.lamps = true; add(s, { parts: -50 });
+            return '老葛嘴上嫌麻煩，還是在居住艙裝了一排會慢慢變暗的燈。\n第一個「晚上」，餐廳十點就空了。林醫官說，這是她這輩子開過最便宜的處方。';
+          } },
+        { text: '發鎮靜劑，先撐過去再說。', hint: '士氣 +10，但藥大概撐不到第 30 天',
+          run: function (s) {
+            s.flags.sedated = true; add(s, { morale: 10 });
+            return '很有效。大家睡得像石頭。\n林醫官在你的報告上補了一行：「庫存撐不過第三十天。到時候再說。」';
+          } },
+        { text: '排班去夜側邊緣散步，看看星星。', hint: '士氣 +6；之後偶爾會有人走太遠',
+          run: function (s) {
+            s.flags.walks = true; add(s, { morale: 6 });
+            return '夜側那邊是真的有星星的。\n第一批去的人回來之後安靜了很久。後來有個人說，他看到地球的方向了。其實看不到，太遠了，但沒有人糾正他。';
+          } }
+      ];
+    }
+  };
+
+  EVENTS.s20 = {
+    kind: 'story', title: '拾穗號', tag: '主線 · 第 20 天',
+    lines: function (s) {
+      var L = [];
+      if (s.flags.ruinsEarly) L.push(['su', '我們終於把那道門打開了。']);
+      else L.push(['su', '我們終於找到訊號的源頭了。夜側邊緣，一座被冰埋掉一半的基地。']);
+      L.push(['su', '是拾穗號。四十一年前出發的殖民船，官方紀錄寫「航程中失聯」。他們沒有失聯。他們到了。他們就在這裡。']);
+      L.push(['', '主艙裡沒有屍體。桌上還擺著杯子。牆上的值班表停在某一天，最後一格是手寫的：「暫停所有鑽探。牠們從地底出來了。」']);
+      L.push(['zhou', '最底層還有電……有一具冬眠艙還亮著。裡面有人。名牌寫的是方以寧，生態工程組。']);
+      L.push(['lin', '四十一年。艙體能撐到現在已經是奇蹟，喚醒的過程她不一定撐得過。要做就現在做，用我們的電。艙體太舊，搬不動。']);
+      L.push(['ge', '另外講一下，這裡的設備雖然舊，拆回去的料夠我們再蓋好幾座東西。']);
+      return L;
+    },
+    choices: function () {
+      return [
+        { text: '喚醒方以寧。', hint: '電力 -40；她會加入你們',
+          req: function (s) { return s.res.power >= 40; }, why: '需要 40 電力',
+          run: function (s) {
+            s.flags.fangAwake = true; s.flags.ruinsKnown = true;
+            add(s, { power: -40, awake: 1 });
+            return '她醒來的第一句話是問現在是哪一年。\n第二句是：「你們有沒有在熱泉口那邊鑽洞？」\n林醫官說她的生命徵象很穩定。精神狀態，要再觀察。';
+          } },
+        { text: '把拾穗號的資料庫整個拷回去。', hint: '研究 +50，直接取得「拾穗號檔案解讀」；冬眠艙帶不走',
+          run: function (s) {
+            s.flags.archive = true; s.flags.ruinsKnown = true; s.tech.decode = true;
+            add(s, { research: 50 });
+            return '小周花了九個小時才把資料拉完。\n離開前，林醫官在那具冬眠艙前面站了很久。艙體的燈，在你們走後的第三天熄了。';
+          } },
+        { text: '能拆的全部拆回去。', hint: '物資 +120、灰晶 +20、士氣 -4',
+          run: function (s) {
+            s.flags.looted = true; s.flags.ruinsKnown = true;
+            add(s, { parts: 120, crystal: 20, morale: -4 });
+            return '老葛的人拆得很徹底，連那具冬眠艙的電池都拔了。\n蘇芮全程沒有幫忙，只是一直拍照。回程車上她問你：「如果四十年後有人來拆我們，你會怎麼想？」';
+          } }
+      ];
+    }
+  };
+
+  EVENTS.s24 = {
+    kind: 'story', title: '下一批', tag: '主線 · 第 24 天',
+    lines: function (s) {
+      var L = [
+        ['lin', '冬眠艙的備用電池老化得比預期快。我建議提前叫醒一批人。醒著的人要吃飯，但至少不會在睡夢中斷電。'],
+        ['lin', '問題是先叫誰。名單上有五個工程師，也有一個帶兩個小孩的家庭。'],
+        ['ge', '工程師啊。這還要問？']
+      ];
+      if (suOK(s)) L.push(['su', '……小孩在冬眠艙裡多待一天，就多一天風險。']);
+      return L;
+    },
+    choices: function () {
+      return [
+        { text: '先叫醒工程師。', hint: '醒著 +5、冬眠艙 -5、物資 +30（注意床位）',
+          req: function (s) { return s.pods >= 5; }, why: '冬眠艙裡的人不夠',
+          run: function (s) {
+            add(s, { awake: 5, pods: -5, parts: 30 });
+            return '五個人醒來的時候還在吐，老葛已經把班表排好了。\n其中一個人問他：「我們到了嗎？」老葛想了一下才回答：「到了。只是不是原本那裡。」';
+          } },
+        { text: '先叫醒那一家人。', hint: '醒著 +3、冬眠艙 -3、士氣 +10',
+          req: function (s) { return s.pods >= 3; }, why: '冬眠艙裡的人不夠',
+          run: function (s) {
+            add(s, { awake: 3, pods: -3, morale: 10 });
+            return '兩個小孩醒來後哭了很久，因為窗外的太陽「一直不下山」。\n後來小周教他們用平板畫畫，他們畫的都是有月亮的天空。基地裡突然有了小孩的聲音。很多人說不出為什麼，就是覺得比較撐得下去。';
+          } },
+        { text: '一個都不叫，把電池拆下來重新配線。', hint: '物資 -40、冬眠艙耗電再 -10%',
+          req: function (s) { return s.res.parts >= 40; }, why: '需要 40 物資',
+          run: function (s) {
+            s.flags.rewired = true; add(s, { parts: -40 });
+            return '老葛跟林醫官難得意見一致：這個方法比較麻煩，但每個人都可以繼續睡。\n整整兩天，冬眠艙那邊的燈一直閃。一盞都沒有熄。';
+          } },
+        { text: '先不動，撐到救援來。', hint: '冬眠艙裡老化最嚴重的兩具可能撐不住',
+          run: function (s) {
+            var n = Math.min(2, s.pods); add(s, { pods: -n });
+            if (n) log(s, '冬眠艙', n + ' 具艙體的電池失效', 'alert');
+            return n ? '一個禮拜後，林醫官來找你，只說了兩個名字。' : '冬眠艙已經沒有人了。林醫官看著空掉的艙位，什麼都沒說。';
+          } }
+      ];
+    }
+  };
+
+  EVENTS.s30 = {
+    kind: 'story', title: '風暴季', tag: '主線 · 第 30 天',
+    lines: function (s) {
+      var L = [];
+      if (suOK(s)) L.push(['su', '這顆星球的自轉不是完全鎖死的，它會輕輕地晃，天文學上叫天平動。每晃到一個角度，晨昏線就往日側偏一點，熱空氣會整片灌過來。']);
+      if (s.flags.fangAwake) L.push(['fang', '我們那時候叫它風暴季。大概八天。拾穗號在第一次風暴季就失去了一半的光伏板。']);
+      else if (s.flags.archive || s.flags.ruinsEarly || s.flags.looted) L.push(['zhou', '拾穗號的日誌也有寫。他們叫它「風暴季」，大概八天。他們在第一次風暴季就失去一半的光伏板。']);
+      else L.push(['zhou', '氣象模型跑出來了。風暴大概會持續八天，第 30 到第 37 天。']);
+      L.push(['ge', '八天。我可以把板子全部加固，但要料。不然就收起來一半，硬撐。']);
+      if (s.flags.sedated) L.push(['lin', '順便說一下，鎮靜劑上禮拜用完了。這八天會很難熬。']);
+      return L;
+    },
+    choices: function () {
+      return [
+        { text: '全面加固光伏陣列。', hint: '物資 -80；風暴期間光伏 75%，不會被吹毀',
+          req: function (s) { return s.res.parts >= 80; }, why: '需要 80 物資',
+          run: function (s) {
+            s.flags.reinforced = true; add(s, { parts: -80, morale: s.flags.sedated ? -6 : 0 });
+            log(s, '風暴', '風暴季開始（第 30～37 天）', 'warn');
+            return '老葛帶著所有醒著的工程師，在風來之前把每一片板子都焊上了斜撐。\n風到的時候，整個基地像一艘在浪裡的船。板子在叫，但沒有一片飛走。';
+          } },
+        { text: '拆下一半的板子，收進船艙。', hint: '風暴期間光伏只剩 50%，但不會被吹毀',
+          run: function (s) {
+            s.flags.stowed = true; add(s, { morale: s.flags.sedated ? -6 : 0 });
+            log(s, '風暴', '風暴季開始（第 30～37 天）', 'warn');
+            return '收板子花了一整天。電燈開始輪流熄，暖氣調到最低，大家裹著毯子擠在一起。\n小周說這樣很像小時候颱風天。沒有人知道颱風是什麼了，只有老葛笑了。';
+          } },
+        { text: '硬撐。', hint: '風暴期間光伏 60%，而且可能被吹毀',
+          run: function (s) {
+            s.flags.braved = true; add(s, { morale: s.flags.sedated ? -6 : 0 });
+            log(s, '風暴', '風暴季開始（第 30～37 天）', 'warn');
+            return '老葛看了你很久，最後只說：「好。那你最好運氣不錯。」';
+          } }
+      ];
+    }
+  };
+
+  EVENTS.s35 = {
+    kind: 'story', title: '熱泉口', tag: '主線 · 第 35 天',
+    lines: function (s) {
+      return [
+        ['zhou', '蘇芮組長不見了！她的履帶車也不在。最後一筆定位在熱泉口……風暴還沒停，訊號斷斷續續的。'],
+        ['lin', '她昨天跟我說，她快弄懂了。我以為她講的是報告。'],
+        ['ge', '這種天氣出去？車會被風吹翻，要找只能用走的。'],
+        s.flags.fangAwake ? ['fang', '我知道一條路。造……那些東西走的路。'] : ['', '風聲大到聽不見彼此說話。']
+      ];
+    },
+    choices: function () {
+      return [
+        { text: '讓方以寧帶路。', hint: '安全把人找回來；研究 +40',
+          req: function (s) { return s.flags.fangAwake; }, why: '需要方以寧',
+          run: function (s) {
+            s.flags.suSafe = true; s.flags.fangGuide = true; add(s, { research: 40 });
+            return '方以寧帶著隊伍走一條你們從沒想過的路：沿著蟲走過的痕跡。「牠們不會攻擊走在牠們路上的人，」她說，「至少以前不會。」\n找到蘇芮的時候，她坐在熱泉口邊，身邊圍著十幾隻。一隻都沒有動。';
+          } },
+        { text: '派搜救隊頂著風暴出去。', hint: '依防禦判定：順利的話研究 +30；不順可能有人回不來',
+          run: function (s) {
+            s.flags.suSafe = true;
+            var c = check(s, 0.8);
+            if (c.tier === 0) {
+              add(s, { research: 30 });
+              log(s, '搜救', '防禦 ' + c.d + ' / 威脅 ' + c.str + '：順利找回蘇芮', 'ok');
+              return '防禦 ' + c.d + ' 對上威脅 ' + c.str + '——搜救隊一路開火開過去，把她帶了回來。\n她凍得說不出話，手裡死命抱著一台記錄器。';
+            }
+            var n = kill(s, c.tier === 1 ? 1 : 2); add(s, { research: 15, morale: -6 });
+            log(s, '搜救', '防禦 ' + c.d + ' / 威脅 ' + c.str + '：找回蘇芮，' + n + ' 名隊員沒有回來', 'alert');
+            return '防禦 ' + c.d + ' 對上威脅 ' + c.str + '——蘇芮被找回來了。搜救隊裡有 ' + n + ' 個人沒有。\n她醒來後知道了這件事，整整一天沒有開口。';
+          } },
+        { text: '等風暴過去再找。', hint: '不冒險',
+          run: function (s) {
+            s.flags.suLost = true; add(s, { research: 30, morale: -12 });
+            log(s, '主線', '蘇芮沒有回來', 'alert');
+            return '風停後第二天，你們在熱泉口找到她的履帶車。車上的錄音機還開著，最後一段是她的聲音：\n「……牠們不是在攻擊我們。牠們在修東西。我們一直在拆牠們修好的東西——」\n錄音到這裡就斷了。';
+          } }
+      ];
+    }
+  };
+
+  EVENTS.s40 = {
+    kind: 'story', title: '造地者', tag: '主線 · 第 40 天',
+    lines: function (s) {
+      var f = s.flags, L = [];
+      if (f.fangAwake) {
+        L.push(['fang', '我欠你們一個解釋。拾穗號帶來的不只有人。我們帶了一套行星改造生物，代號叫「造地者」。牠們吃岩石，吐出土壤跟氧氣。一百年後，晨昏線會變成一條綠色的帶子。牠們是我設計的。']);
+        L.push(['fang', '我們犯的錯跟你們一樣。熱泉口底下有灰晶，所以我們鑽。可是灰晶是造地者的催化劑，那裡是整套系統的心臟。每鑽一個洞，牠們就當成一處損傷，派更多工蟲來修。修不好，就清除損傷的來源。']);
+        L.push(['fang', '清除的，就是我們。拾穗號的人最後去了哪裡，我不知道。我是最後一個進冬眠艙的。']);
+      } else if (f.suLost) {
+        L.push(['zhou', '我把蘇芮組長的筆記跟拾穗號的資料對起來了。她最後那句話是對的。']);
+        L.push(['zhou', '那些蟲是拾穗號帶來的行星改造生物，代號叫「造地者」。牠們吃岩石、做土壤，熱泉口底下的灰晶是牠們的催化劑。我們每鑽一個洞，牠們就當成損傷來修；修不好，就把損傷的來源清掉。拾穗號就是這樣沒的。']);
+      } else {
+        L.push(['su', '我弄懂了。牠們不是本地生物，是拾穗號帶來的行星改造系統，代號「造地者」。拾穗號的檔案裡有完整的設計圖。']);
+        L.push(['su', '熱泉口底下的灰晶是牠們的催化劑，是整套系統的心臟。我們每鑽一下，牠們就當成一處損傷。修不好，就清除損傷的來源。你懂嗎？牠們沒有惡意。是我們一直在拆牠們的工地。']);
+      }
+      L.push(['ge', '所以呢？現在要怎樣，跟蟲道歉？']);
+      L.push([f.fangAwake ? 'fang' : f.suLost ? 'zhou' : 'su', '要停鑽，全部。然後用拾穗號的協定頻率告訴牠們：這裡沒有損傷了。']);
+      L.push(['ge', '或者，我們把巢炸了。熱泉口底下的灰晶，夠這裡每個人回地球買一棟房子。']);
+      L.push(['lin', '我只提醒一件事：還有十天。不管你選什麼，我希望十天後，我還有病人可以醫。']);
+      return L;
+    },
+    choices: function () {
+      return [
+        { text: '停鑽，發送協定訊號。', hint: '鑽採機永久停機、異蟲活動大幅下降',
+          req: function (s) { return s.flags.fangAwake || s.tech.decode; }, why: '需要方以寧，或已解鎖「拾穗號檔案解讀」',
+          run: function (s) {
+            s.flags.pact = true;
+            var drop = 60 + (s.flags.replied ? 20 : 0) + (s.flags.larva ? 10 : 0);
+            add(s, { hostility: -drop, morale: 4 });
+            var t = '小周把那段三短一長的節奏照協定重新編碼，接上了基地所有的喇叭和地底感測器。\n鑽機一台一台停下來的時候，老葛站在旁邊，一句話都沒說。\n那天晚上，地底感測器的讀數第一次安靜下來。';
+            if (s.flags.replied) t += '\n小周後來才發現，第五天你們回呼的那段訊號，被造地者的網路記成了一個「新節點」。牠們其實一直在等你們把話講完。';
+            log(s, '主線', '與造地者達成協定，鑽採機全數停機', 'story');
+            return t;
+          } },
+        { text: '炸掉巢穴，把灰晶挖出來。', hint: '物資 -60；一場硬仗（防禦判定）。之後異蟲不再威脅、灰晶 +80、鑽採產出 +50%',
+          req: function (s) { return s.res.parts >= 60; }, why: '需要 60 物資做炸藥',
+          run: function (s) {
+            s.flags.purge = true; add(s, { parts: -60 });
+            var r = fight(s, 1.3, 'huge', [
+              '炸藥一路往下引爆，熱泉口塌了。衝上來的造地者撞上防線，一波一波地倒下。',
+              '炸藥一路往下引爆，熱泉口塌了。造地者瘋了一樣衝上來，防線差一點就破了。',
+              '炸藥引爆了，可是造地者比你們想像的多太多。防線被撕開好幾個口子。'
+            ]);
+            s.hostility = 0; add(s, { crystal: 80, morale: -10 });
+            log(s, '主線', '熱泉口被炸毀', 'story');
+            return r.text + '\n灰煙散掉之後，熱泉口不再冒熱氣了。' + (suOK(s) ? '蘇芮把自己關在研究站裡，誰敲門都不開。' : '小周把蘇芮的錄音檔從公用資料夾裡刪掉了，說是「怕大家難過」。');
+          } },
+        { text: '什麼都不做，撐到啟明號來。', hint: '維持現狀',
+          run: function (s) {
+            s.flags.waited = true; add(s, { morale: -3 });
+            return '老葛跟' + (suOK(s) ? '蘇芮' : '小周') + '第一次站在同一邊：他們都覺得你在逃避。\n也許是。但十天，說長不長。';
+          } }
+      ];
+    }
+  };
+
+  EVENTS.s45 = {
+    kind: 'story', title: '最後五天', tag: '主線 · 第 45 天',
+    alert: function (s) { return !s.flags.pact && !s.flags.purge; },
+    lines: function (s) {
+      var f = s.flags;
+      if (f.pact) return [
+        ['', '一早，圍籬外整整齊齊地排著一列東西：會發光的菌塊、分類好的金屬碎片，還有一小堆灰晶。'],
+        [f.fangAwake ? 'fang' : 'zhou', '這是牠們維修時多出來的料。在造地者的邏輯裡，這叫歸還。'],
+        ['ge', '我活了五十八年，第一次被蟲找錢。']
+      ];
+      if (f.purge) return [
+        [suOK(s) ? 'su' : 'lin', '農場的土壤菌群在死。不是我們的菌，是那些熱泉口一直在補給的東西。熱泉口冷了，整條晨昏線的土都在慢慢變回石頭。'],
+        ['ge', '……這也算到我們頭上？'],
+        [suOK(s) ? 'su' : 'lin', '我沒有在算誰的帳。我只是在跟你說，接下來的糧食會變少。']
+      ];
+      return [
+        ['zhou', '地底感測器全部爆表了！不是一群，是……是整片。牠們從四面八方過來。'],
+        ['ge', '這就是拾穗號的最後一頁。'],
+        ['lin', '醫療艙能收的傷患只有六床。我先講好。']
+      ];
+    },
+    choices: function (s) {
+      var f = s.flags;
+      if (f.pact) return [
+        { text: '收下，也放一些東西回去。', hint: '糧食 +30（扣掉回禮）、物資 +40、士氣 +8',
+          run: function (s) {
+            s.flags.gift = true; add(s, { food: 30, parts: 40, morale: 8 });
+            return '你們放回去的是一箱罐頭和一台舊收音機，收音機開著，放的是小周挑的歌。\n第二天兩樣都不見了。圍籬外多了一小片長得很整齊的青苔。';
+          } },
+        { text: '收下就好。', hint: '糧食 +40、物資 +40',
+          run: function (s) {
+            add(s, { food: 40, parts: 40 });
+            return '老葛把金屬碎片秤過一遍，嘟囔著說比他的人拆得還整齊。';
+          } }
+      ];
+      if (f.purge) return [
+        { text: '用研究站搶救農場的菌群。', hint: '研究 -40；避免糧食減產',
+          req: function (s) { return s.res.research >= 40; }, why: '需要 40 研究',
+          run: function (s) {
+            add(s, { research: -40 });
+            return '研究站連續跑了三天，把能培養的菌種全部養在密封槽裡。農場保住了。\n晨昏線上的其他地方，沒有人能救。';
+          } },
+        { text: '剩五天了，接受減產。', hint: '之後農場產糧 -30%',
+          run: function (s) {
+            s.flags.dieback = true;
+            return '你在日誌上記了一筆，然後去看下一份報告。';
+          } }
+      ];
+      return [
+        { text: '全員進防線，死守。', hint: '防禦判定（大規模），士氣 -3',
+          run: function (s) {
+            add(s, { morale: -3 });
+            var r = fight(s, 1.35, 'huge', ['你們撐了整整一夜。天亮的時候——如果這裡有天亮——牠們退了。', '防線兩度被突破，兩度補上。牠們終於退了，你們也快撐不住了。', '那一夜，基地失去了很多東西，包括一些人。']);
+            s.hostility = Math.min(s.hostility, 55);
+            return r.text;
+          } },
+        { text: '放棄外圍，所有人退進長夜號殘骸。', hint: '一定會失去兩座外圍設施，但不打正面',
+          run: function (s) {
+            var a = wreckBuilding(s), b2 = wreckBuilding(s);
+            add(s, { morale: -8, food: -15 }); s.hostility = Math.min(s.hostility, 60);
+            log(s, '撤守', '放棄外圍：' + [a, b2].filter(Boolean).join('、') + '被毀', 'alert');
+            return '你們聽著外面的聲音聽了一整夜。早上出去的時候，' + ([a, b2].filter(Boolean).join('和') || '外圍') + '已經不在了。\n但所有人都還在。';
+          } }
+      ];
+    }
+  };
+
+  EVENTS.s50 = {
+    kind: 'story', title: '啟明號', tag: '主線 · 第 50 天',
+    lines: function (s) {
+      var f = s.flags, L = [];
+      L.push(['zhou', '啟、啟明號進入軌道了！他們在問我們有多少人要接——']);
+      L.push(['lin', '醒著的 ' + s.awake + ' 個，冬眠艙 ' + s.pods + ' 個。' + (f.fangAwake ? '另外還有一位四十一年前的乘客。' : '') + '告訴他們，一個都不能漏。']);
+      if (f.pact) {
+        L.push([f.fangAwake ? 'fang' : suOK(s) ? 'su' : 'zhou', '指揮，我想留下來。不只我。造地者的工程還有九十幾年，總要有人看著。']);
+        L.push(['ge', '我也是。……幹嘛那樣看我，總要有人顧發電機。']);
+      } else if (s.res.crystal >= 120) {
+        L.push(['ge', '貨艙還有空間。灰晶的事，你自己決定。']);
+      } else {
+        L.push(['ge', '回家吧。這裡不是我們的。']);
+      }
+      return L;
+    },
+    choices: function () {
+      return [
+        { text: '全員登船，回家。', hint: '結局',
+          run: function (s) { finish(s, 'evac'); return ''; } },
+        { text: '留下來，把這條線種綠。', hint: '結局',
+          req: function (s) { return s.flags.pact && s.morale >= 50 && s.awake >= 15; },
+          why: '需要和造地者達成協定、士氣 50 以上、醒著的人至少 15 位',
+          run: function (s) { finish(s, 'stay'); return ''; } },
+        { text: '把灰晶裝滿貨艙再走。', hint: '結局',
+          req: function (s) { return s.res.crystal >= 120; }, why: '需要 120 灰晶',
+          run: function (s) { finish(s, 'haul'); return ''; } }
+      ];
+    }
+  };
+
+  var STORY = { 5: 's5', 8: 's8', 12: 's12', 16: 's16', 20: 's20', 24: 's24', 30: 's30', 35: 's35', 40: 's40', 45: 's45', 50: 's50' };
+
+  // ---------------- 隨機事件 ----------------
+  // w(s)：權重（0 = 不會出現）
+  function R_(id, def) { def.kind = def.kind || 'random'; EVENTS[id] = def; }
+
+  R_('cold', {
+    title: '夜側寒流', tag: '突發',
+    w: function () { return 1; },
+    lines: function () { return [['', '夜側吹來一股冷空氣，居住艙的溫度十分鐘掉了十二度。窗上開始結霜花。'], ['ge', '暖氣開到最大，電會燒得很兇。不開，大家就擠一擠。']]; },
+    choices: function () {
+      return [
+        { text: '暖氣開到最大。', hint: '電力 -25', req: function (s) { return s.res.power >= 25; }, why: '電力不足 25',
+          run: function (s) { add(s, { power: -25 }); return '暖氣管嗡嗡響了一整天。電表的數字往下掉得讓人心痛，但沒有人感冒。'; } },
+        { text: '所有人擠到同一艙過夜。', hint: '士氣 -5',
+          run: function (s) { add(s, { morale: -5 }); return '擠成一排的睡袋、此起彼落的鼾聲，還有某人一直不停的腳。早上起來，每個人的脾氣都不太好。'; } }
+      ];
+    }
+  });
+
+  R_('supply', {
+    title: '軌道上掉下來的貨櫃', tag: '補給',
+    w: function (s) { return s.day < 16 ? 1.6 : s.day < 35 ? 0.8 : 0.4; },
+    lines: function () { return [['zhou', '長夜號在軌道上掉了一個貨櫃艙，落點在東邊十公里。看形狀是標準補給箱！'], ['ge', '十公里來回要半天。路上有沒有東西，誰知道。']]; },
+    choices: function () {
+      return [
+        { text: '派人去撿。', hint: '物資、糧食；路上可能出事',
+          run: function (s) {
+            var p = ri(40, 70), fd = ri(15, 30); add(s, { parts: p, food: fd });
+            var t = '貨櫃摔得有點扁，但裡面的東西大多還能用：物資 +' + p + '、糧食 +' + fd + '。';
+            if (R() < 0.2) { add(s, { morale: -3 }); t += '\n回程有人被岩縫裡的東西咬了一口，傷不重，但大家嚇到了。'; }
+            return t;
+          } },
+        { text: '太遠了，算了。', hint: '無',
+          run: function () { return '貨櫃的定位訊號響了三天，然後停了。'; } }
+      ];
+    }
+  });
+
+  R_('leak', {
+    title: '水循環故障', tag: '設備',
+    w: function (s) { return s.b.farm > 0 ? 1 : 0; },
+    lines: function () { return [['ge', '水循環機的濾心塞了。我拆開來看，裡面卡滿了細細的灰色粉末，我們的過濾網根本擋不住。'], ['ge', '要嘛拆零件換新，要嘛農場這兩天減產。']]; },
+    choices: function () {
+      return [
+        { text: '拆零件換新。', hint: '物資 -30', req: function (s) { return s.res.parts >= 30; }, why: '物資不足 30',
+          run: function (s) { add(s, { parts: -30 }); return '新濾心裝上去之後，老葛把舊的那個收進了抽屜。「我要拿給蘇芮看看，這粉到底是什麼。」'; } },
+        { text: '先不修。', hint: '糧食 -25',
+          run: function (s) { add(s, { food: -25 }); return '農場的葉子黃了兩天。大家的餐盤也跟著變小。'; } }
+      ];
+    }
+  });
+
+  R_('raid', {
+    title: '異蟲夜襲', tag: '威脅', alert: true,
+    w: function (s) { return s.day >= 10 && !s.flags.pact && !s.flags.purge ? Math.min(3, 0.5 + s.hostility / 18) : 0; },
+    lines: function (s) { return [['', '圍籬外的感測器一盞接一盞亮起來。地面在微微震動。'], ['zhou', '數量大概……很多。預估威脅 ' + threatOf(s, 1) + '，我們的防禦是 ' + defense(s) + '。']]; },
+    choices: function () {
+      return [
+        { text: '開火，守住防線。', hint: '防禦判定',
+          run: function (s) { add(s, { hostility: -6 }); return fight(s, 1, 'major', ['防禦塔的砲口亮了一整夜。早上清點，圍籬完好。', '牠們退了，但有幾處被突破。', '防線垮了。牠們進來了。']).text; } },
+        { text: '熄燈，所有人退進長夜號殘骸。', hint: '不打正面：糧食 -20、士氣 -5，外圍設施可能被拆',
+          run: function (s) {
+            add(s, { food: -20, morale: -5, hostility: -3 });
+            var t = '你們在黑暗裡聽了一整夜的刮擦聲。';
+            if (R() < 0.5) { var w = wreckBuilding(s, ['solar', 'farm', 'drill']); if (w) { t += '\n早上出去時，' + w + '只剩下骨架。'; log(s, '撤守', w + '被拆毀', 'alert'); } }
+            else t += '\n早上出去時，除了少掉的糧食，一切都還在。';
+            return t;
+          } }
+      ];
+    }
+  });
+
+  R_('pipe', {
+    title: '啃管線的傢伙', tag: '威脅', alert: true,
+    w: function (s) { return s.day >= 3 && s.day < 28 && !s.flags.pact ? 0.8 + s.hostility / 40 : 0; },
+    lines: function () { return [['ge', '又來了！有幾隻在啃農場外面的管線，聽聲音不只三四隻。'], ['', '預估威脅不高，但管線斷了很麻煩。']]; },
+    choices: function () {
+      return [
+        { text: '交給防禦塔處理。', hint: '小規模防禦判定',
+          run: function (s) { return fight(s, 0.6, 'minor', ['幾聲悶響之後，外面安靜了。', '牠們被趕走了，可是管線還是斷了好幾截。', '防禦根本攔不住，牠們把能拖的都拖走了。']).text; } },
+        { text: '派人拿著燈去趕。', hint: '士氣 -3、物資 -10',
+          run: function (s) { add(s, { morale: -3, parts: -10 }); return '強光一照，牠們就散了，像是知道要躲。可是拿燈的那兩個人，回來之後一整晚都睡不著。'; } }
+      ];
+    }
+  });
+
+  R_('quake', {
+    title: '地底悶響', tag: '鑽採',
+    w: function (s) { return drillsOn(s) && s.b.drill >= 2 ? Math.min(2, 0.4 * s.b.drill) : 0; },
+    lines: function () { return [['', '鑽機那頭傳來一聲悶響，接著整個基地晃了起來。架上的杯子掉了一地。'], ['ge', '應該是打到空洞了。繼續鑽的話我不保證什麼。'], ['zhou', '地底感測器的讀數……在往上衝。']]; },
+    choices: function () {
+      return [
+        { text: '鑽機全部停三天。', hint: '三天沒有鑽採產出、異蟲活動 -8',
+          run: function (s) { s.drillPauseUntil = s.day + 3; add(s, { hostility: -8 }); return '鑽機停下來之後，晃動也停了。老葛一直盯著讀數看，好像在等它反悔。'; } },
+        { text: '繼續鑽。', hint: '異蟲活動 +10，可能毀掉一座設施',
+          run: function (s) {
+            add(s, { hostility: 10 });
+            if (R() < 0.4) { var w = wreckBuilding(s); if (w) { log(s, '地震', w + '在餘震中倒塌', 'alert'); return '餘震又來了兩次。第二次的時候，' + w + '的地基裂了，整座歪倒。'; } }
+            return '餘震又來了兩次，然後就停了。只是那之後，地底的讀數再也沒有降回來。';
+          } }
+      ];
+    }
+  });
+
+  R_('podAlarm', {
+    title: '冬眠艙警報', tag: '冬眠艙', alert: true,
+    w: function (s) { return s.pods > 3 ? 1 : 0; },
+    lines: function () { return [['lin', '七號列的溫控壞了，三具艙體在升溫。我需要電，馬上。'], ['lin', '不然就是現在把他們叫醒。醒過來的人至少不會在睡夢裡被煮熟。']]; },
+    choices: function () {
+      return [
+        { text: '緊急供電。', hint: '電力 -30', req: function (s) { return s.res.power >= 30; }, why: '電力不足 30',
+          run: function (s) { add(s, { power: -30 }); return '林醫官守在七號列旁邊整整六個小時，直到溫度降回綠色區間。她出來的時候說：「好。下一個。」'; } },
+        { text: '提前叫醒他們。', hint: '醒著 +3、冬眠艙 -3、糧食 -10',
+          run: function (s) { add(s, { awake: 3, pods: -3, food: -10 }); return '三個人醒來的時候都很茫然。其中一個問：「這裡是新家嗎？」林醫官說：「暫時是。」'; } },
+        { text: '先處理別的事。', hint: '冬眠艙 -2',
+          run: function (s) { add(s, { pods: -2, morale: -4 }); log(s, '冬眠艙', '七號列兩具艙體失效', 'alert'); return '林醫官盡力了。三具裡保住一具。\n她沒有來找你。她把那兩個名字寫在醫療艙的白板上，一直沒有擦掉。'; } }
+      ];
+    }
+  });
+
+  R_('quarrel', {
+    title: '餐廳裡的爭吵', tag: '人事',
+    w: function (s) { return s.day >= 10 && !s.flags.suLost ? (s.flags.engPath || s.flags.sciPath || s.flags.compromise ? 1.1 : 0.6) : 0; },
+    lines: function () { return [['', '餐廳裡吵起來了。工程組說研究組整天「看蟲」不做事，研究組說工程組把熱泉口挖得亂七八糟。'], ['ge', '我的人一天輪十二小時班，他們在幹嘛？拍照？'], ['su', '我的人在想辦法讓你的人不要被吃掉，謝謝。']]; },
+    choices: function () {
+      return [
+        { text: '站在工程組那邊。', hint: '物資 +20、研究 -10、士氣 -2',
+          run: function (s) { add(s, { parts: 20, research: -10, morale: -2 }); return '研究組那天被派去幫忙搬料。蘇芮一路搬，一路沒看你。'; } },
+        { text: '站在研究組那邊。', hint: '研究 +15、物資 -10、士氣 -2',
+          run: function (s) { add(s, { research: 15, parts: -10, morale: -2 }); return '工程組借了兩個人給研究站。老葛說是「借」，講了三次。'; } },
+        { text: '兩邊都罰洗一個禮拜的碗。', hint: '士氣 +4',
+          run: function (s) { add(s, { morale: 4 }); return '第三天開始，洗碗槽那邊傳出了笑聲。第五天，老葛跟蘇芮被發現在討論鑽頭的頻率。'; } }
+      ];
+    }
+  });
+
+  R_('birthday', {
+    title: '不准說的生日', tag: '日常',
+    w: function () { return 0.6; },
+    lines: function () { return [['zhou', '今天是林醫官生日。她叫我不准說。'], ['zhou', '……可是我已經說了。']]; },
+    choices: function () {
+      return [
+        { text: '偷偷辦個派對。', hint: '糧食 -15、士氣 +8', req: function (s) { return s.res.food >= 15; }, why: '糧食不足 15',
+          run: function (s) { add(s, { food: -15, morale: 8 }); return '蛋糕是用壓縮口糧疊出來的，上面插著一根焊條當蠟燭。\n林醫官看到的時候說：「你們真的很閒。」然後吃了兩塊。'; } },
+        { text: '尊重她。', hint: '士氣 +1',
+          run: function (s) { add(s, { morale: 1 }); return '你在她的桌上放了一片從艦上帶出來的巧克力。第二天，包裝紙不見了。'; } }
+      ];
+    }
+  });
+
+  R_('fungus', {
+    title: '岩縫裡的菌毯', tag: '發現',
+    w: function (s) { return s.day >= 6 ? 0.9 : 0; },
+    lines: function (s) { return [[suOK(s) ? 'su' : 'lin', '夜側邊緣的岩縫裡長了一種菌毯。我測過了，沒有毒，而且蛋白質含量還不錯。'], [suOK(s) ? 'su' : 'lin', '我們可以直接採，或者試著拿回農場養。']]; },
+    choices: function () {
+      return [
+        { text: '採收。', hint: '糧食 +35',
+          run: function (s) { add(s, { food: 35 }); if (R() < 0.3) { add(s, { hostility: 5 }); return '菌毯嚼起來像沒調味的香菇。採收的時候，地底感測器輕輕跳了一下。'; } return '菌毯嚼起來像沒調味的香菇。老葛說加辣椒醬就好了，可惜辣椒醬早就被打架打掉了。'; } },
+        { text: '帶回農場培養。', hint: '研究 -20；農場永久每日 +4 糧食', req: function (s) { return s.res.research >= 20 && !s.flags.fungusFarm; }, why: '需要 20 研究（只能培養一次）',
+          run: function (s) { s.flags.fungusFarm = true; add(s, { research: -20 }); return '菌毯在農場的角落長得很好，好到有點可怕。'; } }
+      ];
+    }
+  });
+
+  R_('flare', {
+    title: '恆星閃焰', tag: '天象', alert: true,
+    w: function () { return 0.8; },
+    lines: function () { return [['zhou', '恆星表面亮了一大塊，是閃焰！帶電粒子大概二十分鐘後到。'], ['ge', '全部斷電可以保住設備。要賭的話，讓電網硬吃，運氣好還能充一波電。']]; },
+    choices: function () {
+      return [
+        { text: '全面斷電避險。', hint: '電力 -20',
+          run: function (s) { add(s, { power: -20 }); return '二十分鐘後，天邊亮成一片粉紫色的極光。很美，只是沒有人有心情看。'; } },
+        { text: '讓電網硬吃。', hint: '一半機率電力 +60；一半機率燒掉一座光伏陣列',
+          run: function (s) {
+            if (R() < 0.5) { add(s, { power: 60 }); return '蓄電槽的指針一路往上打到底。老葛吹了一聲口哨。'; }
+            var w = wreckBuilding(s, ['solar']); add(s, { morale: -3 });
+            if (w) log(s, '閃焰', '一座光伏陣列燒毀', 'alert');
+            return w ? '一聲爆響，一整排光伏板冒出白煙。老葛罵了一句很長的髒話。' : '一聲爆響，但沒燒到什麼。運氣。';
+          } }
+      ];
+    }
+  });
+
+  R_('relic', {
+    title: '拾穗號的平板', tag: '拾穗號',
+    w: function (s) { return s.flags.ruinsKnown ? 1 : 0; },
+    lines: function () { return [['zhou', '外勤隊在廢墟的櫃子裡找到一台拾穗號的平板，電池早就沒了，記憶體可能還讀得出來。']]; },
+    choices: function () {
+      return [
+        { text: '交給小周解碼。', hint: '研究 +25',
+          run: function (s) { add(s, { research: 25 }); return '平板裡大多是工作紀錄，還有一段影片：一個小女孩對著鏡頭揮手，背景是熱泉口。\n熱泉口旁邊，有一片綠色的東西。'; } },
+        { text: '拆了拿零件。', hint: '物資 +30',
+          run: function (s) { add(s, { parts: 30 }); return '老葛把它拆得很乾淨。螢幕那一片，他沒有丟，收進了自己的工具箱。'; } }
+      ];
+    }
+  });
+
+  R_('wander', {
+    title: '有人沒回來', tag: '人員', alert: true,
+    w: function (s) { return s.flags.walks ? 1.1 : 0; },
+    lines: function () { return [['lin', '散步隊少了一個。小陳，那個說他看得到地球的。最後有人看到他往夜側更深的地方走。']]; },
+    choices: function () {
+      return [
+        { text: '派人去找。', hint: '小規模防禦判定',
+          run: function (s) {
+            var c = check(s, 0.5);
+            if (c.tier < 2) { add(s, { morale: 2 }); return '防禦 ' + c.d + ' 對上威脅 ' + c.str + '——找到了。他坐在一塊石頭上，說他只是想再走遠一點。林醫官把他帶回醫療艙，跟他聊了很久。'; }
+            kill(s, 1); add(s, { morale: -6 }); log(s, '人員', '小陳沒有回來', 'alert');
+            return '防禦 ' + c.d + ' 對上威脅 ' + c.str + '——搜索隊只找到他的手電筒。';
+          } },
+        { text: '用廣播叫他回來。', hint: '一半機率他會聽到',
+          run: function (s) {
+            if (R() < 0.5) return '小周在廣播裡講了兩個小時。第三個小時，他自己走回來了，凍得說不出話。';
+            kill(s, 1); add(s, { morale: -6 }); log(s, '人員', '小陳沒有回來', 'alert');
+            return '小周在廣播裡講了一整天，聲音都啞了。他沒有回來。';
+          } }
+      ];
+    }
+  });
+
+  R_('letters', {
+    title: '來自地球的訊息', tag: '通訊',
+    w: function (s) { return s.day >= 14 ? 0.9 : 0; },
+    lines: function () { return [['zhou', '啟明號轉發了一批來自地球的訊息，是家屬錄的。有好幾百則。'], ['zhou', '要直接放給大家嗎？有些……我不確定是好消息。']]; },
+    choices: function () {
+      return [
+        { text: '全部放給大家。', hint: '士氣 +6，但可能有壞消息',
+          run: function (s) {
+            if (R() < 0.3) { add(s, { morale: 1 }); return '大多數人聽完都哭了，是好的那種哭。只有一個人聽完之後走出去，在外面站了很久。他的母親兩個月前過世了。'; }
+            add(s, { morale: 6 }); return '那天晚上，每個艙房都傳出別人的聲音。有個孩子在訊息裡問爸爸什麼時候回家，那個爸爸聽了二十幾遍。';
+          } },
+        { text: '先過濾，一則一則交給本人。', hint: '士氣 +3',
+          run: function (s) { add(s, { morale: 3 }); return '小周花了兩天，一則一則確認。壞消息由林醫官親自轉交。'; } }
+      ];
+    }
+  });
+
+  R_('larva', {
+    title: '土裡的幼體', tag: '異蟲',
+    w: function (s) { return s.day >= 14 && !s.flags.purge && !s.flags.larva && !s.flags.pact ? 0.7 : 0; },
+    lines: function (s) { return [['', '農場的土裡翻出一隻巴掌大的幼體，殼還沒長硬，軟軟的，在燈下縮成一團。'], suOK(s) ? ['su', '拜託不要殺牠。給我養。'] : ['ge', '……蘇芮在的話，大概會想養吧。']]; },
+    choices: function () {
+      return [
+        { text: '交給研究站養。', hint: '研究 +20；牠會記得你們',
+          run: function (s) { s.flags.larva = true; add(s, { research: 20 }); return '牠很快就長大了，會在研究站的地板上把碎石排成一直線。有一天牠把一小塊灰晶推到了門口。'; } },
+        { text: '處理掉。', hint: '異蟲活動 +4',
+          run: function (s) { add(s, { hostility: 4 }); return '老葛做的。他做得很快，什麼都沒說。'; } }
+      ];
+    }
+  });
+
+  R_('vein', {
+    title: '純到發亮的礦脈', tag: '鑽採',
+    w: function (s) { return drillsOn(s) && s.b.drill >= 1 ? 0.8 : 0; },
+    lines: function () { return [['ge', '三號孔打到一條礦脈，灰晶純到會發亮。全力挖的話，一天就能挖出好幾天的量。'], ['zhou', '同一個位置，地底感測器的讀數也特別高。']]; },
+    choices: function () {
+      return [
+        { text: '全力開採。', hint: '灰晶 +25、物資 +20、異蟲活動 +12',
+          run: function (s) { add(s, { crystal: 25, parts: 20, hostility: 12 }); return '那天晚上，礦脈裡的光被一車一車地運出來。地底的讀數一直沒有降。'; } },
+        { text: '標記起來，先不動。', hint: '研究 +5、異蟲活動 -3',
+          run: function (s) { add(s, { research: 5, hostility: -3 }); return '老葛很不甘心地插了一根標竿。「它不會跑。」他說，好像在說服自己。'; } }
+      ];
+    }
+  });
+
+  R_('gift', {
+    title: '圍籬外的東西', tag: '造地者',
+    w: function (s) { return s.flags.pact ? 2 : 0; },
+    lines: function () { return [['', '圍籬外整整齊齊堆著一排金屬碎片，旁邊有幾塊發光的菌塊。沒有任何一隻造地者在附近。']]; },
+    choices: function () {
+      return [
+        { text: '收下。', hint: '物資 +30、糧食 +15',
+          run: function (s) { add(s, { parts: 30, food: 15 }); return '老葛說造地者的分類比他的倉庫還整齊，講完自己都笑了。'; } },
+        { text: '也放一點東西回去。', hint: '糧食 -10、士氣 +5、異蟲活動 -5',
+          run: function (s) { add(s, { food: -10, morale: 5, hostility: -5 }); return '你們放了一箱罐頭。第二天罐頭不見了，原地多了一圈整整齊齊的小石頭。'; } }
+      ];
+    }
+  });
+
+  R_('stormHit', {
+    title: '強風', tag: '風暴', alert: true,
+    w: function (s) { return stormActive(s) ? (s.flags.braved ? 2.5 : 0.6) : 0; },
+    lines: function (s) {
+      return s.flags.braved
+        ? [['ge', '東邊那排板子被吹翻兩片了！再不去搶，整排都會飛掉！']]
+        : [['ge', '風又變大了。板子撐得住，但居住艙的密封條在漏風。']];
+    },
+    choices: function (s) {
+      if (!s.flags.braved) return [
+        { text: '補密封條。', hint: '物資 -15',
+          run: function (s) { add(s, { parts: -15 }); return '補好了。風聲小了一點，至少能睡了。'; } },
+        { text: '忍著。', hint: '士氣 -4',
+          run: function (s) { add(s, { morale: -4 }); return '那一晚，整個居住艙都在呼呼叫。'; } }
+      ];
+      return [
+        { text: '冒著風去搶修。', hint: '物資 -25；有人可能受傷',
+          run: function (s) { add(s, { parts: -25 }); if (R() < 0.3) { add(s, { morale: -4 }); return '板子保住了。有個人被吹倒，撞斷了手臂。'; } return '老葛親自上去，綁著安全索搶了一個小時。板子保住了。'; } },
+        { text: '等風停。', hint: '失去一座光伏陣列',
+          run: function (s) { var w = wreckBuilding(s, ['solar']); if (w) log(s, '風暴', '一座光伏陣列被吹毀', 'alert'); return w ? '風停的時候，那排板子已經散在兩公里外的坡上。' : '還好，沒有板子可以吹了。'; } }
+      ];
+    }
+  });
+
+  R_('sick', {
+    title: '發燒', tag: '醫療', alert: true,
+    w: function (s) { return s.day >= 12 ? 0.7 : 0; },
+    lines: function () { return [['lin', '有六個人發燒，症狀一模一樣。可能是水，可能是那些粉末，我還不知道。'], ['lin', '我需要研究站幫我跑定序。或者我只能先隔離，祈禱。']]; },
+    choices: function () {
+      return [
+        { text: '研究站全力支援。', hint: '研究 -25', req: function (s) { return s.res.research >= 25; }, why: '研究不足 25',
+          run: function (s) { add(s, { research: -25 }); return '定序結果出來，是水循環裡的一種細菌。林醫官調了藥，三天後所有人都退燒了。'; } },
+        { text: '只隔離。', hint: '士氣 -5，可能有人撐不過去',
+          run: function (s) {
+            add(s, { morale: -5 });
+            if (R() < (s.tech.medbay ? 0.15 : 0.4)) { kill(s, 1); log(s, '醫療', '一名患者病逝', 'alert'); return '六個人裡，有一個沒撐過去。林醫官在報告上寫的死因很短，簽名寫得很用力。'; }
+            return '一個禮拜後，六個人都下床了。林醫官說這次是運氣，下次不一定。';
+          } }
+      ];
+    }
+  });
+
+  // 異蟲活動滿了強制觸發
+  EVENTS.swarm = {
+    kind: 'threat', title: '蟲潮', tag: '威脅 · 異蟲活動 100', alert: true,
+    lines: function (s) { return [['zhou', '地底感測器全滿了！不是一群一群，是整片在動！'], ['ge', '我們挖得太兇了。'], ['', '預估威脅 ' + threatOf(s, 1.2) + '，目前防禦 ' + defense(s) + '。']]; },
+    choices: function () {
+      return [
+        { text: '死守。', hint: '大規模防禦判定',
+          run: function (s) { var r = fight(s, 1.2, 'major', ['你們守住了。圍籬外堆滿了灰色的殼。', '守住了，但付出了代價。', '蟲潮從好幾個缺口灌進來。']); s.hostility = 70; return r.text; } },
+        { text: '放棄外圍，退守船艙。', hint: '失去兩座外圍設施，不打正面',
+          run: function (s) {
+            var a = wreckBuilding(s), b2 = wreckBuilding(s); add(s, { morale: -8 }); s.hostility = 60;
+            log(s, '撤守', '蟲潮：' + ([a, b2].filter(Boolean).join('、') || '外圍') + '被毀', 'alert');
+            return '你們聽著外面的聲音聽了一整夜。早上，' + ([a, b2].filter(Boolean).join('和') || '外圍的東西') + '已經不在了。';
+          } }
+      ];
+    }
+  };
+
+  var RANDOM_IDS = Object.keys(EVENTS).filter(function (k) { return EVENTS[k].kind === 'random'; });
+
+  function pickRandom(s) {
+    var bag = [], sum = 0;
+    RANDOM_IDS.forEach(function (id) {
+      if (s.recent.indexOf(id) >= 0) return;
+      if ((s.cool[id] || 0) > s.day) return;
+      var w = EVENTS[id].w(s);
+      if (w > 0) { bag.push([id, w]); sum += w; }
+    });
+    if (!bag.length) return null;
+    var x = R() * sum;
+    for (var i = 0; i < bag.length; i++) { x -= bag[i][1]; if (x <= 0) return bag[i][0]; }
+    return bag[bag.length - 1][0];
+  }
+  function queueEvent(s, id) {
+    s.queue.push(id);
+    if (EVENTS[id].kind !== 'story') {
+      s.cool[id] = s.day + 8;
+      s.recent.push(id);
+      if (s.recent.length > 3) s.recent.shift();
+    }
+  }
+
+  // ---------- 一天的結算 ----------
+  function endDay(s) {
+    if (s.over || s.queue.length) return false;
+    var r = rates(s);
+    var before = { power: s.res.power, food: s.res.food, parts: s.res.parts, research: s.res.research };
+
+    // 電力：先生產，再供給設施和冬眠艙
+    var avail = s.res.power + r.gen, need = r.use + r.pod, short = false;
+    if (avail >= need) s.res.power = Math.min(r.cap, avail - need);
+    else {
+      short = true;
+      var deficit = need - avail;
+      s.res.power = 0;
+      if (s.pods > 0) {
+        var pl = Math.min(s.pods, Math.max(1, Math.ceil(deficit / 8)), 4);
+        s.pods -= pl;
+        log(s, '停電', '電力不足 ' + Math.ceil(deficit) + '，冬眠艙有 ' + pl + ' 人沒能撐過去', 'alert');
+      } else log(s, '停電', '電力不足，設施半速運轉', 'alert');
+      s.morale -= 4;
+    }
+    var pf = short ? 0.5 : 1;
+
+    // 糧食
+    var food = s.res.food + r.food * pf - r.eat;
+    if (food < 0) {
+      var dead = Math.min(s.awake, 3, Math.max(1, Math.ceil(-food / 6)));
+      s.awake -= dead;
+      s.morale -= 6;
+      food = 0;
+      log(s, '斷糧', '糧食耗盡，' + dead + ' 人餓死', 'alert');
+    }
+    s.res.food = food;
+    s.res.parts += r.parts * pf;
+    s.res.crystal += r.crystal * pf;
+    s.res.research += r.research * pf;
+
+    // 士氣
+    s.morale += r.morale;
+    if (s.morale >= 40) s.flags.lowMoraleWarned = false;
+    if (s.morale < 25 && !s.flags.lowMoraleWarned) {
+      s.flags.lowMoraleWarned = true;
+      log(s, '警告', '士氣跌破 25，設施效率下降。再低下去，大家可能不再聽你的。', 'alert');
+    }
+
+    // 異蟲活動
+    s.hostility += r.host;
+
+    s.day = Math.min(MAX_DAY, s.day + 1);
+    s.field = false;
+    clampAll(s);
+
+    var dp = s.res.power - before.power, df = s.res.food - before.food, dpa = s.res.parts - before.parts;
+    log(s, '日報', '⚡' + sign(dp) + '　🌾' + sign(df) + '　🔩' + sign(dpa) + (r.research ? '　🧪' + sign(s.res.research - before.research) : ''), 'info');
+
+    if (checkEnd(s)) return true;
+
+    // 事件
+    if (s.day >= MAX_DAY) queueEvent(s, 's50');
+    else if (STORY[s.day]) queueEvent(s, STORY[s.day]);
+    else if (s.hostility >= 100) queueEvent(s, 'swarm');
+    else if (s.day >= 3 && R() < 0.45) { var id = pickRandom(s); if (id) queueEvent(s, id); }
+    return true;
+  }
+  function sign(x) { x = Math.round(x); return (x >= 0 ? '+' : '') + x; }
+
+  function checkEnd(s) {
+    if (s.over) return true;
+    if (s.awake <= 0) { finish(s, 'dark'); return true; }
+    if (s.morale <= 0) { finish(s, 'mutiny'); return true; }
+    return false;
+  }
+
+  // ---------- 玩家行動 ----------
+  function canBuild(s, id) { return !s.over && s.res.parts >= costOf(s, id); }
+  function build(s, id) {
+    if (!BUILD[id] || !canBuild(s, id)) return false;
+    s.res.parts -= costOf(s, id);
+    s.b[id]++;
+    log(s, '建設', BUILD[id].name + '完工（共 ' + s.b[id] + ' 座）', 'ok');
+    clampAll(s);
+    return true;
+  }
+  function techState(s, id) {
+    var t = TECH[id];
+    if (s.tech[id]) return 'done';
+    if (t.req && !t.req(s)) return 'locked';
+    if (s.res.research < t.cost || (t.crystal && s.res.crystal < t.crystal)) return 'poor';
+    return 'ok';
+  }
+  function research(s, id) {
+    if (s.over || techState(s, id) !== 'ok') return false;
+    var t = TECH[id];
+    s.res.research -= t.cost;
+    if (t.crystal) s.res.crystal -= t.crystal;
+    s.tech[id] = true;
+    log(s, '科研', t.name + '研發完成', 'ok');
+    clampAll(s);
+    return true;
+  }
+  var WAKE_FOOD = 6, WAKE_POWER = 5;
+  function canWake(s) {
+    return !s.over && s.pods > 0 && s.awake < rates(s).beds && s.res.food >= WAKE_FOOD && s.res.power >= WAKE_POWER;
+  }
+  function wake(s) {
+    if (!canWake(s)) return false;
+    add(s, { pods: -1, awake: 1, food: -WAKE_FOOD, power: -WAKE_POWER });
+    log(s, '喚醒', '從冬眠艙喚醒 1 人（醒著 ' + s.awake + '）', 'ok');
+    return true;
+  }
+
+  var FIELD = {
+    salvage: { name: '拆解長夜號殘骸', emoji: '🛠️', desc: '把還能用的零件拆回來。殘骸總有拆完的一天。',
+      cost: function () { return ''; },
+      ok: function (s) { return s.wreck > 0; }, why: '殘骸已經拆光了' },
+    survey: { name: '地表勘查', emoji: '🧭', desc: '沿著晨昏線往外走一圈，可能帶回糧食或物資，也可能遇到東西。',
+      cost: function () { return '8🌾'; },
+      ok: function (s) { return s.res.food >= 8; }, why: '需要 8 糧食' },
+    ruins: { name: '夜側廢墟', emoji: '🏚️', desc: '去拾穗號的遺址翻找資料。夜側很冷，路很遠。',
+      cost: function () { return '15⚡ 8🌾'; },
+      ok: function (s) { return s.flags.ruinsKnown && s.res.power >= 15 && s.res.food >= 8; },
+      why: function (s) { return s.flags.ruinsKnown ? '需要 15 電力、8 糧食' : '還不知道要去哪裡'; } }
+  };
+  function field(s, id) {
+    var F = FIELD[id];
+    if (s.over || s.field || !F || !F.ok(s)) return null;
+    s.field = true;
+    var t;
+    if (id === 'salvage') {
+      var g = Math.min(s.wreck, ri(25, 40)); s.wreck -= g; add(s, { parts: g });
+      t = '外勤隊從殘骸拆回 ' + g + ' 物資。（殘骸剩約 ' + Math.round(s.wreck) + '）';
+      if (R() < 0.15) { add(s, { food: 15 }); t += ' 還翻到一箱沒摔破的口糧，糧食 +15。'; }
+      log(s, '外勤', t, 'ok');
+    } else if (id === 'survey') {
+      add(s, { food: -8 });
+      var x = R();
+      if (x < 0.42) { var f = ri(25, 40); add(s, { food: f }); t = '勘查隊在岩縫裡採到菌毯，糧食 +' + f + '。'; log(s, '外勤', t, 'ok'); }
+      else if (x < 0.74) { var p = ri(20, 35); add(s, { parts: p }); t = '勘查隊撿回一批長夜號掉落的碎片，物資 +' + p + '。'; log(s, '外勤', t, 'ok'); }
+      else {
+        var c = check(s, 0.5);
+        if (c.tier === 0) { t = '勘查隊遇到一小群異蟲，對峙了一陣子，安全撤回。'; log(s, '外勤', t, 'warn'); }
+        else {
+          add(s, { morale: -4 });
+          var n = c.tier === 2 ? kill(s, 1) : 0;
+          t = '勘查隊遭到異蟲襲擊' + (n ? '，1 人沒有回來。' : '，大家狼狽地逃回來。');
+          log(s, '外勤', t, 'alert');
+        }
+      }
+    } else {
+      add(s, { power: -15, food: -8 });
+      var rp = ri(15, 30) * (s.flags.looted ? 0.6 : 1); rp = Math.round(rp); add(s, { research: rp });
+      t = '外勤隊從拾穗號遺址帶回一批資料，研究 +' + rp + '。';
+      if (R() < 0.2) { add(s, { parts: 30 }); t += ' 還拆回 30 物資。'; }
+      if (R() < 0.15) { add(s, { hostility: 5 }); t += ' 回程時地底感測器一路在響。'; }
+      log(s, '外勤', t, 'ok');
+    }
+    return t;
+  }
+
+  // ---------- 事件介面 ----------
+  function choicesOf(ev, s) { return typeof ev.choices === 'function' ? ev.choices(s) : ev.choices; }
+  // 每個選項能不能選；萬一全部被條件擋住，最後一個強制開放，避免卡死
+  function okList(chs, s) {
+    var ok = chs.map(function (c) { return !c.req || !!c.req(s); });
+    if (ok.indexOf(true) < 0 && ok.length) ok[ok.length - 1] = true;
+    return ok;
+  }
+  function view(s) {
+    var id = s.queue[0];
+    if (!id) return null;
+    var ev = EVENTS[id], chs = choicesOf(ev, s), ok = okList(chs, s);
+    return {
+      id: id, kind: ev.kind, title: ev.title, tag: ev.tag,
+      alert: typeof ev.alert === 'function' ? ev.alert(s) : !!ev.alert,
+      lines: ev.lines(s).map(function (l) { return { who: l[0] ? CAST[l[0]] : null, text: l[1] }; }),
+      choices: chs.map(function (c, i) {
+        return { text: c.text, hint: c.hint, ok: ok[i], why: typeof c.why === 'function' ? c.why(s) : c.why };
+      })
+    };
+  }
+  function choose(s, idx) {
+    var id = s.queue[0];
+    if (!id) return null;
+    var ev = EVENTS[id], chs = choicesOf(ev, s), ch = chs[idx];
+    if (!ch || !okList(chs, s)[idx]) return null;
+    var text = ch.run(s) || '';
+    s.queue.shift();
+    clampAll(s);
+    if (ev.kind === 'story' && id !== 's50') log(s, '主線', ev.title + '：' + ch.text, 'story');
+    else if (ev.kind !== 'story') log(s, ev.tag, ev.title + '：' + ch.text, 'info');
+    checkEnd(s);
+    if (s.over) s.queue = [];
+    return { text: text };
+  }
+
+  // ---------- 結局 ----------
+  function finish(s, id) {
+    s.over = true;
+    s.queue = [];
+    s.ending = buildEnding(s, id);
+  }
+  function buildEnding(s, id) {
+    var f = s.flags, surv = s.awake + s.pods, L = lost(s), P = [];
+    var total = TOTAL + (f.fangAwake ? 1 : 0);
+    var e = { id: id, win: true, title: '', sub: '', paras: P, survivors: surv, total: total, lost: L, day: s.day };
+    if (id === 'evac') {
+      e.title = '歸途'; e.sub = '結局 · 撤離';
+      P.push('啟明號的接駁艇來回跑了 ' + Math.max(2, Math.ceil(surv / 12)) + ' 趟。冬眠艙是最後上去的，一具一具，林醫官親自核對每個名字。');
+      if (f.purge) P.push('起飛的時候，你從舷窗往下看。熱泉口那一帶整片是灰的，沒有任何東西在動。');
+      else if (f.pact) P.push('起飛的時候，地底感測器還連在小周的平板上。那段三短一長的節奏，一直響到訊號消失為止。');
+      else P.push('起飛的時候，晨昏線上的太陽還卡在同一個位置，好像這五十天什麼都沒發生過。');
+      if (f.suLost) P.push('蘇芮的履帶車留在熱泉口。你們沒有把它開回來，覺得她大概會想待在那裡。');
+      else if (f.fangAwake) P.push('方以寧一路上都在看拾穗號的設計圖。快到地球的時候她說，她想寫一份報告，給四十一年前的自己。');
+      P.push('回程要十四個月。公司寄來的第一封信是問損失報告，第二封才是慰問。');
+      P.push(L <= 5 ? '你在報告的損失欄寫了 ' + L + '。這個數字小到總部打電話來確認是不是寫錯了。' : '你在報告的損失欄寫了 ' + L + '。寫完之後，你在那一頁停了很久。');
+      P.push('「指揮官」那一欄，你寫的還是韓靜。後面加了一行小字：代理，五十天。');
+    } else if (id === 'stay') {
+      var stay = Math.max(8, Math.round(s.awake * 0.6));
+      e.title = '晨昏線上的人'; e.sub = '結局 · 共存';
+      P.push('啟明號帶走了冬眠艙，和所有想回家的人。留下來的有 ' + stay + ' 個，包括你。');
+      P.push('老葛是第一個舉手的。他說總要有人顧發電機，說得很不甘願，可是第二天他就去量新居住艙的地基了。');
+      if (f.fangAwake) P.push('方以寧把拾穗號的設計圖攤在會議桌上。一百年的計畫，她說，現在只剩九十九年了。');
+      if (suOK(s)) P.push('蘇芮開始幫造地者取名字。第一隻叫「阿哲」，因為牠第一次出現時，把那位值班的同事嚇得半死。');
+      else P.push('熱泉口邊立了一塊牌子，上面是蘇芮的名字。造地者每天經過那裡，都會繞開。');
+      P.push('林醫官也留下了。她說她的病人在這裡，雖然現在的病人有一半是蟲。');
+      P.push('你最後一次發訊給啟明號的時候，對方問要用什麼名字登記這個殖民地。你想了很久，說：「灰線。就叫灰線。」');
+      P.push('第二年，熱泉口邊緣長出了第一片青苔。');
+    } else if (id === 'haul') {
+      e.title = '滿載而歸'; e.sub = '結局 · 慘勝';
+      P.push('啟明號的貨艙裝不下，你們把冬眠艙之間的走道也堆滿了灰晶。總共 ' + Math.round(s.res.crystal) + ' 單位。');
+      P.push('公司在你們回到地球之前就發了新聞稿：「長夜號倖存者帶回史上最大宗灰晶礦藏」。你被寫成英雄。');
+      P.push('新聞稿裡沒有提到死了 ' + L + ' 個人，也沒有提到熱泉口。');
+      if (f.purge) P.push('起飛前最後一張地表影像裡，晨昏線上那條本來要變綠的帶子，已經開始龜裂了。');
+      else P.push('起飛前最後一張地表影像裡，熱泉口周圍密密麻麻都是灰色的點，全都朝著你們的方向。');
+      if (suOK(s)) P.push('蘇芮整個回程都沒有再跟你說話。下船那天，她把一份報告塞進你手裡，封面寫著：「造地者——一個工程的最後紀錄」。');
+      else P.push('蘇芮的錄音檔，你一直沒有交出去。');
+      P.push('老葛拿到的獎金夠他買一艘自己的船。他說他不知道要開去哪裡。');
+      P.push('你贏了。帳面上是這麼寫的。');
+    } else if (id === 'dark') {
+      e.win = false; e.title = '熄燈'; e.sub = '第 ' + s.day + ' 天 · 基地覆滅';
+      P.push('第 ' + s.day + ' 天，基地最後一盞燈熄了。');
+      if (s.pods > 0) P.push('沒有人醒著了。冬眠艙還靠著殘存的電撐著，' + s.pods + ' 個人還在睡，不知道外面發生了什麼。他們醒來的時候，會從救援隊口中聽到你們的故事——如果那時候艙裡還有電。');
+      else P.push('啟明號抵達時，晨昏線上沒有任何東西回應它的呼叫。');
+      P.push('拾穗號的值班表上，又多了一個同樣的結尾。');
+    } else { // mutiny
+      e.win = false; e.title = '嘩變'; e.sub = '第 ' + s.day + ' 天 · 指揮權喪失';
+      P.push('第 ' + s.day + ' 天早上，你的艙門被從外面鎖住了。');
+      P.push('老葛隔著門說話，聲音很累：「對不起，指揮。大家撐不下去了，需要換一個方法。不是你的錯。……也不全是。」');
+      P.push('門再打開的時候，基地已經由一個臨時委員會在管。他們沒有為難你，只是再也沒有人問你的意見。');
+      P.push('啟明號來的那天，你排在隊伍的最後面上船。');
+    }
+    return e;
+  }
+
+  // ---------- 給模擬用 ----------
+  function setRng(fn) { rng = fn || Math.random; }
+
+  return {
+    MAX_DAY: MAX_DAY, TOTAL: TOTAL, CAST: CAST, BUILD: BUILD, BUILD_ORDER: BUILD_ORDER, TECH: TECH, TECH_ORDER: TECH_ORDER, FIELD: FIELD, EVENTS: EVENTS,
+    SOLAR_OUT: SOLAR_OUT, FARM_OUT: FARM_OUT, LAB_OUT: LAB_OUT, DRILL_PARTS: DRILL_PARTS, DRILL_CRYSTAL: DRILL_CRYSTAL, TURRET_DEF: TURRET_DEF, BEDS_PER: BEDS_PER, BATTERY_CAP: BATTERY_CAP,
+    WAKE_FOOD: WAKE_FOOD, WAKE_POWER: WAKE_POWER,
+    newState: newState, sanitize: sanitize, rates: rates, defense: defense, threatOf: threatOf, costOf: costOf, drillsOn: drillsOn, stormActive: stormActive,
+    endDay: endDay, build: build, canBuild: canBuild, research: research, techState: techState, wake: wake, canWake: canWake, field: field,
+    view: view, choose: choose, lost: lost, setRng: setRng, log: log
+  };
+})();
+
+// =========================================================================
+// 介面
+// =========================================================================
+var UI = (function () {
+  'use strict';
+  var SAVE_KEY = 'arcade-outpost-save';
+  var STATS_KEY = 'arcade-outpost-stats';
+  var ENDINGS = { evac: '歸途', stay: '晨昏線上的人', haul: '滿載而歸' };
+  var SPEEDS = [1600, 800, 400];
+
+  var s = null, tab = 'build', auto = false, speed = 0, timer = null, evShowing = false, armNew = false;
+
+  function $(id) { return document.getElementById(id); }
+  function lsGet(k) { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+
+  // 紀錄：arcade-outpost-stats = { story: { plays, wins, best: { lost }, endings: [...] } }，best 越小越好
+  function loadStats() {
+    var st = lsGet(STATS_KEY);
+    if (!st || typeof st !== 'object') st = {};
+    st.story = st.story || { plays: 0, wins: 0, best: {} };
+    st.story.best = st.story.best || {};
+    if (!Array.isArray(st.story.endings)) st.story.endings = [];
+    return st;
+  }
+  function persist() { if (s) lsSet(SAVE_KEY, s.over ? null : s); }
+
+  // 音效：WebAudio 即時合成。總開關在首頁（localStorage arcade-sound = 'off' 為關），每次出聲前重讀
+  var SFX = (function () {
+    var ac = null;
+    function on() { try { return localStorage.getItem('arcade-sound') !== 'off'; } catch (e) { return true; } }
+    function tone(freq, o) {
+      o = o || {};
+      if (!on()) return;
+      try {
+        ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+        if (ac.state === 'suspended') ac.resume();
+        var t = ac.currentTime + (o.delay || 0), dur = o.dur || 0.06;
+        var osc = ac.createOscillator(), gn = ac.createGain();
+        osc.type = o.type || 'sine';
+        osc.frequency.setValueAtTime(freq, t);
+        if (o.slide) osc.frequency.exponentialRampToValueAtTime(freq * o.slide, t + dur);
+        gn.gain.setValueAtTime(o.vol || 0.05, t);
+        gn.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        osc.connect(gn); gn.connect(ac.destination);
+        osc.start(t); osc.stop(t + dur + 0.02);
+      } catch (e) {}
+    }
+    return {
+      click: function () { tone(1046, { dur: 0.03, vol: 0.025 }); },
+      day: function () { tone(660, { dur: 0.05, vol: 0.03, type: 'triangle' }); tone(880, { dur: 0.05, vol: 0.025, type: 'triangle', delay: 0.05 }); },
+      build: function () { tone(330, { dur: 0.06, vol: 0.05, type: 'square' }); tone(494, { dur: 0.08, vol: 0.04, type: 'triangle', delay: 0.06 }); },
+      tech: function () { [587, 740, 880].forEach(function (f, i) { tone(f, { dur: 0.09, vol: 0.04, type: 'triangle', delay: i * 0.06 }); }); },
+      deny: function () { tone(180, { dur: 0.1, vol: 0.05, type: 'square', slide: 0.8 }); },
+      story: function () { tone(392, { dur: 0.4, vol: 0.04, type: 'sine' }); tone(587, { dur: 0.5, vol: 0.03, type: 'sine', delay: 0.12 }); },
+      alert: function () { tone(220, { dur: 0.14, vol: 0.06, type: 'sawtooth', slide: 0.7 }); tone(165, { dur: 0.18, vol: 0.06, type: 'sawtooth', slide: 0.7, delay: 0.14 }); },
+      event: function () { tone(523, { dur: 0.08, vol: 0.04, type: 'triangle' }); tone(659, { dur: 0.1, vol: 0.04, type: 'triangle', delay: 0.08 }); },
+      win: function () { [523, 659, 784, 1047].forEach(function (f, i) { tone(f, { dur: 0.18, vol: 0.05, type: 'triangle', delay: i * 0.12 }); }); },
+      over: function () { [392, 330, 262, 196].forEach(function (f, i) { tone(f, { dur: 0.22, vol: 0.05, delay: i * 0.15 }); }); }
+    };
+  })();
+
+  // ---------- 渲染 ----------
+  function fmt(x) { return Math.floor(x + 1e-6); }
+  function sgn(x) { var v = Math.round(x * 10) / 10; if (Math.abs(v) >= 10) v = Math.round(v); return (v > 0 ? '+' : '') + v; }
+  function rcls(x) { return x > 0.05 ? 'up' : x < -0.05 ? 'dn' : ''; }
+
+  function tile(cls, label, val, sub, rate, rc, warn) {
+    return '<div class="tile ' + cls + (warn ? ' warn' : '') + '"><span class="lb">' + label + '</span><b class="v">' + val + (sub ? '<small>' + sub + '</small>' : '') + '</b><span class="r ' + (rc || '') + '">' + rate + '</span></div>';
+  }
+
+  function render() {
+    if (!s) return;
+    var r = Core.rates(s), def = Core.defense(s), thr = Core.threatOf(s, 1);
+    $('uDay').textContent = String(s.day).padStart(2, '0');
+    var foodNet = r.food - r.eat;
+    $('res').innerHTML =
+      tile('t-power', '⚡ 電力', fmt(s.res.power), '/' + r.cap, sgn(r.power) + '/日', rcls(r.power), r.power < 0 && s.res.power + r.power < 0) +
+      tile('t-food', '🌾 糧食', fmt(s.res.food), '', sgn(foodNet) + '/日', rcls(foodNet), foodNet < 0 && s.res.food + foodNet < 0) +
+      tile('t-parts', '🔩 物資', fmt(s.res.parts), '', r.parts ? sgn(r.parts) + '/日' : '—', rcls(r.parts)) +
+      tile('t-research', '🧪 研究', fmt(s.res.research), '', r.research ? sgn(r.research) + '/日' : '—', rcls(r.research)) +
+      tile('t-pop', '👥 醒著', s.awake, '/' + r.beds + '床', '效率 ' + Math.round(r.eff * 100) + '%', r.eff < 0.999 ? 'dn' : '', s.awake > r.beds) +
+      tile('t-pods', '🧊 冬眠', s.pods, '', '-' + (Math.round(r.pod * 10) / 10) + '⚡/日', '') +
+      tile('t-crystal', '💎 灰晶', fmt(s.res.crystal), '', r.crystal ? sgn(r.crystal) + '/日' : '—', rcls(r.crystal)) +
+      tile('t-def', '🛡️ 防禦', def, '', '威脅約 ' + thr, def >= thr ? 'up' : 'dn', def < thr * 0.55 && s.day >= 8);
+    var m = Math.round(s.morale), h = Math.round(s.hostility);
+    $('bMorale').querySelector('b').textContent = m + '（' + sgn(r.morale) + '/日）';
+    $('bMorale').querySelector('.fill').style.width = m + '%';
+    $('bHost').querySelector('b').textContent = h + (s.flags.pact ? ' · 協定' : '');
+    $('bHost').querySelector('.fill').style.width = h + '%';
+
+    document.querySelectorAll('.tab').forEach(function (b) { b.classList.toggle('on', b.dataset.tab === tab); });
+    var pane = $('pane');
+    if (tab === 'build') pane.innerHTML = paneBuild(r);
+    else if (tab === 'tech') pane.innerHTML = paneTech();
+    else if (tab === 'field') pane.innerHTML = paneField();
+    else pane.innerHTML = '<div class="logs">' + logHtml() + '</div>';
+    $('logSide').innerHTML = logHtml();
+
+    var last = s.log[s.log.length - 1];
+    $('ticker').innerHTML = last ? '<b>D' + String(last.d).padStart(2, '0') + '</b>' + last.msg : '';
+
+    $('bNext').disabled = s.over;
+    $('bAuto').classList.toggle('on', auto);
+    $('bAuto').innerHTML = auto ? '⏸<br>自動中' : '▶<br>自動';
+    $('bSpeed').innerHTML = '×' + [1, 2, 4][speed] + '<br>速度';
+  }
+
+  function paneBuild(r) {
+    var h = '<div class="sec">人員</div><div class="card people">';
+    h += '<div class="prow"><span>👥 醒著</span><b>' + s.awake + ' 人 · 床位 ' + r.beds + (s.awake > r.beds ? '（擠）' : '') + '</b></div>';
+    h += '<div class="prow"><span>⚙️ 人力需求</span><b>' + r.need + ' 人 · 效率 ' + Math.round(r.eff * 100) + '%</b></div>';
+    h += '<div class="prow"><span>🧊 冬眠艙</span><b>' + s.pods + ' 人 · 維生 ' + (Math.round(r.pod * 10) / 10) + '⚡/日</b></div>';
+    h += '<div class="prow"><span>⚰️ 損失</span><b>' + Core.lost(s) + ' 人</b></div>';
+    h += '<div class="prow"><span>💬 士氣</span><b>' + r.moraleParts.map(function (p) { return p[0] + ' ' + sgn(p[1]); }).join('、') + '</b></div>';
+    var wakeWhy = s.pods <= 0 ? '冬眠艙已空' : s.awake >= r.beds ? '床位不足' : '';
+    h += '<div class="acts"><button class="btn pri" type="button" data-wake="1"' + (Core.canWake(s) ? '' : ' disabled') + '>喚醒 1 人<small>' + Core.WAKE_FOOD + '🌾 ' + Core.WAKE_POWER + '⚡' + (wakeWhy ? ' · ' + wakeWhy : '') + '</small></button></div>';
+    h += '</div>';
+    h += '<div class="sec">設施</div><div class="grid">';
+    Core.BUILD_ORDER.forEach(function (id) {
+      var B = Core.BUILD[id], c = Core.costOf(s, id);
+      var eff = effText(id);
+      var off = id === 'drill' && !Core.drillsOn(s) ? (s.flags.pact ? '（已依協定停機）' : '（暫停中）') : '';
+      h += '<div class="card item"><div class="em">' + B.emoji + '</div><div class="body"><div class="nm">' + B.name + '<small>×' + s.b[id] + '</small></div><p>' + B.desc + off + '</p><div class="eff">' + eff + '</div></div>';
+      var dis = !Core.canBuild(s, id) || (id === 'drill' && s.flags.pact);
+      h += '<div class="side"><button class="btn pri" type="button" data-build="' + id + '"' + (dis ? ' disabled' : '') + '>建造<small>' + c + '🔩</small></button></div></div>';
+    });
+    return h + '</div>';
+  }
+  function effText(id) {
+    var B = Core.BUILD[id], p = [];
+    if (id === 'solar') p.push('+' + Core.SOLAR_OUT + '⚡');
+    if (B.use) p.push('-' + B.use + '⚡');
+    if (id === 'farm') p.push('+' + Core.FARM_OUT + '🌾');
+    if (id === 'habitat') p.push('+' + Core.BEDS_PER + '床');
+    if (id === 'lab') p.push('+' + Core.LAB_OUT + '🧪');
+    if (id === 'drill') p.push('+' + Core.DRILL_PARTS + '🔩 +' + Core.DRILL_CRYSTAL + '💎 異蟲↑');
+    if (id === 'turret') p.push('+' + Core.TURRET_DEF + '🛡️');
+    if (id === 'lounge') p.push('士氣↑');
+    if (id === 'battery') p.push('上限 +' + Core.BATTERY_CAP + '⚡');
+    if (B.staff) p.push('需 ' + B.staff + ' 人');
+    return p.join(' · ');
+  }
+  function paneTech() {
+    var h = '<div class="sec">科技</div><p class="note">研究點數由研究站產出。研究站需要 2 個人手和 5 電力。</p><div class="grid">';
+    Core.TECH_ORDER.forEach(function (id) {
+      var T = Core.TECH[id], st = Core.techState(s, id);
+      var cost = T.cost + '🧪' + (T.crystal ? ' ' + T.crystal + '💎' : '');
+      h += '<div class="card item' + (st === 'done' ? ' done' : st === 'locked' ? ' locked' : '') + '"><div class="em">' + T.emoji + '</div><div class="body"><div class="nm">' + T.name + '</div><p>' + T.desc + (st === 'locked' ? '（' + T.reqText + '）' : '') + '</p></div>';
+      h += '<div class="side">' + (st === 'done' ? '<span class="badge">已完成</span>' : '<button class="btn vio" type="button" data-tech="' + id + '"' + (st === 'ok' ? '' : ' disabled') + '>研發<small>' + cost + '</small></button>') + '</div></div>';
+    });
+    return h + '</div>';
+  }
+  function paneField() {
+    var h = '<div class="sec">外勤（每天一次）</div>';
+    h += '<p class="note">' + (s.field ? '今天的外勤隊已經出去過了，明天再派。' : '挑一個地方，派外勤隊出去。') + '</p><div class="grid">';
+    Object.keys(Core.FIELD).forEach(function (id) {
+      var F = Core.FIELD[id], ok = F.ok(s), why = typeof F.why === 'function' ? F.why(s) : F.why;
+      var c = F.cost(s);
+      var desc = F.desc + (id === 'salvage' ? '（殘骸剩約 ' + Math.round(s.wreck) + '）' : '');
+      h += '<div class="card item' + (ok ? '' : ' locked') + '"><div class="em">' + F.emoji + '</div><div class="body"><div class="nm">' + F.name + '</div><p>' + desc + (ok ? '' : '（' + why + '）') + '</p></div>';
+      h += '<div class="side"><button class="btn pri" type="button" data-field="' + id + '"' + (ok && !s.field ? '' : ' disabled') + '>出發' + (c ? '<small>' + c + '</small>' : '') + '</button></div></div>';
+    });
+    h += '</div>';
+    h += '<div class="sec">防務</div><div class="card people">';
+    h += '<div class="prow"><span>🛡️ 目前防禦</span><b>' + Core.defense(s) + '</b></div>';
+    h += '<div class="prow"><span>🐛 一般襲擊威脅</span><b>約 ' + Core.threatOf(s, 1) + '</b></div>';
+    h += '<div class="prow"><span>📈 異蟲活動</span><b>' + Math.round(s.hostility) + ' / 100</b></div>';
+    h += '</div><p class="note" style="margin-top:8px">襲擊時拿防禦對上威脅：防禦（含 ±20% 浮動）大於威脅就擋下；達到一半以上是小損失；更低就是重創。威脅會隨天數和異蟲活動上升。</p>';
+    return h;
+  }
+  function logHtml() {
+    var h = '';
+    for (var i = s.log.length - 1; i >= 0 && i >= s.log.length - 120; i--) {
+      var l = s.log[i];
+      h += '<div class="lg ' + l.type + '"><span class="d">D' + String(l.d).padStart(2, '0') + '</span><span class="tg">' + l.tag + '</span><span class="m">' + l.msg + '</span></div>';
+    }
+    return h || '<p class="note">還沒有紀錄。</p>';
+  }
+
+  // ---------- 事件視窗 ----------
+  function paras(t) { return t.split('\n').map(function (p) { return '<p>' + p + '</p>'; }).join(''); }
+  function showEvent() {
+    if (!s || s.over) return;
+    var v = Core.view(s);
+    if (!v) { evShowing = false; $('ovEvent').hidden = true; return; }
+    evShowing = true;
+    $('evSheet').className = 'sheet' + (v.kind === 'story' ? ' story' : '') + (v.alert ? ' alert' : '');
+    $('evTag').textContent = v.tag;
+    $('evTitle').textContent = v.title;
+    $('evBody').innerHTML = v.lines.map(function (l) {
+      if (!l.who) return '<p class="narr">' + l.text + '</p>';
+      return '<div class="say" style="--c:' + l.who.c + '"><span class="ava">' + l.who.ab + '</span><div><div class="who">' + l.who.name + '<small>' + l.who.role + '</small></div><p>' + l.text + '</p></div></div>';
+    }).join('');
+    $('evFoot').innerHTML = '<div class="choices">' + v.choices.map(function (c, i) {
+      return '<button class="choice" type="button" data-choice="' + i + '"' + (c.ok ? '' : ' disabled') + '><b>' + c.text + '</b><small>' + (c.ok ? c.hint : c.why) + '</small></button>';
+    }).join('') + '</div>';
+    $('ovEvent').hidden = false;
+    $('ovEvent').querySelector('.sheet').scrollTop = 0;
+    if (v.kind === 'story') SFX.story(); else if (v.alert) SFX.alert(); else SFX.event();
+  }
+  function onChoice(i) {
+    var res = Core.choose(s, i);
+    if (!res) { SFX.deny(); return; }
+    SFX.click();
+    persist();
+    if (s.over) { $('ovEvent').hidden = true; evShowing = false; render(); showEnd(); return; }
+    $('evFoot').innerHTML = (res.text ? '<div class="result">' + paras(res.text) + '</div>' : '') + '<button class="btn pri wide" type="button" id="evNext">繼續</button>';
+    var nb = $('evNext');
+    nb.focus({ preventScroll: true });
+    nb.scrollIntoView({ block: 'nearest' });
+    render();
+  }
+  function closeEvent() {
+    $('ovEvent').hidden = true;
+    evShowing = false;
+    render();
+    if (s.queue.length) showEvent();
+  }
+
+  // ---------- 結局 ----------
+  function showEnd() {
+    stopAuto();
+    var e = s.ending;
+    if (!e) return;
+    var st = loadStats(), sto = st.story;
+    if (!s.recorded) {
+      s.recorded = true;
+      if (e.win) {
+        sto.wins = (sto.wins || 0) + 1;
+        if (sto.best.lost == null || e.lost < sto.best.lost) sto.best.lost = e.lost;
+        if (sto.endings.indexOf(e.id) < 0) sto.endings.push(e.id);
+      }
+      lsSet(STATS_KEY, st);
+    }
+    lsSet(SAVE_KEY, null);
+    $('endSheet').className = 'sheet end ' + (e.win ? 'win' : 'lose');
+    $('endSub').textContent = e.sub;
+    $('endTitle').textContent = e.title;
+    $('endProse').innerHTML = e.paras.map(function (p) { return '<p>' + p + '</p>'; }).join('');
+    $('endStat').innerHTML =
+      '<div>撐過<b>' + e.day + ' 天</b></div>' +
+      '<div>倖存<b>' + e.survivors + ' / ' + e.total + '</b></div>' +
+      '<div>損失<b>' + e.lost + ' 人</b></div>' +
+      '<div>最佳紀錄（損失）<b>' + (sto.best.lost == null ? '—' : sto.best.lost + ' 人') + '</b></div>';
+    $('endEndings').textContent = '已見結局 ' + sto.endings.length + ' / 3' + (sto.endings.length ? '：' + sto.endings.map(function (k) { return ENDINGS[k]; }).join('、') : '');
+    $('ovEnd').hidden = false;
+    if (e.win) SFX.win(); else SFX.over();
+  }
+
+  // ---------- 序章 ----------
+  function showIntro() {
+    var sv = Core.sanitize(lsGet(SAVE_KEY));
+    var st = loadStats();
+    armNew = false;
+    var h = '';
+    if (sv && !sv.over) {
+      h += '<button class="btn" type="button" id="bNew">重新開始</button>';
+      h += '<button class="btn pri" type="button" id="bCont">繼續 · 第 ' + sv.day + ' 天</button>';
+    } else {
+      h += '<button class="btn pri" type="button" id="bNew">開始紀錄</button>';
+    }
+    $('introBtns').innerHTML = h;
+    $('introMeta').textContent = st.story.plays ? '已指揮 ' + st.story.plays + ' 次 · 已見結局 ' + st.story.endings.length + ' / 3' + (st.story.best.lost != null ? ' · 最少損失 ' + st.story.best.lost + ' 人' : '') : '';
+    $('ovIntro').hidden = false;
+    $('bNew').onclick = function () {
+      if (sv && !sv.over && !armNew) { armNew = true; this.textContent = '再按一次確認'; SFX.deny(); return; }
+      SFX.click();
+      newGame();
+    };
+    if ($('bCont')) $('bCont').onclick = function () { SFX.click(); s = sv; $('ovIntro').hidden = true; render(); if (s.queue.length) showEvent(); };
+  }
+  function newGame() {
+    var st = loadStats();
+    st.story.plays = (st.story.plays || 0) + 1;
+    lsSet(STATS_KEY, st);
+    s = Core.newState();
+    Core.log(s, '系統', '長夜號殖民紀錄開始。啟明號預計第 50 天抵達。', 'story');
+    persist();
+    $('ovIntro').hidden = true;
+    $('ovEnd').hidden = true;
+    tab = 'build';
+    render();
+    showEvent();
+  }
+
+  // ---------- 推進 ----------
+  function blocked() { return !s || s.over || evShowing || !$('ovIntro').hidden || !$('ovHelp').hidden || !$('ovEnd').hidden; }
+  function nextDay() {
+    if (blocked()) return;
+    if (!Core.endDay(s)) return;
+    persist();
+    render();
+    if (s.over) { showEnd(); return; }
+    if (s.queue.length) showEvent(); else SFX.day();
+  }
+  // 自動推進：視窗開著時只是跳過這一拍，關掉後自然接著跑（原稿關窗後不會恢復）
+  function startAuto() {
+    stopAuto();
+    auto = true;
+    timer = setInterval(function () { if (!blocked()) nextDay(); }, SPEEDS[speed]);
+    render();
+  }
+  function stopAuto() { auto = false; if (timer) clearInterval(timer); timer = null; if (s) render(); }
+
+  function init() {
+    document.addEventListener('click', function (e) {
+      var t = e.target.closest('button, [data-close]');
+      if (!t || t.disabled) return;
+      if (t.dataset.tab) { tab = t.dataset.tab; SFX.click(); render(); $('pane').scrollTop = 0; return; }
+      if (t.dataset.build) { if (Core.build(s, t.dataset.build)) { SFX.build(); persist(); } else SFX.deny(); render(); return; }
+      if (t.dataset.tech) { if (Core.research(s, t.dataset.tech)) { SFX.tech(); persist(); } else SFX.deny(); render(); return; }
+      if (t.dataset.wake) { if (Core.wake(s)) { SFX.build(); persist(); } else SFX.deny(); render(); return; }
+      if (t.dataset.field) {
+        var txt = Core.field(s, t.dataset.field);
+        if (txt) { SFX.event(); persist(); } else SFX.deny();
+        render();
+        if (s.over) showEnd();
+        return;
+      }
+      if (t.dataset.choice != null) { onChoice(+t.dataset.choice); return; }
+      if (t.id === 'evNext') { SFX.click(); closeEvent(); return; }
+      if (t.dataset.close) { SFX.click(); $(t.dataset.close).hidden = true; return; }
+    });
+    $('bNext').onclick = function () { SFX.click(); nextDay(); };
+    $('bAuto').onclick = function () { SFX.click(); if (auto) stopAuto(); else startAuto(); };
+    $('bSpeed').onclick = function () { SFX.click(); speed = (speed + 1) % SPEEDS.length; if (auto) startAuto(); else render(); };
+    $('bHelp').onclick = function () { SFX.click(); $('ovHelp').hidden = false; };
+    $('bAgain').onclick = function () { SFX.click(); $('ovEnd').hidden = true; showIntro(); };
+    $('ovHelp').addEventListener('click', function (e) { if (e.target === this) this.hidden = true; });
+    window.addEventListener('keydown', function (e) {
+      if (e.code !== 'Space' && e.key !== ' ') return;
+      // 只有在沒有任何視窗開著時，空白鍵才推進一天（原稿條件寫反）
+      if (blocked()) return;
+      e.preventDefault();
+      nextDay();
+    });
+    document.addEventListener('visibilitychange', function () { if (document.hidden && auto) stopAuto(); });
+    showIntro();
+  }
+
+  return { init: init };
+})();
+
+if (typeof document !== 'undefined') UI.init();
+</script>
+</body>
+</html>

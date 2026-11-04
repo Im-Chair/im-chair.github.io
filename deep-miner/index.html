@@ -1,0 +1,1847 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="深掘礦工">
+<meta name="theme-color" content="#111923">
+<title>深掘！像素礦工</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&display=swap" rel="stylesheet">
+<style>
+/* 版面：直式一屏。上方狀態列、中間地圖、下方訊息與操作（左道具、右方向鍵） */
+:root {
+  --bg: #111923;
+  --panel: #1b2735;
+  --panel2: #223144;
+  --line: #3a4d61;
+  --ink: #f4e8cf;
+  --muted: #9fb0c2;
+  --gold: #ffd166;
+  --good: #8fdc8a;
+  --warn: #ffb347;
+  --bad: #ff7a66;
+  --ts: 26px;
+  --font-px: 'Silkscreen', 'Courier New', monospace;
+  --font-ui: system-ui, -apple-system, 'PingFang TC', 'Noto Sans TC', 'Microsoft JhengHei', sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { background: var(--bg); }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  padding-top: calc(8px + env(safe-area-inset-top, 0px));
+  padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  overscroll-behavior: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+#app { max-width: 540px; margin: 0 auto; display: flex; flex-direction: column; gap: 7px; }
+button { font: inherit; color: var(--ink); cursor: pointer; touch-action: manipulation; }
+
+/* 頂列 */
+.top { display: flex; align-items: center; gap: 8px; }
+.icon {
+  flex: none; width: 38px; height: 38px; display: grid; place-items: center;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+  font-size: 18px; text-decoration: none; color: var(--ink); padding: 0;
+}
+.title { flex: 1; min-width: 0; }
+.title h1 { margin: 0; font-size: 18px; color: var(--gold); letter-spacing: .04em; white-space: nowrap; }
+.title .sub { font-size: 11px; color: var(--muted); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* 狀態列 */
+.stats { display: grid; grid-template-columns: 1fr 1.35fr 1fr 1.1fr; gap: 6px; }
+.stat { background: var(--panel); border: 1px solid var(--line); border-radius: 9px; padding: 4px 7px 5px; min-width: 0; }
+.stat small { display: block; font-size: 10px; color: var(--muted); }
+.stat b { display: block; font-family: var(--font-px); font-size: 14px; font-weight: 400; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ebar { height: 4px; background: #0b121a; border-radius: 2px; margin-top: 2px; overflow: hidden; }
+.ebar i { display: block; height: 100%; background: linear-gradient(90deg, #6fd36a, #c6f06b); width: 100%; transition: width .15s; }
+.ebar.low i { background: linear-gradient(90deg, #ff6b5b, #ffb347); }
+.stat.full b { color: var(--warn); }
+
+/* 地圖 */
+.map-wrap { position: relative; padding: 4px; background: #070b10; border: 2px solid var(--line); border-radius: 12px; overflow: hidden; }
+#map { display: grid; gap: 0; justify-content: center; touch-action: manipulation; }
+.map-wrap.hit { animation: hit .35s; }
+.map-wrap.boom { animation: shake .35s; }
+@keyframes hit { 0%, 100% { box-shadow: none; } 30% { box-shadow: inset 0 0 0 4px var(--bad); } }
+@keyframes shake { 0%, 100% { transform: none; } 25% { transform: translate(-3px, 1px); } 50% { transform: translate(3px, -1px); } 75% { transform: translate(-2px, 0); } }
+#banner {
+  position: absolute; left: 50%; top: 14px; transform: translateX(-50%);
+  background: rgba(10, 14, 20, .86); border: 1px solid var(--gold); color: var(--gold);
+  padding: 6px 14px; border-radius: 8px; font-size: 14px; font-weight: 700; white-space: nowrap;
+  pointer-events: none; opacity: 0; transition: opacity .4s;
+}
+#banner.show { opacity: 1; }
+
+.tile {
+  width: var(--ts); height: var(--ts); position: relative;
+  display: flex; align-items: center; justify-content: center;
+  font-size: calc(var(--ts) * .6); line-height: 1; overflow: hidden;
+  background: #05080c;
+}
+/* 各層岩石色（--rk 底色、--rk2 斑點、--tn 挖空後的通道色） */
+.L0 { --rk: #3d6b43; --rk2: #2f5735; --tn: #2a2119; }
+.L1 { --rk: #7a5537; --rk2: #64432a; --tn: #2c1f16; }
+.L2 { --rk: #9b958a; --rk2: #7f7a70; --tn: #2b2a28; }
+.L3 { --rk: #45606c; --rk2: #344b56; --tn: #182329; }
+.L4 { --rk: #54457a; --rk2: #42365f; --tn: #1c1729; }
+.L5 { --rk: #3e2d2d; --rk2: #2c2020; --tn: #1a1010; }
+.L6 { --rk: #7b6e4f; --rk2: #5f5439; --tn: #221e15; }
+.L7 { --rk: #262a3c; --rk2: #1a1d2b; --tn: #0c0d14; }
+.k-rock, .k-ore, .k-boulder, .k-gp, .k-page {
+  background:
+    radial-gradient(circle at 28% 30%, var(--rk2) 0 11%, transparent 12%),
+    radial-gradient(circle at 72% 68%, var(--rk2) 0 9%, transparent 10%),
+    var(--rk);
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,.22), inset 2px 2px 0 rgba(255,255,255,.06);
+}
+.k-rock.v1 {
+  background:
+    radial-gradient(circle at 66% 26%, var(--rk2) 0 10%, transparent 11%),
+    radial-gradient(circle at 30% 74%, var(--rk2) 0 12%, transparent 13%),
+    var(--rk);
+}
+.L6.k-rock { background: linear-gradient(var(--rk2) 0 2px, transparent 2px) 0 48% / 100% 50%, linear-gradient(90deg, var(--rk2) 0 2px, transparent 2px) 45% 0 / 50% 50%, var(--rk); }
+.k-empty { background: var(--tn); }
+.k-mem { background: var(--tn); filter: brightness(.45); }
+.k-dark { background: #05080c; }
+.dim { filter: brightness(.5) saturate(.7); }
+.k-ore { color: var(--oc, #fff); text-shadow: 0 0 2px rgba(0,0,0,.8); font-weight: 700; }
+.o-coal { --oc: #15171a; text-shadow: 0 0 2px rgba(255,255,255,.35); }
+.o-copper { --oc: #ff8a3d; }
+.o-iron { --oc: #d9c7b4; }
+.o-silver { --oc: #e8f1ff; }
+.o-jade { --oc: #57e0a3; }
+.o-quartz { --oc: #f4f9ff; }
+.o-amethyst { --oc: #c58bff; }
+.o-obsidian { --oc: #8a6cff; text-shadow: 0 0 3px #000; }
+.o-gold { --oc: #ffd23f; }
+.o-ruby { --oc: #ff3b5c; }
+.o-starsilver { --oc: #bfe8ff; text-shadow: 0 0 5px #bfe8ff; }
+.o-abyssal { --oc: #40f0e0; text-shadow: 0 0 6px #40f0e0; }
+.k-boulder::after {
+  content: ''; position: absolute; inset: 13%; border-radius: 46% 52% 44% 50%;
+  background: radial-gradient(circle at 34% 30%, #d8d1c4, #8c8478 55%, #5a544c);
+  box-shadow: inset -2px -2px 0 rgba(0,0,0,.28), 0 1px 0 rgba(0,0,0,.4);
+}
+.k-boulder::before { content: ''; position: absolute; left: 44%; top: 22%; width: 2px; height: 34%; background: #3d3832; transform: rotate(18deg); z-index: 1; }
+.k-boulder.wob::before { content: '!'; left: auto; top: 0; right: 2px; width: auto; height: auto; background: none; transform: none; z-index: 2; }
+.k-gp::after {
+  content: ''; position: absolute; inset: 0;
+  background: radial-gradient(circle at 35% 40%, #8bdc5a 0 9%, transparent 10%), radial-gradient(circle at 68% 62%, #8bdc5a 0 7%, transparent 8%), radial-gradient(circle at 60% 25%, #6fbf45 0 6%, transparent 7%);
+  opacity: .85;
+}
+.wob { animation: wob .22s infinite; }
+.wob::before { content: '!'; position: absolute; top: 0; right: 2px; font-family: var(--font-px); font-size: calc(var(--ts) * .38); color: #ffdd55; text-shadow: 0 0 2px #000; z-index: 2; }
+@keyframes wob { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(1.5px); } }
+.k-water { background: linear-gradient(#4b8fcb, #2b5f92); color: #cfe9ff; font-weight: 700; }
+.k-gas { background: var(--tn); color: #b6f08a; }
+.k-gas::after { content: ''; position: absolute; inset: 0; background: radial-gradient(circle, rgba(150, 230, 90, .55), rgba(110, 190, 60, .25) 70%); animation: gas 1.4s infinite alternate; }
+@keyframes gas { from { opacity: .55; } to { opacity: .95; } }
+.k-lava { background: radial-gradient(circle at 50% 45%, #ffe08a, #ff7a1a 55%, #b4330c); animation: glow 1.1s infinite alternate; }
+@keyframes glow { from { filter: brightness(.9); } to { filter: brightness(1.2); } }
+.k-station { background: var(--tn); box-shadow: inset 0 0 0 2px #e0c46c, 0 0 8px #e0c46c; }
+.k-camp { background: radial-gradient(circle, #6d7582, var(--tn) 75%); }
+.k-glowfloor { background: radial-gradient(circle, rgba(200, 205, 215, .22), transparent 70%), var(--tn); }
+.k-beam { background: var(--tn); }
+.k-beam::after { content: ''; position: absolute; left: 14%; right: 14%; top: 6%; bottom: 0; border: 3px solid #b07a43; border-bottom: none; border-radius: 2px 2px 0 0; }
+.k-page { animation: glow 1.4s infinite alternate; }
+.k-glim { background: #05080c; color: #ffe9a8; font-size: calc(var(--ts) * .45); animation: glim 1.6s infinite alternate; }
+@keyframes glim { from { opacity: .25; } to { opacity: .9; } }
+.k-sky { background: linear-gradient(#7f8d9a, #95a2ad); }
+.k-sky.hi { background: linear-gradient(#66737f, #7f8d9a); }
+.k-house { background: linear-gradient(#95a2ad, #a7b2ba); font-size: calc(var(--ts) * .78); cursor: pointer; }
+.k-grass { background: #4a3626; box-shadow: inset 0 calc(var(--ts) * .28) 0 #5d9a52, inset 0 calc(var(--ts) * .34) 0 #3d6b43; }
+.me { z-index: 1; }
+.me::after { content: ''; position: absolute; inset: 1px; border: 2px solid var(--gold); border-radius: 3px; }
+.me.hurt::after { border-color: var(--bad); }
+
+/* 訊息 */
+.log {
+  background: #0b121a; border: 1px solid var(--line); border-radius: 9px;
+  padding: 6px 9px; font-size: 12.5px; line-height: 1.5; height: calc(1.5em * 3 + 14px); overflow: hidden;
+  display: flex; flex-direction: column; justify-content: flex-end;
+}
+.log div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.log div:not(:last-child) { opacity: .5; }
+.log .good { color: var(--good); }
+.log .warn { color: var(--warn); }
+.log .bad { color: var(--bad); }
+.log .layer { color: var(--gold); }
+.log .page { color: #ffe9a8; }
+
+/* 背包列 / 小鎮列 */
+.strip { display: flex; gap: 5px; min-height: 34px; align-items: center; overflow-x: auto; scrollbar-width: none; }
+.strip::-webkit-scrollbar { display: none; }
+.chip { flex: none; background: var(--panel); border: 1px solid var(--line); border-radius: 7px; padding: 4px 7px; font-size: 12px; white-space: nowrap; }
+.chip .g { font-weight: 700; margin-right: 3px; }
+.chip.empty { color: var(--muted); border-style: dashed; }
+.town { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; width: 100%; }
+.town button { background: #2b3b4c; border: 1px solid #52677e; border-bottom: 3px solid #405267; border-radius: 9px; padding: 6px 2px; font-size: 13px; }
+
+/* 操作 */
+.controls { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+.items, .pad { display: grid; gap: 5px; grid-template-rows: 44px 44px; }
+.items { grid-template-columns: 1fr 1fr; }
+.pad { grid-template-columns: repeat(3, 1fr); }
+.btn {
+  background: #2b3b4c; border: 1px solid #52677e; border-bottom: 3px solid #405267; border-radius: 9px;
+  padding: 0 4px; font-size: 13px; line-height: 1.1; display: flex; align-items: center; justify-content: center; gap: 4px;
+}
+.btn:active { transform: translateY(1px); border-bottom-width: 2px; }
+.btn[disabled] { opacity: .45; }
+.btn .n { font-family: var(--font-px); font-size: 12px; color: var(--gold); }
+.pad .btn { font-size: 18px; }
+.pad .up { grid-column: 2; }
+.pad .left { grid-column: 1; grid-row: 2; }
+.pad .down { grid-column: 2; grid-row: 2; background: #6b4a2c; border-color: #a77649; border-bottom-color: #7e5631; }
+.pad .right { grid-column: 3; grid-row: 2; }
+.btn.ctx { background: #3b3424; border-color: #7a6a3f; border-bottom-color: #5f522f; }
+
+/* 對話框 */
+dialog {
+  background: #1a2634; color: var(--ink); border: 1px solid var(--line); border-radius: 14px;
+  width: min(460px, calc(100% - 24px)); max-height: 86vh; padding: 0; overflow: hidden;
+}
+dialog::backdrop { background: rgba(0, 0, 0, .62); }
+.sheet-in { display: flex; flex-direction: column; max-height: 86vh; }
+.sheet-in h2 { margin: 0; padding: 14px 16px 8px; font-size: 18px; color: var(--gold); }
+#shBody { padding: 0 16px 6px; overflow-y: auto; font-size: 14px; line-height: 1.7; user-select: text; -webkit-user-select: text; }
+#shFoot { padding: 10px 16px 14px; display: flex; gap: 8px; }
+#shFoot button { flex: 1; padding: 11px 6px; border-radius: 10px; background: #2b3b4c; border: 1px solid #52677e; border-bottom: 3px solid #405267; }
+#shFoot button.primary { background: #6b4a2c; border-color: #a77649; border-bottom-color: #7e5631; }
+#shBody p { margin: 8px 0; }
+#shBody h3 { font-size: 13px; color: var(--muted); margin: 14px 0 6px; font-weight: 600; letter-spacing: .05em; }
+.letter { background: #f2e6c9; color: #3a2c1a; border-radius: 6px; padding: 12px 14px; white-space: pre-line; font-size: 14px; line-height: 1.85; box-shadow: inset 0 0 18px rgba(120, 90, 40, .25); }
+.letter .date { display: block; font-weight: 700; margin-bottom: 4px; }
+.narr { color: #d6cbb3; white-space: pre-line; }
+.npc { display: flex; gap: 12px; align-items: flex-start; }
+.npc .face { font-size: 40px; line-height: 1; flex: none; }
+.npc b { color: var(--gold); }
+.npc small { color: var(--muted); margin-left: 6px; }
+.npc .say { margin: 4px 0 0; }
+.row {
+  width: 100%; display: flex; align-items: center; gap: 10px; text-align: left;
+  background: #223144; border: 1px solid var(--line); border-radius: 10px; padding: 9px 11px; margin: 5px 0;
+}
+.row[disabled] { opacity: .5; }
+.row .ri { font-size: 22px; flex: none; width: 28px; text-align: center; }
+.row .rt { flex: 1; min-width: 0; font-size: 13.5px; line-height: 1.4; }
+.row .rt small { display: block; color: var(--muted); font-size: 11.5px; }
+.row .rp { font-family: var(--font-px); color: var(--gold); font-size: 13px; white-space: nowrap; }
+.link { background: none; border: none; color: #8fc3ff; padding: 6px 0; font-size: 13px; }
+.jlist .row .rt { font-size: 13px; }
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 3px 14px; font-size: 13.5px; }
+.kv span:nth-child(odd) { color: var(--muted); }
+.seed { font-family: var(--font-px); font-size: 11px; color: var(--muted); }
+
+@media (min-width: 600px) {
+  body { padding-top: 18px; }
+  .title h1 { font-size: 21px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+</style>
+</head>
+<body>
+
+<div id="app">
+  <header class="top">
+    <a class="icon" href="../" aria-label="回首頁">🏠</a>
+    <div class="title">
+      <h1>深掘！像素礦工</h1>
+      <div class="sub" id="vWhere">灰燈鎮 · 地表</div>
+    </div>
+    <button class="icon" id="bJournal" type="button" aria-label="爺爺的日記">📖</button>
+    <button class="icon" id="bMenu" type="button" aria-label="選單">☰</button>
+  </header>
+
+  <section class="stats">
+    <div class="stat"><small>深度</small><b id="vDepth">0 m</b></div>
+    <div class="stat"><small>體力</small><b id="vEnergy">30/30</b><div class="ebar" id="eBar"><i id="eFill"></i></div></div>
+    <div class="stat" id="bagStat"><small>背包</small><b id="vBag">0/8</b></div>
+    <div class="stat"><small>金幣</small><b id="vGold">0 G</b></div>
+  </section>
+
+  <div class="map-wrap" id="mapWrap">
+    <div id="map" role="grid" aria-label="礦坑地圖：點相鄰的格子挖掘或移動，點遠處的通道可自動走過去"></div>
+    <div id="banner"></div>
+  </div>
+
+  <div class="log" id="log" role="status" aria-live="polite"></div>
+
+  <div class="strip" id="strip"></div>
+
+  <div class="controls">
+    <div class="items">
+      <button class="btn" id="bBomb" type="button">💣 炸藥 <span class="n" id="nBomb">0</span></button>
+      <button class="btn" id="bBeam" type="button">🏗️ 支撐 <span class="n" id="nBeam">0</span></button>
+      <button class="btn" id="bRope" type="button">➰ 繩索 <span class="n" id="nRope">0</span></button>
+      <button class="btn ctx" id="bCtx" type="button">📯 求救</button>
+    </div>
+    <div class="pad" id="pad">
+      <button class="btn up" type="button" data-dir="0,-1" aria-label="上">▲</button>
+      <button class="btn left" type="button" data-dir="-1,0" aria-label="左">◀</button>
+      <button class="btn down" type="button" data-dir="0,1" aria-label="下（挖）">⛏</button>
+      <button class="btn right" type="button" data-dir="1,0" aria-label="右">▶</button>
+    </div>
+  </div>
+</div>
+
+<dialog id="sheet">
+  <div class="sheet-in">
+    <h2 id="shTitle"></h2>
+    <div id="shBody"></div>
+    <div id="shFoot"></div>
+  </div>
+</dialog>
+
+<script>
+/* =====================================================================
+ * 深掘！像素礦工
+ * 結構：
+ *   Miner —— 核心規則（地形生成、挖掘、落石／積水／岩漿／毒氣、經濟），不碰 DOM，node 也能跑
+ *   下方 UI 區 —— 畫面、輸入、音效、存檔、劇情文字
+ * 存檔：arcade-deep-miner-save（進行中的局）
+ * 紀錄：arcade-deep-miner-stats = { story: { plays, wins, best: { days, digs }, deepest } }
+ *       best 內越小越好（通關天數、通關挖掘次數）；deepest 為到過的最深公尺數（越大越好，放在 best 外）
+ * ===================================================================== */
+
+var Miner = (function () {
+  'use strict';
+
+  var W = 13;              // 地圖寬（格）
+  var START_X = 6;         // 坑口所在的欄
+  var CAMP_Y = 118;        // 爺爺營地的深度（格）
+  var MAIN_END = 120;      // 主線結束；再往下是無盡的裂谷
+  var M_PER_CELL = 2;      // 一格 = 2 公尺
+  var SIM = 18;            // 只模擬玩家上下這麼多格內的落石與液體
+  var PAGE_ROWS = [9, 25, 44, 64, 86, 106, 113];   // 七張散落的日記殘頁（第八張在營地）
+  var MAIN_STATIONS = [14, 32, 54, 77, 102];       // 每層開頭附近的舊升降站
+
+  // ---- 地層 ----
+  // ores：[礦物, 機率, 最淺出現深度(可省)]；dark：越深越暗，從燈的半徑扣掉的格數
+  var LAYERS = [
+    { id: 'surface', name: '地表', from: 0, rock: 'soil', dark: 0, ores: [] },
+    { id: 'soil', name: '表土層', from: 1, rock: 'soil', dark: 0,
+      ores: [['stone', 0.17], ['coal', 0.12], ['copper', 0.05, 5]],
+      intro: '鬆軟的泥土，偶爾夾著煤。這裡還聽得到上面的鳥叫。' },
+    { id: 'lime', name: '石灰岩層', from: 13, rock: 'lime', dark: 0, boulder: 0.05,
+      ores: [['copper', 0.11], ['iron', 0.07], ['coal', 0.05], ['fossil', 0.015]],
+      intro: '灰白的岩壁。裂開的大石頭底下一空就會掉，看到它在晃就快閃開。' },
+    { id: 'river', name: '地下河', from: 31, rock: 'shale', dark: 1, boulder: 0.03, water: 0.2,
+      ores: [['silver', 0.08], ['iron', 0.06], ['copper', 0.04], ['jade', 0.02]],
+      intro: '岩壁又濕又滑，到處是積水。從下面挖穿水囊，水會整個灌下來。' },
+    { id: 'geode', name: '晶洞', from: 53, rock: 'crust', dark: 1, boulder: 0.02, gas: 0.045,
+      ores: [['quartz', 0.1], ['amethyst', 0.05], ['silver', 0.04]],
+      intro: '滿牆的晶石在燈下發亮。帶綠斑的岩塊是毒氣囊，敲開前先想好退路。' },
+    { id: 'lava', name: '熔岩帶', from: 76, rock: 'basalt', dark: 2, boulder: 0.03, lava: 0.16,
+      ores: [['gold', 0.06], ['obsidian', 0.05], ['ruby', 0.03]],
+      intro: '空氣燙得刺鼻。發光的是岩漿，底下或旁邊一挖空，它就會流過來。' },
+    { id: 'ruins', name: '遠古遺跡', from: 101, rock: 'brick', dark: 2, boulder: 0.03, gas: 0.02,
+      ores: [['relic', 0.05], ['starsilver', 0.03], ['gold', 0.03]],
+      intro: '整齊的石磚、磨平的台階……這不是灰燈鎮的礦工挖出來的。' },
+    { id: 'abyss', name: '無底裂谷', from: 121, rock: 'abyss', dark: 3, boulder: 0.04, lava: 0.1, gas: 0.02,
+      ores: [['abyssal', 0.04], ['starsilver', 0.03], ['ruby', 0.03]],
+      intro: '連爺爺都沒來過的地方。越往下，石頭越硬。' }
+  ];
+
+  // ---- 礦物（放背包，回地表賣） ----
+  var ORES = {
+    coal:       { name: '煤炭',   v: 6,   g: '●' },
+    copper:     { name: '銅礦',   v: 12,  g: '●' },
+    iron:       { name: '鐵礦',   v: 20,  g: '●' },
+    fossil:     { name: '化石',   v: 40,  g: '🐚' },
+    silver:     { name: '銀礦',   v: 45,  g: '●' },
+    jade:       { name: '河玉',   v: 80,  g: '◆' },
+    quartz:     { name: '石英',   v: 60,  g: '◆' },
+    amethyst:   { name: '紫水晶', v: 120, g: '◆' },
+    obsidian:   { name: '黑曜石', v: 50,  g: '◆' },
+    gold:       { name: '金礦',   v: 180, g: '●' },
+    ruby:       { name: '紅寶石', v: 300, g: '◆' },
+    relic:      { name: '古代遺物', v: 450, g: '🏺' },
+    starsilver: { name: '星銀',   v: 650, g: '✦' },
+    abyssal:    { name: '深淵晶', v: 900, g: '◆' }
+  };
+
+  // ---- 硬度（每敲一下扣掉十字鎬的挖掘力） ----
+  var HARD = {
+    soil: 1, stone: 2, lime: 3, shale: 6, crust: 9, basalt: 13, brick: 18, abyss: 22,
+    coal: 2, copper: 3, iron: 4, fossil: 3, silver: 6, jade: 7, quartz: 8, amethyst: 10,
+    obsidian: 14, gold: 13, ruby: 15, relic: 18, starsilver: 20, abyssal: 24
+  };
+  var NAMES = {
+    soil: '泥土', stone: '碎石', lime: '石灰岩', shale: '頁岩', crust: '晶殼岩', basalt: '玄武岩',
+    brick: '遺跡石磚', abyss: '深淵岩', boulder: '鬆動的大石', gaspocket: '帶綠斑的岩塊',
+    page: '夾著紙頁的岩縫', lava: '岩漿', lavaf: '岩漿', water: '積水', gas: '毒氣',
+    empty: '通道', station: '舊升降站', camp: '營地', beam: '支撐木', surface: '地面'
+  };
+  for (var on in ORES) NAMES[on] = ORES[on].name;
+
+  // 玩家能站的格子
+  var PASS = { empty: 1, surface: 1, station: 1, camp: 1, beam: 1, water: 1, gas: 1 };
+  // 大石頭可以掉進去的格子
+  var FALL_INTO = { empty: 1, water: 1, gas: 1 };
+
+  // ---- 升級（索引 0 是初始） ----
+  var UP = {
+    pick: { name: '十字鎬', unit: '挖掘力', lv: [1, 2, 3, 5, 7, 10], cost: [0, 120, 400, 1000, 2400, 5200] },
+    bag:  { name: '背包',   unit: '容量',   lv: [8, 14, 22, 32, 46, 64], cost: [0, 90, 300, 780, 1800, 3900] },
+    lamp: { name: '礦燈',   unit: '照明',   lv: [2, 3, 4, 5, 6, 7], cost: [0, 70, 260, 650, 1500, 3200] },
+    stam: { name: '體力',   unit: '上限',   lv: [30, 45, 65, 90, 120, 160], cost: [0, 100, 330, 840, 1900, 4200] }
+  };
+  var ITEMS = {
+    bomb: { name: '炸藥',     price: 35, max: 9 },
+    beam: { name: '支撐木',   price: 12, max: 9 },
+    rope: { name: '回城繩索', price: 40, max: 5 }
+  };
+
+  // ---- 種子亂數：同一個 (seed, x, y, k) 永遠得到同一個 0~1 的值 ----
+  function hash(seed, x, y, k) {
+    var h = (seed >>> 0) ^ 0x9e3779b9;
+    h = Math.imul(h ^ (x + 0x632be5ab), 0x85ebca6b);
+    h = Math.imul(h ^ (h >>> 13) ^ (y + 0x7f4a7c15), 0xc2b2ae35);
+    h = Math.imul(h ^ (h >>> 16) ^ Math.imul(k + 1, 0x27d4eb2f), 0x165667b1);
+    h ^= h >>> 15; h = Math.imul(h, 0x2c1b3c6d);
+    h ^= h >>> 12; h = Math.imul(h, 0x297a2d39);
+    h ^= h >>> 15;
+    return (h >>> 0) / 4294967296;
+  }
+  function key(x, y) { return x + ',' + y; }
+
+  function layerIndex(y) {
+    for (var i = LAYERS.length - 1; i >= 0; i--) if (y >= LAYERS[i].from) return i;
+    return 0;
+  }
+  function stationRow(i) { return i < MAIN_STATIONS.length ? MAIN_STATIONS[i] : 145 + (i - MAIN_STATIONS.length) * 25; }
+  function stationIndexOfRow(y) {
+    var i = MAIN_STATIONS.indexOf(y);
+    if (i >= 0) return i;
+    if (y >= 145 && (y - 145) % 25 === 0) return MAIN_STATIONS.length + (y - 145) / 25;
+    return -1;
+  }
+  function stationPos(seed, i) {
+    return { x: 2 + Math.floor(hash(seed, i, 0, 22) * (W - 4)), y: stationRow(i) };
+  }
+
+  // ---- 固定的特殊地點（日記頁、升降站、營地），每個種子算一次 ----
+  var SP = { seed: null };
+  function specials(seed) {
+    if (SP.seed === seed) return SP;
+    var sp = { seed: seed, pages: [], stations: [], camp: null, map: {} };
+    PAGE_ROWS.forEach(function (y, i) {
+      var p = { x: 1 + Math.floor(hash(seed, i, y, 21) * (W - 2)), y: y };
+      sp.pages.push(p);
+      sp.map[key(p.x, p.y)] = 'page';
+    });
+    for (var i = 0; i < MAIN_STATIONS.length; i++) sp.stations.push(stationPos(seed, i));
+    var cx = 3 + Math.floor(hash(seed, 0, 0, 23) * (W - 6));
+    sp.camp = { x: cx, y: CAMP_Y };
+    for (var yy = CAMP_Y - 2; yy <= CAMP_Y; yy++)
+      for (var xx = cx - 2; xx <= cx + 2; xx++) sp.map[key(xx, yy)] = 'empty';
+    sp.map[key(cx, CAMP_Y)] = 'camp';
+    for (xx = cx - 2; xx <= cx + 2; xx++) sp.map[key(xx, CAMP_Y + 1)] = 'brick';
+    SP = sp;
+    CACHE = { seed: seed, m: {} };
+    return sp;
+  }
+
+  // 特殊地點附近不放危險，保證拿得到
+  function isSafe(sp, x, y) {
+    if (y <= 3) return true;
+    if (y >= CAMP_Y - 5 && y <= MAIN_END) return true;
+    for (var i = 0; i < sp.pages.length; i++) {
+      var p = sp.pages[i];
+      if (Math.abs(p.x - x) <= 1 && Math.abs(p.y - y) <= 2) return true;
+    }
+    for (var d = -2; d <= 2; d++) {
+      var si = stationIndexOfRow(y + d);
+      if (si >= 0) {
+        var s = si < sp.stations.length ? sp.stations[si] : stationPos(sp.seed, si);
+        if (Math.abs(s.x - x) <= 3) return true;
+      }
+    }
+    return false;
+  }
+
+  // ---- 地形生成（種子決定，不存檔；玩家改動另存在 S.mod） ----
+  var CACHE = { seed: null, m: {} };
+  function genTile(seed, x, y) {
+    if (CACHE.seed !== seed) CACHE = { seed: seed, m: {} };
+    var k = key(x, y);
+    var c = CACHE.m[k];
+    if (c) return c;
+    c = genRaw(seed, x, y);
+    CACHE.m[k] = c;
+    return c;
+  }
+  function genRaw(seed, x, y) {
+    var sp = specials(seed);
+    var k = key(x, y);
+    if (sp.map[k]) return sp.map[k];
+    var si = stationIndexOfRow(y);
+    if (si >= 0) {
+      var s = si < sp.stations.length ? sp.stations[si] : stationPos(seed, si);
+      if (x === s.x) return 'station';
+      if (Math.abs(x - s.x) === 1) return 'empty';
+    }
+    var L = LAYERS[layerIndex(y)];
+    if (y <= 2) return 'soil';
+    if (!isSafe(sp, x, y)) {
+      // 積水與岩漿成團出現（3×3 的大格子決定有沒有、小格子決定填滿程度）
+      if (L.water && hash(seed, Math.floor(x / 3), Math.floor(y / 3), 7) < L.water && hash(seed, x, y, 8) < 0.8) return 'water';
+      if (L.lava && hash(seed, Math.floor((x + 1) / 3), Math.floor(y / 3), 9) < L.lava && hash(seed, x, y, 10) < 0.75) return 'lava';
+      if (L.gas && hash(seed, x, y, 11) < L.gas) return 'gaspocket';
+      if (L.boulder && hash(seed, x, y, 12) < L.boulder) return 'boulder';
+    }
+    var r = hash(seed, x, y, 1), acc = 0;
+    for (var i = 0; i < L.ores.length; i++) {
+      var e = L.ores[i];
+      if (e[2] && y < e[2]) continue;
+      acc += e[1];
+      if (r < acc) return e[0];
+    }
+    return L.rock;
+  }
+
+  function tileAt(S, x, y) {
+    if (x < 0 || x >= W) return 'wall';
+    if (y < 0) return 'sky';
+    if (y === 0) return 'surface';
+    var k = key(x, y);
+    var m = S.mod[k];
+    if (m) return m;
+    return genTile(S.seed, x, y);
+  }
+  function setT(S, x, y, t) {
+    var k = key(x, y);
+    // 跟原始地形一樣就不必記，存檔比較小
+    if (t === genTile(S.seed, x, y)) delete S.mod[k]; else S.mod[k] = t;
+    delete S.hp[k];
+    if (t !== 'gas') delete S.gas[k];
+    if (t !== 'boulder') delete S.wob[k];
+  }
+
+  function rockHardness(y) {
+    var L = LAYERS[layerIndex(y)];
+    var h = HARD[L.rock];
+    if (y > MAIN_END) h += 2 * Math.floor((y - MAIN_END - 1) / 25);
+    return h;
+  }
+  function hardness(t, y) {
+    if (t === 'boulder') return Math.max(4, rockHardness(y));
+    if (t === 'gaspocket' || t === 'page') return rockHardness(y);
+    var h = HARD[t];
+    if (h == null) return 0;
+    if (y > MAIN_END) h = Math.max(h, rockHardness(y));
+    return h;
+  }
+  function isPassable(t) { return !!PASS[t]; }
+  function power(S) { return UP.pick.lv[S.up.pick]; }
+  function bagCap(S) { return UP.bag.lv[S.up.bag]; }
+  function maxEnergy(S) { return UP.stam.lv[S.up.stam]; }
+  function bagCount(S) { var n = 0; for (var o in S.bag) n += S.bag[o]; return n; }
+  function bagValue(S) { var n = 0; for (var o in S.bag) n += S.bag[o] * ORES[o].v; return n; }
+  function lightRadius(S) {
+    var r = UP.lamp.lv[S.up.lamp] + (S.glow ? 2 : 0) - LAYERS[layerIndex(S.y)].dark;
+    if (S.y <= 4) r = Math.max(r, 7 - S.y);   // 坑口附近還有天光
+    return Math.max(1, r);
+  }
+  function stage(S) {
+    if (S.won) return 5;
+    var n = 0;
+    for (var i = 0; i < S.pages.length; i++) if (S.pages[i] < 7) n++;
+    return n === 0 ? 0 : n <= 2 ? 1 : n <= 4 ? 2 : n <= 6 ? 3 : 4;
+  }
+
+  // ---- 狀態 ----
+  function newState(seed) {
+    specials(seed);
+    return {
+      v: 1, seed: seed >>> 0,
+      x: START_X, y: 0, en: UP.stam.lv[0], gold: 0,
+      bag: {}, up: { pick: 0, bag: 0, lamp: 0, stam: 0 },
+      items: { bomb: 1, beam: 2, rope: 1 },
+      mod: {},     // 被改過的格子 "x,y" -> 類型（取代原稿的 dug 陣列）
+      hp: {},      // 敲到一半的格子剩下的硬度
+      wob: {},     // 正在晃／正在掉的大石頭
+      gas: {},     // 毒氣剩下幾回合
+      pages: [], stations: [], layer: 0, maxY: 0,
+      day: 1, digs: 0, tick: 0, faints: 0,
+      won: false, wonDay: 0, wonDigs: 0, glow: false, introSeen: false
+    };
+  }
+  // 讀檔時補齊欄位、擋掉壞資料
+  function normalize(raw) {
+    if (!raw || typeof raw !== 'object' || raw.v !== 1 || typeof raw.seed !== 'number') return null;
+    var S = newState(raw.seed);
+    for (var k in S) if (k in raw && typeof raw[k] === typeof S[k]) S[k] = raw[k];
+    ['up', 'items'].forEach(function (g) {
+      var d = newState(raw.seed)[g];
+      for (var kk in d) if (typeof S[g][kk] !== 'number') S[g][kk] = d[kk];
+    });
+    for (var u in UP) S.up[u] = Math.max(0, Math.min(UP[u].lv.length - 1, S.up[u] | 0));
+    if (!Array.isArray(S.pages)) S.pages = [];
+    if (!Array.isArray(S.stations)) S.stations = [];
+    S.x = Math.max(0, Math.min(W - 1, S.x | 0));
+    S.y = Math.max(0, S.y | 0);
+    if (!isPassable(tileAt(S, S.x, S.y))) { S.x = START_X; S.y = 0; }
+    return S;
+  }
+
+  // ---- 一次動作的事件收集（給 UI 顯示訊息、放音效、跳對話框） ----
+  var CTX = null;
+  var TR = { wet: false, hinted: {} };   // 不存檔的暫時狀態（提示只講一次）
+  function log(text, cls) { if (CTX) CTX.ev.push({ k: 'log', text: text, cls: cls || '' }); }
+  function sfx(name) { if (CTX) CTX.ev.push({ k: 'sfx', name: name }); }
+  function ev(o) { if (CTX) CTX.ev.push(o); }
+  function near(S, x, y) { return Math.abs(x - S.x) <= 6 && Math.abs(y - S.y) <= 6; }
+
+  // soft：只扣到 0、不會昏倒（泡水只是讓人變慢，不該害人回不了家）
+  function hurt(S, n, cause, soft) {
+    if (S.en - n < 0) { S.en = 0; if (!soft && !CTX.faint) CTX.faint = cause; }
+    else S.en -= n;
+    CTX.hurt = true;
+    ev({ k: 'hurt' });
+  }
+
+  function addOre(S, o) {
+    if (bagCount(S) >= bagCap(S)) {
+      log('背包塞不下了，只好把' + ORES[o].name + '留在原地敲碎。', 'warn');
+      return false;
+    }
+    S.bag[o] = (S.bag[o] || 0) + 1;
+    var full = bagCount(S) >= bagCap(S);
+    log('拿到' + ORES[o].name + '（' + ORES[o].v + ' G）' + (full ? '——背包滿了！' : ''), full ? 'warn' : 'good');
+    sfx(ORES[o].v >= 100 ? 'gem' : 'ore');
+    return true;
+  }
+
+  function pageIndexAt(S, x, y) {
+    var sp = specials(S.seed);
+    for (var i = 0; i < sp.pages.length; i++) if (sp.pages[i].x === x && sp.pages[i].y === y) return i;
+    return -1;
+  }
+  function getPage(S, i) {
+    if (i < 0 || S.pages.indexOf(i) >= 0) return;
+    S.pages.push(i);
+    log('撿到一張日記殘頁！（' + S.pages.length + '/8）', 'page');
+    sfx('page');
+    ev({ k: 'page', i: i });
+  }
+
+  function releaseGas(S, x, y) {
+    var q = [[x, y]], seen = {}, n = 0;
+    seen[key(x, y)] = 1;
+    while (q.length && n < 7) {
+      var c = q.shift();
+      var t = tileAt(S, c[0], c[1]);
+      if (!(c[0] === x && c[1] === y) && t !== 'empty') continue;
+      setT(S, c[0], c[1], 'gas');
+      S.gas[key(c[0], c[1])] = 9;
+      n++;
+      [[1, 0], [-1, 0], [0, -1], [0, 1]].forEach(function (d) {
+        var nx = c[0] + d[0], ny = c[1] + d[1], nk = key(nx, ny);
+        if (!seen[nk] && ny >= 1 && nx >= 0 && nx < W) { seen[nk] = 1; q.push([nx, ny]); }
+      });
+    }
+    log('噗——岩塊裂開，一股黃綠色的毒氣冒了出來！先退開幾步，走動一下它就散了。', 'bad');
+    sfx('gas');
+  }
+
+  // 敲碎一格。moveIn：是否走進去（用鎬子挖會走進去，炸藥不會）
+  function breakTile(S, x, y, t, moveIn) {
+    if (t === 'gaspocket') { setT(S, x, y, 'empty'); releaseGas(S, x, y); return; }
+    setT(S, x, y, 'empty');
+    if (ORES[t]) addOre(S, t);
+    else if (t === 'page') getPage(S, pageIndexAt(S, x, y));
+    else if (t === 'boulder') log('大石頭碎成一地石屑。');
+    if (moveIn) { S.x = x; S.y = y; onEnter(S); }
+  }
+
+  function arriveSurface(S, how) {
+    if (how !== 'walk') S.x = START_X;
+    S.y = 0;
+    S.en = maxEnergy(S);
+    S.day++;
+    S.wob = {};
+    TR.wet = false;
+    TR.hinted = {};
+    ev({ k: 'surface', how: how });
+    if (how === 'walk') log('你爬出坑口，外面還起著霧。周伯遞來一杯熱茶。（第 ' + S.day + ' 天）', 'good');
+    else if (how === 'elev') log('升降籃嘎吱嘎吱往上爬，坑口的光越來越亮。（第 ' + S.day + ' 天）', 'good');
+    else if (how === 'rope') log('你拉了拉腰間的繩索——三長兩短。沒多久就被拉回坑口了。（第 ' + S.day + ' 天）', 'good');
+    sfx('surface');
+  }
+
+  function loseHalf(S) {
+    var lost = 0;
+    for (var o in S.bag) {
+      var n = Math.ceil(S.bag[o] / 2);
+      S.bag[o] -= n; lost += n;
+      if (S.bag[o] <= 0) delete S.bag[o];
+    }
+    return lost;
+  }
+  function doFaint(S, cause) {
+    var lost = loseHalf(S);
+    S.faints++;
+    arriveSurface(S, 'faint');
+    ev({ k: 'faint', cause: cause, lost: lost });
+    log('你昏了過去……醒來時躺在周伯的小屋裡。' + (lost ? '背包裡的礦石少了 ' + lost + ' 個。' : ''), 'bad');
+    sfx('faint');
+  }
+
+  function onEnter(S) {
+    var t = tileAt(S, S.x, S.y);
+    if (S.y > S.maxY) S.maxY = S.y;
+    var li = layerIndex(S.y);
+    if (li > S.layer) {
+      S.layer = li;
+      if (LAYERS[li].intro) {
+        log('【' + LAYERS[li].name + '】' + LAYERS[li].intro, 'layer');
+        ev({ k: 'layer', i: li });
+        sfx('layer');
+      }
+    }
+    if (t === 'station') {
+      var i = stationIndexOfRow(S.y);
+      if (i >= 0 && S.stations.indexOf(i) < 0) {
+        S.stations.push(i);
+        S.stations.sort(function (a, b) { return a - b; });
+        log('找到舊升降站！拉一下鈴，周伯那頭就知道了。之後可以從坑口直接搭下來。', 'good');
+        sfx('bell');
+      }
+    }
+    if (t === 'camp' && !S.won) {
+      S.won = true;
+      S.wonDay = S.day;
+      S.wonDigs = S.digs;
+      S.glow = true;
+      if (S.pages.indexOf(7) < 0) S.pages.push(7);
+      ev({ k: 'ending' });
+      sfx('win');
+    }
+  }
+
+  // ---- 世界的一個回合：落石、積水、岩漿、毒氣 ----
+  function tick(S) {
+    S.tick++;
+    var y0 = Math.max(1, S.y - SIM), y1 = S.y + SIM;
+    stepBoulders(S, y0, y1);
+    stepLiquid(S, y0, y1, false);
+    if (S.tick % 2 === 0) stepLiquid(S, y0, y1, true);   // 岩漿比水慢一半
+    stepGas(S);
+    if (tileAt(S, S.x, S.y) === 'water') {
+      if (S.en > 0) hurt(S, 1, 'wade', true);
+      if (!TR.wet) log('泡在冰冷的水裡，手腳不太聽使喚（每個動作多耗 1 體力）。', 'warn');
+      TR.wet = true;
+    } else TR.wet = false;
+    hints(S);
+  }
+
+  function stepBoulders(S, y0, y1) {
+    var moved = {};
+    for (var y = y1; y >= y0; y--) {
+      for (var x = 0; x < W; x++) {
+        var k = key(x, y);
+        if (moved[k]) continue;
+        if (tileAt(S, x, y) !== 'boulder') continue;
+        var bt = tileAt(S, x, y + 1);
+        var under = S.x === x && S.y === y + 1;
+        if (!FALL_INTO[bt]) { delete S.wob[k]; continue; }
+        if (!S.wob[k]) {
+          // 第一回合只會晃，給玩家反應時間
+          S.wob[k] = 1;
+          if (under) log('頭頂的大石頭喀喀作響，細粉一直掉下來——快閃開！', 'warn');
+          if (near(S, x, y)) sfx('creak');
+          continue;
+        }
+        if (under) {
+          setT(S, x, y, 'empty');
+          hurt(S, 10, 'rock');
+          log('砰！大石頭砸在你身上，碎成好幾塊。體力 -10', 'bad');
+          sfx('crash');
+          ev({ k: 'shake' });
+          continue;
+        }
+        setT(S, x, y, bt === 'water' ? 'water' : 'empty');
+        setT(S, x, y + 1, 'boulder');
+        S.wob[key(x, y + 1)] = 2;    // 還在往下掉，下一回合不再晃、直接掉
+        moved[key(x, y + 1)] = 1;
+        if (near(S, x, y)) sfx('thud');
+      }
+    }
+  }
+
+  function canFlow(S, x, y, lava) {
+    if (x < 0 || x >= W || y < 1) return false;
+    var t = tileAt(S, x, y);
+    return t === 'empty' || t === 'gas' || (lava && t === 'water');
+  }
+  // 液體規則（刻意簡單、好預測）：能往下就往下；下面擋住時，旁邊空著而且旁邊的下面也空著才會流過去
+  function stepLiquid(S, y0, y1, lava) {
+    var moved = {};
+    var first = (lava ? (S.tick >> 1) : S.tick) % 2 ? 1 : -1;
+    for (var y = y1; y >= y0; y--) {
+      for (var i = 0; i < W; i++) {
+        var x = first > 0 ? i : W - 1 - i;
+        var k = key(x, y);
+        if (moved[k]) continue;
+        var t = tileAt(S, x, y);
+        if (lava ? (t !== 'lava' && t !== 'lavaf') : t !== 'water') continue;
+        var tx = -1, ty = -1;
+        if (canFlow(S, x, y + 1, lava)) { tx = x; ty = y + 1; }
+        else {
+          for (var j = 0; j < 2; j++) {
+            var sx = x + (j ? -first : first);
+            if (canFlow(S, sx, y, lava) && tileAt(S, sx, y) !== 'water' && canFlow(S, sx, y + 1, lava)) { tx = sx; ty = y; break; }
+          }
+        }
+        if (tx < 0) {
+          if (t === 'lavaf') setT(S, x, y, 'obsidian');   // 流出來的岩漿停下就冷成黑曜石
+          continue;
+        }
+        var tt = tileAt(S, tx, ty);
+        var hitMe = S.x === tx && S.y === ty;
+        if (lava) {
+          if (tt === 'water' && !hitMe) {
+            setT(S, tx, ty, 'obsidian');
+            if (near(S, tx, ty)) { log('滋——岩漿碰到水，冒出一大團白煙，凝成了黑曜石。'); sfx('hiss'); }
+            continue;
+          }
+          if (hitMe) {
+            setT(S, x, y, 'obsidian');
+            hurt(S, 15, 'lava');
+            log('岩漿漫到身上！你痛得大叫，岩漿也冷成了黑曜石。體力 -15', 'bad');
+            sfx('burn');
+            continue;
+          }
+          setT(S, x, y, 'empty');
+          setT(S, tx, ty, 'lavaf');
+          moved[key(tx, ty)] = 1;
+        } else {
+          setT(S, x, y, 'empty');
+          setT(S, tx, ty, 'water');
+          moved[key(tx, ty)] = 1;
+          if (hitMe) {
+            hurt(S, 2, 'flood', true);
+            log('冰冷的水從頭頂灌下來！體力 -2', 'bad');
+            sfx('splash');
+          }
+        }
+      }
+    }
+  }
+
+  function stepGas(S) {
+    for (var k in S.gas) {
+      S.gas[k]--;
+      if (S.gas[k] <= 0) {
+        delete S.gas[k];
+        if (S.mod[k] === 'gas') {
+          var p = k.split(',');
+          setT(S, +p[0], +p[1], 'empty');
+        }
+      }
+    }
+    if (tileAt(S, S.x, S.y) === 'gas') {
+      hurt(S, 2, 'gas');
+      log('咳、咳……毒氣嗆得你眼淚直流！體力 -2', 'bad');
+      sfx('cough');
+    }
+  }
+
+  // 靠近危險時的提示（每個地點只講一次）
+  function hints(S) {
+    for (var dy = -1; dy <= 1; dy++) {
+      for (var dx = -1; dx <= 1; dx++) {
+        if (!dx && !dy) continue;
+        var x = S.x + dx, y = S.y + dy, k = key(x, y);
+        if (TR.hinted[k]) continue;
+        var t = tileAt(S, x, y);
+        if (t === 'gaspocket' && (dx === 0 || dy === 0)) {
+          TR.hinted[k] = 1;
+          log('空氣裡有股甜甜的怪味，像放爛的水果……旁邊那塊帶綠斑的岩塊是毒氣囊。', 'warn');
+        } else if (t === 'lava' || t === 'lavaf') {
+          TR.hinted[k] = 1;
+          log('一陣熱風撲在臉上——岩漿就在旁邊。別把它下面挖空。', 'warn');
+        } else if (t === 'water' && dy === -1 && dx === 0) {
+          TR.hinted[k] = 1;
+          log('頭頂的岩縫在滴水，上面是積水。', 'warn');
+        }
+      }
+    }
+  }
+
+  // ---- 玩家動作 ----
+  function cmdMove(S, dx, dy) {
+    var nx = S.x + dx, ny = S.y + dy;
+    if (nx < 0 || nx >= W) { log('再過去是整片花崗岩壁，鎬子敲上去只冒火花。'); sfx('nope'); return; }
+    if (ny < 0) return;
+    if (S.y === 0 && ny === 0) { S.x = nx; sfx('step'); return; }           // 在鎮上走動
+    if (ny === 0) { S.x = nx; arriveSurface(S, 'walk'); return; }           // 爬出坑口
+    var t = tileAt(S, nx, ny);
+    if (t === 'lava' || t === 'lavaf') { log('那是岩漿！熱氣燙得你縮回手。', 'warn'); sfx('hiss'); return; }
+    if (PASS[t]) {
+      S.x = nx; S.y = ny;
+      sfx('step');
+      onEnter(S);
+      tick(S);
+      return;
+    }
+    var h = hardness(t, ny);
+    if (!h) { log('這裡挖不動。'); return; }
+    if (S.en <= 0) {
+      log('你累得抬不起鎬子了。可以走回升降站、拉繩索，或吹哨子請周伯拉你上去。', 'warn');
+      sfx('nope');
+      ev({ k: 'tired' });
+      return;
+    }
+    S.en -= 1;
+    S.digs++;
+    var k = key(nx, ny);
+    var first = !(k in S.hp);
+    var left = (first ? h : S.hp[k]) - power(S);
+    if (left > 0) {
+      S.hp[k] = left;
+      if (first) log(NAMES[t] + '很硬，還要再敲 ' + Math.ceil(left / power(S)) + ' 下。');
+      sfx('dig');
+    } else {
+      sfx(t === 'boulder' ? 'crash' : 'break');
+      breakTile(S, nx, ny, t, true);
+    }
+    tick(S);
+  }
+
+  function cmdBomb(S) {
+    if (S.y === 0) { log('在鎮上點炸藥？阿桂姨會拿掃把追著你打。'); return; }
+    if (S.items.bomb <= 0) { log('身上沒有炸藥了。阿桂姨的店裡有賣。', 'warn'); return; }
+    S.items.bomb--;
+    sfx('boom');
+    ev({ k: 'shake' });
+    var n = 0;
+    for (var dy = -1; dy <= 1; dy++) for (var dx = -1; dx <= 1; dx++) {
+      if (!dx && !dy) continue;
+      var x = S.x + dx, y = S.y + dy;
+      if (y < 1 || x < 0 || x >= W) continue;
+      var t = tileAt(S, x, y);
+      if (PASS[t] || t === 'lava' || t === 'lavaf' || !hardness(t, y)) continue;
+      breakTile(S, x, y, t, false);
+      n++;
+    }
+    log('轟！炸藥炸開了周圍 ' + n + ' 格。', 'good');
+    tick(S);
+  }
+
+  function cmdBeam(S) {
+    if (S.y === 0) return;
+    var t = tileAt(S, S.x, S.y);
+    if (S.items.beam <= 0) { log('支撐木用完了。', 'warn'); return; }
+    if (t !== 'empty' && t !== 'gas') { log(t === 'water' ? '泡在水裡架不穩支撐木。' : '這裡不用架支撐木。'); return; }
+    S.items.beam--;
+    setT(S, S.x, S.y, 'beam');
+    log('你把支撐木牢牢卡在頭頂，上面的石頭掉不下來了。', 'good');
+    sfx('beam');
+    tick(S);
+  }
+
+  function act(S, cmd) {
+    CTX = { ev: [], faint: null, hurt: false };
+    var ctx = CTX;
+    var ok = true;
+    switch (cmd.t) {
+      case 'move': cmdMove(S, cmd.dx, cmd.dy); break;
+      case 'bomb': cmdBomb(S); break;
+      case 'beam': cmdBeam(S); break;
+      case 'rope':
+        if (S.y === 0) { ok = false; break; }
+        if (S.items.rope <= 0) { log('沒有繩索了。', 'warn'); ok = false; break; }
+        S.items.rope--;
+        arriveSurface(S, 'rope');
+        break;
+      case 'rescue':
+        if (S.y === 0) { ok = false; break; }
+        var lost = loseHalf(S);
+        log('你吹響爺爺的銅哨。過了好久，繩子從上面垂下來，周伯把你一路拉了上去。' + (lost ? '背包太重，只好丟掉 ' + lost + ' 個礦石。' : ''), 'warn');
+        arriveSurface(S, 'rescue');
+        break;
+      case 'elevUp':
+        if (tileAt(S, S.x, S.y) !== 'station') { ok = false; break; }
+        arriveSurface(S, 'elev');
+        break;
+      case 'elevDown':
+        if (S.y !== 0 || S.stations.indexOf(cmd.i) < 0) { ok = false; break; }
+        var st = stationPos(S.seed, cmd.i);
+        S.x = st.x; S.y = st.y;
+        log('升降籃晃啊晃地往下降，停在 ' + st.y * M_PER_CELL + ' 公尺的舊升降站。', 'good');
+        sfx('elev');
+        onEnter(S);
+        break;
+      case 'sell':
+        if (S.y !== 0) { ok = false; break; }
+        var v = bagValue(S), c = bagCount(S);
+        if (!c) { log('背包是空的。'); ok = false; break; }
+        S.gold += v; S.bag = {};
+        log('賣掉 ' + c + ' 個礦石，拿到 ' + v + ' G。', 'good');
+        sfx('coin');
+        break;
+      case 'up':
+        var u = UP[cmd.id], lv = S.up[cmd.id];
+        if (!u || S.y !== 0 || lv >= u.lv.length - 1) { ok = false; break; }
+        var cost = u.cost[lv + 1];
+        if (S.gold < cost) { log('還差 ' + (cost - S.gold) + ' G。', 'warn'); ok = false; break; }
+        S.gold -= cost; S.up[cmd.id] = lv + 1;
+        if (cmd.id === 'stam') S.en = maxEnergy(S);
+        log(u.name + '升到 Lv.' + (lv + 2) + '！' + u.unit + ' ' + u.lv[lv] + ' → ' + u.lv[lv + 1], 'good');
+        sfx('buy');
+        break;
+      case 'buy':
+        var it = ITEMS[cmd.id];
+        if (!it || S.y !== 0) { ok = false; break; }
+        if (S.items[cmd.id] >= it.max) { log(it.name + '最多帶 ' + it.max + ' 個。'); ok = false; break; }
+        if (S.gold < it.price) { log('還差 ' + (it.price - S.gold) + ' G。', 'warn'); ok = false; break; }
+        S.gold -= it.price; S.items[cmd.id]++;
+        log('買了一個' + it.name + '。', 'good');
+        sfx('buy');
+        break;
+      default: ok = false;
+    }
+    if (ctx.faint) doFaint(S, ctx.faint);
+    CTX = null;
+    ctx.ok = ok;
+    return ctx;
+  }
+
+  function resetTransient() { TR = { wet: false, hinted: {} }; }
+
+  return {
+    W: W, START_X: START_X, CAMP_Y: CAMP_Y, MAIN_END: MAIN_END, M_PER_CELL: M_PER_CELL,
+    LAYERS: LAYERS, ORES: ORES, UP: UP, ITEMS: ITEMS, NAMES: NAMES, PAGE_ROWS: PAGE_ROWS,
+    newState: newState, normalize: normalize, tileAt: tileAt, act: act, specials: specials,
+    stationPos: stationPos, stationRow: stationRow, layerIndex: layerIndex, hardness: hardness,
+    isPassable: isPassable, power: power, bagCap: bagCap, bagCount: bagCount, bagValue: bagValue,
+    maxEnergy: maxEnergy, lightRadius: lightRadius, stage: stage, hash: hash, resetTransient: resetTransient
+  };
+})();
+
+
+/* =====================================================================
+ * UI：畫面、輸入、音效、存檔、劇情
+ * ===================================================================== */
+(function () {
+  'use strict';
+  if (typeof document === 'undefined') return;   // 在 node 測試時只載入核心
+
+  var M = Miner;
+  var SAVE_KEY = 'arcade-deep-miner-save';
+  var STATS_KEY = 'arcade-deep-miner-stats';
+  function $(id) { return document.getElementById(id); }
+  function lsGet(k) { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } }
+  function lsDel(k) { try { localStorage.removeItem(k); } catch (e) {} }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function meters(y) { return y * M.M_PER_CELL; }
+
+  // ---------------- 紀錄 ----------------
+  function loadStats() {
+    var st = lsGet(STATS_KEY);
+    if (!st || typeof st !== 'object') st = {};
+    st.story = st.story || { plays: 0, wins: 0, best: {} };
+    st.story.best = st.story.best || {};
+    st.story.plays = st.story.plays | 0;
+    st.story.wins = st.story.wins | 0;
+    return st;
+  }
+  var stats = loadStats();
+  function saveStats() { lsSet(STATS_KEY, stats); }
+
+  // ---------------- 音效：WebAudio 即時合成，每次出聲前重讀 arcade-sound ----------------
+  var SFX = (function () {
+    var ac = null;
+    function on() { try { return localStorage.getItem('arcade-sound') !== 'off'; } catch (e) { return true; } }
+    function ctx() {
+      ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+      if (ac.state === 'suspended') ac.resume();
+      return ac;
+    }
+    function tone(freq, o) {
+      o = o || {};
+      if (!on()) return;
+      try {
+        var a = ctx();
+        var t = a.currentTime + (o.delay || 0), dur = o.dur || 0.06;
+        var osc = a.createOscillator(), gn = a.createGain();
+        osc.type = o.type || 'triangle';
+        osc.frequency.setValueAtTime(freq, t);
+        if (o.slide) osc.frequency.exponentialRampToValueAtTime(freq * o.slide, t + dur);
+        gn.gain.setValueAtTime(o.vol || 0.05, t);
+        gn.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        osc.connect(gn); gn.connect(a.destination);
+        osc.start(t); osc.stop(t + dur + 0.02);
+      } catch (e) {}
+    }
+    // 白噪音（爆炸、水聲、毒氣）
+    function noise(o) {
+      o = o || {};
+      if (!on()) return;
+      try {
+        var a = ctx();
+        var t = a.currentTime + (o.delay || 0), dur = o.dur || 0.2;
+        var len = Math.floor(a.sampleRate * dur);
+        var buf = a.createBuffer(1, len, a.sampleRate), d = buf.getChannelData(0);
+        for (var i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+        var src = a.createBufferSource(), f = a.createBiquadFilter(), gn = a.createGain();
+        src.buffer = buf;
+        f.type = o.filter || 'lowpass';
+        f.frequency.value = o.freq || 900;
+        gn.gain.setValueAtTime(o.vol || 0.08, t);
+        gn.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        src.connect(f); f.connect(gn); gn.connect(a.destination);
+        src.start(t);
+      } catch (e) {}
+    }
+    var bank = {
+      step: function () { tone(220, { dur: 0.03, vol: 0.02, type: 'square' }); },
+      dig: function () { tone(150 + Math.random() * 40, { dur: 0.05, vol: 0.05, type: 'square', slide: 0.6 }); },
+      break: function () { noise({ dur: 0.09, vol: 0.06, freq: 1400 }); tone(110, { dur: 0.06, vol: 0.04, type: 'square' }); },
+      ore: function () { tone(880, { dur: 0.07, vol: 0.04 }); tone(1175, { dur: 0.09, vol: 0.04, delay: 0.06 }); },
+      gem: function () { [988, 1319, 1568].forEach(function (f, i) { tone(f, { dur: 0.1, vol: 0.04, delay: i * 0.06 }); }); },
+      page: function () { [523, 659, 784, 1047].forEach(function (f, i) { tone(f, { dur: 0.16, vol: 0.04, delay: i * 0.09, type: 'sine' }); }); },
+      creak: function () { tone(95, { dur: 0.18, vol: 0.05, type: 'sawtooth', slide: 1.15 }); },
+      thud: function () { tone(70, { dur: 0.12, vol: 0.07, type: 'square', slide: 0.6 }); },
+      crash: function () { noise({ dur: 0.25, vol: 0.1, freq: 600 }); tone(60, { dur: 0.2, vol: 0.08, type: 'square', slide: 0.5 }); },
+      boom: function () { noise({ dur: 0.5, vol: 0.16, freq: 420 }); tone(55, { dur: 0.4, vol: 0.1, type: 'sine', slide: 0.4 }); },
+      splash: function () { noise({ dur: 0.3, vol: 0.06, freq: 2200, filter: 'bandpass' }); },
+      hiss: function () { noise({ dur: 0.45, vol: 0.05, freq: 4000, filter: 'highpass' }); },
+      burn: function () { noise({ dur: 0.35, vol: 0.08, freq: 1800 }); tone(300, { dur: 0.25, vol: 0.05, type: 'sawtooth', slide: 0.5 }); },
+      gas: function () { noise({ dur: 0.6, vol: 0.05, freq: 700, filter: 'bandpass' }); },
+      cough: function () { tone(180, { dur: 0.08, vol: 0.05, type: 'sawtooth' }); tone(160, { dur: 0.08, vol: 0.05, type: 'sawtooth', delay: 0.12 }); },
+      nope: function () { tone(140, { dur: 0.1, vol: 0.04, type: 'square' }); },
+      coin: function () { tone(1319, { dur: 0.06, vol: 0.04, type: 'square' }); tone(1760, { dur: 0.12, vol: 0.04, type: 'square', delay: 0.06 }); },
+      buy: function () { [659, 880].forEach(function (f, i) { tone(f, { dur: 0.09, vol: 0.045, delay: i * 0.07 }); }); },
+      beam: function () { tone(200, { dur: 0.06, vol: 0.05, type: 'square' }); tone(240, { dur: 0.06, vol: 0.05, type: 'square', delay: 0.08 }); },
+      bell: function () { [1568, 1568].forEach(function (f, i) { tone(f, { dur: 0.25, vol: 0.035, delay: i * 0.22, type: 'sine' }); }); },
+      elev: function () { tone(120, { dur: 0.4, vol: 0.04, type: 'sawtooth', slide: 1.3 }); },
+      surface: function () { [392, 494, 587].forEach(function (f, i) { tone(f, { dur: 0.12, vol: 0.04, delay: i * 0.08, type: 'sine' }); }); },
+      layer: function () { [262, 330, 392].forEach(function (f, i) { tone(f, { dur: 0.22, vol: 0.035, delay: i * 0.12, type: 'sine' }); }); },
+      hurt: function () { tone(200, { dur: 0.15, vol: 0.06, type: 'square', slide: 0.5 }); },
+      faint: function () { [392, 330, 262, 196].forEach(function (f, i) { tone(f, { dur: 0.2, vol: 0.05, delay: i * 0.16 }); }); },
+      win: function () { [523, 659, 784, 1047, 784, 1047, 1319].forEach(function (f, i) { tone(f, { dur: 0.2, vol: 0.045, delay: i * 0.13, type: 'sine' }); }); }
+    };
+    return { play: function (n) { if (bank[n]) bank[n](); } };
+  })();
+  function buzz(ms) { try { if (navigator.vibrate) navigator.vibrate(ms); } catch (e) {} }
+
+  // ---------------- 劇情文字 ----------------
+  var PROLOGUE =
+    '灰燈鎮在山的背陰面，一年有一半的日子起霧。鎮上的老人說，霧最濃的晚上往老礦坑口看，偶爾會看見一點灰白色的光，像有人提著燈在很深的地方走。\n\n' +
+    '十年前的秋天，爺爺林守山一個人下了礦坑，就再也沒有上來。搜救隊找了一個月，只在坑口撿到他的便當盒。\n\n' +
+    '上個月你回鎮上整理老家，在他的工具箱底下翻到一本日記，只寫到一半，後面的頁被整整齊齊地撕掉了。工具箱裡還有一把十字鎬，木柄磨得發亮。\n\n' +
+    '坑口的周伯看見你扛著那把鎬子，嘆了一口氣：「你跟他年輕時一個樣。……要下去可以，先聽我講幾句。」';
+
+  var PREFACE = {
+    title: '前半本（家裡找到的）',
+    text: '前半本大多在記帳：哪天買了幾斤米、鎬子拿去給阿炳磨花了多少錢、阿桂又多塞了什麼給他。\n\n最後幾頁的字越寫越用力，最後一行是：\n「灰燈是真的。我要下去看。」\n\n再後面，就被撕掉了。'
+  };
+
+  // 八張日記殘頁（前七張散落在坑裡，最後一張在營地）
+  var JOURNAL = [
+    { date: '十月三日，晴',
+      text: '坑口的鐵門鏽得比我想的還厲害，撬了快半個鐘頭才開。周仔要是知道我一個人下來，大概又要念一整晚。\n\n我把後半本日記一頁一頁撕下來，沿路留著。真有人跟下來的話，照著紙走，就不會迷路。\n\n……會跟下來的，大概也只有那個孩子吧。希望不要。' },
+    { date: '十月五日',
+      text: '石灰岩層跟以前一樣，會「唱歌」。頭頂的石頭要掉之前，會先喀喀響、落一點細粉。老一輩教的：聽到聲音別抬頭看，先往旁邊閃。\n\n民國六十八年那次塌方，就在這一層底下。我跟周仔被困了兩天。第二天晚上礦燈都沒電了，我們卻還看得見——岩縫裡透出一點灰灰的光，我們就是跟著那道光爬出來的。\n\n這件事，我們誰都沒跟別人講過。' },
+    { date: '十月九日，上面在下雨',
+      text: '聽得到雨聲。水從岩縫一直滲下來，地下河比三十年前寬了很多。水冷得刺骨，泡久了腿會抽筋，能繞就繞。\n\n坐在河邊吃阿桂硬塞給我的麻糬，想起孩子小時候問我：「爺爺，礦坑底下有什麼？」我說有寶藏。孩子噘著嘴說我騙人。\n\n這次如果真的找到什麼，我想帶上去給孩子看。' },
+    { date: '十月十四日',
+      text: '晶洞漂亮得讓人想哭。整面牆都是紫色的晶，燈一照就閃。\n\n可是這裡的空氣不對。有幾個洞一敲開，就飄出甜甜的、像爛水果的味道，吸兩口頭就暈。我學乖了：聞到怪味就先退回去，等它散了再過。\n\n晶洞底下，那道灰光更清楚了。不是我眼花。' },
+    { date: '十月二十日',
+      text: '熱。汗流進眼睛裡都是鹹的。岩縫會滲出岩漿，慢慢的，像在熬麥芽糖。流出來的那一點冷了就變成黑曜石，敲下來阿炳應該會很高興。\n\n今天在玄武岩裡看到一段石階。不是我們挖的。灰燈鎮開礦也才一百多年，這些石階中間都磨得凹下去了，不知道有幾百年，還是幾千年。' },
+    { date: '十月二十六日',
+      text: '底下是一座城。我不知道還能怎麼形容。\n\n牆上刻滿了人，每個人手裡都提著一盞燈，燈裡畫的是一顆石頭。\n\n我想我懂了。很久很久以前，有人住在這麼深的地方，靠一種會自己發光的石頭過日子。我們鎮叫「灰燈」，說不定根本不是因為霧——是第一批來開礦的人，也看見了這道光。' },
+    { date: '十一月二日',
+      text: '前天在台階上踩空，左腳腫得穿不下鞋。爬回去少說要十幾天，乾糧只剩四天份。我算了很多遍，怎麼算都不夠。\n\n奇怪的是，我不怎麼怕。光就在前面了，我想去看看它。\n\n帳篷就搭在光的旁邊。如果你一路撿著這些紙走到這裡——孩子，對不起，也謝謝你。' },
+    { date: '最後一頁',
+      text: '給撿到這本日記的孩子：\n\n我找到了。灰燈是一整片會發光的晶石，從地底最深的地方一路長上去。三十年前透進岩縫、把我跟周仔帶出去的，就是它。\n\n它的光很慢、很淡，可是不會熄。我敲了一小塊放進礦燈裡，夠你用一輩子。\n\n幫我把燈帶上去。告訴周仔，那年的事不是他的錯，我從來沒有怪過他。告訴阿桂，麻糬很好吃。\n\n然後，你想做什麼就去做吧。礦坑底下確實有寶藏，爺爺沒騙你。\n\n——守山' }
+  ];
+
+  var ENDING_NARR =
+    '帳篷收得很整齊。睡袋摺成四四方方的一塊，鍋子倒扣在石頭上晾著，好像他只是出去走走，等一下就會回來。\n\n' +
+    '帳篷後面的岩壁在發光。灰灰的、很淡，照在身上卻是暖的。\n\n' +
+    '睡袋上壓著一盞舊礦燈，燈罩裡放著一小塊灰色的石頭。燈底下，是日記的最後一頁。';
+
+  var ENDING_AFTER =
+    '你把爺爺的礦燈掛在腰上。灰色的光不刺眼，卻能照得比任何燈都遠（礦燈照明永久 +2）。\n\n' +
+    '回到地表，把這頁拿給周伯跟阿桂姨看吧。\n\n' +
+    '……營地底下的岩縫還在往下延伸，深不見底。爺爺沒走完的路，你可以繼續走。';
+
+  // NPC 台詞：依進度分 6 段（0：還沒撿到頁 / 1：1~2 頁 / 2：3~4 頁 / 3：5~6 頁 / 4：七頁全到手 / 5：通關後）
+  // 開頭是 * 的句子夾著旁白，引號自己寫；其他句子顯示時會自動加上「」
+  var NPCS = {
+    zhou: {
+      name: '周伯', role: '坑口顧升降籃的老礦工', face: '👴',
+      lines: [
+        ['坑底下黑，燈比命重要。有錢先拿去給阿炳換燈，別省這個。',
+         '挖累了就上來，我這裡有熱茶。灰燈鎮的礦工，沒有人在坑裡逞強的。',
+         '你爺爺那個人啊，固執得要命。……你也是吧，不然不會扛著他的鎬子站在這裡。',
+         '真的撐不住，就吹那支銅哨，我拉你上來。礦石丟了再挖就有，人沒了就什麼都沒了。'],
+        ['他把日記撕下來留在路上？……哼，很像他會做的事。',
+         '石灰岩那層聽到喀喀聲就閃，不要抬頭看。這還是你爺爺教我的。',
+         '每一層開頭附近都有一座舊升降站。走到那裡拉個鈴，我這邊就放得下籃子。'],
+        ['他寫到六十八年那次塌方了？……嗯。我們在下面困了兩天。',
+         '那道光……我一直以為是我餓昏頭看錯了。原來他也看見了。',
+         '水底下那層不要泡太久。你爺爺年輕時在那裡抽筋，是我把他拖上來的。我們互相救過好幾次。'],
+        ['那年是我硬要大家多做一班，說這個月趕完就能好好過年。結果塌了。你爺爺把我從石頭底下拖出來，一句怪我的話都沒說過。',
+         '熔岩那層我這輩子只下去過一次。聽到「滋——」的聲音，就是水碰到岩漿了，躲遠一點。',
+         '你越下去越久，我在上面就越常看坑口。……老了，閒著也是閒著。'],
+        ['最後那張說他腳受傷了……',
+         '*周伯把茶杯握得很緊，好一陣子沒說話。「去吧。把他找到，不管是什麼樣子。」'],
+        ['*「……他這樣說啊。」周伯盯著那盞灰燈看了很久。「這個老頑固，到最後還在替我想。」',
+         '謝謝你帶他回家。以後你要下坑，我還是在這裡顧籃子。',
+         '底下還有更深的地方？你們林家的人，真的是……去吧，記得上來喝茶。']
+      ]
+    },
+    guei: {
+      name: '阿桂姨', role: '桂記雜貨店老闆娘', face: '👵',
+      lines: [
+        ['唉唷，你是守山伯的孫仔！都長這麼大了。礦石拿來我收，價錢公道，全鎮都知道。',
+         '背包太小，挖到好東西也帶不上來，很可惜捏。',
+         '繩索帶一條在身上啦。卡在下面的時候拉一下，周伯就會把你吊上來。'],
+        ['銅礦一顆沒多少錢，不過積少成多嘛。',
+         '支撐木頂在頭上，石頭就掉不下來。便宜又好用，多帶兩根。',
+         '炸藥小心用，炸開的東西我照收。'],
+        ['麻糬？他日記寫到我的麻糬喔？……那天他來買乾糧，我硬塞了一包給他。早知道多塞一點。',
+         '下面的水很冰，別泡太久。回來我煮薑湯給你。'],
+        ['紫水晶耶！城裡的人很愛這個，我幫你賣個好價錢。',
+         '你最近下去越來越久，周伯每天坐在坑口等，茶冷了都沒喝。'],
+        ['找到他的話……幫我跟他說，欠我的麻糬錢不用還了。'],
+        ['*「麻糬很好吃……」阿桂姨轉過身去擦了擦眼睛。「這個人喔，寫這種的。明天我多做一盤，你拿去給周伯。」',
+         '灰燈的光原來長這樣。灰灰的，可是很溫暖。',
+         '你還要下去喔？好啦，東西照收，價錢照樣公道。']
+      ]
+    },
+    bing: {
+      name: '阿炳師傅', role: '打鐵舖', face: '🧔',
+      lines: [
+        ['鎬子給我看一下。……這是守山伯的？保養得真好。要升級隨時來，不過要錢。',
+         '燈越亮看越遠。下面暗到連自己的手都看不到，不是在嚇你。',
+         '越下面的石頭越硬。鎬子不夠利，敲到手軟也敲不開。'],
+        ['石灰岩還好對付，再下去的頁岩就要好一點的鎬子了。',
+         '燈換大顆一點，看得到石頭在晃，才來得及閃。'],
+        ['晶洞的石頭敲起來聲音很脆。看到帶綠斑的那種，八成是氣囊，先想好往哪裡退。',
+         '我爸是六十八年那次塌方沒有上來的人。我不怪誰，礦工就是這樣。……鎬子拿來，我幫你磨。'],
+        ['黑曜石！岩漿冷掉就是這個。拿來我打一把刀給你……開玩笑的，賣給阿桂比較實在。',
+         '熔岩那層的玄武岩很硬，鎬子沒有五級以上，會挖得很辛苦。'],
+        ['遺跡的磚比鐵還硬，你的鎬子撐得住嗎？撐不住就拿來。'],
+        ['*「灰燈的石頭……我可以看一下嗎？」阿炳湊近看了半天。「這不是我打得出來的東西，好好收著。」',
+         '我爸當年要是也看到這道光就好了。……沒事，鎬子拿來，我幫你磨一磨。']
+      ]
+    }
+  };
+  var talkIdx = { zhou: 0, guei: 0, bing: 0 };
+
+  var HELP =
+    '<p><b>操作</b><br>點礦工旁邊的格子：挖掘或走過去。點遠處已挖開的通道：自動走過去。也可以用下方方向鍵（按住會連續挖）或鍵盤方向鍵／WASD。</p>' +
+    '<p><b>體力</b><br>敲一下石頭耗 1 點體力，走路不耗。越硬的石頭要敲越多下，十字鎬越好敲越少下。體力用完就挖不動，但還是可以走回去。</p>' +
+    '<p><b>背包與金幣</b><br>挖到的礦石放在背包，要回到地表賣給阿桂姨才有錢。背包滿了，再挖到的礦石只能放棄。</p>' +
+    '<p><b>回地表</b><br>從通道爬出坑口、站上舊升降站搭籃子、拉回城繩索，都能回鎮上休息一晚（體力回滿）。真的走投無路時可以「求救」，周伯會拉你上來，但背包裡的礦石要丟掉一半。</p>' +
+    '<p><b>危險</b>（回合制：你動一下，石頭、水、岩漿、毒氣才跟著動一下）<br>● 落石（裂開的圓石）：底下挖空的大石頭會先晃一回合（出現「!」），再往下掉。站在它正下方會被砸。用 🏗️ 支撐木頂住就不會掉。<br>≈ 積水：會往下流。泡在水裡每個動作多耗 1 體力。<br>綠斑岩塊：毒氣囊，敲開會冒毒氣，站在毒氣裡每回合扣 2 體力，走動幾步就會散。<br>岩漿：會發光，遠遠就看得到。底下或旁邊挖空就會流過來，碰到你會重傷，停下來就冷成黑曜石。</p>' +
+    '<p><b>視野</b><br>越深越暗。升級礦燈才看得遠。日記殘頁會在黑暗中微微反光（✦）。</p>' +
+    '<p><b>目標</b><br>撿齊爺爺散落的日記，找到他在最深處的營地。之後可以繼續往下挖。</p>';
+
+  // ---------------- 狀態與存檔 ----------------
+  var S = null;
+  var saveTimer = null;
+  function saveNow() {
+    clearTimeout(saveTimer); saveTimer = null;
+    if (S) lsSet(SAVE_KEY, S);
+    var dm = meters(S ? S.maxY : 0);
+    if (dm > (stats.story.deepest || 0)) { stats.story.deepest = dm; saveStats(); }
+  }
+  function scheduleSave() { clearTimeout(saveTimer); saveTimer = setTimeout(saveNow, 400); }
+
+  function newSeed() {
+    var a = new Uint32Array(1);
+    try { crypto.getRandomValues(a); } catch (e) { a[0] = Math.floor(Math.random() * 4294967296); }
+    return a[0] >>> 0;
+  }
+  function startNewGame() {
+    S = M.newState(newSeed());
+    M.resetTransient();
+    stats.story.plays++;
+    saveStats();
+    logs = [];
+    pushLog('坑口的霧很濃。點腳下的泥土，開始往下挖吧。');
+    saveNow();
+    render();
+    openPrologue();
+  }
+
+  // ---------------- 訊息列 ----------------
+  var logs = [];
+  function pushLog(text, cls) {
+    logs.push({ text: text, cls: cls || '' });
+    if (logs.length > 40) logs.shift();
+  }
+  function renderLog() {
+    var box = $('log');
+    var last = logs.slice(-3);
+    box.innerHTML = last.map(function (l) { return '<div class="' + l.cls + '">' + esc(l.text) + '</div>'; }).join('');
+    box.title = last.length ? last[last.length - 1].text : '';
+  }
+
+  // ---------------- 地圖格子（建一次，之後只更新 class 與文字；點擊用事件委派） ----------------
+  var COLS = M.W, ROWS = 11, camTop = 0;
+  var cells = [], lastCls = [], lastTxt = [];
+  var TOWN = { 1: '🌲', 2: '🏪', 4: '⚒️', 6: '🏚️', 8: '🏡', 10: '🌲', 11: '🌲' };
+  var TOWN_NPC = { 2: 'guei', 4: 'bing', 6: 'zhou', 8: 'home' };
+
+  function buildGrid() {
+    var map = $('map');
+    map.innerHTML = '';
+    map.style.gridTemplateColumns = 'repeat(' + COLS + ', var(--ts))';
+    cells = []; lastCls = []; lastTxt = [];
+    var frag = document.createDocumentFragment();
+    for (var i = 0; i < COLS * ROWS; i++) {
+      var d = document.createElement('div');
+      d.className = 'tile';
+      d.dataset.i = i;
+      frag.appendChild(d);
+      cells.push(d); lastCls.push(''); lastTxt.push('');
+    }
+    map.appendChild(frag);
+  }
+
+  function layout() {
+    var wrap = $('mapWrap');
+    var w = wrap.clientWidth - 12;
+    var ts = Math.max(18, Math.min(40, Math.floor(w / COLS)));
+    document.documentElement.style.setProperty('--ts', ts + 'px');
+    // 先用最少列數算出其他元件的高度，剩下的空間給地圖
+    var map = $('map');
+    var oldRows = ROWS;
+    var appH = $('app').offsetHeight - map.offsetHeight;
+    var bodyPad = 24;
+    var avail = window.innerHeight - appH - bodyPad;
+    var rows = Math.max(8, Math.min(16, Math.floor(avail / ts)));
+    if (rows !== oldRows || !cells.length) { ROWS = rows; buildGrid(); }
+    render();
+  }
+
+  // 一格要畫成什麼：回傳 [class, 文字]
+  function look(wx, wy, R) {
+    if (wy < 0) {
+      if (wy === -1 && TOWN[wx]) return ['k-house', TOWN[wx]];
+      if (wy === -2 && (wx === 3 || wx === 9)) return ['k-sky hi', '☁️'];
+      return [wy <= -2 ? 'k-sky hi' : 'k-sky', ''];
+    }
+    var t = M.tileAt(S, wx, wy);
+    if (t === 'wall') return ['k-dark', ''];
+    var me = wx === S.x && wy === S.y;
+    if (wy === 0) return ['L0 k-grass' + (me ? ' me' : ''), me ? '👷' : ''];
+    var li = M.layerIndex(wy);
+    var L = ' L' + li;
+    var dx = wx - S.x, dy = wy - S.y, d2 = dx * dx + dy * dy;
+    var lit = d2 <= R * R + R;
+    var dim = !lit && d2 <= (R + 1) * (R + 1) + R + 1;
+    var known = !!S.mod[wx + ',' + wy];
+    var sp = M.specials(S.seed);
+    var nearCamp = Math.abs(wx - sp.camp.x) <= 3 && wy >= M.CAMP_Y - 3 && wy <= M.CAMP_Y + 1;
+    // 自己會發光的東西：岩漿、升降站、營地附近的灰光
+    var glow = t === 'lava' || t === 'lavaf' || t === 'station' || t === 'camp' || nearCamp;
+    if (!lit && !dim && !glow) {
+      if (t === 'page' && d2 <= (R + 3) * (R + 3)) return ['k-glim', '✦'];
+      if (known && M.isPassable(t)) return [L + ' k-mem', ''];
+      return ['k-dark', ''];
+    }
+    var cls, txt = '';
+    switch (t) {
+      case 'empty': cls = nearCamp ? 'k-glowfloor' : 'k-empty'; break;
+      case 'water': cls = 'k-water'; txt = '≈'; break;
+      case 'gas': cls = 'k-gas'; txt = '∴'; break;
+      case 'lava': case 'lavaf': cls = 'k-lava'; break;
+      case 'station': cls = 'k-station'; txt = '🚡'; break;
+      case 'camp': cls = 'k-camp'; txt = '⛺'; break;
+      case 'beam': cls = 'k-beam'; break;
+      case 'boulder': cls = 'k-boulder' + (S.wob[wx + ',' + wy] ? ' wob' : ''); break;
+      case 'gaspocket': cls = 'k-gp'; break;
+      case 'page': cls = 'k-page'; txt = '📜'; break;
+      default:
+        if (M.ORES[t]) { cls = 'k-ore o-' + t; txt = M.ORES[t].g; }
+        else cls = 'k-rock' + (M.hash(S.seed, wx, wy, 5) < 0.5 ? ' v1' : '');
+    }
+    cls += L;
+    if (me) { cls += ' me' + (hurtFlash ? ' hurt' : ''); txt = '👷'; }
+    else if (dim && !glow) cls += ' dim';
+    return [cls, txt];
+  }
+
+  var hurtFlash = false;
+  function render() {
+    if (!S) return;
+    var R = M.lightRadius(S);
+    camTop = Math.max(-2, S.y - Math.floor(ROWS * 0.42));
+    for (var r = 0; r < ROWS; r++) {
+      for (var c = 0; c < COLS; c++) {
+        var i = r * COLS + c;
+        var lk = look(c, camTop + r, R);
+        var cls = 'tile ' + lk[0];
+        if (cls !== lastCls[i]) { cells[i].className = cls; lastCls[i] = cls; }
+        if (lk[1] !== lastTxt[i]) { cells[i].textContent = lk[1]; lastTxt[i] = lk[1]; }
+      }
+    }
+    // 狀態列
+    var maxE = M.maxEnergy(S);
+    $('vDepth').textContent = meters(S.y) + ' m';
+    $('vEnergy').textContent = S.en + '/' + maxE;
+    $('eFill').style.width = Math.round(S.en / maxE * 100) + '%';
+    $('eBar').classList.toggle('low', S.en <= maxE * 0.25);
+    var bc = M.bagCount(S), cap = M.bagCap(S);
+    $('vBag').textContent = bc + '/' + cap;
+    $('bagStat').classList.toggle('full', bc >= cap);
+    $('vGold').textContent = S.gold + ' G';
+    var L = M.LAYERS[M.layerIndex(S.y)];
+    $('vWhere').textContent = S.y === 0 ? '灰燈鎮 · 第 ' + S.day + ' 天' : L.name + ' · 日記 ' + S.pages.length + '/8';
+    $('nBomb').textContent = S.items.bomb;
+    $('nBeam').textContent = S.items.beam;
+    $('nRope').textContent = S.items.rope;
+    $('bBomb').disabled = S.y === 0 || !S.items.bomb;
+    $('bBeam').disabled = S.y === 0 || !S.items.beam;
+    $('bRope').disabled = S.y === 0 || !S.items.rope;
+    var ctxBtn = $('bCtx');
+    if (S.y === 0) ctxBtn.textContent = '🚡 升降籃';
+    else if (M.tileAt(S, S.x, S.y) === 'station') ctxBtn.textContent = '🚡 回地表';
+    else ctxBtn.textContent = '📯 求救';
+    renderStrip();
+    renderLog();
+  }
+
+  function renderStrip() {
+    var el = $('strip');
+    if (S.y === 0) {
+      el.innerHTML = '<div class="town">' +
+        '<button type="button" data-npc="guei">🏪 桂記雜貨</button>' +
+        '<button type="button" data-npc="bing">⚒️ 阿炳打鐵</button>' +
+        '<button type="button" data-npc="zhou">👴 周伯坑口</button></div>';
+      return;
+    }
+    var keys = Object.keys(S.bag);
+    if (!keys.length) { el.innerHTML = '<span class="chip empty">背包空空的</span>'; return; }
+    keys.sort(function (a, b) { return M.ORES[b].v - M.ORES[a].v; });
+    el.innerHTML = keys.map(function (o) {
+      return '<span class="chip"><span class="g o-' + o + '" style="color:var(--oc)">' + M.ORES[o].g + '</span>' +
+        M.ORES[o].name + '×' + S.bag[o] + '</span>';
+    }).join('') + '<span class="chip">≈ ' + M.bagValue(S) + ' G</span>';
+  }
+
+  var bannerTimer = null;
+  function banner(text) {
+    var b = $('banner');
+    b.textContent = text;
+    b.classList.add('show');
+    clearTimeout(bannerTimer);
+    bannerTimer = setTimeout(function () { b.classList.remove('show'); }, 2200);
+  }
+  function flash(cls) {
+    var w = $('mapWrap');
+    w.classList.remove(cls); void w.offsetWidth; w.classList.add(cls);
+    setTimeout(function () { w.classList.remove(cls); }, 400);
+  }
+
+  // ---------------- 執行一個動作 ----------------
+  var pendingSheets = [];
+  function doAct(cmd) {
+    if (!S) return null;
+    var ctx = M.act(S, cmd);
+    var stop = false;
+    ctx.ev.forEach(function (e) {
+      if (e.k === 'log') { pushLog(e.text, e.cls); if (e.cls === 'warn' || e.cls === 'bad' || e.cls === 'layer' || e.cls === 'page') stop = true; }
+      else if (e.k === 'sfx') SFX.play(e.name);
+      else if (e.k === 'hurt') { hurtFlash = true; flash('hit'); buzz(60); setTimeout(function () { hurtFlash = false; render(); }, 300); stop = true; }
+      else if (e.k === 'shake') flash('boom');
+      else if (e.k === 'layer') banner(M.LAYERS[e.i].name + ' · ' + meters(M.LAYERS[e.i].from) + ' m');
+      else if (e.k === 'page') pendingSheets.push(function () { openPage(e.i, true); });
+      else if (e.k === 'ending') { recordWin(); pendingSheets.push(openEnding); }
+      else if (e.k === 'faint') { stop = true; pendingSheets.push(function () { openFaint(e); }); }
+      else if (e.k === 'surface') stop = true;
+      else if (e.k === 'tired') stop = true;
+    });
+    ctx.stop = stop;
+    render();
+    scheduleSave();
+    if (pendingSheets.length && !sheetOpen()) { stopWalk(); stopHold(); pendingSheets.shift()(); }
+    return ctx;
+  }
+
+  function recordWin() {
+    var st = stats.story;
+    st.wins++;
+    if (st.best.days == null || S.wonDay < st.best.days) st.best.days = S.wonDay;
+    if (st.best.digs == null || S.wonDigs < st.best.digs) st.best.digs = S.wonDigs;
+    saveStats();
+    saveNow();
+  }
+
+  // ---------------- 自動走路（點遠處的通道） ----------------
+  var walkTimer = null;
+  function stopWalk() { if (walkTimer) { clearInterval(walkTimer); walkTimer = null; } }
+  function findPath(tx, ty) {
+    var sk = S.x + ',' + S.y, tk = tx + ',' + ty;
+    var prev = {}; prev[sk] = null;
+    var q = [[S.x, S.y]], n = 0;
+    var yMin = Math.min(S.y, ty) - 40, yMax = Math.max(S.y, ty) + 40;
+    while (q.length && n < 4000) {
+      var c = q.shift(); n++;
+      var ck = c[0] + ',' + c[1];
+      if (ck === tk) {
+        var path = [];
+        while (ck !== sk) { var p = ck.split(','); path.unshift([+p[0], +p[1]]); ck = prev[ck]; }
+        return path;
+      }
+      var dirs = [[0, 1], [0, -1], [1, 0], [-1, 0]];
+      for (var j = 0; j < 4; j++) {
+        var nx = c[0] + dirs[j][0], ny = c[1] + dirs[j][1];
+        if (nx < 0 || nx >= COLS || ny < 0 || ny < yMin || ny > yMax) continue;
+        var nk = nx + ',' + ny;
+        if (nk in prev) continue;
+        var t = M.tileAt(S, nx, ny);
+        if (!M.isPassable(t)) continue;
+        // 從地面只能從坑口那一格往下（其實任何一格都行，這裡不限制）
+        prev[nk] = ck;
+        q.push([nx, ny]);
+      }
+    }
+    return null;
+  }
+  function walkTo(tx, ty) {
+    stopWalk();
+    var path = findPath(tx, ty);
+    if (!path) { pushLog('那裡走不過去。'); renderLog(); return; }
+    walkTimer = setInterval(function () {
+      var p = path.shift();
+      if (!p || sheetOpen()) { stopWalk(); return; }
+      var ex = p[0], ey = p[1];
+      var r = doAct({ t: 'move', dx: ex - S.x, dy: ey - S.y });
+      if (!r || r.stop || S.x !== ex || S.y !== ey) stopWalk();
+    }, 75);
+  }
+
+  // ---------------- 輸入 ----------------
+  $('map').addEventListener('click', function (e) {
+    var el = e.target.closest('.tile');
+    if (!el || !S || sheetOpen()) return;
+    var i = +el.dataset.i;
+    var wx = i % COLS, wy = camTop + Math.floor(i / COLS);
+    stopWalk();
+    if (wy === -1 && TOWN_NPC[wx] && S.y === 0) { openNpc(TOWN_NPC[wx]); return; }
+    if (wy < 0) return;
+    var dist = Math.abs(wx - S.x) + Math.abs(wy - S.y);
+    if (dist === 0) {
+      if (M.tileAt(S, S.x, S.y) === 'station') openStationUp();
+      return;
+    }
+    if (dist === 1) { doAct({ t: 'move', dx: wx - S.x, dy: wy - S.y }); return; }
+    var t = M.tileAt(S, wx, wy);
+    if (M.isPassable(t) || wy === 0) walkTo(wx, wy);
+    else { pushLog('點礦工旁邊的格子才能挖；點遠處已挖開的通道可以走過去。'); renderLog(); }
+  });
+
+  // 方向鍵：按住會連續動作（挖長隧道比較不累手）
+  var holdTimer = null;
+  function stopHold() { clearTimeout(holdTimer); holdTimer = null; }
+  function padStep(dx, dy) {
+    var r = doAct({ t: 'move', dx: dx, dy: dy });
+    return r && !r.stop;
+  }
+  $('pad').addEventListener('pointerdown', function (e) {
+    var b = e.target.closest('[data-dir]');
+    if (!b || !S || sheetOpen()) return;
+    e.preventDefault();
+    stopWalk(); stopHold();
+    var d = b.dataset.dir.split(',').map(Number);
+    if (!padStep(d[0], d[1])) return;
+    holdTimer = setTimeout(function rep() {
+      if (padStep(d[0], d[1])) holdTimer = setTimeout(rep, 140);
+    }, 320);
+  });
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (n) { $('pad').addEventListener(n, stopHold); });
+  $('pad').addEventListener('contextmenu', function (e) { e.preventDefault(); });
+
+  document.addEventListener('keydown', function (e) {
+    if (!S || sheetOpen()) return;
+    var map = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0], w: [0, -1], s: [0, 1], a: [-1, 0], d: [1, 0] };
+    var k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+    if (map[k]) { e.preventDefault(); stopWalk(); doAct({ t: 'move', dx: map[k][0], dy: map[k][1] }); }
+    else if (k === 'b') doAct({ t: 'bomb' });
+    else if (k === 'v') doAct({ t: 'beam' });
+  });
+
+  $('bBomb').addEventListener('click', function () { stopWalk(); doAct({ t: 'bomb' }); });
+  $('bBeam').addEventListener('click', function () { stopWalk(); doAct({ t: 'beam' }); });
+  $('bRope').addEventListener('click', function () {
+    stopWalk();
+    confirmSheet('拉回城繩索？', '<p>周伯會把你直接拉回坑口，背包裡的東西都保得住。（剩 ' + S.items.rope + ' 條）</p>', '拉繩索', function () { doAct({ t: 'rope' }); });
+  });
+  $('bCtx').addEventListener('click', function () {
+    stopWalk();
+    if (S.y === 0) { openNpc('zhou'); return; }
+    if (M.tileAt(S, S.x, S.y) === 'station') { doAct({ t: 'elevUp' }); return; }
+    var n = M.bagCount(S);
+    confirmSheet('吹哨子求救？',
+      '<p>周伯會把你拉回地面，不管你卡在哪裡。' + (n ? '<br>不過背包太重拉不上來，要丟掉一半的礦石（約 ' + Math.ceil(n / 2) + ' 個）。' : '') + '</p>' +
+      (S.items.rope ? '<p>你身上還有繩索，用繩索就不必丟東西。</p>' : ''),
+      '吹哨子', function () { doAct({ t: 'rescue' }); });
+  });
+  $('strip').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-npc]');
+    if (b) openNpc(b.dataset.npc);
+  });
+  $('bJournal').addEventListener('click', openJournal);
+  $('bMenu').addEventListener('click', openMenu);
+
+  // ---------------- 對話框 ----------------
+  var sheet = $('sheet');
+  var sheetActs = {};
+  function sheetOpen() { return sheet.open; }
+  function openSheet(title, html, foot) {
+    $('shTitle').textContent = title;
+    $('shBody').innerHTML = html;
+    $('shBody').scrollTop = 0;
+    var f = $('shFoot');
+    f.innerHTML = '';
+    (foot || [{ label: '關閉' }]).forEach(function (b) {
+      var el = document.createElement('button');
+      el.type = 'button';
+      el.textContent = b.label;
+      if (b.primary) el.className = 'primary';
+      el.addEventListener('click', function () {
+        if (b.keep) { b.fn(); return; }
+        closeSheet();
+        if (b.fn) b.fn();
+      });
+      f.appendChild(el);
+    });
+    if (!sheet.open) { try { sheet.showModal(); } catch (e) { sheet.setAttribute('open', ''); } }
+  }
+  function closeSheet() {
+    if (sheet.open) { try { sheet.close(); } catch (e) { sheet.removeAttribute('open'); } }
+  }
+  sheet.addEventListener('close', function () {
+    if (pendingSheets.length) setTimeout(function () { if (!sheetOpen() && pendingSheets.length) pendingSheets.shift()(); }, 60);
+  });
+  sheet.addEventListener('cancel', function () { /* Esc 關閉照常 */ });
+  $('shBody').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-act]');
+    if (!b || b.disabled) return;
+    var fn = sheetActs[b.dataset.act];
+    if (fn) fn(b.dataset.arg);
+  });
+  function confirmSheet(title, html, okLabel, fn) {
+    openSheet(title, html, [{ label: '取消' }, { label: okLabel, primary: true, fn: fn }]);
+  }
+
+  function openPrologue() {
+    openSheet('灰燈鎮', '<p class="narr">' + esc(PROLOGUE) + '</p>', [{
+      label: '聽周伯說', primary: true, fn: function () {
+        S.introSeen = true; scheduleSave();
+        openSheet('周伯的叮嚀',
+          '<div class="npc"><div class="face">👴</div><div><b>周伯</b><p class="say">「挖石頭耗力氣，走路不耗。累了就走回來，或爬到每一層開頭的舊升降站，我放籃子拉你。礦石要拿上來給阿桂賣才算數。真的卡住了，就吹那支銅哨。」</p></div></div>' +
+          '<p>他塞給你一條繩索、兩根支撐木，還有一管炸藥。</p>' + HELP,
+          [{ label: '下坑！', primary: true }]);
+      }
+    }]);
+  }
+
+  function letterHtml(i) {
+    var j = JOURNAL[i];
+    return '<div class="letter"><span class="date">' + esc(j.date) + '</span>' + esc(j.text) + '</div>';
+  }
+  function openPage(i, fresh) {
+    openSheet(fresh ? '日記殘頁（' + S.pages.length + '/8）' : '爺爺的日記', letterHtml(i),
+      [{ label: fresh ? '收進日記' : '關閉', primary: true }]);
+  }
+  function openEnding() {
+    openSheet('爺爺的營地', '<p class="narr">' + esc(ENDING_NARR) + '</p>', [{
+      label: '讀最後一頁', primary: true, fn: function () {
+        openSheet('日記的最後一頁', letterHtml(7), [{
+          label: '帶著燈回去', primary: true, fn: function () {
+            var info = '<p class="narr">' + esc(ENDING_AFTER) + '</p>' +
+              '<div class="kv"><span>花了</span><span>' + S.wonDay + ' 天</span><span>敲了</span><span>' + S.wonDigs + ' 下</span>' +
+              '<span>日記</span><span>' + S.pages.length + '/8 頁</span></div>';
+            openSheet('灰燈', info, [{ label: '繼續', primary: true }]);
+          }
+        }]);
+      }
+    }]);
+  }
+  function openFaint(e) {
+    var why = {
+      rock: '大石頭砸下來的時候，你已經沒有力氣閃了。',
+      lava: '岩漿的熱氣讓你眼前一黑。',
+      gas: '毒氣嗆得你喘不過氣，腿一軟就倒了。',
+      flood: '冰水灌下來，你在水裡失去了力氣。',
+      wade: '泡在冰水裡太久，手腳凍得失去知覺。'
+    }[e.cause] || '你撐不住了。';
+    openSheet('你昏倒了',
+      '<p>' + why + '</p><p>醒來時躺在周伯的小屋裡，身上蓋著他的舊外套。「聽到坑裡沒動靜，我就放籃子下去了。」他說，「下次覺得不對就早點上來。」</p>' +
+      (e.lost ? '<p>背包裡的礦石少了 ' + e.lost + ' 個。</p>' : ''),
+      [{ label: '休息一晚', primary: true }]);
+  }
+  function openStationUp() {
+    confirmSheet('舊升降站', '<p>拉一下鈴，周伯就會把籃子拉上去。要回地表嗎？</p>', '搭升降籃', function () { doAct({ t: 'elevUp' }); });
+  }
+
+  // ---- NPC ----
+  function rowHtml(icon, title, sub, price, act, arg, disabled) {
+    return '<button type="button" class="row" data-act="' + act + '" data-arg="' + (arg == null ? '' : arg) + '"' + (disabled ? ' disabled' : '') + '>' +
+      '<span class="ri">' + icon + '</span><span class="rt">' + title + (sub ? '<small>' + sub + '</small>' : '') + '</span>' +
+      (price != null ? '<span class="rp">' + price + '</span>' : '') + '</button>';
+  }
+  function upRow(id, icon) {
+    var u = M.UP[id], lv = S.up[id];
+    if (lv >= u.lv.length - 1) return rowHtml(icon, u.name + ' Lv.' + (lv + 1) + '（最高）', u.unit + ' ' + u.lv[lv], null, 'noop', '', true);
+    var cost = u.cost[lv + 1];
+    return rowHtml(icon, u.name + ' Lv.' + (lv + 1) + ' → Lv.' + (lv + 2), u.unit + ' ' + u.lv[lv] + ' → ' + u.lv[lv + 1], cost + ' G', 'up', id, S.gold < cost);
+  }
+  function itemRow(id, icon, desc) {
+    var it = M.ITEMS[id];
+    var full = S.items[id] >= it.max;
+    return rowHtml(icon, it.name + '（身上 ' + S.items[id] + '／' + it.max + '）', desc, it.price + ' G', 'buy', id, full || S.gold < it.price);
+  }
+  function npcLine(id) {
+    var npc = NPCS[id];
+    var lines = npc.lines[M.stage(S)];
+    return lines[talkIdx[id] % lines.length];
+  }
+  function sayHtml(line) { return line.charAt(0) === '*' ? esc(line.slice(1)) : '「' + esc(line) + '」'; }
+  var curNpc = null;
+  function openNpc(id) {
+    if (id === 'home') { openJournal(); return; }
+    if (S.y !== 0) return;
+    curNpc = id;
+    renderNpc();
+  }
+  function renderNpc() {
+    var id = curNpc, npc = NPCS[id];
+    var html = '<div class="npc"><div class="face">' + npc.face + '</div><div><b>' + npc.name + '</b><small>' + npc.role + '</small>' +
+      '<p class="say">' + sayHtml(npcLine(id)) + '</p></div></div>' +
+      '<button type="button" class="link" data-act="talk">再聊兩句 ›</button>';
+    html += '<p class="seed" style="margin:2px 0">身上 ' + S.gold + ' G</p>';
+    if (id === 'guei') {
+      html += '<h3>收購礦石</h3>';
+      var keys = Object.keys(S.bag);
+      if (!keys.length) html += '<p style="color:var(--muted)">背包是空的。</p>';
+      else {
+        keys.sort(function (a, b) { return M.ORES[b].v - M.ORES[a].v; });
+        html += '<div class="kv">' + keys.map(function (o) {
+          return '<span>' + M.ORES[o].name + ' ×' + S.bag[o] + '</span><span>' + (S.bag[o] * M.ORES[o].v) + ' G</span>';
+        }).join('') + '</div>';
+        html += rowHtml('💰', '全部賣掉', M.bagCount(S) + ' 個礦石', M.bagValue(S) + ' G', 'sell');
+      }
+      html += '<h3>背包</h3>' + upRow('bag', '🎒');
+      html += '<h3>雜貨</h3>' +
+        itemRow('bomb', '💣', '炸開身邊八格，礦石照收') +
+        itemRow('beam', '🏗️', '架在腳下這格，頭頂的石頭就不會掉') +
+        itemRow('rope', '➰', '在坑裡任何地方都能被拉回坑口');
+    } else if (id === 'bing') {
+      html += '<h3>打鐵</h3>' + upRow('pick', '⛏️') + upRow('lamp', '🔦');
+      html += '<p style="color:var(--muted);font-size:12.5px">現在的鎬子敲一下扣 ' + M.power(S) + ' 點硬度；礦燈在 ' + M.LAYERS[Math.max(1, S.layer)].name + '大約照得到 ' +
+        Math.max(1, M.UP.lamp.lv[S.up.lamp] + (S.glow ? 2 : 0) - M.LAYERS[Math.max(1, S.layer)].dark) + ' 格。</p>';
+    } else if (id === 'zhou') {
+      html += '<h3>跟周伯學省力的挖法</h3>' + upRow('stam', '💪');
+      html += '<h3>升降籃</h3>';
+      if (!S.stations.length) html += '<p style="color:var(--muted)">還沒找到任何舊升降站。每一層開頭附近都有一座，走到那裡拉個鈴就能用。</p>';
+      else html += S.stations.map(function (i) {
+        var p = M.stationPos(S.seed, i);
+        return rowHtml('🚡', '下到 ' + meters(p.y) + ' 公尺', M.LAYERS[M.layerIndex(p.y)].name, '免費', 'down', i);
+      }).join('');
+    }
+    openSheet(npc.name, html, [{ label: '離開' }]);
+  }
+  sheetActs.talk = function () { talkIdx[curNpc]++; renderNpc(); };
+  sheetActs.sell = function () { doAct({ t: 'sell' }); renderNpc(); };
+  sheetActs.up = function (id) { doAct({ t: 'up', id: id }); renderNpc(); };
+  sheetActs.buy = function (id) { doAct({ t: 'buy', id: id }); renderNpc(); };
+  sheetActs.down = function (i) { closeSheet(); doAct({ t: 'elevDown', i: +i }); };
+  sheetActs.page = function (i) { if (i === 'pre') openSheet(PREFACE.title, '<p class="narr">' + esc(PREFACE.text) + '</p>', [{ label: '返回', fn: openJournal }]); else openSheet('爺爺的日記', letterHtml(+i), [{ label: '返回', fn: openJournal }]); };
+  sheetActs.help = function () { openSheet('玩法說明', HELP, [{ label: '返回', fn: openMenu }]); };
+  sheetActs.stats = function () { openStatsSheet(); };
+  sheetActs.newgame = function () {
+    confirmSheet('開始新的旅程？', '<p>會換一座全新的礦坑（新的地形），目前的進度會清掉。紀錄不受影響。</p>', '重新開始', function () {
+      lsDel(SAVE_KEY);
+      startNewGame();
+    });
+  };
+  sheetActs.prologue = function () { openSheet('灰燈鎮', '<p class="narr">' + esc(PROLOGUE) + '</p>', [{ label: '返回', fn: openMenu }]); };
+
+  function openJournal() {
+    var html = '<div class="jlist">' + rowHtml('📕', PREFACE.title, '爺爺的筆跡', null, 'page', 'pre');
+    for (var i = 0; i < JOURNAL.length; i++) {
+      if (S.pages.indexOf(i) >= 0) html += rowHtml('📜', '第 ' + (i + 1) + ' 頁 · ' + JOURNAL[i].date, JOURNAL[i].text.slice(0, 22) + '……', null, 'page', i);
+      else {
+        var hint = i < 7 ? '大約在 ' + meters(M.PAGE_ROWS[i]) + ' 公尺附近（' + M.LAYERS[M.layerIndex(M.PAGE_ROWS[i])].name + '）' : '在最深的地方';
+        html += rowHtml('▫️', '第 ' + (i + 1) + ' 頁 · 還沒找到', hint, null, 'noop', '', true);
+      }
+    }
+    html += '</div>';
+    openSheet('爺爺的日記（' + S.pages.length + '/8）', html, [{ label: '關閉' }]);
+  }
+
+  function openMenu() {
+    var html = rowHtml('❔', '玩法說明', '操作、危險、回地表的方法', null, 'help') +
+      rowHtml('🌫️', '重看序章', '灰燈鎮的故事', null, 'prologue') +
+      rowHtml('🏆', '紀錄', '通關天數、挖掘次數、最深紀錄', null, 'stats') +
+      rowHtml('🆕', '新的旅程', '換一座新的礦坑重新開始', null, 'newgame') +
+      '<p class="seed">礦坑編號 ' + S.seed.toString(16).toUpperCase() + ' · 第 ' + S.day + ' 天 · 敲了 ' + S.digs + ' 下</p>';
+    openSheet('選單', html, [{ label: '關閉' }]);
+  }
+  function openStatsSheet() {
+    var st = stats.story;
+    var html = '<div class="kv">' +
+      '<span>開始過的旅程</span><span>' + st.plays + '</span>' +
+      '<span>找到營地</span><span>' + st.wins + ' 次</span>' +
+      '<span>最少天數</span><span>' + (st.best.days != null ? st.best.days + ' 天' : '—') + '</span>' +
+      '<span>最少挖掘</span><span>' + (st.best.digs != null ? st.best.digs + ' 下' : '—') + '</span>' +
+      '<span>最深到過</span><span>' + (st.deepest ? st.deepest + ' m' : '—') + '</span>' +
+      '</div><h3>這一趟</h3><div class="kv">' +
+      '<span>天數</span><span>' + S.day + '</span><span>挖掘</span><span>' + S.digs + ' 下</span>' +
+      '<span>最深</span><span>' + meters(S.maxY) + ' m</span><span>昏倒</span><span>' + S.faints + ' 次</span></div>';
+    openSheet('紀錄', html, [{ label: '返回', fn: openMenu }]);
+  }
+
+  // ---------------- 啟動 ----------------
+  window.addEventListener('resize', function () { clearTimeout(layout._t); layout._t = setTimeout(layout, 120); });
+  document.addEventListener('visibilitychange', function () { if (document.hidden && S) saveNow(); });
+  window.addEventListener('pagehide', function () { if (S) saveNow(); });
+
+  var raw = lsGet(SAVE_KEY);
+  S = raw ? M.normalize(raw) : null;
+  if (S) {
+    pushLog('歡迎回來。現在在 ' + (S.y === 0 ? '灰燈鎮' : meters(S.y) + ' 公尺深的' + M.LAYERS[M.layerIndex(S.y)].name) + '。');
+    buildGrid();
+    layout();
+    if (!S.introSeen) openPrologue();
+  } else {
+    buildGrid();
+    S = M.newState(0);   // 先放個佔位，避免 layout 時沒有狀態
+    layout();
+    startNewGame();
+  }
+})();
+</script>
+</body>
+</html>

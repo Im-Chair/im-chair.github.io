@@ -408,7 +408,7 @@ function load(){
  }catch(e){}
  S=defaults();return false
 }
-function save(){try{S.t=Date.now();localStorage.setItem(KEY,JSON.stringify(S));return true}catch(e){return false}}
+function save(){const h=B.hold,gt=h&&S.grid[h.from];if(gt)gt.o=h.o;/* 拖曳移動中先放回設施再存 */try{S.t=Date.now();localStorage.setItem(KEY,JSON.stringify(S));return true}catch(e){return false}finally{if(gt)delete gt.o}}
 const sum=o=>Object.values(o).reduce((a,b)=>a+b,0);
 function cntB(t){let n=0;for(const k in S.grid){const o=S.grid[k].o;if(o&&o.t===t)n++}return n}
 const bagCap=()=>40+12*S.pack+(S.tech.b2?8:0)+Math.min(8,Math.floor((S.rep||0)/5)*2);
@@ -453,7 +453,7 @@ function beep(f,d,v){if(!S.set.snd)return;try{if(localStorage.getItem('arcade-so
 function vib(l){if(!S.set.vib||!navigator.vibrate)return;try{navigator.vibrate(l==='rare'?[30,40,70]:l==='mid'?25:8)}catch(e){}}
 function toast(t){const d=document.createElement('div');d.className='toast';d.textContent=t;const c=$('#toasts');c.appendChild(d);while(c.children.length>3)c.firstChild.remove();setTimeout(()=>d.remove(),2400)}
 function modal(html){$('#mbox').innerHTML=html;$('#modal').hidden=false;$('#mbox').scrollTop=0}
-function closeModal(){M.lock=false;$('#modal').hidden=true;$('#mbox').innerHTML=''}
+function closeModal(){M.lock=false;$('#modal').hidden=true;$('#mbox').innerHTML='';if(TR&&TR.resumePending){TR.resumePending=false;showStop()}} // 歡迎回來視窗被任何方式關閉都要補回探索站點
 
 /* ---------- survival ---------- */
 function drain(dt){const k=(S.tech.s1?.75:1)*(S.projects&&S.projects.master?.9:1);S.w=Math.max(0,S.w-dt/10*k);S.f=Math.max(0,S.f-dt/15*k)}
@@ -461,13 +461,13 @@ function eat(id){const u=USE[id];if(!u||!has(id))return;pay({[id]:1});const m=S.
 
 /* ---------- machines (online + offline) ---------- */
 function eachObj(fn){for(const k in S.grid){const o=S.grid[k].o;if(o){const [x,y]=k.split(',').map(Number);fn(o,x,y,k)}}}
-function dismantle(id,n){
+function dismantle(id,n,q){
  const d=IT[id]&&IT[id].junk;if(!d)return null;n=Math.min(Math.floor(n),has(id));if(!Number.isSafeInteger(n)||n<=0)return null;
  const out={};for(const k in d)out[k]=d[k]*n;
- if(sum(out)>room()+sroom()+n){toast('容量不足：先整理背包或倉庫，再拆解');return null}
+ if(sum(out)>room()+sroom()+n){if(!q)toast('容量不足：先整理背包或倉庫，再拆解');return null}
  const bagBefore={...S.bag},storeBefore={...S.store};
  if(!pay({[id]:n}))return null;
- if(!grantBundle(out)){S.bag=bagBefore;S.store=storeBefore;toast('容量不足：先整理背包或倉庫，再拆解');return null}
+ if(!grantBundle(out)){S.bag=bagBefore;S.store=storeBefore;if(!q)toast('容量不足：先整理背包或倉庫，再拆解');return null}
  S.dism+=n;return out
 }
 function tickM(dt,rainMul){
@@ -477,7 +477,7 @@ function tickM(dt,rainMul){
   else if(o.t==='pur'){o.cd=Math.max(0,(o.cd||0)-dt)}
   else if(o.t==='rod'){const per=35/((S.tech.c2?1.3:1)*(S.eco>=30?1.2:1)*(S.projects&&S.projects.coral?1.25:1));o.fish=Math.min(3,(o.fish||0)+dt/per)}
   else if(o.t==='plant'&&o.g!=null){o.g+=dt*(S.tech.c2?1.3:1)*(S.projects&&S.projects.garden?1.25:1)}
-  else if(o.t==='recy'){o.tm=(o.tm||0)+dt;let n=Math.floor(o.tm/3);if(n>0){o.tm-=n*3;for(const id of JUNK){if(id==='coconut')continue;if(n<=0)break;const m=Math.min(n,has(id));if(m>0){dismantle(id,m);n-=m}}}if(o.tm>30)o.tm=0}
+  else if(o.t==='recy'){o.tm=(o.tm||0)+dt;let n=Math.floor(o.tm/3);if(n>0){o.tm-=n*3;for(const id of JUNK){if(id==='coconut')continue;if(n<=0)break;const m=Math.min(n,has(id));if(m>0){dismantle(id,m,1);n-=m}}}if(o.tm>30)o.tm=0}
  });
 }
 function offline(el){
@@ -716,7 +716,7 @@ const B={tool:'floor',gh:null,undo:[],down:false,stroke:[],hold:null,warned:fals
 const OFFY=56;
 const gt=(sx,sy)=>{const [wx,wy]=s2w(sx,sy-OFFY);return [Math.round(wx/T),Math.round(wy/T)]};
 const newObj=id=>{const o={t:id};if(id==='rod')o.fish=0;if(id==='rain')o.v=0;if(id==='plant')o.g=null;if(id==='net')o.buf={};return o};
-function setBuild(on){if(on)closeSheet();W.build=on;$('#app').classList.toggle('mode-build',on);$('#buildbar').hidden=!on;if(on){renderTools();binfo()}else{B.hold=null;B.gh=null;fixPlayer();save()}}
+function setBuild(on){if(on)closeSheet();W.build=on;$('#app').classList.toggle('mode-build',on);$('#buildbar').hidden=!on;if(on){renderTools();binfo()}else{if(B.hold){const g=S.grid[B.hold.from];if(g)g.o=B.hold.o}B.hold=null;B.gh=null;fixPlayer();save()}}
 function renderTools(){
  const list=['floor',...Object.keys(BL).filter(k=>k!=='floor')];let h='';
  for(const id of list){const b=BL[id];const lock=b.gate&&!b.gate();const poor=!lock&&!can(b.cost);
@@ -810,7 +810,7 @@ joy.addEventListener('pointermove',e=>{if(e.pointerId===jp)jset(e)});
 joy.addEventListener('pointerup',e=>{if(e.pointerId===jp)jend()});joy.addEventListener('pointercancel',e=>{if(e.pointerId===jp)jend()});
 function doAct(){const a=getAct();if(a){a.f();vib('light')}}
 $('#act').onclick=doAct;
-addEventListener('keydown',e=>{W.keys[e.key]=1;if(e.key==='e'||e.key==='Enter')doAct();if(e.key==='b')setBuild(!W.build)});
+addEventListener('keydown',e=>{W.keys[e.key]=1;if(e.repeat||!$('#modal').hidden||!$('#sheet').hidden)return;if(e.key==='e'||e.key==='Enter')doAct();if(e.key==='b')setBuild(!W.build)});
 addEventListener('keyup',e=>{W.keys[e.key]=0});
 /* ---------- sheets ---------- */
 let SP=null,dis=null,bagSel=null,craftSt='',craftSel=null,techSel=null,selReg='wreck',useSteel=false,resetArm=false;
@@ -820,7 +820,7 @@ function openSheet(p){if(W.build)setBuild(false);SP=p;dis=null;bagSel=null;craft
 function closeSheet(){$('#sheet').hidden=true;SP=null;dis=null}
 function renderSheet(top){if(!SP)return;const sb=$('#sbody');const st=top?0:sb.scrollTop;
  $('#stabs').innerHTML=TABS.map(t=>`<button data-tab="${t[0]}" class="${SP===t[0]?'on':''}">${t[1]}</button>`).join('')+'<button id="sx" aria-label="關閉">×</button>';
- sb.innerHTML=({bag:tBag,craft:tCraft,tech:tTech,sail:tSail,log:tLog,jobs:tJobs,set:tSet})[SP]();sb.scrollTop=st}
+ const hb=({bag:tBag,craft:tCraft,tech:tTech,sail:tSail,log:tLog,jobs:tJobs,set:tSet})[SP]();if(!top&&sb._h===SP+hb)return;sb._h=SP+hb;sb.innerHTML=hb;sb.scrollTop=st}
 function sorted(box){const ids=Object.keys(S[box]);const mode=S.set.sort||'cat';const o={mat:0,food:1,junk:2,sp:3};
  ids.sort((a,b)=>mode==='qty'?S[box][b]-S[box][a]:mode==='rare'?(o[catOf(b)]-o[catOf(a)])||(S[box][a]-S[box][b]):(o[catOf(a)]-o[catOf(b)])||(S[box][b]-S[box][a]));return ids}
 function cellItem(id,box){const n=S[box][id],on=bagSel&&bagSel.box===box&&bagSel.id===id;
@@ -968,7 +968,7 @@ function updHUD(){
  $('#tWater').textContent=Math.round(S.w);$('#tFood').textContent=Math.round(S.f);$('#tEco').textContent=Math.floor(S.eco);
  $('#barW').classList.toggle('low',S.w<20);$('#barF').classList.toggle('low',S.f<20);
  $('#res').innerHTML=['wood','plastic','metal','cloth','elec'].map(k=>`<span class="chip" title="${nameOf(k)}">${ico(k,20)}${has(k)}</span>`).join('')+`<span class="chip"><small>背包</small>${sum(S.bag)}/${bagCap()}</span>`;
- const a=W.build?null:getAct();const ab=$('#act');if(a){ab.hidden=false;ab.innerHTML=a.l+'<small>'+a.s+'</small>'}else ab.hidden=true;
+ const a=W.build?null:getAct();const ab=$('#act');if(a){ab.hidden=false;const h=a.l+'<small>'+a.s+'</small>';if(ab._h!==h){ab._h=h;ab.innerHTML=h}}else ab.hidden=true;
  document.querySelectorAll('#quick button').forEach(b=>{const r=RC.find(x=>x.id===b.dataset.id);b.classList.toggle('dim',!can(r.cost)||(r.st&&!cntB(r.st)))});
  const tq=TUT[S.q];if(tq){const n=tq.n?'（'+tq.n()+'）':'';$('#quest').innerHTML=`<b>任務 ${S.q+1}/${TUT.length}</b>　${tq.t}${n}`}}
 function updQuest(){const tq=TUT[S.q];$('#quest').innerHTML=tq?`<b>任務 ${S.q+1}/${TUT.length}</b>　${tq.t}`:'<b>基地已站穩</b>　繼續擴建、研究科技，前往沉船區與淹沒都市。'}
@@ -986,7 +986,7 @@ function driftEvent(){const e=pick(DRIFT_EV);
  else if(e==='school'){toast('魚群經過木筏');for(let i=0;i<8;i++)setTimeout(()=>{const ys=200+Math.random()*(VH-420);W.items.push({id:'fish',x:(VW-OX)/SC+20+i*14,y:(ys-OY)/SC,vx:-34,ph:i,st:0,rot:0,dl:0})},i*350)}
  else if(e==='rain'){W.rain=40;toast('下雨了：雨水收集器加速運作')}
  else if(e==='crate'){spawn('crate');toast('海面漂來一只貨箱，要瞄準才抓得到')}
- else if(e==='sos'){M.lock=false;modal(`<h2>求救訊號</h2><p>無線電傳來斷斷續續的聲音，有人困在遠處的浮台上。</p><button class="btn" data-ev="sos1">送過去一瓶淨水（消耗淨水 ×1）</button><button class="btn alt" data-ev="sos0">無視訊號</button>`)}}
+ else if(e==='sos'){if(TR||!$('#modal').hidden)return;M.lock=false;modal(`<h2>求救訊號</h2><p>無線電傳來斷斷續續的聲音，有人困在遠處的浮台上。</p><button class="btn" data-ev="sos1">送過去一瓶淨水（消耗淨水 ×1）</button><button class="btn alt" data-ev="sos0">無視訊號</button>`)}}
 $('#modal').addEventListener('click',e=>{const b=e.target.closest('[data-ev],[data-tr],[data-mx]');if(!b)return;
  if(b.dataset.ev==='sos1'){
   const reward={elec:4,cloth:3};

@@ -376,14 +376,17 @@ function setCellSize(cols) {
   boardEl.style.gridTemplateColumns = `repeat(${cols}, ${size}px)`;
 }
 
+let resultTimer = null; // 延遲顯示結算的 timer id（newGame 時取消）
+
 function newGame(level, daily = null) {
   const cfg = LEVELS[level];
   stopTimer();
   // 一般局換一般局：舊局算放棄。牽涉每日挑戰的切換不動存檔（兩邊進度各自保留）
+  clearTimeout(resultTimer); resultTimer = null; // 取消上一局還沒顯示的結算，避免蓋在新局上
   if (!state.daily && !daily) {
     if (!state.firstClick && !state.gameOver) recordResult(state.level, false); // 中途放棄算一局
-    lsSet(SAVE_KEY, null);
   }
+  if (!daily) lsSet(SAVE_KEY, null); // 新開一般局＝舊的一般存檔作廢（從每日回來要接續舊局請走 backToNormal）
   if (!daily) normalLevel = level;
   state = {
     level, daily,
@@ -535,7 +538,7 @@ function handleClick(idx) {
     SFX.lose();
     showAllMines(idx);
     renderBoard();
-    setTimeout(() => showResult(false), 400);
+    endGame(false, 400);
     return;
   }
 
@@ -550,6 +553,8 @@ function chord(idx) {
   if (!state.revealed[idx] || state.board[idx] <= 0) return;
   const flagCount = neighbors(idx).filter(n => state.flagged[n]).length;
   if (flagCount !== state.board[idx]) return;
+  // 每日盤開局就有翻開的格子，firstClick 仍為 true；chord 也算首動，要啟動計時（不可重新佈雷）
+  if (state.firstClick) { state.firstClick = false; startTimer(); }
   let hitMine = false;
   for (const n of neighbors(idx)) {
     if (!state.flagged[n] && !state.revealed[n]) {
@@ -563,7 +568,7 @@ function chord(idx) {
     SFX.lose();
     showAllMines(-1);
     renderBoard();
-    setTimeout(() => showResult(false), 400);
+    endGame(false, 400);
     return;
   }
   renderBoard();
@@ -595,24 +600,30 @@ function checkWin() {
     state.gameOver = true;
     stopTimer();
     renderBoard();
-    setTimeout(() => showResult(true), 300);
+    endGame(true, 300);
   }
   document.getElementById('open-count').textContent = state.openCount;
 }
 
-function showResult(won) {
-  if (won) SFX.win(); // 輸的音效在踩雷當下就放了
+// 結束當下同步記帳（戰績、每日結果、清存檔），延遲只負責顯示，避免延遲期間關頁面或按新遊戲造成漏記／錯記
+function endGame(won, delay) {
   if (state.daily) {
     lsSet(DAILY_SAVE_KEY, null);
     recordResult('daily', won, won ? { time: state.elapsed } : {});
     finishDaily(state.daily, won, { time: state.elapsed });
-    renderBest();
-    showDailyResult();
-    return;
+  } else {
+    lsSet(SAVE_KEY, null);
+    state.result = recordResult(state.level, won, won ? { time: state.elapsed } : {});
   }
-  lsSet(SAVE_KEY, null);
-  const { r, newBest } = recordResult(state.level, won, won ? { time: state.elapsed } : {});
   renderBest();
+  clearTimeout(resultTimer);
+  resultTimer = setTimeout(() => { resultTimer = null; showResult(won); }, delay);
+}
+
+function showResult(won) {
+  if (won) SFX.win(); // 輸的音效在踩雷當下就放了
+  if (state.daily) { showDailyResult(); return; }
+  const { r, newBest } = state.result;
   const bestLine = r.best.time != null
     ? `<br>最佳：<b>${formatTime(r.best.time)}</b>${newBest.length ? ' <span class="new-record">新紀錄！</span>' : ''}` : '';
   const rateLine = `<br>勝場：<b>${r.wins}</b> / ${r.plays}`;
@@ -761,8 +772,13 @@ document.getElementById('flag-btn').addEventListener('click', () => {
 });
 
 // 每日挑戰中按「新遊戲」／結算按鈕＝回一般模式（每日題不能重來）
-document.getElementById('new-btn').addEventListener('click', () => newGame(state.daily ? normalLevel : state.level));
-document.getElementById('result-btn').addEventListener('click', () => newGame(state.daily ? normalLevel : state.level));
+// 從每日回一般模式時，先接回一般存檔裡的舊局，沒有才開新局
+function backToNormal() {
+  if (state.daily) { if (!loadGame(SAVE_KEY)) newGame(normalLevel); }
+  else newGame(state.level);
+}
+document.getElementById('new-btn').addEventListener('click', backToNormal);
+document.getElementById('result-btn').addEventListener('click', backToNormal);
 document.getElementById('share-btn').addEventListener('click', async () => {
   const ok = await copyText(dailyShareText());
   document.getElementById('share-btn').textContent = ok ? '✓ 已複製，貼給朋友吧' : '複製失敗';

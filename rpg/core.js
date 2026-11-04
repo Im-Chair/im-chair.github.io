@@ -123,7 +123,7 @@ function healMult(){ const z = R? realmFor(R.floor):null; return (z && z.rule===
    在無光通道裡營火打 75 折、繩降平台回滿額、藥水看你在不在戰鬥中。 */
 function healAmount(raw){
   let h = Math.floor(raw * healMult());
-  if(B && B.st.wound) h = Math.floor(h/2);
+  if(B && !B.over && B.st.wound) h = Math.floor(h/2);   // v461：戰後 B 不清空，上一場的重傷不能帶到營火／藥水
   return h;
 }
 
@@ -242,6 +242,9 @@ function showScreen(id){
 
 let toastT = null;
 
+// v462：操作失敗（錢不夠、條件不符…）一定要有回饋，走 notice；一般旁白式提示仍走 toast（刻意不顯示）
+function notice(msg){ const t=$('toast'); t.innerHTML=msg; t.classList.add('show');
+  clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),1600); }
 function toast(msg){ const t=$('toast'); t.innerHTML=msg;   // v393：改吃 HTML，讓 toast 也能放 SVG 圖示（呼叫點全是內部字串） t.classList.add('show');
   clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),1600); }
 

@@ -90,12 +90,13 @@ function selectChar(i){
   if(R && !R.pots) R.pots = {};
   save();
   if(!G.cls){ pendingCreate=false; pendingClass=null; renderClassSelect(); showScreen('s-class'); return; }
-  if(R && R.phase==='battle'){ R.phase='doors'; R.doors=null; R.forceDoor = R.lastDoor || 'fight'; }
+  // v461：本層已結算（floorDone，見 run.js resumeRun）就不再重打，否則讀檔能刷同一層的戰利品
+  if(R && R.phase==='battle'){ R.phase='doors'; R.doors=null; if(!R.floorDone) R.forceDoor = R.lastDoor || 'fight'; }
   renderCamp();
   if(R){ resumeRun(); } else { showScreen('s-camp'); }
 }
 function newChar(){
-  if(ACC.chars.length >= MAX_CHARS){ toast(`最多 ${MAX_CHARS} 個角色`); return; }
+  if(ACC.chars.length >= MAX_CHARS){ notice(`最多 ${MAX_CHARS} 個角色`); return; }
   pendingCreate = true; pendingClass = null; closeSheet();
   renderClassSelect(); showScreen('s-class');
 }
@@ -103,9 +104,15 @@ function deleteChar(i){
   openSheet(`<h3>刪除角色？</h3><p class="base">${charLabel(ACC.chars[i])} 的職業、裝備、認證、個人倉庫全部消失（共用倉庫不受影響）。無法復原。</p><div class="row" style="margin-top:14px"><button class="btn danger" onclick="doDeleteChar(${i})">刪除</button><button class="btn" onclick="openRoster()">算了</button></div>`);
 }
 function doDeleteChar(i){
+  const wasActive = i === ACC.active;
   ACC.chars.splice(i,1);
+  if(i < ACC.active) ACC.active--;   // v461：刪掉排在前面的角色，索引要跟著退一格，否則會悄悄換成下一個角色
   if(ACC.active >= ACC.chars.length) ACC.active = Math.max(0, ACC.chars.length-1);
-  G = ACC.chars.length ? ACC.chars[ACC.active] : null; R = (G && G.run) || null;
-  accSave(); closeSheet();
-  if(ACC.chars.length) openRoster(); else titleStart();
+  if(!ACC.chars.length){ G = null; R = null; B = null; accSave(); closeSheet(); titleStart(); return; }
+  if(wasActive){
+    // v461：刪的是目前角色 → 走 selectChar 完整切換（遷移、戰鬥轉門、重繪營地或接回探索），背後畫面才不會停在已刪角色
+    G = null; R = null; B = null;
+    selectChar(ACC.active);
+  } else accSave();
+  openRoster();
 }
