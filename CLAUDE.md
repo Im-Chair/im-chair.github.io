@@ -110,5 +110,5 @@ python -m http.server 8000
 - 沿用既有暗色美術系統：背景 `#080808`、accent 螢光綠 `#c8f135`、字型 Syne（標題）/ DM Mono（內文）。
 - 不要引入框架、build 工具或 npm 依賴，除非有明確需求並先討論。
 - 動到 rpg 檔案 → 更新 `rpg/index.html` 的 `RPG_VER` 一處；動到需即時更新的快取資源 → 更新對應 `sw.js` 的 `CACHE` 版本。
-- 新增遊戲：建子資料夾放 `index.html`，並在根 `index.html` 的 `.games` 區塊加一張 `.game-card` 卡片、更新 `#game-count` 數字。
+- 新增遊戲：建子資料夾放 `index.html`，並在根 `index.html` 的 `.games` 區塊加一張 `.game-card` 卡片（只放圖示、名稱、兩三個字的類型，不寫介紹；遊戲數會自動算）。
 ```

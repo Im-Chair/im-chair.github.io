@@ -55,11 +55,11 @@
     #app {
       position: relative;
       z-index: 1;
-      max-width: 720px;
+      max-width: 860px;
       margin: 0 auto;
       padding: 0 16px;
-      padding-top: max(48px, env(safe-area-inset-top));
-      padding-bottom: max(48px, env(safe-area-inset-bottom));
+      padding-top: max(16px, env(safe-area-inset-top));
+      padding-bottom: max(16px, env(safe-area-inset-bottom));
       min-height: 100vh;
       display: flex;
       flex-direction: column;
@@ -68,22 +68,17 @@
 
     /* ── Header ── */
     .header {
-      margin-bottom: 48px;
-      animation: fadeUp 0.6s ease both;
-    }
-    .header-eyebrow {
-      font-size: 11px;
-      letter-spacing: 0.2em;
-      color: var(--ink3);
-      text-transform: uppercase;
-      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
     }
     .header-title {
       font-family: var(--font-display);
-      font-size: clamp(52px, 18vw, 80px);
+      font-size: 34px;
       font-weight: 800;
-      letter-spacing: -2px;
-      line-height: 0.9;
+      letter-spacing: -1px;
+      line-height: 1;
       color: var(--ink);
     }
     .header-title span {
@@ -95,274 +90,96 @@
       0%,95%,97%,100% { opacity: 1; }
       96% { opacity: 0.2; }
     }
-    .header-sub {
-      margin-top: 16px;
-      font-size: 12px;
-      color: var(--ink2);
-      letter-spacing: 0.05em;
+    /* 音效總開關（各小遊戲讀 localStorage arcade-sound） */
+    .sound-toggle {
+      width: 44px;
+      height: 44px;
+      font-size: 18px;
+      color: inherit;
+      background: var(--card);
+      border: 0.5px solid var(--card-border);
+      border-radius: 12px;
+      cursor: pointer;
     }
+    .sound-toggle:active { transform: scale(0.94); }
+    .sound-toggle.off { opacity: 0.5; }
 
-    /* ── Divider ── */
-    .divider {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 24px;
-      animation: fadeUp 0.6s ease 0.1s both;
-    }
-    .divider-label {
-      font-size: 10px;
-      letter-spacing: 0.2em;
-      text-transform: uppercase;
-      color: var(--ink3);
-      white-space: nowrap;
-    }
-    .divider-line {
-      flex: 1;
-      height: 0.5px;
-      background: var(--card-border);
-    }
-
-    /* ── Game grid ── */
+    /* ── Game grid：像手機桌面的圖示格，遊戲變多也一眼看得完 ── */
     .games {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(156px, 1fr));
-      gap: 12px;
-      margin-bottom: 40px;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px 10px;
+      margin-bottom: 24px;
+      animation: fadeUp 0.35s ease both;
     }
+    @media (min-width: 560px) { .games { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+    @media (min-width: 760px) { .games { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
 
     /* ── Game card ── */
     .game-card {
       display: block;
-      text-decoration: none;
-      background: var(--card);
-      border: 0.5px solid var(--card-border);
-      border-radius: 16px;
-      padding: 20px 22px;
       position: relative;
-      overflow: hidden;
-      transition: border-color 0.2s, transform 0.15s;
-      animation: fadeUp 0.5s ease both;
+      min-width: 0;
+      text-decoration: none;
+      transition: transform 0.15s;
     }
-    .game-card:nth-child(1) { animation-delay: 0.12s; }
-    .game-card:nth-child(2) { animation-delay: 0.18s; }
-    .game-card:nth-child(3) { animation-delay: 0.24s; }
-    .game-card:nth-child(4) { animation-delay: 0.30s; }
-    .game-card:nth-child(5) { animation-delay: 0.36s; }
-    .game-card:nth-child(6) { animation-delay: 0.42s; }
-    .game-card:nth-child(7) { animation-delay: 0.48s; }
-    .game-card:nth-child(8) { animation-delay: 0.54s; }
-    .game-card:nth-child(9) { animation-delay: 0.60s; }
-    .game-card:nth-child(10) { animation-delay: 0.66s; }
-    .game-card:nth-child(11) { animation-delay: 0.72s; }
-    .game-card:nth-child(12) { animation-delay: 0.78s; }
-    .game-card:nth-child(13) { animation-delay: 0.84s; }
-
-    .game-card::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: radial-gradient(ellipse at 20% 50%, var(--card-accent, transparent) 0%, transparent 70%);
-      opacity: 0;
-      transition: opacity 0.3s;
-      pointer-events: none;
-    }
-    .game-card:active {
-      transform: scale(0.975);
-    }
-    .game-card:hover {
-      border-color: rgba(242,240,234,0.2);
-    }
-    .game-card:hover::before {
-      opacity: 1;
-    }
-
-    .game-card.available {
-      --card-accent: rgba(200, 241, 53, 0.06);
-      cursor: pointer;
-    }
-    .game-card.coming-soon {
-      opacity: 0.5;
-      cursor: default;
-      pointer-events: none;
-    }
-
-    .card-top {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      margin-bottom: 14px;
-    }
+    .game-card:active { transform: scale(0.96); }
     .card-icon {
-      width: 56px;
-      height: 56px;
-      border-radius: 12px;
+      width: 100%;
+      aspect-ratio: 1;
+      border-radius: 18px;
+      overflow: hidden;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 28px;
-      background: rgba(242,240,234,0.05);
+      font-size: 40px;
+      background: var(--card);
       border: 0.5px solid var(--card-border);
-      flex-shrink: 0;
+      transition: border-color 0.2s;
     }
+    .game-card:hover .card-icon { border-color: var(--accent); }
     /* 有自製圖示（icons/<遊戲>.webp）時取代 emoji */
-    .card-icon.has-img { background: none; overflow: hidden; }
     .card-icon img { width: 100%; height: 100%; object-fit: cover; display: block; }
-
-    .card-status {
-      font-size: 10px;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      padding: 4px 10px;
-      border-radius: 20px;
-      border: 0.5px solid;
-    }
-    .card-status.ready {
-      color: var(--accent);
-      border-color: rgba(200,241,53,0.3);
-      background: rgba(200,241,53,0.07);
-    }
-    .card-status.soon {
-      color: var(--ink3);
-      border-color: var(--card-border);
-    }
-
     .card-name {
-      font-family: var(--font-display);
-      font-size: 22px;
-      font-weight: 700;
-      letter-spacing: -0.5px;
+      margin-top: 7px;
+      font-size: 14px;
+      font-weight: 500;
       color: var(--ink);
-      margin-bottom: 4px;
-    }
-    .card-desc {
-      font-size: 12px;
-      color: var(--ink2);
-      line-height: 1.6;
-    }
-
-    /* 各遊戲的最佳紀錄（讀各遊戲存在 localStorage 的 stats） */
-    .card-record {
-      margin-top: 8px;
-      font-size: 11px;
-      color: var(--accent);
-      letter-spacing: 0.02em;
-    }
-    .card-daily {
-      margin-top: 4px;
-      font-size: 11px;
-      color: var(--ink2);
-    }
-    .card-daily.done { color: var(--accent); }
-    .card-status.resume {
-      color: var(--accent2);
-      border-color: rgba(241,193,53,0.3);
-      background: rgba(241,193,53,0.07);
-    }
-
-    .card-footer {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-top: 16px;
-      padding-top: 14px;
-      border-top: 0.5px solid var(--card-border);
-    }
-    .card-tags {
-      display: flex;
-      flex-wrap: wrap; /* 手機兩欄時卡片窄，標籤換行而不是被擠成直排 */
-      gap: 4px 6px;
-    }
-    .tag {
-      font-size: 10px;
-      color: var(--ink3);
-      padding: 3px 8px;
-      border-radius: 4px;
-      background: rgba(242,240,234,0.04);
-      border: 0.5px solid var(--card-border);
-      letter-spacing: 0.05em;
       white-space: nowrap;
-    }
-    .card-arrow {
-      font-size: 16px;
-      color: var(--ink3);
-      transition: transform 0.2s, color 0.2s;
-    }
-    .game-card:hover .card-arrow {
-      transform: translateX(4px);
-      color: var(--accent);
-    }
-
-    /* ── Stats bar ── */
-    .stats {
-      display: flex;
-      gap: 0;
-      border: 0.5px solid var(--card-border);
-      border-radius: 14px;
       overflow: hidden;
-      margin-bottom: 32px;
-      animation: fadeUp 0.5s ease 0.4s both;
+      text-overflow: ellipsis;
     }
-    .stat {
-      flex: 1;
-      padding: 14px 0;
-      text-align: center;
-      border-right: 0.5px solid var(--card-border);
+    /* 類型；有紀錄時換成最佳紀錄 */
+    .card-meta {
+      margin-top: 1px;
+      font-size: 11px;
+      color: var(--ink2);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
-    .stat:last-child { border-right: none; }
-    /* 音效總開關（各小遊戲讀 localStorage arcade-sound） */
-    .stat-toggle {
-      background: none; border: none; border-radius: 0;
-      font: inherit; color: inherit; cursor: pointer;
-    }
-    .stat-toggle:active { background: rgba(242,240,234,0.04); }
-    .stat-toggle.off .stat-value { color: var(--ink3); }
-    .stat-value {
-      font-family: var(--font-display);
-      font-size: 22px;
-      font-weight: 700;
-      color: var(--accent);
-      display: block;
-    }
-    .stat-label {
+    .card-meta.record { color: var(--accent); }
+    /* 圖示右上角：進行中／每日挑戰狀態 */
+    .card-badge {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      padding: 2px 7px;
       font-size: 10px;
-      color: var(--ink3);
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      display: block;
-      margin-top: 2px;
+      line-height: 1.5;
+      border-radius: 10px;
+      color: #080808;
+      background: var(--accent);
     }
+    .card-badge.resume { background: var(--accent2); }
+    .card-badge.done { color: var(--accent); background: rgba(8,8,8,0.82); }
 
     /* ── Footer ── */
     .footer {
       margin-top: auto;
-      padding-top: 24px;
-      border-top: 0.5px solid var(--card-border);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      animation: fadeUp 0.5s ease 0.5s both;
-    }
-    .footer-left {
       font-size: 11px;
       color: var(--ink3);
-      letter-spacing: 0.05em;
-    }
-    .footer-dot {
-      width: 6px; height: 6px;
-      border-radius: 50%;
-      background: var(--accent);
-      display: inline-block;
-      margin-right: 6px;
-      animation: pulse 2s infinite;
-    }
-    @keyframes pulse {
-      0%,100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.4; transform: scale(0.7); }
-    }
-    .footer-right {
-      font-size: 11px;
-      color: var(--ink3);
+      text-align: center;
     }
 
     @keyframes fadeUp {
@@ -375,271 +192,79 @@
 <div id="app">
 
   <header class="header">
-    <div class="header-eyebrow">im-chair · 遊戲集</div>
     <div class="header-title">ARC<span>A</span>DE</div>
-    <div class="header-sub">// 手工打造的小遊戲，離線可玩</div>
+    <button class="sound-toggle" id="sound-toggle" type="button" aria-pressed="true" aria-label="音效">🔊</button>
   </header>
 
-  <div class="divider">
-    <span class="divider-label">遊戲列表</span>
-    <div class="divider-line"></div>
-  </div>
-
   <div class="games">
-
-    <!-- 數獨 -->
-    <a class="game-card available" href="./sudoku/" data-game="sudoku" data-icon="icons/sudoku.webp">
-      <div class="card-top">
-        <div class="card-icon">⊞</div>
-        <span class="card-status ready">可遊玩</span>
-      </div>
+    <a class="game-card" href="./sudoku/" data-game="sudoku" data-icon="icons/sudoku.webp">
+      <div class="card-icon">⊞</div>
       <div class="card-name">數獨</div>
-      <div class="card-desc">每題保證只有一個解。卡住了就開筆記、用提示，或每天挑一題每日題衝連勝。</div>
-      <div class="card-footer">
-        <div class="card-tags">
-          <span class="tag">益智</span>
-          <span class="tag">離線</span>
-          <span class="tag">單人</span>
-        </div>
-        <span class="card-arrow">→</span>
-      </div>
+      <div class="card-meta">益智</div>
     </a>
-
-    <!-- 掃雷 -->
-    <a class="game-card available" href="./minesweeper/" data-game="minesweeper" data-icon="icons/minesweeper.webp">
-      <div class="card-top">
-        <div class="card-icon">💣</div>
-        <span class="card-status ready">可遊玩</span>
-      </div>
+    <a class="game-card" href="./minesweeper/" data-game="minesweeper" data-icon="icons/minesweeper.webp">
+      <div class="card-icon">💣</div>
       <div class="card-name">掃雷</div>
-      <div class="card-desc">第一下保證安全，之後全靠推理。每日盤大家同一張，比比看誰掃得快。</div>
-      <div class="card-footer">
-        <div class="card-tags">
-          <span class="tag">邏輯</span>
-          <span class="tag">離線</span>
-          <span class="tag">單人</span>
-        </div>
-        <span class="card-arrow">→</span>
-      </div>
+      <div class="card-meta">邏輯推理</div>
     </a>
-
-    <!-- 幾A幾B -->
-    <a class="game-card available" href="./bulls-cows/" data-game="bulls-cows" data-icon="icons/bulls-cows.webp">
-      <div class="card-top">
-        <div class="card-icon">🔢</div>
-        <span class="card-status ready">可遊玩</span>
-      </div>
+    <a class="game-card" href="./bulls-cows/" data-game="bulls-cows" data-icon="icons/bulls-cows.webp">
+      <div class="card-icon">🔢</div>
       <div class="card-name">幾A幾B</div>
-      <div class="card-desc">猜一組四位數，線索只有「幾A幾B」。你能用幾步把答案逼出來？</div>
-      <div class="card-footer">
-        <div class="card-tags">
-          <span class="tag">推理</span>
-          <span class="tag">離線</span>
-          <span class="tag">單人</span>
-        </div>
-        <span class="card-arrow">→</span>
-      </div>
+      <div class="card-meta">猜數字</div>
     </a>
-
-    <!-- 接龍 -->
-    <a class="game-card available" href="./solitaire/" data-game="solitaire" data-icon="icons/solitaire.webp">
-      <div class="card-top">
-        <div class="card-icon">🃏</div>
-        <span class="card-status ready">可遊玩</span>
-      </div>
+    <a class="game-card" href="./solitaire/" data-game="solitaire" data-icon="icons/solitaire.webp">
+      <div class="card-icon">🃏</div>
       <div class="card-name">接龍</div>
-      <div class="card-desc">經典紙牌接龍，翻一張或翻三張任選。走錯就悔棋，最後一鍵自動收牌。</div>
-      <div class="card-footer">
-        <div class="card-tags">
-          <span class="tag">紙牌</span>
-          <span class="tag">離線</span>
-          <span class="tag">單人</span>
-        </div>
-        <span class="card-arrow">→</span>
-      </div>
+      <div class="card-meta">紙牌</div>
     </a>
-
-    <!-- 貪婪深淵 Roguelite -->
-    <a class="game-card available" href="./rpg/" data-icon="icons/rpg.webp">
-      <div class="card-top">
-        <div class="card-icon">🕳️</div>
-        <span class="card-status ready">可遊玩</span>
-      </div>
+    <a class="game-card" href="./rpg/" data-icon="icons/rpg.webp">
+      <div class="card-icon">🕳️</div>
       <div class="card-name">貪婪深淵</div>
-      <div class="card-desc">每扇門後可能是寶箱，也可能是死亡。看穿敵人下一步再出手：繼續往下貪，還是帶著戰利品撤退？</div>
-      <div class="card-footer">
-        <div class="card-tags">
-          <span class="tag">Roguelite</span>
-          <span class="tag">存檔</span>
-          <span class="tag">單人</span>
-        </div>
-        <span class="card-arrow">→</span>
-      </div>
+      <div class="card-meta">Roguelite</div>
     </a>
-    <!-- 轉珠之塔 -->
-    <a class="game-card available" href="./tower-orbs/" data-icon="icons/tower-orbs.webp">
-      <div class="card-top">
-        <div class="card-icon">🔮</div>
-        <span class="card-status ready">可遊玩</span>
-      </div>
+    <a class="game-card" href="./tower-orbs/" data-icon="icons/tower-orbs.webp">
+      <div class="card-icon">🔮</div>
       <div class="card-name">轉珠之塔</div>
-      <div class="card-desc">拖曳轉珠湊連擊，屬性相剋打出爆發。抽卡組隊爬塔，或闖進每次都不一樣的地城。</div>
-      <div class="card-footer">
-        <div class="card-tags">
-          <span class="tag">轉珠</span>
-          <span class="tag">存檔</span>
-          <span class="tag">單人</span>
-        </div>
-        <span class="card-arrow">→</span>
-      </div>
+      <div class="card-meta">轉珠養成</div>
     </a>
-    <!-- 漂流紀元：最後的方舟 -->
-    <a class="game-card available" href="./drift-ark/" data-icon="icons/drift-ark.webp">
-      <div class="card-top">
-        <div class="card-icon">🛟</div>
-        <span class="card-status ready">可遊玩</span>
-      </div>
+    <a class="game-card" href="./drift-ark/" data-icon="icons/drift-ark.webp">
+      <div class="card-icon">🛟</div>
       <div class="card-name">漂流方舟</div>
-      <div class="card-desc">世界沉進海裡，你只剩一塊木筏。打撈漂流物、擴建船屋，航向還有人活著的地方。</div>
-      <div class="card-footer">
-        <div class="card-tags">
-          <span class="tag">生存建造</span>
-          <span class="tag">存檔</span>
-          <span class="tag">單人</span>
-        </div>
-        <span class="card-arrow">→</span>
-      </div>
+      <div class="card-meta">海上生存</div>
     </a>
-    <!-- 俄羅斯方塊 -->
-    <a class="game-card available" href="./tetris/" data-game="tetris" data-icon="icons/tetris.webp">
-      <div class="card-top">
-        <div class="card-icon">🧱</div>
-        <span class="card-status ready">可遊玩</span>
-      </div>
+    <a class="game-card" href="./tetris/" data-game="tetris" data-icon="icons/tetris.webp">
+      <div class="card-icon">🧱</div>
       <div class="card-name">俄羅斯方塊</div>
-      <div class="card-desc">手指一滑就能玩的經典消行。練熟手感之後，去跟電腦互丟垃圾行。</div>
-      <div class="card-footer">
-        <div class="card-tags">
-          <span class="tag">益智</span>
-          <span class="tag">對戰電腦</span>
-          <span class="tag">單人</span>
-        </div>
-        <span class="card-arrow">→</span>
-      </div>
+      <div class="card-meta">消行對戰</div>
     </a>
-    <!-- 珠界：歸一之子 -->
-    <a class="game-card available" href="./pokemo/" data-icon="icons/pokemo.webp">
-      <div class="card-top">
-        <div class="card-icon">🔮</div>
-        <span class="card-status ready">可遊玩</span>
-      </div>
-      <div class="card-name">珠界：歸一之子</div>
-      <div class="card-desc">收服珠獸，用轉珠戰鬥闖過九章主線，一路追查被人改寫的歷史。</div>
-      <div class="card-footer">
-        <div class="card-tags">
-          <span class="tag">RPG</span>
-          <span class="tag">轉珠</span>
-          <span class="tag">前九章</span>
-        </div>
-        <span class="card-arrow">→</span>
-      </div>
+    <a class="game-card" href="./pokemo/" data-icon="icons/pokemo.webp">
+      <div class="card-icon">🔮</div>
+      <div class="card-name">珠界</div>
+      <div class="card-meta">珠獸 RPG</div>
     </a>
-    <!-- 晨昏線前哨 -->
-    <a class="game-card available" href="./outpost/" data-game="outpost" data-icon="icons/outpost.webp">
-      <div class="card-top">
-        <div class="card-icon">🛰️</div>
-        <span class="card-status ready">可遊玩</span>
-      </div>
+    <a class="game-card" href="./outpost/" data-game="outpost" data-icon="icons/outpost.webp">
+      <div class="card-icon">🛰️</div>
       <div class="card-name">晨昏線前哨</div>
-      <div class="card-desc">殖民船迫降，艦長殉職，指揮權落到你這個補給官手上。撐過 50 天等救援，或者決定不走了。</div>
-      <div class="card-footer">
-        <div class="card-tags">
-          <span class="tag">經營</span>
-          <span class="tag">多結局</span>
-          <span class="tag">存檔</span>
-        </div>
-        <span class="card-arrow">→</span>
-      </div>
+      <div class="card-meta">殖民經營</div>
     </a>
-    <!-- 深掘礦工 -->
-    <a class="game-card available" href="./deep-miner/" data-game="deep-miner" data-icon="icons/deep-miner.webp">
-      <div class="card-top">
-        <div class="card-icon">⛏️</div>
-        <span class="card-status ready">可遊玩</span>
-      </div>
-      <div class="card-name">深掘！像素礦工</div>
-      <div class="card-desc">祖父下了老礦坑就沒再回來。拿起他的十字鎬往下挖，一頁一頁撿回他的日記。</div>
-      <div class="card-footer">
-        <div class="card-tags">
-          <span class="tag">挖掘</span>
-          <span class="tag">劇情</span>
-          <span class="tag">存檔</span>
-        </div>
-        <span class="card-arrow">→</span>
-      </div>
+    <a class="game-card" href="./deep-miner/" data-game="deep-miner" data-icon="icons/deep-miner.webp">
+      <div class="card-icon">⛏️</div>
+      <div class="card-name">深掘礦工</div>
+      <div class="card-meta">挖礦探險</div>
     </a>
-    <!-- 霓虹彈幕狂想曲 -->
-    <a class="game-card available" href="./neon-danmaku/" data-game="neon-danmaku" data-icon="icons/neon-danmaku.webp">
-      <div class="card-top">
-        <div class="card-icon">⚡</div>
-        <span class="card-status ready">可遊玩</span>
-      </div>
-      <div class="card-name">霓虹彈幕狂想曲</div>
-      <div class="card-desc">城市 AI 中毒了，你是駭客偷放進去的防毒程式。鑽過滿版彈幕打穿五關，查出病毒到底想幹嘛。</div>
-      <div class="card-footer">
-        <div class="card-tags">
-          <span class="tag">彈幕射擊</span>
-          <span class="tag">五關劇情</span>
-          <span class="tag">無盡模式</span>
-        </div>
-        <span class="card-arrow">→</span>
-      </div>
+    <a class="game-card" href="./neon-danmaku/" data-game="neon-danmaku" data-icon="icons/neon-danmaku.webp">
+      <div class="card-icon">⚡</div>
+      <div class="card-name">霓虹彈幕</div>
+      <div class="card-meta">彈幕射擊</div>
     </a>
-
-    <!-- 預留 slot -->
-    <div class="game-card coming-soon">
-      <div class="card-top">
-        <div class="card-icon">？</div>
-        <span class="card-status soon">開發中</span>
-      </div>
-      <div class="card-name">???</div>
-      <div class="card-desc">下一個遊戲即將登場。</div>
-      <div class="card-footer">
-        <div class="card-tags"><span class="tag">敬請期待</span></div>
-      </div>
-    </div>
-
-</div>
-
-  <div class="stats">
-    <div class="stat">
-      <span class="stat-value" id="game-count">12</span>
-      <span class="stat-label">遊戲</span>
-</div>
-    <div class="stat">
-      <span class="stat-value" id="play-count">0</span>
-      <span class="stat-label">遊玩次數</span>
-</div>
-    <button class="stat stat-toggle" id="sound-toggle" type="button" aria-pressed="true">
-      <span class="stat-value" id="sound-value">開</span>
-      <span class="stat-label">🔊 音效</span>
-    </button>
   </div>
 
-  <footer class="footer">
-    <div class="footer-left">
-      <span class="footer-dot"></span>手工製作中
-</div>
-    <div class="footer-right" id="footer-date"></div>
-  </footer>
+  <footer class="footer"><span id="game-count"></span> 個遊戲 · 玩了 <span id="play-count">0</span> 次</footer>
 
 </div>
 
 <script>
-  // 顯示今天日期
-  const d = new Date();
-  document.getElementById('footer-date').textContent =
-    d.getFullYear() + '.' + String(d.getMonth()+1).padStart(2,'0');
+  document.getElementById('game-count').textContent = document.querySelectorAll('.game-card').length;
 
   // 遊玩次數（localStorage）
   // 儲存被封鎖（無痕、擋網站資料）時 getItem 會丟錯，包起來免得整段腳本中斷
@@ -659,7 +284,7 @@
   const RECORD = {
     'sudoku': st => hardestBest(st, [['easy','簡單'],['medium','中等'],['hard','困難'],['expert','專家']]),
     'minesweeper': st => hardestBest(st, [['easy','簡單'],['medium','中等'],['hard','困難']]),
-    'bulls-cows': st => st.classic?.best?.guesses != null ? `🏆 最少 ${st.classic.best.guesses} 次猜中` : '',
+    'bulls-cows': st => st.classic?.best?.guesses != null ? `🏆 最少 ${st.classic.best.guesses} 次` : '',
     'solitaire': st => {
       const ms = ['draw1', 'draw3'].map(k => st[k]).filter(Boolean);
       const wins = ms.reduce((n, r) => n + r.wins, 0);
@@ -673,11 +298,10 @@
       return parts.join(' · ');
     },
     'outpost': st => {
-      const n = st.story?.endings?.length || 0;
-      return st.story?.wins ? `🏆 結局 ${n} 種 · 最少損失 ${st.story.best?.lost ?? 0} 人` : '';
+      return st.story?.wins ? `🏆 最少損失 ${st.story.best?.lost ?? 0} 人` : '';
     },
     'deep-miner': st => {
-      if (st.story?.best?.days != null) return `🏆 ${st.story.best.days} 天找到營地`;
+      if (st.story?.best?.days != null) return `🏆 ${st.story.best.days} 天通關`;
       return st.story?.deepest ? `⛏️ 最深 ${st.story.deepest} m` : '';
     },
     'neon-danmaku': st => {
@@ -690,37 +314,31 @@
   const today = ymd(new Date());
   const yesterday = ymd(new Date(Date.now() - 864e5));
   const DAILY_GAMES = ['sudoku', 'minesweeper', 'bulls-cows'];
-  function dailyLine(g) {
+  // 圖示右上角的標記：今日未玩／今日完成（含連勝）
+  function dailyBadge(g) {
     const d = lsGet(`arcade-${g}-daily`);
     const streak = d && (d.lastWin === today || d.lastWin === yesterday) ? d.streak : 0;
-    // 卡片窄（手機兩欄約 150px），字要短才不會斷行
-    if (d?.last?.date === today) return { text: (d.last.won ? '📅 今日 ✓' : '📅 今日 ✗') + (streak ? `・🔥${streak}天` : ''), done: true };
-    return { text: streak ? `📅 今日未玩・🔥${streak}天` : '📅 今日挑戰未玩', done: false };
+    if (d?.last?.date === today) return { text: (d.last.won ? '✓' : '✗') + (streak ? ` 🔥${streak}` : ''), cls: 'done' };
+    return { text: '今日' + (streak ? ` 🔥${streak}` : ''), cls: '' };
   }
 
   document.querySelectorAll('.game-card[data-game]').forEach(card => {
     const g = card.dataset.game;
     // 沒在 RECORD 登記的遊戲就不顯示紀錄（避免整段首頁腳本中斷）
     const text = RECORD[g] ? RECORD[g](lsGet(`arcade-${g}-stats`) || {}) : '';
-    let anchor = card.querySelector('.card-desc');
     if (text) {
-      const el = document.createElement('div');
-      el.className = 'card-record';
-      el.textContent = text;
-      anchor.after(el);
-      anchor = el;
+      const meta = card.querySelector('.card-meta');
+      meta.textContent = text;
+      meta.classList.add('record');
     }
-    if (DAILY_GAMES.includes(g)) {
-      const { text: t, done } = dailyLine(g);
-      const el = document.createElement('div');
-      el.className = 'card-daily' + (done ? ' done' : '');
-      el.textContent = t;
-      anchor.after(el);
-    }
-    if (lsGet(`arcade-${g}-save`) || DAILY_GAMES.includes(g) && lsGet(`arcade-${g}-daily-save`)?.daily === today) {
-      const st = card.querySelector('.card-status');
-      st.textContent = '進行中';
-      st.classList.add('resume');
+    let badge = null;
+    if (lsGet(`arcade-${g}-save`) || DAILY_GAMES.includes(g) && lsGet(`arcade-${g}-daily-save`)?.daily === today) badge = { text: '進行中', cls: 'resume' };
+    else if (DAILY_GAMES.includes(g)) badge = dailyBadge(g);
+    if (badge) {
+      const el = document.createElement('span');
+      el.className = 'card-badge ' + badge.cls;
+      el.textContent = badge.text;
+      card.appendChild(el);
     }
   });
 
@@ -732,7 +350,6 @@
       const box = card.querySelector('.card-icon');
       box.textContent = '';
       box.appendChild(img);
-      box.classList.add('has-img');
     };
     img.src = card.dataset.icon;
   });
@@ -742,10 +359,9 @@
   function soundOn() { try { return localStorage.getItem('arcade-sound') !== 'off'; } catch { return true; } }
   function renderSound() {
     const on = soundOn();
-    document.getElementById('sound-value').textContent = on ? '開' : '關';
+    soundBtn.textContent = on ? '🔊' : '🔇';
     soundBtn.classList.toggle('off', !on);
     soundBtn.setAttribute('aria-pressed', on);
-    soundBtn.querySelector('.stat-label').textContent = (on ? '🔊' : '🔇') + ' 音效';
   }
   soundBtn.addEventListener('click', () => {
     try { localStorage.setItem('arcade-sound', soundOn() ? 'off' : 'on'); } catch {}
@@ -767,7 +383,7 @@
   renderSound();
 
   // 點進遊戲時記錄
-  document.querySelectorAll('.game-card.available').forEach(card => {
+  document.querySelectorAll('.game-card').forEach(card => {
     card.addEventListener('click', () => {
       try {
         const n = (parseInt(localStorage.getItem('arcade-plays')) || 0) + 1;
