@@ -165,6 +165,9 @@ JOBS = {
     **{f'{k}-{i}': (f'{RG_DIR}/{k}-{i}.webp', (lambda n: lambda im: sprite(im, n))(n))
        for k, (n, ids) in RG_ART.items() for i in ids},
     **{f'sf-{i}': (f'{SF_DIR}/{i}.webp', fn) for fn, ids in SF_ART.items() for i in ids},
+    # 珠界主畫面按鍵框：遊戲裡拉成 4:1，兩張都存在才會換上
+    'pokemo-btn': ('pokemo/art/ui-btn.webp', lambda im: trimmed(im).resize((640, 160), Image.LANCZOS)),
+    'pokemo-btn-pri': ('pokemo/art/ui-btn-pri.webp', lambda im: trimmed(im).resize((640, 160), Image.LANCZOS)),
 }
 
 
