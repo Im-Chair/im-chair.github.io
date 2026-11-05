@@ -1,4 +1,6 @@
-const CACHE = 'arcade-v68';
+const CACHE = 'arcade-v69';
+// 珠界的圖獨立一個快取、不跟 CACHE 改版：改版時不必重抓，也不用每次打開都等網路
+const ART_CACHE = 'arcade-pokemo-art';
 // RPG 敵人圖示：檔名＝ENEMIES／首領／域限精英的 key。v385 起 50 隻全數有圖，已無 SVG 回落。
 const RPG_MON = [
   'slime','bat','skel','thief','rat','garg','spider',
@@ -28,6 +30,28 @@ const RPG_EQ = [
   'leather','chain','plate','scale','cloak','robe',
   'ring','pendant','watch','lamp',
 ].map(k => `/rpg/eq/${k}.webp`);
+// 珠界美術（pokemo/art/）。新增圖檔時這裡加一筆；ui-btn* 是選配，還沒出圖時只會略過
+const POKEMO_ART = [
+  'bosses', 'bg-water', 'bg-fire', 'bg-wood', 'bg-light', 'bg-dark', 'bg-coast', 'bg-ember', 'bg-marsh',
+  'bg-sky', 'bg-abyss', 'bg-title', 'sheet-water', 'sheet-fire', 'sheet-wood', 'sheet-light', 'sheet-dark',
+  'map-tiles', 'map-tree1', 'map-tree2', 'map-house', 'map-fountain', 'map-sign', 'map-gate', 'map-rock',
+  'map-bush', 'map-tiles_coast', 'map-tree1_coast', 'map-tree2_coast', 'map-house_coast', 'map-fountain_coast',
+  'map-sign_coast', 'map-gate_coast', 'map-rock_coast', 'map-bush_coast', 'map-lighthouse', 'map-tiles_ember',
+  'map-tree1_ember', 'map-tree2_ember', 'map-house_ember', 'map-fountain_ember', 'map-sign_ember',
+  'map-gate_ember', 'map-rock_ember', 'map-bush_ember', 'map-ashbarrel', 'map-tiles_marsh', 'map-tree1_marsh',
+  'map-tree2_marsh', 'map-house_marsh', 'map-fountain_marsh', 'map-sign_marsh', 'map-gate_marsh',
+  'map-rock_marsh', 'map-bush_marsh', 'map-marshgrave', 'map-tiles_sky', 'map-tree1_sky', 'map-tree2_sky',
+  'map-house_sky', 'map-fountain_sky', 'map-sign_sky', 'map-gate_sky', 'map-rock_sky', 'map-bush_sky',
+  'map-special_sky', 'map-tiles_abyss', 'map-tree1_abyss', 'map-tree2_abyss', 'map-house_abyss', 'map-fountain_abyss',
+  'map-sign_abyss', 'map-gate_abyss', 'map-rock_abyss', 'map-bush_abyss', 'map-special_abyss', 'ch-liechya',
+  'p-liechya', 'ch-taiyi', 'p-taiyi', 'ch-ache', 'p-ache', 'ch-qizhua', 'p-qizhua', 'ch-jin', 'p-jin',
+  'ch-huipo', 'p-huipo', 'ch-xiaohuo', 'ch-moen', 'p-moen', 'ch-adu', 'p-adu', 'ch-main', 'p-main',
+  'ch-xiaodou', 'p-xiaodou', 'ch-chaosheng', 'p-chaosheng', 'ch-ajing', 'p-ajing', 'ch-yanpo', 'p-yanpo',
+  'ch-bo', 'p-bo', 'ch-zhou', 'p-zhou', 'ch-hana', 'p-hana', 'ch-guard', 'p-guard', 'ch-cloak', 'p-cloak',
+  'ch-sefei', 'p-sefei', 'ch-yunque', 'p-yunque', 'ch-jiale', 'p-jiale', 'ch-zhiyu', 'p-zhiyu', 'ch-heifeng',
+  'p-heifeng', 'ch-huiya', 'p-huiya', 'ch-xiaomiao', 'p-xiaomiao', 'ch-yexiao', 'p-yexiao', 'orbs',
+  'ui-btn', 'ui-btn-pri',
+].map(k => `/pokemo/art/${k}.webp`);
 const ASSETS = [
   '/', '/index.html', '/manifest.json', '/icon.png',
   // v44：單檔小遊戲也預快取，裝了 App 但還沒點進去過的遊戲也能離線開。
@@ -54,10 +78,16 @@ const ASSETS = [
 ];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c =>
-    // 逐一加入：單一資源失敗（例如某檔改名或某主機不支援目錄網址）不讓整個 install 掛掉
-    Promise.all(ASSETS.map(u => c.add(u).catch(err => console.warn('[sw] 預快取略過', u, err))))
-  ));
+  e.waitUntil(Promise.all([
+    caches.open(CACHE).then(c =>
+      // 逐一加入：單一資源失敗（例如某檔改名或某主機不支援目錄網址）不讓整個 install 掛掉
+      Promise.all(ASSETS.map(u => c.add(u).catch(err => console.warn('[sw] 預快取略過', u, err))))
+    ),
+    // 珠界的圖已經有的就不重抓
+    caches.open(ART_CACHE).then(c =>
+      Promise.all(POKEMO_ART.map(u => c.match(u).then(m => m || c.add(u).catch(() => {}))))
+    ),
+  ]));
   self.skipWaiting();
 });
 
@@ -65,7 +95,7 @@ self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys().then(keys =>
       // 只清自己（arcade-*）的舊版。快取空間整站共用，數獨／轉珠之塔的快取不能動。
-      Promise.all(keys.filter(k => k.startsWith('arcade-') && k !== CACHE).map(k => caches.delete(k)))
+      Promise.all(keys.filter(k => k.startsWith('arcade-') && k !== CACHE && k !== ART_CACHE).map(k => caches.delete(k)))
     )
   );
   self.clients.claim();
@@ -73,6 +103,17 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
+  // 珠界的圖：有快取就直接用，同時在背景更新，換圖後下次打開就是新的
+  const url = new URL(e.request.url);
+  if (url.origin === location.origin && url.pathname.startsWith('/pokemo/art/')) {
+    e.respondWith(caches.open(ART_CACHE).then(async c => {
+      const hit = await c.match(e.request, { ignoreSearch: true });
+      const net = fetch(e.request).then(res => { if (res.ok) c.put(e.request, res.clone()); return res; });
+      if (hit) { e.waitUntil(net.catch(() => {})); return hit; }
+      return net;
+    }));
+    return;
+  }
   e.respondWith(
     fetch(e.request)
       .then(res => {

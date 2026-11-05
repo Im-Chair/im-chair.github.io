@@ -26,7 +26,7 @@
 │                       #   地城圖示放 rg/，有圖用圖、沒圖用 emoji；改 rogue.js 要同步升 index.html 的 ?v= 與 sw.js 版號）
 ├── tetris/             # 俄羅斯方塊（單一 index.html；紀錄 arcade-tetris-stats，含對戰電腦模式）
 ├── drift-ark/          # 漂流紀元：最後的方舟（單一 index.html，美術以 base64 內嵌；存檔 key drift-ark-v1）
-├── pokemo/             # 珠界：歸一之子（單一 index.html，美術以 base64 內嵌；index.html 是唯一正本，直接改）
+├── pokemo/             # 珠界：歸一之子（index.html 是唯一正本，直接改；美術放 art/，要用到才載入。新增圖檔要同步加進 sw.js 的 POKEMO_ART）
 ├── outpost/            # 晨昏線前哨（單一 index.html；Core 純邏輯、UI 介面分開，可用 node 模擬；紀錄 story.best.lost）
 ├── deep-miner/         # 深掘礦工（單一 index.html）
 ├── neon-danmaku/       # 霓虹彈幕狂想曲（單一 index.html，Canvas；紀錄 best.score 越大越好）
@@ -41,8 +41,8 @@
 - **存檔／紀錄**：各遊戲用 localStorage `arcade-<遊戲>-save`（進行中的局）與 `arcade-<遊戲>-stats`（`{ 模式: { plays, wins, best: {…越小越好} } }`）。首頁卡片會讀這兩個 key 顯示最佳紀錄與「進行中」。
 - **每日挑戰**（數獨、掃雷、幾A幾B）：以日期字串為種子（`seededRng('<遊戲>-YYYY-MM-DD')`），同一天大家同一題、一天一次。紀錄在 `arcade-<遊戲>-daily`（`{ last, streak, best, lastWin }`），進度另存 `arcade-<遊戲>-daily-save`，與一般模式互不覆蓋。**改動產生器或亂數消耗順序會讓同一天的題目變掉**，上線當天別改。
 - **音效**：各小遊戲內嵌一段 `SFX`（WebAudio 即時合成，無音檔）；總開關在首頁統計列，localStorage `arcade-sound`（`'off'` 為關，每次出聲前重讀）。
-- **選配美術**：圖檔存在就換上、不存在維持 emoji／CSS（首頁 `icons/`、接龍 `back.webp`/`felt.webp`、掃雷 `flag.webp`/`mine.webp`、天穹拓荒 `art/`）。
-- **Service Worker 快取**：三支 SW（根、`sudoku/`、`tower-orbs/`）的 activate 只能刪**自己前綴**的舊快取——快取空間整站共用。
+- **選配美術**：圖檔存在就換上、不存在維持 emoji／CSS（首頁 `icons/`、接龍 `back.webp`/`felt.webp`、掃雷 `flag.webp`/`mine.webp`、天穹拓荒 `art/`、珠界按鍵框 `art/ui-btn*.webp`）。
+- **Service Worker 快取**：三支 SW（根、`sudoku/`、`tower-orbs/`）的 activate 只能刪**自己前綴**的舊快取——快取空間整站共用。珠界美術另有 `arcade-pokemo-art` 快取，先讀快取、背景更新，不隨 `CACHE` 改版。
 
 ## 兩種遊戲型態
 
