@@ -1,5 +1,6 @@
 # 本機專用，不上 GitHub
-.claude/
+.claude/*
+!.claude/task-router/
 output/
 rpg/_preview.png
 rpg/camp.webp
