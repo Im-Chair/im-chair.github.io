@@ -1,0 +1,1253 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#080808">
+<title>天穹拓荒</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root { --bg:#080808; --panel:#121414; --panel2:#1b1e1e; --line:#2e3333; --fg:#ece9e2; --dim:#8c918c; --accent:#c8f135; --bad:#ff6b5e; --gold:#f5c542; color-scheme:dark; }
+* { box-sizing:border-box; }
+html,body { margin:0; height:100%; overflow:hidden; background:var(--bg); color:var(--fg); font:13px/1.5 'DM Mono','Microsoft JhengHei',monospace; user-select:none; }
+canvas#view { position:fixed; inset:0; width:100%; height:100%; display:block; cursor:crosshair; }
+[hidden] { display:none !important; }
+button { font:inherit; color:var(--fg); background:var(--panel2); border:1px solid var(--line); padding:5px 10px; border-radius:4px; cursor:pointer; }
+button:hover:not(:disabled) { border-color:var(--accent); color:var(--accent); }
+button:disabled { opacity:.4; cursor:default; }
+button.main { background:var(--accent); color:#111; border-color:var(--accent); font-weight:500; }
+button.main:hover:not(:disabled) { color:#111; filter:brightness(1.1); }
+h1,h2,h3 { font-family:Syne,'Microsoft JhengHei',sans-serif; margin:0; }
+
+/* HUD */
+#hud { position:fixed; inset:0; pointer-events:none; }
+#status { position:absolute; top:12px; left:12px; width:230px; }
+.bar { height:12px; background:#000a; border:1px solid #fff3; border-radius:2px; overflow:hidden; }
+.bar i { display:block; height:100%; background:var(--bad); }
+#status .row { margin-top:5px; text-shadow:0 1px 2px #000; }
+#status b { color:var(--gold); font-weight:500; }
+#info { position:absolute; top:12px; right:12px; text-align:right; text-shadow:0 1px 2px #000; }
+#info .era { font-family:Syne,'Microsoft JhengHei',sans-serif; font-weight:800; font-size:16px; color:var(--accent); }
+#cpbar { width:190px; height:5px; background:#000a; margin:3px 0 3px auto; }
+#cpbar i { display:block; height:100%; background:var(--accent); }
+#hotbar { position:absolute; bottom:12px; left:50%; transform:translateX(-50%); display:flex; gap:3px; pointer-events:auto; }
+.slot { position:relative; width:42px; height:42px; background:#111c; border:1px solid var(--line); border-radius:3px; display:flex; align-items:center; justify-content:center; cursor:pointer; }
+.slot.sel { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent); }
+.slot img { width:30px; height:30px; image-rendering:pixelated; pointer-events:none; }
+.slot span { position:absolute; right:2px; bottom:0; font-size:11px; text-shadow:0 1px 1px #000,0 0 2px #000; pointer-events:none; }
+.slot:hover { border-color:#fff8; }
+#feed { position:absolute; left:12px; bottom:66px; display:flex; flex-direction:column; gap:2px; max-width:440px; text-shadow:0 1px 2px #000; }
+#feed div { transition:opacity .6s; }
+#feed .good { color:var(--accent); } #feed .bad { color:var(--bad); } #feed .gold { color:var(--gold); }
+#tip { position:absolute; left:50%; bottom:62px; transform:translateX(-50%); text-shadow:0 1px 2px #000; color:#fffc; }
+#boss { position:absolute; top:14px; left:50%; transform:translateX(-50%); width:360px; text-align:center; text-shadow:0 1px 2px #000; }
+#boss .bar i { background:#c04dff; }
+
+/* 面板 */
+#panel { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:#0007; z-index:5; }
+#panelBox { background:var(--panel); border:1px solid var(--line); border-radius:6px; width:min(920px,94vw); max-height:88vh; display:flex; flex-direction:column; }
+#panelHead { display:flex; justify-content:space-between; align-items:center; padding:10px 14px; border-bottom:1px solid var(--line); }
+#panelHead h2 { font-size:17px; }
+#panelBody { padding:12px 14px; overflow:auto; }
+.cols { display:grid; grid-template-columns:auto 1fr; gap:18px; align-items:start; }
+.grid { display:grid; grid-template-columns:repeat(9,42px); gap:3px; }
+.grid + .grid { margin-top:8px; }
+.label { color:var(--dim); margin:8px 0 4px; }
+.label:first-child { margin-top:0; }
+.list { display:flex; flex-direction:column; gap:4px; }
+.line { display:flex; align-items:center; gap:8px; padding:5px 7px; background:var(--panel2); border-radius:4px; }
+.line img { width:24px; height:24px; image-rendering:pixelated; flex:none; }
+.line .grow { flex:1; min-width:0; }
+.line small { color:var(--dim); display:block; font-size:11px; }
+.line.off { opacity:.45; }
+.gold { color:var(--gold); } .good { color:var(--accent); } .bad { color:var(--bad); } .dim { color:var(--dim); }
+.tabs { display:flex; gap:4px; margin-bottom:10px; }
+.tabs button.on { border-color:var(--accent); color:var(--accent); }
+#cursorItem { position:fixed; pointer-events:none; z-index:9; width:34px; height:34px; }
+#cursorItem img { width:30px; height:30px; image-rendering:pixelated; }
+#cursorItem span { position:absolute; right:0; bottom:0; text-shadow:0 1px 1px #000; }
+#itemTip { position:fixed; z-index:10; pointer-events:none; background:#000e; border:1px solid var(--line); padding:3px 7px; border-radius:3px; max-width:260px; }
+textarea { width:100%; height:190px; background:#0b0c0c; color:var(--fg); border:1px solid var(--line); font:12px/1.5 'DM Mono',monospace; padding:8px; user-select:text; }
+canvas#mapC { display:block; max-width:100%; image-rendering:pixelated; background:#000; }
+
+/* 標題 */
+#title { position:fixed; inset:0; z-index:8; display:flex; align-items:center; justify-content:center; background:radial-gradient(ellipse at 50% 30%,#1a2a22 0,#080808 65%); }
+#titleBox { width:min(480px,92vw); }
+#titleBox h1 { font-size:44px; font-weight:800; color:var(--accent); letter-spacing:.04em; }
+#titleBox .sub { color:var(--dim); margin:0 0 18px; }
+.save { display:flex; align-items:center; gap:6px; padding:9px 10px; background:var(--panel); border:1px solid var(--line); border-radius:5px; margin-bottom:6px; }
+.save .grow { flex:1; }
+.save small { color:var(--dim); display:block; }
+.keys { margin-top:14px; color:var(--dim); font-size:12px; line-height:1.8; }
+.keys b { color:var(--fg); font-weight:500; }
+#back { color:var(--dim); text-decoration:none; font-size:12px; }
+#back:hover { color:var(--accent); }
+</style>
+</head>
+<body>
+<canvas id="view"></canvas>
+<div id="hud" hidden>
+  <div id="status">
+    <div class="bar"><i id="hpBar"></i></div>
+    <div class="row"><span id="hpText"></span>　<b id="money"></b></div>
+    <div class="row dim" id="pos"></div>
+  </div>
+  <div id="info">
+    <div class="era" id="eraName"></div>
+    <div id="cpbar"><i id="cpFill"></i></div>
+    <div id="cpText"></div>
+    <div id="clock" class="dim"></div>
+  </div>
+  <div id="boss" hidden><div id="bossName"></div><div class="bar"><i id="bossFill"></i></div></div>
+  <div id="feed"></div>
+  <div id="tip"></div>
+  <div id="hotbar"></div>
+</div>
+<div id="panel" hidden><div id="panelBox"><div id="panelHead"><h2 id="panelTitle"></h2><button id="panelClose">關閉 Esc</button></div><div id="panelBody"></div></div></div>
+<div id="cursorItem" hidden></div>
+<div id="itemTip" hidden></div>
+<div id="title"><div id="titleBox">
+  <a id="back" href="../">← ARCADE</a>
+  <h1>天穹拓荒</h1>
+  <p class="sub">打怪、探坑、建造、接機關，把世界推進到星辰時代。</p>
+  <div id="saves"></div>
+  <input type="file" id="importFile" accept=".json" hidden>
+  <div class="keys"><b>A D</b> 移動　<b>W S</b> 爬梯　<b>空白</b> 跳　<b>左鍵</b> 挖／打　<b>右鍵</b> 放置／互動<br><b>E</b> 背包與合成　<b>J</b> 懸賞與時代　<b>M</b> 地圖　<b>R</b> 轉向　<b>1–9／滾輪</b> 換物品　<b>Esc</b> 存檔選單<br>需要滑鼠與鍵盤。</div>
+</div></div>
+
+<script>
+'use strict';
+/* ========== 常數 ========== */
+const TS = 16, W = 800, H = 300, SURF = 95, SEAL_Y = 225, DAY = 600;
+const SAVE_KEY = 'arcade-sky-frontier-save', STATS_KEY = 'arcade-sky-frontier-stats', WORLD_KEY = n => `arcade-sky-frontier-world-${n}`;
+const $ = id => document.getElementById(id);
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
+const fmt = n => Math.floor(n).toLocaleString('en-US');
+function lsGet(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } }
+function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch { return false; } }
+function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+
+/* ========== 方塊 ========== */
+// key, 名稱, 實心, 硬度(0=不可挖), 需要鎬階級, 掉落(null=自己；''=無), 其他
+const TILE_DEFS = [
+  ['air','',0,0,0,''],
+  ['dirt','泥土',1,.45,0,null], ['moss','青苔土',1,.5,0,'dirt'], ['sand','赤砂',1,.45,0,null], ['frost','霜土',1,.5,0,'dirt'],
+  ['stone','岩石',1,1.1,1,'cobble'], ['cobble','碎岩',1,1.1,1,null], ['deep','深岩',1,2,3,null], ['seal','封印岩',1,0,9,''], ['bedrock','基岩',1,0,9,''],
+  ['log','原木',0,.7,0,null], ['leaves','葉叢',0,.12,0,''], ['plank','木板',1,.6,0,null], ['brick','磚塊',1,1.2,1,null], ['glass','玻璃',1,.3,0,null,{clear:1}],
+  ['cloud','雲岩',1,1,2,null], ['ruin','古代磚',1,2.4,3,null],
+  ['o_coal','煤礦',1,1.2,1,'coal'], ['o_iron','鐵礦',1,1.5,2,'iron_ore'], ['o_gold','金礦',1,1.7,2,'gold_ore'], ['o_crystal','晶簇',1,1.8,3,'crystal',{light:.8,clear:1}],
+  ['o_blue','蒼鋼礦',1,2.4,3,'blue_ore'], ['o_aether','天穹礦',1,2.8,4,'aether_ore',{light:.45}], ['o_star','星鐵礦',1,3,4,'star_ore',{light:.6}],
+  ['lava','熔岩',0,0,9,'',{light:.95,clear:1}], ['mushroom','螢光菇',0,.1,0,null,{light:.55,clear:1,floor:1}],
+  ['torch','火把',0,.05,0,null,{light:1,clear:1}], ['ladder','梯子',0,.3,0,null,{clear:1}],
+  ['door','木門',1,.6,0,null,{clear:1,logic:1}], ['dooropen','木門',0,.6,0,'door',{clear:1,logic:1}],
+  ['gate','機關門',1,2.4,3,null,{logic:1}], ['gateopen','機關門',0,2.4,3,'gate',{clear:1,logic:1}],
+  ['chest','箱子',0,.7,0,null,{clear:1,floor:1}], ['bench','工作台',0,.7,0,null,{clear:1,floor:1}], ['furnace','熔爐',0,1.2,1,null,{clear:1,floor:1,light:.35}], ['anvil','鐵砧',0,1.5,1,null,{clear:1,floor:1}],
+  ['bed','床',0,.5,0,null,{clear:1,floor:1}], ['boundary','界碑石',0,1.2,1,null,{clear:1,floor:1,light:.3}], ['board','懸賞板',0,.8,0,null,{clear:1,floor:1}], ['stele','古代石碑',0,0,9,'',{clear:1,floor:1,light:.35}],
+  ['wire','靈脈線',0,.05,0,null,{clear:1,logic:1}], ['lever','拉桿',0,.1,0,null,{clear:1,logic:1}], ['plate','壓力板',0,.1,0,null,{clear:1,floor:1,logic:1}], ['lamp','靈燈',1,.3,0,null,{logic:1,clear:1}],
+  ['notgate','反相閘',0,.2,0,null,{clear:1,logic:1,dir:1}], ['delay','延遲閘',0,.2,0,null,{clear:1,logic:1,dir:1}], ['clock','脈衝器',0,.2,0,null,{clear:1,logic:1}],
+  ['drill','採掘機',1,1.5,1,null,{logic:1,dir:1}], ['seller','收購機',1,1.5,1,null,{logic:1}],
+  ['sapling','樹苗',0,.05,0,null,{clear:1,floor:1}], ['crop','地薯苗',0,.05,0,'potato',{clear:1,floor:1}], ['altar','星門',0,3,4,null,{clear:1,floor:1,light:.9}],
+];
+const T = {}, TD = [];
+TILE_DEFS.forEach((d, i) => { T[d[0]] = i; TD[i] = { id:i, key:d[0], name:d[1], solid:!!d[2], hard:d[3], tier:d[4], drop:d[5] === null ? d[0] : d[5], ...(d[6] || {}) }; });
+const WALLS = [null, { key:'wall_wood', name:'木牆', c:'#4a3626' }, { key:'wall_stone', name:'石牆', c:'#343b4a' }, { key:'wall_brick', name:'磚牆', c:'#55343a' }];
+
+/* ========== 物品 ========== */
+const ITEMS = {};
+function item(id, name, o = {}) { ITEMS[id] = { id, name, max:99, ...o }; }
+TD.forEach(d => { if (d.name && !['moss','frost','seal','bedrock','lava','stele','dooropen','gateopen','crop','log','leaves'].includes(d.key) && !d.key.startsWith('o_')) item(d.key, d.name, { tile:d.id }); });
+item('log', '原木', { tile:T.log });
+WALLS.forEach((w, i) => { if (w) item(w.key, w.name, { wall:i }); });
+const mat = (id, name, c, shape = 'lump') => item(id, name, { c, shape });
+mat('coal','煤塊','#2a2a30'); mat('iron_ore','鐵礦石','#c79a7a'); mat('gold_ore','金礦石','#e8c14a'); mat('crystal','晶石','#7ff0ff','gem');
+mat('blue_ore','蒼鋼礦石','#4f8fe0'); mat('aether_ore','天穹礦石','#c8f135','gem'); mat('star_ore','星鐵礦石','#ff9ee8','gem');
+mat('iron_bar','鐵錠','#c5ccd6','bar'); mat('gold_bar','金錠','#f5c542','bar'); mat('blue_bar','蒼鋼錠','#4f8fe0','bar'); mat('aether_bar','天穹錠','#c8f135','bar'); mat('star_bar','星鐵錠','#ff9ee8','bar');
+mat('stick','木棒','#a07a4e','stick'); mat('gel','苔泥膠','#62d6a0','drop'); mat('hide','腐皮','#8a6d55','lump'); mat('wing','蝠翼','#6d5a80','lump'); mat('bone','骨片','#ded8c4','stick'); mat('powder','爆囊粉','#e07a3a','drop'); mat('ember','餘燼','#ff7a3d','gem'); mat('feather','蒼羽','#a8e6ff','stick');
+const food = (id, name, heal, c) => item(id, name, { heal, c, shape:'food' });
+food('potato','地薯',6,'#b08a50'); food('baked','烤地薯',22,'#d9a860'); food('stew','菇湯',35,'#c98ad9'); item('mushroom','螢光菇',{ tile:T.mushroom, heal:10 });
+const pick = (id, name, tier, speed, dmg, c) => item(id, name, { max:1, pick:tier, speed, dmg, c, shape:'pick' });
+pick('pick_wood','木鎬',1,1,5,'#a07a4e'); pick('pick_stone','石鎬',2,1.5,7,'#7a8496'); pick('pick_iron','鐵鎬',3,2.2,10,'#c5ccd6'); pick('pick_blue','蒼鋼鎬',4,3.2,14,'#4f8fe0'); pick('pick_aether','天穹鎬',5,4.5,20,'#c8f135');
+const sword = (id, name, dmg, c) => item(id, name, { max:1, sword:1, dmg, c, shape:'sword' });
+sword('sword_wood','木劍',9,'#a07a4e'); sword('sword_stone','石劍',14,'#7a8496'); sword('sword_iron','鐵劍',22,'#c5ccd6'); sword('sword_blue','蒼鋼劍',36,'#4f8fe0'); sword('sword_aether','天穹劍',58,'#c8f135'); sword('sword_star','星鐵劍',90,'#ff9ee8');
+item('bow','短弓',{ max:1, bow:1, dmg:12, c:'#a07a4e', shape:'bow' }); mat('arrow','箭','#ded8c4','stick');
+const armor = (id, name, def, c) => item(id, name, { max:1, def, c, shape:'armor' });
+armor('armor_hide','皮甲',.1,'#8a6d55'); armor('armor_iron','鐵甲',.22,'#c5ccd6'); armor('armor_blue','蒼鋼甲',.36,'#4f8fe0'); armor('armor_aether','天穹甲',.5,'#c8f135'); armor('armor_star','星鐵甲',.62,'#ff9ee8');
+item('life','生命結晶',{ c:'#ff6b5e', shape:'gem', life:10 }); item('glider','滑翔翼',{ max:1, c:'#a8e6ff', shape:'armor' });
+
+// 合成：st＝需要在旁邊的工作站；era＝最低時代
+const R = (out, n, need, st, era = 0) => ({ out, n, need, st, era });
+const RECIPES = [
+  R('plank',4,{log:1}), R('stick',4,{plank:2}), R('bench',1,{plank:8}), R('torch',6,{coal:1,stick:1}), R('ladder',4,{stick:6}), R('door',1,{plank:6}), R('chest',1,{plank:12}),
+  R('wall_wood',4,{plank:1}), R('pick_wood',1,{plank:6,stick:2},'bench'), R('sword_wood',1,{plank:6,stick:1},'bench'), R('furnace',1,{cobble:20},'bench'),
+  R('pick_stone',1,{cobble:8,stick:3},'bench'), R('sword_stone',1,{cobble:8,stick:1},'bench'), R('wall_stone',4,{cobble:1},'bench'), R('bow',1,{stick:6,hide:4},'bench'), R('arrow',8,{stick:2,bone:1},'bench'),
+  R('bed',1,{plank:10,hide:6},'bench'), R('armor_hide',1,{hide:12},'bench'), R('stew',1,{mushroom:3},'bench'), R('board',1,{plank:10,stick:4},'bench'),
+  R('brick',2,{cobble:2},'furnace'), R('glass',2,{sand:2},'furnace'), R('baked',1,{potato:1},'furnace'), R('wall_brick',4,{brick:1},'bench'),
+  R('iron_bar',1,{iron_ore:2,coal:1},'furnace'), R('gold_bar',1,{gold_ore:2,coal:1},'furnace'), R('anvil',1,{iron_bar:8},'bench'),
+  R('pick_iron',1,{iron_bar:8,stick:3},'anvil'), R('sword_iron',1,{iron_bar:7,stick:1},'anvil'), R('armor_iron',1,{iron_bar:16},'anvil'),
+  R('boundary',1,{cobble:20,gold_bar:1},'anvil',1),
+  R('wire',8,{iron_bar:1,coal:1},'anvil',2), R('lever',1,{stick:1,cobble:1},'bench',2), R('plate',1,{plank:2},'bench',2), R('lamp',1,{glass:2,coal:1},'bench',2), R('gate',1,{iron_bar:4},'anvil',2),
+  R('blue_bar',1,{blue_ore:2,coal:2},'furnace',3), R('pick_blue',1,{blue_bar:10,stick:3},'anvil',3), R('sword_blue',1,{blue_bar:8,stick:1},'anvil',3), R('armor_blue',1,{blue_bar:18},'anvil',3),
+  R('notgate',1,{wire:2,iron_bar:1},'anvil',3), R('delay',1,{wire:2,iron_bar:1},'anvil',3), R('clock',1,{wire:2,gold_bar:1},'anvil',3), R('drill',1,{iron_bar:8,blue_bar:2},'anvil',3), R('seller',1,{chest:1,gold_bar:4},'anvil',3),
+  R('aether_bar',1,{aether_ore:2,coal:2},'furnace',4), R('pick_aether',1,{aether_bar:10,stick:3},'anvil',4), R('sword_aether',1,{aether_bar:8,stick:1},'anvil',4), R('armor_aether',1,{aether_bar:18},'anvil',4),
+  R('star_bar',1,{star_ore:2,coal:3},'furnace',4), R('sword_star',1,{star_bar:10,aether_bar:4},'anvil',5), R('armor_star',1,{star_bar:18},'anvil',5), R('altar',1,{star_bar:20,aether_bar:10},'anvil',5),
+];
+
+/* ========== 時代、階級、經濟 ========== */
+const ERAS = [
+  { name:'拓荒時代', cp:0 }, { name:'開墾時代', cp:300, on:'工匠搬來了。界碑石可以合成。' }, { name:'商業時代', cp:1500, on:'市場開張，價格開始每天浮動。靈脈線可以合成。' },
+  { name:'工業時代', cp:5000, on:'地底的封印岩崩解了。機械可以合成。' }, { name:'天穹時代', cp:15000, on:'浮空島從雲層裡現身了。' }, { name:'星辰時代', cp:40000, on:'星門可以合成。' },
+];
+const RANKS = [['F',0],['E',100],['D',300],['C',800],['B',2000],['A',5000],['S',15000]];
+const BASE_PRICE = { dirt:1,cobble:1,sand:2,log:3,plank:1,coal:4,iron_ore:8,gold_ore:18,iron_bar:16,gold_bar:34,crystal:40,blue_ore:30,blue_bar:60,aether_ore:90,aether_bar:170,star_ore:220,star_bar:420,gel:2,hide:3,wing:4,bone:5,powder:7,ember:18,feather:30,mushroom:3,potato:4,baked:7,deep:2,cloud:3 };
+const SHOP = [
+  { id:'torch',n:8,price:12,era:0 }, { id:'ladder',n:8,price:18,era:0 }, { id:'arrow',n:16,price:35,era:0 }, { id:'baked',n:3,price:30,era:0 }, { id:'potato',n:4,price:20,era:0 }, { id:'sapling',n:2,price:15,era:0 },
+  { id:'boundary',n:1,price:200,era:1 }, { id:'wire',n:16,price:60,era:2 }, { id:'lever',n:2,price:20,era:2 }, { id:'glider',n:1,price:9000,era:4 },
+];
+const PROJECTS = [
+  { id:'clinic',name:'醫站',era:1,cost:400,cp:200,desc:'生命回復 ×2' }, { id:'mine',name:'礦業局',era:1,cost:800,cp:400,desc:'挖掘速度 +15%' },
+  { id:'market',name:'市集',era:2,cost:2000,cp:900,desc:'出售價 +20%' }, { id:'guild',name:'公會',era:2,cost:3000,cp:1200,desc:'懸賞金 +25%' },
+  { id:'lines',name:'靈脈局',era:3,cost:6000,cp:2500,desc:'採掘機速度 ×2' }, { id:'port',name:'空港',era:3,cost:12000,cp:5000,desc:'免費取得滑翔翼' },
+  { id:'observe',name:'天文台',era:4,cost:30000,cp:12000,desc:'流星更常墜落，地圖標出流星' },
+];
+// t: kill / collect / depth / ruin / build / sky；once＝只能完成一次
+const BOUNTIES = [
+  { id:'b_slug',t:'kill',target:'slug',n:8,title:'清理苔泥',rep:20,money:50,cp:15,rank:0 },
+  { id:'b_hide',t:'collect',target:'hide',n:10,title:'收購腐皮',rep:15,money:60,cp:15,rank:0 },
+  { id:'b_coal',t:'collect',target:'coal',n:16,title:'補充煤塊',rep:15,money:70,cp:20,rank:0 },
+  { id:'b_down',t:'depth',n:140,title:'下到深度 45',rep:40,money:120,cp:60,rank:0,once:1 },
+  { id:'b_walk',t:'kill',target:'walker',n:12,title:'夜巡',rep:30,money:90,cp:30,rank:1 },
+  { id:'b_iron',t:'collect',target:'iron_bar',n:8,title:'鐵錠訂單',rep:30,money:200,cp:40,rank:1 },
+  { id:'b_ruin',t:'ruin',n:1,title:'開啟一座遺跡的箱子',rep:50,money:150,cp:80,rank:1 },
+  { id:'b_build1',t:'build',n:60,title:'聚落評分達 60',rep:80,money:300,cp:0,rank:1,once:1 },
+  { id:'b_bat',t:'kill',target:'bat',n:15,title:'驅趕洞蝠',rep:50,money:180,cp:50,rank:2 },
+  { id:'b_bomb',t:'kill',target:'bomber',n:10,title:'拆除爆囊蟲',rep:60,money:260,cp:70,rank:2 },
+  { id:'b_gold',t:'collect',target:'gold_bar',n:6,title:'金錠訂單',rep:60,money:400,cp:80,rank:2 },
+  { id:'b_archer',t:'kill',target:'archer',n:12,title:'獵骨射手',rep:90,money:450,cp:120,rank:3 },
+  { id:'b_crystal',t:'collect',target:'crystal',n:6,title:'晶石研究',rep:100,money:600,cp:150,rank:3 },
+  { id:'b_build2',t:'build',n:160,title:'聚落評分達 160',rep:200,money:1200,cp:0,rank:3,once:1 },
+  { id:'b_seal',t:'depth',n:235,title:'越過封印岩',rep:200,money:1500,cp:500,rank:3,once:1 },
+  { id:'b_golem',t:'kill',target:'golem',n:8,title:'擊碎岩傀',rep:180,money:1400,cp:300,rank:4 },
+  { id:'b_warden',t:'kill',target:'warden',n:1,title:'討伐地窟之主',rep:800,money:6000,cp:2500,rank:4,once:1 },
+  { id:'b_blue',t:'collect',target:'blue_bar',n:10,title:'蒼鋼訂單',rep:220,money:1800,cp:350,rank:4 },
+  { id:'b_sky',t:'sky',n:1,title:'登上浮空島',rep:400,money:3000,cp:1000,rank:5,once:1 },
+  { id:'b_wraith',t:'kill',target:'wraith',n:10,title:'擊落空騎',rep:500,money:4000,cp:1200,rank:5 },
+  { id:'b_lord',t:'kill',target:'skylord',n:1,title:'討伐天穹守衛',rep:2500,money:20000,cp:8000,rank:5,once:1 },
+  { id:'b_star',t:'collect',target:'star_bar',n:6,title:'星鐵訂單',rep:900,money:5000,cp:2500,rank:5 },
+];
+
+/* ========== 怪物 ========== */
+const MOBS = {
+  slug:{ name:'苔泥',hp:18,dmg:6,w:14,h:10,ai:'hop',speed:60,drops:[['gel',1,2]],gold:1,c:'#62d6a0' },
+  walker:{ name:'腐行者',hp:36,dmg:10,w:12,h:26,ai:'walk',speed:48,drops:[['hide',1,2]],gold:3,c:'#6f8a6a' },
+  bat:{ name:'洞蝠',hp:14,dmg:6,w:12,h:8,ai:'fly',speed:90,drops:[['wing',0,1]],gold:2,c:'#6d5a80' },
+  bomber:{ name:'爆囊蟲',hp:22,dmg:30,w:14,h:12,ai:'bomb',speed:62,drops:[['powder',1,2]],gold:4,c:'#e07a3a' },
+  archer:{ name:'骨射手',hp:34,dmg:9,w:12,h:26,ai:'shoot',speed:38,drops:[['bone',1,2],['arrow',1,3]],gold:6,c:'#ded8c4' },
+  golem:{ name:'岩傀',hp:140,dmg:20,w:20,h:30,ai:'walk',speed:32,drops:[['iron_ore',1,3],['cobble',2,4]],gold:22,c:'#7a8496' },
+  flame:{ name:'熔靈',hp:80,dmg:16,w:14,h:16,ai:'flyshoot',speed:60,drops:[['ember',1,2]],gold:30,c:'#ff7a3d' },
+  wraith:{ name:'空騎',hp:110,dmg:24,w:18,h:16,ai:'flyshoot',speed:92,drops:[['feather',1,2]],gold:60,c:'#a8e6ff' },
+  warden:{ name:'地窟之主',boss:1,hp:2200,dmg:30,w:44,h:48,speed:70,proj:18,minion:'golem',drops:[['life',2,2],['blue_bar',8,12]],gold:3000,c:'#7a4dd0' },
+  skylord:{ name:'天穹守衛',boss:1,hp:5200,dmg:42,w:52,h:44,speed:110,proj:26,minion:'wraith',drops:[['life',3,3],['aether_bar',10,14]],gold:12000,c:'#a8e6ff' },
+  starfall:{ name:'墜星',boss:1,hp:12000,dmg:60,w:60,h:60,speed:130,proj:36,minion:'flame',drops:[['life',5,5],['star_bar',12,16]],gold:50000,c:'#ff9ee8' },
+};
+
+/* ========== 雜訊與世界生成 ========== */
+function makeNoise(seed) {
+  const r = mulberry(seed), P = new Float32Array(1024);
+  for (let i = 0; i < 1024; i++) P[i] = r() * 2 - 1;
+  const h = (x, y) => P[(Math.imul(x, 374761) ^ Math.imul(y, 668265)) >>> 3 & 1023];
+  const s = t => t * t * (3 - 2 * t);
+  const n2 = (x, y) => { const xi = Math.floor(x), yi = Math.floor(y), u = s(x - xi), v = s(y - yi);
+    const a = h(xi, yi), b = h(xi + 1, yi), c = h(xi, yi + 1), d = h(xi + 1, yi + 1);
+    return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v; };
+  return { n2, fbm:(x, y, o = 3) => { let t = 0, f = 1, a = 1, m = 0; for (let i = 0; i < o; i++) { t += n2(x * f + i * 37, y * f - i * 11) * a; m += a; f *= 2; a *= .5; } return t / m; } };
+}
+
+const tile = new Uint8Array(W * H), wall = new Uint8Array(W * H), seen = new Uint8Array(W * H);
+const skyH = new Int16Array(W), surf = new Int16Array(W);
+const ID = (x, y) => y * W + x;
+const inB = (x, y) => x >= 0 && y >= 0 && x < W && y < H;
+const get = (x, y) => inB(x, y) ? tile[ID(x, y)] : T.bedrock;
+const opaque = id => id !== T.air && TD[id].solid && !TD[id].clear;
+// 從 y=60 往下算：高空的浮空島不遮地面的天光
+function recomputeSky(x) { for (let y = 60; y < H; y++) if (opaque(tile[ID(x, y)])) { skyH[x] = y; return; } skyH[x] = H; }
+
+let S = null;      // 存檔裡的世界狀態
+let meta = new Map();  // 方塊索引 → 資料（箱子內容、拉桿狀態、方向…）
+const logic = new Set();
+
+function setRaw(x, y, id) { tile[ID(x, y)] = id; }
+function blob(rng, x, y, r, fn) { for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) if (dx * dx + dy * dy <= r * r + rng() * r && inB(x + dx, y + dy)) fn(x + dx, y + dy); }
+
+function lootFor(depth, rng) {
+  const inv = [], add = (id, a, b = a) => inv.push({ id, n:a + Math.floor(rng() * (b - a + 1)) });
+  add('torch', 4, 10);
+  if (rng() < .7) add('coal', 3, 8);
+  if (depth < 130) { add('iron_ore', 2, 6); if (rng() < .4) add('baked', 2, 4); if (rng() < .3) add('arrow', 8, 16); }
+  else if (depth < 190) { add('iron_bar', 2, 5); add('gold_ore', 2, 6); if (rng() < .5) add('stew', 1, 3); if (rng() < .3) add('life', 1); }
+  else if (depth < SEAL_Y) { add('gold_bar', 2, 5); add('crystal', 1, 3); if (rng() < .45) add('life', 1); }
+  else { add('blue_ore', 3, 8); add('crystal', 2, 5); if (rng() < .6) add('life', 1); }
+  while (inv.length < 27) inv.push(null);
+  return inv;
+}
+
+function generate(seed) {
+  const rng = mulberry(seed * 7 + 3), N = makeNoise(seed), N2 = makeNoise(seed + 991);
+  tile.fill(0); wall.fill(0); seen.fill(0); meta = new Map();
+  const biome = x => { const b = N.fbm(x / 240, 5, 2); return b < -.18 ? 'sand' : b > .22 ? 'frost' : 'moss'; };
+  const camp = W >> 1;
+  for (let x = 0; x < W; x++) {
+    let h = SURF + N.fbm(x / 95, 1.5) * 34 + N.fbm(x / 22, 9.5, 2) * 7;
+    const d = Math.abs(x - camp); if (d < 34) h = SURF + (h - SURF) * clamp((d - 18) / 16, 0, 1);
+    surf[x] = Math.round(h);
+  }
+  for (let x = 0; x < W; x++) {
+    const h = surf[x], b = biome(x), soil = 6 + Math.floor((N.n2(x / 8, 2) + 1) * 3);
+    for (let y = h; y < H; y++) {
+      let t;
+      if (y === h) t = b === 'sand' ? T.sand : b === 'frost' ? T.frost : T.moss;
+      else if (y < h + soil) t = b === 'sand' ? T.sand : T.dirt;
+      else if (y < SEAL_Y) t = T.stone;
+      else if (y < SEAL_Y + 3) t = T.seal;
+      else t = T.deep;
+      if (y >= H - 4) t = T.bedrock;
+      setRaw(x, y, t);
+    }
+  }
+  // 洞穴：兩層脊狀雜訊的交會形成長隧道，另加大型空腔
+  for (let x = 0; x < W; x++) for (let y = surf[x] + 2; y < H - 5; y++) {
+    if (y >= SEAL_Y && y < SEAL_Y + 3) continue;
+    const a = Math.abs(N.fbm(x / 46, y / 26)), b = Math.abs(N2.fbm(x / 58, y / 30));
+    const big = N2.fbm(x / 34 + 90, y / 22 + 90, 2);
+    const near = y < surf[x] + 9;
+    if ((a < .045 && b < .16 && (!near || N.n2(x / 20, 77) > .15)) || (big > .34 && y > surf[x] + 22)) setRaw(x, y, T.air);
+  }
+  // 礦脈
+  const ores = [[T.o_coal,SURF+6,SEAL_Y,620,2],[T.o_iron,SURF+22,SEAL_Y,460,2],[T.o_gold,150,SEAL_Y,170,2],[T.o_crystal,178,SEAL_Y,80,1],[T.o_blue,SEAL_Y+3,H-5,340,2]];
+  for (const [t, y0, y1, count, r] of ores) for (let i = 0; i < count; i++) {
+    blob(rng, Math.floor(rng() * W), y0 + Math.floor(rng() * (y1 - y0)), r, (x, y) => { const c = tile[ID(x, y)]; if ((c === T.stone || c === T.deep) && rng() < .75) setRaw(x, y, t); });
+  }
+  // 熔岩
+  for (let x = 0; x < W; x++) for (let y = 190; y < H - 4; y++) if (tile[ID(x, y)] === T.air && y !== SEAL_Y && N.n2(x / 26, y / 9 + 40) > (y > SEAL_Y + 3 ? .35 : .58)) setRaw(x, y, T.lava);
+  // 晶洞
+  for (let i = 0; i < 16; i++) { const cx = 20 + Math.floor(rng() * (W - 40)), cy = 180 + Math.floor(rng() * 38), r = 4 + Math.floor(rng() * 4);
+    blob(rng, cx, cy, r, (x, y) => { if (y < SEAL_Y) setRaw(x, y, T.air); });
+    blob(rng, cx, cy, r + 2, (x, y) => { if (y < SEAL_Y && tile[ID(x, y)] === T.stone && rng() < .55) setRaw(x, y, T.o_crystal); }); }
+  // 菌林：空腔地面長螢光菇
+  for (let x = 0; x < W; x++) for (let y = SURF + 28; y < 200; y++) if (tile[ID(x, y)] === T.air && TD[tile[ID(x, y + 1)]].solid && N2.n2(x / 40 + 5, y / 26 + 5) > .22 && rng() < .28) setRaw(x, y, T.mushroom);
+  // 遺跡
+  S.ruins = [];
+  for (let i = 0; i < 34; i++) placeRuin(rng, 15 + Math.floor(rng() * (W - 30)), SURF + 36 + Math.floor(rng() * (H - SURF - 60)));
+  // 樹與地表植物
+  for (let x = 3; x < W - 3; x++) {
+    const h = surf[x]; if (Math.abs(x - camp) < 22) continue;
+    if (tile[ID(x, h)] === T.moss || tile[ID(x, h)] === T.frost) { if (rng() < .1) { growTree(x, h - 1, rng); x += 3; } }
+    else if (tile[ID(x, h)] === T.sand && rng() < .02) growTree(x, h - 1, rng, true);
+  }
+  // 營地
+  for (let x = camp - 16; x <= camp + 16; x++) { const h = surf[x]; for (let y = h - 8; y < h; y++) if (inB(x, y)) setRaw(x, y, T.air); }
+  const gy = surf[camp] - 1;
+  for (let x = camp - 7; x <= camp + 7; x++) setRaw(x, surf[x], T.plank);
+  setRaw(camp, gy, T.stele); setRaw(camp - 3, gy, T.board); setRaw(camp + 6, surf[camp + 6] - 1, T.torch); setRaw(camp - 6, surf[camp - 6] - 1, T.torch); setRaw(camp + 3, gy, T.chest);
+  meta.set(ID(camp + 3, gy), { inv:[{ id:'plank',n:16 },{ id:'torch',n:12 },{ id:'baked',n:4 },...Array(24).fill(null)] });
+  S.camp = { x:camp, y:gy };
+  S.npcs = [{ type:'scrap', name:'回收員', x:(camp + 5.5) * TS, y:surf[camp + 5] * TS - 28 }];
+  // 地窟之主的石室
+  const wx = camp + (rng() < .5 ? -1 : 1) * (130 + Math.floor(rng() * 120)), wy = H - 26;
+  for (let y = wy - 12; y < wy + 12; y++) for (let x = wx - 26; x < wx + 26; x++) { const edge = y < wy - 10 || y >= wy + 10 || x < wx - 24 || x >= wx + 24; setRaw(x, y, edge ? T.ruin : T.air); if (!edge) wall[ID(x, y)] = 3; }
+  for (const dx of [-16, 0, 16]) { setRaw(wx + dx, wy + 9, T.torch); }
+  S.lair = { x:wx, y:wy, cool:0 };
+  for (let x = 0; x < W; x++) recomputeSky(x);
+}
+
+function placeRuin(rng, cx, cy) {
+  if (cy > H - 14 || (cy > SEAL_Y - 10 && cy < SEAL_Y + 9)) return;
+  const w = 9 + Math.floor(rng() * 8), h = 6 + Math.floor(rng() * 3), locked = rng() < .4;
+  const x0 = cx - (w >> 1), y0 = cy;
+  for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) {
+    if (!inB(x, y)) return;
+    const edge = x === x0 || x === x0 + w - 1 || y === y0 || y === y0 + h - 1;
+    setRaw(x, y, edge ? T.ruin : T.air); if (!edge) wall[ID(x, y)] = 3;
+  }
+  const fy = y0 + h - 2;
+  const chestX = locked ? x0 + w - 3 : cx;
+  setRaw(chestX, fy, T.chest); meta.set(ID(chestX, fy), { inv:lootFor(cy, rng), ruin:1 });
+  setRaw(x0 + 1, fy, T.torch);
+  S.ruins.push([x0 + (w >> 1), cy]);
+  // 門在兩側開口
+  const ex = rng() < .5 ? x0 : x0 + w - 1;
+  for (let i = 0; i < 2; i++) { setRaw(ex, fy - i, T.air); }
+  for (const dx of [-1, 1]) for (let i = 0; i < 2; i++) { const ox = ex + dx; if (ox < x0 || ox > x0 + w - 1) if (inB(ox, fy - i)) setRaw(ox, fy - i, T.air); }
+  // 機關室：一道隔牆加機關門，拉桿在外室，用靈脈線連到門上
+  if (locked && w >= 11) {
+    const px = x0 + w - 5;
+    for (let y = y0 + 1; y < y0 + h - 1; y++) setRaw(px, y, T.ruin);
+    setRaw(px, fy, T.gate); logic.add(ID(px, fy));
+    setRaw(px, fy - 1, T.gate); logic.add(ID(px, fy - 1));
+    setRaw(px - 1, fy - 1, T.wire); setRaw(px - 2, fy - 1, T.wire); setRaw(px - 1, fy, T.wire);
+    setRaw(px - 3, fy - 1, T.lever); meta.set(ID(px - 3, fy - 1), { on:false });
+  }
+}
+
+function growTree(x, y, rng, dry) {
+  const h = dry ? 2 + Math.floor(rng() * 2) : 4 + Math.floor(rng() * 4);
+  for (let i = 0; i < h; i++) if (inB(x, y - i)) setRaw(x, y - i, T.log);
+  if (dry) return;
+  blob(rng, x, y - h, 2 + (rng() < .4 ? 1 : 0), (a, b) => { if (tile[ID(a, b)] === T.air) setRaw(a, b, T.leaves); });
+}
+
+/* ========== 紋理 ========== */
+const VAR = 3;
+function shade(hex, f) { const n = parseInt(hex.slice(1), 16); const c = s => clamp(Math.round((n >> s & 255) * f), 0, 255); return `rgb(${c(16)},${c(8)},${c(0)})`; }
+function speck(g, r, base, n = 20, amp = .14) { g.fillStyle = base; g.fillRect(0, 0, TS, TS); for (let i = 0; i < n; i++) { g.fillStyle = shade(base, 1 + (r() - .5) * amp * 2); const s = r() < .3 ? 2 : 1; g.fillRect(Math.floor(r() * TS), Math.floor(r() * TS), s, s); } }
+function ore(g, r, base, c) { speck(g, r, base); for (let i = 0; i < 7; i++) { g.fillStyle = i % 3 ? c : shade(c, 1.3); g.fillRect(2 + Math.floor(r() * 11), 2 + Math.floor(r() * 11), 2, 2); } }
+function courses(g, c1, line) { g.fillStyle = c1; g.fillRect(0, 0, TS, TS); g.fillStyle = line; for (let y = 3; y < TS; y += 5) g.fillRect(0, y, TS, 1); for (let y = 0, o = 0; y < TS; y += 5, o ^= 1) { g.fillRect(o ? 3 : 10, y, 1, 3); } }
+const PAINT = {
+  dirt:(g, r) => speck(g, r, '#5a4254', 26), moss:(g, r) => { speck(g, r, '#5a4254', 26); g.fillStyle = '#3fc79a'; g.fillRect(0, 0, TS, 3); for (let i = 0; i < 16; i += 2) g.fillRect(i, 3, 1, 1 + Math.floor(r() * 3)); g.fillStyle = '#7cf0c4'; for (let i = 0; i < 5; i++) g.fillRect(Math.floor(r() * 15), 0, 2, 1); },
+  sand:(g, r) => speck(g, r, '#b5653f', 26), frost:(g, r) => { speck(g, r, '#5a4254', 26); g.fillStyle = '#d6edf3'; g.fillRect(0, 0, TS, 4); for (let i = 0; i < 16; i += 3) g.fillRect(i, 4, 2, 1 + Math.floor(r() * 2)); },
+  stone:(g, r) => { speck(g, r, '#4b5568', 28); g.fillStyle = '#3e4757'; for (let i = 0; i < 3; i++) g.fillRect(Math.floor(r() * 12), Math.floor(r() * 15), 3 + Math.floor(r() * 3), 1); },
+  cobble:(g, r) => { g.fillStyle = '#39414f'; g.fillRect(0, 0, TS, TS); for (const [x, y, w, h] of [[1,1,6,6],[8,1,7,4],[8,6,4,5],[1,8,6,7],[13,6,2,5],[8,12,7,3]]) { g.fillStyle = shade('#667082', .9 + r() * .25); g.fillRect(x, y, w, h); } },
+  deep:(g, r) => speck(g, r, '#2d3044', 26, .2), seal:(g, r) => { speck(g, r, '#3d1d66', 18); g.fillStyle = '#a45cff'; for (let i = 0; i < 4; i++) g.fillRect(Math.floor(r() * 13), 2 + i * 4, 3, 1); },
+  bedrock:(g, r) => speck(g, r, '#16161c', 30, .5), log:(g, r) => { g.fillStyle = '#6a4a35'; g.fillRect(2, 0, 12, TS); g.fillStyle = '#54392a'; for (let i = 0; i < 4; i++) g.fillRect(3 + i * 3, Math.floor(r() * 8), 1, 8); },
+  leaves:(g, r) => { for (let i = 0; i < 70; i++) { g.fillStyle = r() < .5 ? '#2f8f7a' : r() < .6 ? '#22705f' : '#46b596'; g.fillRect(Math.floor(r() * 15), Math.floor(r() * 15), 2, 2); } },
+  plank:g => { g.fillStyle = '#a07a4e'; g.fillRect(0, 0, TS, TS); g.fillStyle = '#7d5e3a'; for (let y = 0; y < TS; y += 4) g.fillRect(0, y + 3, TS, 1); g.fillRect(5, 0, 1, 3); g.fillRect(11, 4, 1, 3); g.fillRect(3, 8, 1, 3); g.fillRect(13, 12, 1, 3); },
+  brick:g => courses(g, '#8a4f55', '#5c3338'), ruin:g => courses(g, '#3f4a3c', '#2a3229'),
+  glass:g => { g.fillStyle = '#a8e6ff33'; g.fillRect(0, 0, TS, TS); g.strokeStyle = '#a8e6ffaa'; g.strokeRect(.5, .5, 15, 15); g.fillStyle = '#ffffff66'; g.fillRect(3, 3, 1, 4); g.fillRect(5, 3, 1, 2); },
+  cloud:(g, r) => speck(g, r, '#c9d2ea', 26, .08),
+  o_coal:(g, r) => ore(g, r, '#4b5568', '#16161c'), o_iron:(g, r) => ore(g, r, '#4b5568', '#c79a7a'), o_gold:(g, r) => ore(g, r, '#4b5568', '#f5c542'),
+  o_crystal:(g, r) => { speck(g, r, '#34485a'); g.fillStyle = '#7ff0ff'; for (const [x, y, h] of [[3,5,8],[8,2,11],[12,6,7]]) { g.fillRect(x, y, 2, h); g.fillStyle = '#d4fbff'; g.fillRect(x, y, 1, 2); g.fillStyle = '#7ff0ff'; } },
+  o_blue:(g, r) => ore(g, r, '#2d3044', '#4f8fe0'), o_aether:(g, r) => ore(g, r, '#c9d2ea', '#a5cc20'), o_star:(g, r) => ore(g, r, '#3a2748', '#ff9ee8'),
+  lava:(g, r) => { speck(g, r, '#e0521f', 40, .3); g.fillStyle = '#ffc44d'; for (let i = 0; i < 6; i++) g.fillRect(Math.floor(r() * 14), Math.floor(r() * 15), 3, 1); },
+  mushroom:g => { g.fillStyle = '#d7c8f0'; g.fillRect(7, 8, 2, 8); g.fillStyle = '#b06cff'; g.fillRect(3, 4, 10, 4); g.fillRect(5, 2, 6, 2); g.fillStyle = '#f0ccff'; g.fillRect(5, 5, 2, 1); g.fillRect(9, 3, 2, 1); },
+  torch:g => { g.fillStyle = '#7d5e3a'; g.fillRect(7, 7, 2, 9); g.fillStyle = '#ffb648'; g.fillRect(6, 3, 4, 4); g.fillStyle = '#fff1a8'; g.fillRect(7, 4, 2, 2); },
+  ladder:g => { g.fillStyle = '#8a673f'; g.fillRect(3, 0, 2, TS); g.fillRect(11, 0, 2, TS); for (let y = 2; y < TS; y += 5) g.fillRect(3, y, 10, 2); },
+  door:g => { g.fillStyle = '#7d5e3a'; g.fillRect(2, 0, 12, TS); g.fillStyle = '#5e4529'; g.fillRect(4, 2, 8, 5); g.fillRect(4, 9, 8, 5); g.fillStyle = '#f5c542'; g.fillRect(11, 8, 2, 2); },
+  dooropen:g => { g.fillStyle = '#7d5e3a'; g.fillRect(1, 0, 3, TS); g.fillStyle = '#5e4529'; g.fillRect(1, 2, 2, 12); },
+  gate:g => { g.fillStyle = '#2e3a33'; g.fillRect(0, 0, TS, TS); g.fillStyle = '#7ff0a0'; g.fillRect(7, 1, 2, 14); g.fillRect(3, 7, 10, 2); g.fillStyle = '#18201c'; g.strokeStyle = '#4c5e52'; g.strokeRect(.5, .5, 15, 15); },
+  gateopen:g => { g.fillStyle = '#2e3a33'; g.fillRect(0, 0, 3, TS); g.fillRect(13, 0, 3, TS); g.fillStyle = '#7ff0a0'; g.fillRect(1, 3, 1, 10); g.fillRect(14, 3, 1, 10); },
+  chest:g => { g.fillStyle = '#8f6636'; g.fillRect(1, 5, 14, 11); g.fillStyle = '#6a4a26'; g.fillRect(1, 9, 14, 1); g.fillStyle = '#f5c542'; g.fillRect(7, 8, 2, 3); g.fillStyle = '#6a4a26'; g.fillRect(1, 5, 1, 11); g.fillRect(14, 5, 1, 11); },
+  bench:g => { g.fillStyle = '#b18a58'; g.fillRect(0, 4, 16, 3); g.fillStyle = '#7d5e3a'; g.fillRect(1, 7, 3, 9); g.fillRect(12, 7, 3, 9); g.fillStyle = '#c5ccd6'; g.fillRect(4, 2, 5, 2); g.fillStyle = '#5e4529'; g.fillRect(11, 1, 2, 3); },
+  furnace:g => { g.fillStyle = '#596375'; g.fillRect(1, 2, 14, 14); g.fillStyle = '#26262c'; g.fillRect(4, 8, 8, 6); g.fillStyle = '#ff9a3d'; g.fillRect(5, 11, 6, 3); g.fillStyle = '#3e4757'; g.fillRect(1, 5, 14, 1); },
+  anvil:g => { g.fillStyle = '#6b7484'; g.fillRect(2, 5, 12, 3); g.fillRect(6, 8, 4, 4); g.fillRect(3, 12, 10, 4); g.fillRect(0, 5, 3, 2); },
+  bed:g => { g.fillStyle = '#7d5e3a'; g.fillRect(0, 12, 16, 4); g.fillStyle = '#c8604f'; g.fillRect(0, 8, 16, 4); g.fillStyle = '#ece9e2'; g.fillRect(0, 8, 5, 3); },
+  boundary:g => { g.fillStyle = '#7a8496'; g.fillRect(4, 2, 8, 14); g.fillStyle = '#c8f135'; g.fillRect(7, 4, 2, 8); g.fillRect(5, 7, 6, 2); },
+  board:g => { g.fillStyle = '#7d5e3a'; g.fillRect(2, 8, 2, 8); g.fillRect(12, 8, 2, 8); g.fillStyle = '#a07a4e'; g.fillRect(0, 1, 16, 10); g.fillStyle = '#ece9e2'; g.fillRect(2, 3, 5, 6); g.fillRect(9, 3, 5, 4); },
+  stele:g => { g.fillStyle = '#596375'; g.fillRect(3, 1, 10, 15); g.fillStyle = '#c8f135'; g.fillRect(5, 4, 6, 1); g.fillRect(5, 7, 4, 1); g.fillRect(5, 10, 6, 1); g.fillStyle = '#3e4757'; g.fillRect(3, 1, 1, 15); },
+  wire:g => { g.fillStyle = '#555'; g.fillRect(6, 6, 4, 4); }, lever:g => { g.fillStyle = '#596375'; g.fillRect(3, 11, 10, 5); g.fillStyle = '#a07a4e'; g.fillRect(7, 3, 2, 8); },
+  plate:g => { g.fillStyle = '#a07a4e'; g.fillRect(1, 14, 14, 2); }, lamp:g => { g.fillStyle = '#3a4238'; g.fillRect(0, 0, TS, TS); g.fillStyle = '#6a7560'; g.fillRect(3, 3, 10, 10); },
+  notgate:g => { g.fillStyle = '#2b3136'; g.fillRect(1, 3, 14, 10); g.fillStyle = '#ff6b5e'; g.fillRect(4, 5, 4, 6); g.fillRect(8, 7, 5, 2); },
+  delay:g => { g.fillStyle = '#2b3136'; g.fillRect(1, 3, 14, 10); g.fillStyle = '#f5c542'; g.fillRect(3, 7, 10, 2); g.fillRect(5, 5, 2, 6); g.fillRect(10, 5, 2, 6); },
+  clock:g => { g.fillStyle = '#2b3136'; g.fillRect(1, 3, 14, 10); g.fillStyle = '#7ff0ff'; g.fillRect(3, 7, 3, 2); g.fillRect(5, 5, 2, 2); g.fillRect(7, 5, 3, 2); g.fillRect(9, 7, 2, 2); g.fillRect(11, 7, 2, 2); },
+  drill:g => { g.fillStyle = '#596375'; g.fillRect(1, 2, 9, 12); g.fillStyle = '#c5ccd6'; g.fillRect(10, 4, 3, 8); g.fillRect(13, 6, 2, 4); g.fillStyle = '#26262c'; g.fillRect(3, 5, 4, 6); },
+  seller:g => { g.fillStyle = '#6a5c2c'; g.fillRect(1, 1, 14, 14); g.fillStyle = '#f5c542'; g.fillRect(5, 4, 6, 8); g.fillStyle = '#6a5c2c'; g.fillRect(7, 6, 2, 4); },
+  sapling:g => { g.fillStyle = '#7d5e3a'; g.fillRect(7, 10, 2, 6); g.fillStyle = '#46b596'; g.fillRect(5, 6, 6, 4); g.fillRect(7, 4, 2, 2); }, crop:g => { g.fillStyle = '#46b596'; g.fillRect(4, 11, 1, 5); g.fillRect(8, 8, 1, 8); g.fillRect(12, 11, 1, 5); g.fillRect(3, 11, 3, 1); g.fillRect(7, 8, 3, 1); g.fillRect(11, 11, 3, 1); },
+  altar:g => { g.fillStyle = '#3a2748'; g.fillRect(1, 11, 14, 5); g.fillStyle = '#ff9ee8'; g.fillRect(3, 1, 2, 10); g.fillRect(11, 1, 2, 10); g.fillRect(3, 1, 10, 2); g.fillStyle = '#ffffffaa'; g.fillRect(6, 4, 4, 6); },
+};
+function buildAtlas() {
+  TD.forEach((d, i) => { if (!PAINT[d.key]) return;
+    for (let v = 0; v < VAR; v++) { const c = document.createElement('canvas'); c.width = c.height = TS; const g = c.getContext('2d'); PAINT[d.key](g, mulberry(i * 91 + v * 7)); d.tex = d.tex || []; d.tex[v] = c; } });
+}
+buildAtlas();
+const bgDirt = makeBg('#2c2029'), bgStone = makeBg('#20252f'), bgDeep = makeBg('#14151f');
+function makeBg(c) { const k = document.createElement('canvas'); k.width = k.height = TS; speck(k.getContext('2d'), mulberry(c.length * 13 + c.charCodeAt(2)), c, 22, .12); return k; }
+const wallTex = WALLS.map((w, i) => { if (!w) return null; const k = document.createElement('canvas'); k.width = k.height = TS; const g = k.getContext('2d'); if (i === 1) { g.fillStyle = w.c; g.fillRect(0, 0, TS, TS); g.fillStyle = shade(w.c, .8); for (let x = 3; x < TS; x += 5) g.fillRect(x, 0, 1, TS); } else courses(g, w.c, shade(w.c, .75)); return k; });
+
+// 物品圖示（給介面用的 data URL）
+const iconCache = {};
+function icon(id) {
+  if (iconCache[id]) return iconCache[id];
+  const it = ITEMS[id] || { c:'#888' }, k = document.createElement('canvas'); k.width = k.height = TS; const g = k.getContext('2d'), c = it.c || '#888';
+  const P = (col, x, y, w, h) => { g.fillStyle = col; g.fillRect(x, y, w, h); };
+  if (it.tile !== undefined && TD[it.tile].tex) g.drawImage(TD[it.tile].tex[0], 0, 0);
+  else if (it.wall) g.drawImage(wallTex[it.wall], 0, 0);
+  else switch (it.shape) {
+    case 'pick': P('#7d5e3a', 7, 4, 2, 11); P(c, 2, 2, 12, 2); P(c, 1, 4, 2, 2); P(c, 13, 4, 2, 2); break;
+    case 'sword': P(c, 7, 1, 2, 10); P(shade(c.length === 7 ? c : '#888888', 1.25), 7, 1, 1, 9); P('#5e4529', 4, 11, 8, 1); P('#7d5e3a', 7, 12, 2, 3); break;
+    case 'bow': P(c, 4, 2, 2, 2); P(c, 6, 1, 3, 1); P(c, 9, 2, 2, 12); P(c, 6, 14, 3, 1); P(c, 4, 12, 2, 2); P('#ece9e2', 4, 3, 1, 10); break;
+    case 'armor': P(c, 3, 3, 10, 3); P(c, 4, 6, 8, 8); P(shade(c, .75), 7, 6, 2, 8); break;
+    case 'bar': P(shade(c, .7), 2, 9, 12, 4); P(c, 3, 6, 10, 3); P(shade(c, 1.3), 4, 7, 4, 1); break;
+    case 'gem': P(c, 6, 2, 4, 2); P(c, 4, 4, 8, 6); P(c, 6, 10, 4, 3); P('#ffffffaa', 6, 4, 2, 3); break;
+    case 'stick': for (let i = 0; i < 10; i++) P(c, 3 + i, 12 - i, 2, 2); break;
+    case 'drop': P(c, 7, 3, 2, 2); P(c, 5, 5, 6, 3); P(c, 4, 8, 8, 4); P(c, 6, 12, 4, 1); break;
+    case 'food': P(c, 4, 5, 8, 8); P(shade(c, 1.2), 5, 4, 5, 2); P(shade(c, .75), 10, 8, 2, 4); break;
+    default: P(c, 4, 5, 8, 8); P(shade(c.length === 7 ? c : '#888888', 1.25), 5, 6, 3, 2); P(shade(c.length === 7 ? c : '#888888', .75), 9, 10, 3, 3);
+  }
+  return iconCache[id] = k.toDataURL();
+}
+
+/* ========== 音效 ========== */
+const SFX = (() => { let ac = null;
+  const on = () => { try { return localStorage.getItem('arcade-sound') !== 'off'; } catch { return true; } };
+  function tone(f, dur, type = 'square', vol = .05, slide = 0) { if (!on()) return; try { ac = ac || new (window.AudioContext || window.webkitAudioContext)(); if (ac.state === 'suspended') ac.resume(); const o = ac.createOscillator(), g = ac.createGain(), t = ac.currentTime; o.type = type; o.frequency.setValueAtTime(f, t); if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(20, f + slide), t + dur); g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.0001, t + dur); o.connect(g); g.connect(ac.destination); o.start(t); o.stop(t + dur); } catch {} }
+  return { dig:() => tone(150 + Math.random() * 70, .05, 'triangle', .035), brk:() => tone(110, .12, 'sawtooth', .05, -60), place:() => tone(240, .05, 'triangle', .05), hit:() => tone(320, .08, 'square', .05, -180), hurt:() => tone(170, .18, 'sawtooth', .07, -90), pick:() => tone(760, .05, 'sine', .035, 240), coin:() => { tone(900, .06, 'sine', .05); setTimeout(() => tone(1250, .08, 'sine', .05), 60); }, boom:() => tone(90, .35, 'sawtooth', .1, -60), click:() => tone(520, .03, 'square', .025), era:() => [392,523,659,784].forEach((f, i) => setTimeout(() => tone(f, .3, 'triangle', .07), i * 130)), shot:() => tone(520, .08, 'triangle', .04, -300), eat:() => tone(300, .1, 'triangle', .05, 120) }; })();
+
+/* ========== 背包 ========== */
+const STACK = id => (ITEMS[id] || {}).max || 99;
+function addTo(inv, id, n) { // 回傳放不下的數量
+  const max = STACK(id);
+  for (let i = 0; i < inv.length && n > 0; i++) { const s = inv[i]; if (s && s.id === id && s.n < max) { const m = Math.min(n, max - s.n); s.n += m; n -= m; } }
+  for (let i = 0; i < inv.length && n > 0; i++) if (!inv[i]) { const m = Math.min(n, max); inv[i] = { id, n:m }; n -= m; }
+  return n;
+}
+const count = (inv, id) => inv.reduce((a, s) => a + (s && s.id === id ? s.n : 0), 0);
+function take(inv, id, n) { for (let i = inv.length - 1; i >= 0 && n > 0; i--) { const s = inv[i]; if (s && s.id === id) { const m = Math.min(n, s.n); s.n -= m; n -= m; if (!s.n) inv[i] = null; } } return n === 0; }
+function fits(inv, id, n) { const c = inv.map(s => s && { ...s }); return addTo(c, id, n) === 0; }
+function give(id, n) { const left = addTo(P.inv, id, n); if (left) spawnDrop(P.x + P.w / 2, P.y, id, left, true); hudDirty = true; return left === 0; }
+
+/* ========== 遊戲狀態 ========== */
+let P = null, slot = 0, mobs = [], drops = [], shots = [], parts = [], floats = [], running = false, paused = false, hudDirty = true, slotNo = 1;
+let cam = { x:0, y:0 }, mouse = { x:0, y:0, l:false, r:false }, keys = {}, Z = 2, shake = 0;
+let mine = null, swing = 0, placeCD = 0, atkCD = 0, spawnT = 0, sigT = 0, saveT = 0, lightT = 0, seenT = 0, hudT = 0, panelKind = null, chestOpen = null, heldCursor = null, activeBoss = null, last = 0, jumpFuel = 1.4, power = new Set();
+let MOD = { prices:{}, bounties:[] };
+const eraNow = () => S.era;
+const hasPerk = id => !!S.projects[id];
+const bountyList = () => BOUNTIES.concat(MOD.bounties);
+const rankOf = rep => { let r = 0; RANKS.forEach((x, i) => { if (rep >= x[1]) r = i; }); return r; };
+function priceOf(id) {
+  let p = MOD.prices[id] !== undefined ? MOD.prices[id] : BASE_PRICE[id]; if (!p) return 0;
+  if (S.era >= 2) { const r = mulberry(Math.floor(S.time / DAY) * 131 + id.length * 7 + id.charCodeAt(0) * 3)(); p *= .75 + r * .5; }
+  if (hasPerk('market')) p *= 1.2;
+  return Math.max(1, Math.round(p));
+}
+function applyMods() { try { const m = JSON.parse(S.mods || '{}'); MOD = { prices:m.prices || {}, bounties:(m.bounties || []).filter(b => b && b.id && b.title && b.t) }; } catch { MOD = { prices:{}, bounties:[] }; } }
+
+function newState(seed) {
+  S = { v:1, seed, time:DAY * .28, era:0, cp:0, money:0, rep:0, bounties:{}, cool:{}, once:{}, projects:{}, best:0, stones:{}, deepest:0, seenSky:false, growers:[], mods:'', ruins:[], meteorT:DAY * 3, won:false, firsts:{}, kills:0, deaths:0, played:0, npcs:[] };
+  logic.clear();
+  generate(seed);
+  rebuildLogic();
+  P = newPlayer(S.camp.x * TS, (S.camp.y - 2) * TS);
+  P.inv[0] = { id:'pick_wood', n:1 }; P.inv[1] = { id:'sword_wood', n:1 }; P.inv[2] = { id:'torch', n:10 };
+  mobs = []; drops = []; shots = []; parts = []; floats = []; applyMods();
+}
+function newPlayer(x, y) { return { x, y, w:12, h:28, vx:0, vy:0, ground:false, face:1, hp:100, maxHp:100, inv:Array(36).fill(null), iframe:0, spawn:null, walk:0 }; }
+function rebuildLogic() { logic.clear(); for (let i = 0; i < tile.length; i++) if (TD[tile[i]].logic) logic.add(i); }
+
+/* ========== 存讀檔 ========== */
+function rle(a) { const out = []; let v = a[0], n = 1; for (let i = 1; i < a.length; i++) { if (a[i] === v) n++; else { out.push(v.toString(36) + '.' + n.toString(36)); v = a[i]; n = 1; } } out.push(v.toString(36) + '.' + n.toString(36)); return out.join(','); }
+function unrle(str, a) { let i = 0; for (const p of str.split(',')) { const [v, n] = p.split('.'); const val = parseInt(v, 36), c = parseInt(n, 36); a.fill(val, i, i + c); i += c; } return i === a.length; }
+function serialize() {
+  return { S, P:{ x:P.x, y:P.y, hp:P.hp, maxHp:P.maxHp, inv:P.inv, spawn:P.spawn, face:P.face }, slot, tile:rle(tile), wall:rle(wall), seen:rle(seen), surf:Array.from(surf), meta:[...meta.entries()], savedAt:Date.now() };
+}
+function deserialize(d) {
+  if (!d || d.S?.v !== 1 || !unrle(d.tile, tile) || !unrle(d.wall, wall) || !unrle(d.seen, seen)) return false;
+  S = d.S; surf.set(d.surf); meta = new Map(d.meta);
+  P = newPlayer(d.P.x, d.P.y); Object.assign(P, d.P); P.inv = d.P.inv; while (P.inv.length < 36) P.inv.push(null);
+  slot = d.slot || 0; if (P.hp <= 0) P.hp = P.maxHp;
+  mobs = []; drops = []; shots = []; parts = []; floats = []; activeBoss = null;
+  for (let x = 0; x < W; x++) recomputeSky(x);
+  rebuildLogic(); applyMods(); return true;
+}
+function saveGame(quiet) {
+  if (!S) return false;
+  if (heldCursor) { give(heldCursor.id, heldCursor.n); heldCursor = null; }
+  const d = serialize(), ok = (() => { try { localStorage.setItem(WORLD_KEY(slotNo), JSON.stringify(d)); return true; } catch { return false; } })();
+  lsSet(SAVE_KEY, { slot:slotNo, era:S.era });
+  const st = lsGet(STATS_KEY) || { best:{ era:0 } }; st.best.era = Math.max(st.best.era || 0, S.era); if (S.won) st.won = true; lsSet(STATS_KEY, st);
+  if (!quiet) note(ok ? '已存檔' : '存檔失敗：瀏覽器儲存空間不足，請匯出存檔', ok ? 'good' : 'bad');
+  return ok;
+}
+function slotInfo(n) { try { const s = localStorage.getItem(WORLD_KEY(n)); if (!s) return null; const d = JSON.parse(s); return { era:d.S.era, day:Math.floor(d.S.time / DAY) + 1, money:d.S.money, at:d.savedAt, won:d.S.won, size:s.length }; } catch { return { broken:true }; } }
+
+/* ========== 方塊操作 ========== */
+function setTile(x, y, id) {
+  const i = ID(x, y), old = tile[i];
+  if (TD[old].logic) logic.delete(i);
+  if (old !== id && meta.has(i) && !(TD[id].logic && TD[old].logic)) meta.delete(i);
+  tile[i] = id;
+  if (TD[id].logic) logic.add(i);
+  recomputeSky(x);
+  // 懸空的東西跟著掉
+  const up = y > 0 ? tile[i - W] : 0;
+  if (!TD[id].solid && up && TD[up].floor) breakTile(x, y - 1, true);
+}
+function breakTile(x, y, silent) {
+  const id = get(x, y), d = TD[id], i = ID(x, y);
+  if (id === T.air) return;
+  const m = meta.get(i);
+  if (m && m.inv) m.inv.forEach(s => { if (s) spawnDrop((x + .5) * TS, (y + .5) * TS, s.id, s.n); });
+  if (d.key === 'boundary') delete S.stones[i];
+  setTile(x, y, T.air);
+  if (d.drop) spawnDrop((x + .5) * TS, (y + .5) * TS, d.drop, 1);
+  if (id === T.leaves && Math.random() < .08) spawnDrop((x + .5) * TS, (y + .5) * TS, 'sapling', 1);
+  if (id === T.crop) { const g = S.growers.findIndex(a => a[0] === i); if (g >= 0) { if (S.growers[g][1] <= S.time) spawnDrop((x + .5) * TS, (y + .5) * TS, 'potato', 2); S.growers.splice(g, 1); } }
+  if (id === T.sapling) { const g = S.growers.findIndex(a => a[0] === i); if (g >= 0) S.growers.splice(g, 1); }
+  burst((x + .5) * TS, (y + .5) * TS, d.tex ? sampleColor(d) : '#888', silent ? 3 : 7);
+  if (!silent) SFX.brk();
+  // 砍倒整棵樹
+  if (id === T.log) { for (const [dx, dy] of [[0,-1],[-1,-1],[1,-1],[-1,0],[1,0]]) { const t = get(x + dx, y + dy); if (t === T.log && dy < 0 && dx === 0) breakTile(x, y - 1, true); else if (t === T.leaves) fellLeaves(x + dx, y + dy); } }
+  if (d.key.startsWith('o_') && !S.firsts[d.key]) { S.firsts[d.key] = 1; const v = { o_coal:10, o_iron:25, o_gold:50, o_crystal:120, o_blue:300, o_aether:900, o_star:1500 }[d.key] || 0; if (v) { addCp(v); note(`首次發現${d.name}　文明點數 +${v}`, 'good'); } }
+}
+function fellLeaves(x, y) { const st = [[x, y]], lim = 60; let c = 0; while (st.length && c++ < lim) { const [a, b] = st.pop(); if (get(a, b) !== T.leaves) continue; setTile(a, b, T.air); if (Math.random() < .05) spawnDrop((a + .5) * TS, (b + .5) * TS, 'sapling', 1); burst((a + .5) * TS, (b + .5) * TS, '#2f8f7a', 1); st.push([a + 1, b], [a - 1, b], [a, b - 1], [a, b + 1]); } }
+const colorCache = {};
+function sampleColor(d) { if (colorCache[d.id]) return colorCache[d.id]; const g = d.tex[0].getContext('2d').getImageData(8, 8, 1, 1).data; return colorCache[d.id] = g[3] ? `rgb(${g[0]},${g[1]},${g[2]})` : '#888'; }
+
+/* ========== 靈脈（電路） ========== */
+const DIRS = [[1,0],[0,1],[-1,0],[0,-1]];
+function mOf(i, init) { let m = meta.get(i); if (!m) { m = { ...init }; meta.set(i, m); } return m; }
+function isSourceOn(i, toward) {
+  const t = tile[i], m = meta.get(i); if (!m) return false;
+  if (t === T.lever || t === T.plate || t === T.clock) return !!m.on;
+  if (t === T.notgate || t === T.delay) { const d = DIRS[m.dir || 0], ox = (i % W) + d[0], oy = Math.floor(i / W) + d[1]; return !!m.out && ID(ox, oy) === toward; }
+  return false;
+}
+function signalTick() {
+  const pw = new Set(), stack = [];
+  const nb = i => { const x = i % W, y = Math.floor(i / W), r = []; for (const d of DIRS) if (inB(x + d[0], y + d[1])) r.push(ID(x + d[0], y + d[1])); return r; };
+  const emit = i => { if (pw.has(i)) return; pw.add(i); if (tile[i] === T.wire) stack.push(i); };
+  for (const i of logic) { const t = tile[i];
+    if (t === T.plate) { const m = mOf(i, {}); const x = i % W, y = Math.floor(i / W), box = { x:x * TS, y:y * TS, w:TS, h:TS }; m.on = overlap(P, box) || mobs.some(e => overlap(e, box)); if (m.on) { pw.add(i); nb(i).forEach(emit); } }
+    else if (t === T.lever) { const m = mOf(i, { on:false }); if (m.on) { pw.add(i); nb(i).forEach(emit); } }
+    else if (t === T.clock) { const m = mOf(i, { p:4, c:0, on:false }); if (++m.c >= m.p) { m.c = 0; m.on = !m.on; } if (m.on) { pw.add(i); nb(i).forEach(emit); } }
+    else if (t === T.notgate || t === T.delay) { const m = mOf(i, { dir:0, out:t === T.notgate }); if (m.out) { const d = DIRS[m.dir || 0], x = i % W, y = Math.floor(i / W); if (inB(x + d[0], y + d[1])) emit(ID(x + d[0], y + d[1])); } }
+  }
+  while (stack.length) nb(stack.pop()).forEach(emit);
+  for (const i of logic) { const t = tile[i], x = i % W, y = Math.floor(i / W);
+    if (t === T.notgate || t === T.delay) { const m = meta.get(i); const d = DIRS[((m.dir || 0) + 2) % 4]; const ix = x + d[0], iy = y + d[1]; let input = false; if (inB(ix, iy)) { const k = ID(ix, iy); input = tile[k] === T.wire ? pw.has(k) : isSourceOn(k, i); }
+      if (t === T.notgate) m.out = !input; else { m.q = m.q || []; m.q.push(input); while (m.q.length > (m.n || 2)) m.out = m.q.shift(); } }
+    else if (t === T.door || t === T.dooropen || t === T.gate || t === T.gateopen) { const m = mOf(i, {}), now = pw.has(i); if (now !== !!m.last) { m.last = now; const closed = t === T.door || t === T.gate;
+        if (now && closed) { tile[i] = t === T.door ? T.dooropen : T.gateopen; recomputeSky(x); SFX.click(); } else if (!now && !closed) { if (!blockedBy(x, y)) { tile[i] = t === T.dooropen ? T.door : T.gate; recomputeSky(x); SFX.click(); } } } }
+    else if (t === T.drill && pw.has(i)) { const m = mOf(i, { dir:0, c:0 }); m.c = (m.c || 0) + (hasPerk('lines') ? 2 : 1); if (m.c >= 8) { m.c = 0; drillStep(x, y, m); } }
+    else if (t === T.seller && pw.has(i)) sellerStep(x, y);
+  }
+  power = pw;
+}
+function adjacentChests(x, y) { const r = []; for (const d of DIRS) { const a = x + d[0], b = y + d[1]; if (get(a, b) === T.chest) { const k = ID(a, b); const m = mOf(k, { inv:Array(27).fill(null) }); r.push(m); } } return r; }
+function drillStep(x, y, m) {
+  const d = DIRS[m.dir || 0];
+  for (let n = 1; n <= 12; n++) { const a = x + d[0] * n, b = y + d[1] * n, t = get(a, b), D = TD[t];
+    if (t === T.air || !D.solid && !D.hard) continue;
+    if (!D.hard || D.tier > 3 || D.logic || t === T.chest) return;
+    const dropId = D.drop; setTile(a, b, T.air); burst((a + .5) * TS, (b + .5) * TS, sampleColor(D), 4);
+    if (dropId) { let left = 1; for (const c of adjacentChests(x, y)) { left = addTo(c.inv, dropId, left); if (!left) break; } if (left) spawnDrop((a + .5) * TS, (b + .5) * TS, dropId, left); }
+    return; }
+}
+function sellerStep(x, y) {
+  for (const c of adjacentChests(x, y)) for (let i = 0; i < c.inv.length; i++) { const s = c.inv[i]; if (s && priceOf(s.id)) { const n = Math.min(s.n, 8), gain = Math.max(1, Math.floor(priceOf(s.id) * n * .7)); s.n -= n; if (!s.n) c.inv[i] = null; S.money += gain; hudDirty = true; return; } }
+}
+
+/* ========== 實體 ========== */
+const overlap = (a, b) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+function solidAt(tx, ty) { const t = get(tx, ty); return TD[t].solid; }
+function blockedBy(tx, ty) { const box = { x:tx * TS, y:ty * TS, w:TS, h:TS }; return overlap(P, box) || mobs.some(e => overlap(e, box)); }
+function boxHits(x, y, w, h) { const x0 = Math.floor(x / TS), x1 = Math.floor((x + w - .01) / TS), y0 = Math.floor(y / TS), y1 = Math.floor((y + h - .01) / TS); for (let a = x0; a <= x1; a++) for (let b = y0; b <= y1; b++) if (solidAt(a, b)) return true; return false; }
+function moveEnt(e, dt, step) {
+  e.ground = false;
+  let dx = e.vx * dt, dy = e.vy * dt;
+  const px = Math.ceil(Math.abs(dx) / 8) || 1, py = Math.ceil(Math.abs(dy) / 8) || 1;
+  for (let i = 0; i < px; i++) { const nx = e.x + dx / px;
+    if (!boxHits(nx, e.y, e.w, e.h)) e.x = nx;
+    else if (step && e.onGroundPrev && !boxHits(nx, e.y - TS - 1, e.w, e.h)) { e.y -= TS + .5; e.x = nx; }
+    else { e.vx = 0; e.hitWall = true; break; } }
+  for (let i = 0; i < py; i++) { const ny = e.y + dy / py;
+    if (!boxHits(e.x, ny, e.w, e.h)) e.y = ny;
+    else { if (dy > 0) { e.ground = true; e.y = Math.floor((e.y + e.h - .01) / TS + 1) * TS - e.h; if (boxHits(e.x, e.y, e.w, e.h)) e.y -= 1; } e.landV = e.vy; e.vy = 0; break; } }
+  e.onGroundPrev = e.ground;
+  e.x = clamp(e.x, 0, W * TS - e.w); e.y = clamp(e.y, 0, H * TS - e.h);
+}
+function burst(x, y, c, n) { for (let i = 0; i < n; i++) parts.push({ x, y, vx:(Math.random() - .5) * 120, vy:-Math.random() * 110, t:.45 + Math.random() * .3, c, s:1 + Math.floor(Math.random() * 2) }); if (parts.length > 400) parts.splice(0, parts.length - 400); }
+function floatText(x, y, s, c) { floats.push({ x, y, s, c, t:.8 }); }
+function spawnDrop(x, y, id, n, thrown) { drops.push({ x:x - 4, y:y - 4, w:8, h:8, vx:thrown ? (P.face * 110) : (Math.random() - .5) * 70, vy:-90, id, n, t:0, delay:thrown ? 1 : .2 }); }
+function spawnMob(type, x, y, elite) {
+  const d = MOBS[type], e = { type, x, y, w:d.w, h:d.h, vx:0, vy:0, hp:d.hp, maxHp:d.hp, d, dir:Math.random() < .5 ? -1 : 1, t:0, cd:1 + Math.random() * 2, elite:!!elite, flash:0 };
+  if (elite) { e.hp = e.maxHp = d.hp * 2.5; e.dmgMul = 1.4; }
+  mobs.push(e); return e;
+}
+function hurtPlayer(dmg, srcX) {
+  if (P.iframe > 0 || P.dead) return;
+  const def = bestDef(), real = Math.max(1, Math.round(dmg * (1 - def)));
+  P.hp -= real; P.iframe = .7; shake = Math.min(8, 2 + real / 5); SFX.hurt(); floatText(P.x + 6, P.y - 4, '-' + real, '#ff6b5e'); hudDirty = true;
+  if (srcX !== undefined) { P.vx += (P.x > srcX ? 1 : -1) * 150; P.vy = Math.min(P.vy, -130); }
+  if (P.hp <= 0) die();
+}
+const bestDef = () => P.inv.reduce((a, s) => s && ITEMS[s.id]?.def > a ? ITEMS[s.id].def : a, 0);
+function die() {
+  P.dead = true; P.hp = 0; S.deaths++;
+  const lost = Math.floor(S.money * .1); S.money -= lost;
+  note(`你倒下了${lost ? `，遺失 ${fmt(lost)} 元` : ''}`, 'bad');
+  setTimeout(() => { if (!S) return; const sp = P.spawn; P.dead = false; P.hp = P.maxHp; P.vx = P.vy = 0; P.iframe = 2;
+    if (sp && get(sp[0], sp[1]) === T.bed) { P.x = sp[0] * TS; P.y = (sp[1] - 1) * TS - 12; } else { if (sp) { P.spawn = null; note('床不見了，回到營地', 'bad'); } P.x = S.camp.x * TS; P.y = (S.camp.y - 2) * TS; }
+    hudDirty = true; }, 1400);
+}
+function damageMob(e, dmg, kbDir) {
+  if (e.dead) return;
+  e.hp -= dmg; e.flash = .12; floatText(e.x + e.w / 2, e.y - 4, String(Math.round(dmg)), '#fff'); SFX.hit();
+  if (!e.d.boss) { e.vx = kbDir * 170; e.vy = -110; }
+  if (e.hp <= 0) killMob(e);
+}
+function killMob(e) {
+  e.dead = true; S.kills++;
+  const cx = e.x + e.w / 2, cy = e.y + e.h / 2; burst(cx, cy, e.d.c, e.d.boss ? 60 : 12);
+  for (const [id, a, b] of e.d.drops) { const n = a + Math.floor(Math.random() * (b - a + 1)); if (n > 0) spawnDrop(cx, cy, id, n * (e.elite ? 2 : 1)); }
+  const g = Math.round(e.d.gold * (e.elite ? 4 : 1)); if (g) { S.money += g; floatText(cx, cy - 12, '+' + g, '#f5c542'); }
+  for (const id in S.bounties) { const b = bountyList().find(x => x.id === id); if (b && b.t === 'kill' && b.target === e.type) { S.bounties[id].p = (S.bounties[id].p || 0) + 1; if (S.bounties[id].p === b.n) note(`懸賞達成：${b.title}`, 'good'); } }
+  if (e.d.boss) { shake = 14; SFX.boom(); activeBoss = null; addCp(e.type === 'warden' ? 1500 : e.type === 'skylord' ? 5000 : 0); note(`${e.d.name}倒下了`, 'gold');
+    if (e.type === 'starfall' && !S.won) { S.won = true; S.money += 100000; saveGame(true); openPanel('星辰時代', `<p>墜星碎成了滿天的光。世界還在，你的聚落也還在。</p><p class="dim">討伐紀錄已存檔。想繼續蓋、繼續挖都可以。</p>`); } }
+  hudDirty = true;
+}
+
+/* ========== 文明與時代 ========== */
+function addCp(n) { if (n <= 0) return; S.cp += n; while (S.era < ERAS.length - 1 && S.cp >= ERAS[S.era + 1].cp) advanceEra(); hudDirty = true; }
+function advanceEra() {
+  S.era++; const E = ERAS[S.era];
+  SFX.era(); note(`世界進入${E.name}。${E.on || ''}`, 'gold'); shake = 6;
+  if (S.era === 1) S.npcs.push({ type:'artisan', name:'工匠', x:(S.camp.x - 6.5) * TS, y:surf[S.camp.x - 6] * TS - 28 });
+  if (S.era === 3) dissolveSeal();
+  if (S.era === 4) raiseIslands();
+  saveGame(true);
+}
+function dissolveSeal() { for (let x = 0; x < W; x++) for (let y = SEAL_Y; y < SEAL_Y + 3; y++) if (tile[ID(x, y)] === T.seal) { const n = Math.abs(Math.sin(x * 12.9898 + y * 78.233) * 43758.5) % 1; tile[ID(x, y)] = n < .55 ? T.air : T.deep; } for (let x = 0; x < W; x++) recomputeSky(x); }
+function raiseIslands() {
+  const rng = mulberry(S.seed * 3 + 11); S.islands = [];
+  for (let k = 0; k < 8; k++) {
+    const cx = 40 + Math.floor((k + rng()) * (W - 80) / 8), cy = 22 + Math.floor(rng() * 22), rx = k === 3 ? 28 : 12 + Math.floor(rng() * 10), ry = 6 + Math.floor(rng() * 3);
+    for (let x = cx - rx; x <= cx + rx; x++) { const f = 1 - ((x - cx) / rx) ** 2; const depth = Math.round(ry * f + rng() * 1.5);
+      for (let d = 0; d <= depth; d++) { const y = cy + d; if (!inB(x, y)) continue; let t = T.cloud; if (d === 0 && f > .05) t = T.moss; else if (d > 1 && rng() < .1) t = T.o_aether; setRaw(x, y, t); } }
+    for (let i = 0; i < 6; i++) { const tx = cx - rx + 3 + Math.floor(rng() * (rx * 2 - 6)); if (get(tx, cy) === T.moss && get(tx, cy - 1) === T.air) growTree(tx, cy - 1, rng); }
+    const lx = cx + 2; if (get(lx, cy - 1) === T.air) { setRaw(lx, cy - 1, T.chest); meta.set(ID(lx, cy - 1), { inv:[{ id:'aether_ore',n:6 + Math.floor(rng() * 6) },{ id:'feather',n:3 },rng() < .6 ? { id:'life',n:1 } : null,...Array(24).fill(null)], ruin:1 }); }
+    S.islands.push([cx, cy, rx]);
+    if (k === 3) S.lordIsle = { x:cx, y:cy - 8, cool:0 };
+  }
+  for (let x = 0; x < W; x++) recomputeSky(x);
+}
+function meteor() {
+  const x = 15 + Math.floor(Math.random() * (W - 30)), h = surf[x], r = 4 + Math.floor(Math.random() * 3), rng = mulberry(x * 13 + Math.floor(S.time));
+  let y0 = h; for (let y = 60; y < H; y++) if (TD[get(x, y)].solid) { y0 = y; break; }
+  blob(rng, x, y0, r, (a, b) => { if (tile[ID(a, b)] !== T.bedrock && tile[ID(a, b)] !== T.chest && !TD[tile[ID(a, b)]].logic) { tile[ID(a, b)] = T.air; meta.delete(ID(a, b)); } });
+  blob(rng, x, y0 + 2, r - 2, (a, b) => { tile[ID(a, b)] = rng() < .55 ? T.o_star : T.stone; });
+  for (let a = x - r - 1; a <= x + r + 1; a++) if (a >= 0 && a < W) recomputeSky(a);
+  const dir = x < P.x / TS ? '西' : '東', dist = Math.abs(Math.round(x - P.x / TS));
+  note(`流星墜落在${dir}方 ${dist} 格外`, 'gold'); SFX.boom(); shake = 5; S.lastMeteor = [x, y0];
+}
+
+/* ========== 更新 ========== */
+function update(dt) {
+  S.time += dt; S.played += dt;
+  const tx = Math.floor((P.x + P.w / 2) / TS), ty = Math.floor((P.y + P.h / 2) / TS);
+  if (!P.dead) updatePlayer(dt, tx, ty);
+  updateAim(dt);
+  // 怪物
+  spawnT -= dt; if (spawnT <= 0) { spawnT = 1; trySpawn(tx, ty); }
+  for (const e of mobs) updateMob(e, dt);
+  mobs = mobs.filter(e => !e.dead && (e.d.boss || Math.abs(e.x - P.x) < 110 * TS && Math.abs(e.y - P.y) < 80 * TS));
+  // 掉落物
+  for (const d of drops) { d.t += dt; d.delay -= dt; const dx = P.x + P.w / 2 - d.x, dy = P.y + P.h / 2 - d.y, dist = Math.hypot(dx, dy);
+    if (d.delay <= 0 && dist < 50 && !P.dead) { if (fits(P.inv, d.id, 1)) { d.vx = dx / dist * 240; d.vy = dy / dist * 240; d.x += d.vx * dt; d.y += d.vy * dt; if (dist < 12) { const left = addTo(P.inv, d.id, d.n); if (left < d.n) { floatText(P.x + 6, P.y - 10, `+${d.n - left} ${ITEMS[d.id]?.name || d.id}`, '#c8f135'); SFX.pick(); hudDirty = true; } d.n = left; if (!left) d.gone = true; } continue; } }
+    d.vy += 700 * dt; moveEnt(d, dt); d.vx *= d.ground ? .8 : .99; if (d.t > 300) d.gone = true; }
+  drops = drops.filter(d => !d.gone); if (drops.length > 300) drops.splice(0, drops.length - 300);
+  // 飛行物
+  for (const s of shots) { s.t -= dt; s.x += s.vx * dt; s.y += s.vy * dt; if (s.grav) s.vy += 300 * dt;
+    if (s.t <= 0 || solidAt(Math.floor(s.x / TS), Math.floor(s.y / TS))) { s.dead = true; continue; }
+    if (s.mine) { for (const e of mobs) if (!e.dead && s.x > e.x && s.x < e.x + e.w && s.y > e.y && s.y < e.y + e.h) { damageMob(e, s.dmg, Math.sign(s.vx)); s.dead = true; break; } }
+    else if (!P.dead && s.x > P.x && s.x < P.x + P.w && s.y > P.y && s.y < P.y + P.h) { hurtPlayer(s.dmg, s.x); s.dead = true; } }
+  shots = shots.filter(s => !s.dead);
+  for (const p of parts) { p.t -= dt; p.vy += 420 * dt; p.x += p.vx * dt; p.y += p.vy * dt; } parts = parts.filter(p => p.t > 0);
+  for (const f of floats) { f.t -= dt; f.y -= 22 * dt; } floats = floats.filter(f => f.t > 0);
+  // 週期工作
+  sigT += dt; if (sigT >= .25) { sigT = 0; signalTick(); }
+  seenT -= dt; if (seenT <= 0) { seenT = .3; for (let y = ty - 11; y <= ty + 11; y++) for (let x = tx - 16; x <= tx + 16; x++) if (inB(x, y)) seen[ID(x, y)] = 1;
+    if (ty > S.deepest) S.deepest = ty;
+    if (S.islands && !S.seenSky && P.y / TS < 50 && S.islands.some(([cx, , rx]) => Math.abs(tx - cx) <= rx)) { S.seenSky = true; note('你踏上了浮空島', 'good'); }
+    // 石室與空島的首領
+    const L = S.lair; if (L && !activeBoss && S.era >= 3 && Math.abs(tx - L.x) < 22 && Math.abs(ty - L.y) < 9 && S.time > L.cool) { L.cool = S.time + DAY; summon('warden', L.x * TS, (L.y - 4) * TS); }
+    const I = S.lordIsle; if (I && !activeBoss && Math.abs(tx - I.x) < 24 && Math.abs(ty - I.y) < 14 && S.time > I.cool) { I.cool = S.time + DAY; summon('skylord', I.x * TS, (I.y - 8) * TS); }
+    if (S.growers.length) { for (let i = S.growers.length - 1; i >= 0; i--) { const [k, at] = S.growers[i]; if (S.time >= at && tile[k] === T.sapling) { S.growers.splice(i, 1); tile[k] = T.air; growTree(k % W, Math.floor(k / W), Math.random); recomputeSky(k % W); } else if (S.time >= at && tile[k] === T.crop) meta.set(k, { ripe:1 }); } }
+  }
+  if (S.era >= 2) { S.meteorT -= dt; if (S.meteorT <= 0) { S.meteorT = DAY * (hasPerk('observe') ? 1 : 2.5) * (.6 + Math.random() * .8); if (dayLight() < .4 || hasPerk('observe')) meteor(); } }
+  saveT += dt; if (saveT >= 45) { saveT = 0; saveGame(true); }
+  hudT -= dt; if (hudT <= 0 || hudDirty) { hudT = .25; updateHud(); hudDirty = false; }
+}
+function summon(type, x, y) { const e = spawnMob(type, x, y); activeBoss = e; note(`${e.d.name}現身了`, 'bad'); SFX.boom(); shake = 10; return e; }
+
+function updatePlayer(dt, tx, ty) {
+  P.iframe = Math.max(0, P.iframe - dt);
+  const onLadder = [ty, Math.floor((P.y + P.h - 2) / TS)].some(y => get(tx, y) === T.ladder);
+  const left = keys.KeyA || keys.ArrowLeft, right = keys.KeyD || keys.ArrowRight;
+  const target = (right ? 1 : 0) - (left ? 1 : 0);
+  const speed = 135;
+  P.vx += (target * speed - P.vx) * Math.min(1, dt * (P.ground ? 14 : 6));
+  if (target) P.face = target; P.walk += Math.abs(P.vx) * dt;
+  if (onLadder) { P.vy = (keys.KeyW || keys.ArrowUp) ? -100 : (keys.KeyS || keys.ArrowDown) ? 100 : 0; if (keys.Space) P.vy = -100; }
+  else {
+    P.vy += 1250 * dt; if (P.vy > 760) P.vy = 760;
+    if (keys.Space && P.ground) { P.vy = -395; P.ground = false; P.jumped = true; }
+    const hasGlider = hasPerk('port') || count(P.inv, 'glider') > 0;
+    if (hasGlider && keys.Space && !P.ground) { if (jumpFuel > 0 && !P.jumpedThisPress) { P.vy = Math.max(P.vy - 2100 * dt, -210); jumpFuel -= dt; if (Math.random() < .5) parts.push({ x:P.x + 6, y:P.y + P.h, vx:(Math.random() - .5) * 30, vy:60, t:.3, c:'#a8e6ff', s:1 }); } else if (P.vy > 70) P.vy = 70; }
+  }
+  if (P.ground) jumpFuel = 1.4;
+  P.landV = 0; moveEnt(P, dt, true);
+  if (P.landV > 620) hurtPlayer((P.landV - 620) * .22);
+  const here = [get(tx, ty), get(tx, Math.floor((P.y + P.h - 1) / TS))];
+  if (here.includes(T.lava)) { hurtPlayer(26); P.vy = Math.min(P.vy, 40); }
+  const regen = (hasPerk('clinic') ? 2 : 1) * (S.time - (P.lastHit || 0) > 0 ? 1.1 : 0);
+  if (P.hp < P.maxHp) { P.hp = Math.min(P.maxHp, P.hp + regen * dt); }
+}
+
+function heldItem() { const s = P.inv[slot]; return s ? ITEMS[s.id] : null; }
+function aimTile() { const wx = cam.x + mouse.x / Z, wy = cam.y + mouse.y / Z; return { wx, wy, x:Math.floor(wx / TS), y:Math.floor(wy / TS), dist:Math.hypot(wx - (P.x + P.w / 2), wy - (P.y + P.h / 2)) }; }
+const REACH = TS * 5.5;
+function updateAim(dt) {
+  atkCD -= dt; placeCD -= dt; swing = Math.max(0, swing - dt * 4);
+  if (P.dead || paused) { mine = null; return; }
+  const a = aimTile(), it = heldItem(), lq = mouse.lq, rq = mouse.rq;
+  mouse.lq = mouse.rq = false; // 按得很快時，按下與放開可能落在同一幀之間，這裡把那一下補回來
+  if (mouse.l || lq) {
+    const target = mobs.find(e => !e.dead && a.wx > e.x - 6 && a.wx < e.x + e.w + 6 && a.wy > e.y - 6 && a.wy < e.y + e.h + 6 && a.dist < REACH * 1.1);
+    if (it?.bow) { if (atkCD <= 0) fireBow(a); mine = null; }
+    else if (it?.sword || target) { if (atkCD <= 0) melee(a, it); mine = null; }
+    else digAt(a, it, dt);
+  } else mine = null;
+  if ((mouse.r || rq) && placeCD <= 0) { useAt(a, it); }
+}
+function digAt(a, it, dt) {
+  if (a.dist > REACH || !inB(a.x, a.y)) { mine = null; return; }
+  const t = get(a.x, a.y), D = TD[t], i = ID(a.x, a.y);
+  if (t === T.air) { // 沒有前景方塊就拆牆
+    if (wall[i]) { if (!mine || mine.i !== i) mine = { i, p:0, wall:true }; mine.p += dt * 2.2; swing = 1; if (mine.p >= 1) { spawnDrop((a.x + .5) * TS, (a.y + .5) * TS, WALLS[wall[i]].key, 1); wall[i] = 0; mine = null; SFX.brk(); } } else mine = null;
+    return;
+  }
+  if (!D.hard) { mine = null; return; }
+  const tier = it?.pick || 0;
+  if (D.tier > tier) { mine = null; tipOnce(`需要更好的鎬才能挖${D.name}`); return; }
+  if (!mine || mine.i !== i) mine = { i, p:0 };
+  const speed = (it?.speed || .7) * (hasPerk('mine') ? 1.15 : 1);
+  mine.p += dt * speed / D.hard; swing = 1;
+  mine.snd = (mine.snd || 0) - dt; if (mine.snd <= 0) { mine.snd = .18; SFX.dig(); burst((a.x + .5) * TS, (a.y + .5) * TS, D.tex ? sampleColor(D) : '#888', 1); }
+  if (mine.p >= 1) { breakTile(a.x, a.y); mine = null; hudDirty = true; }
+}
+let tipT = 0, tipMsg = '';
+function tipOnce(s) { if (tipMsg !== s || tipT <= 0) { tipMsg = s; $('tip').textContent = s; tipT = 2; } tipT = 2; }
+function melee(a, it) {
+  atkCD = it?.sword ? .34 : .45; swing = 1; P.face = a.wx > P.x + P.w / 2 ? 1 : -1;
+  const dmg = (it?.dmg || 4) * (.9 + Math.random() * .2), cx = P.x + P.w / 2, cy = P.y + P.h / 2, ang = Math.atan2(a.wy - cy, a.wx - cx), range = it?.sword ? 46 : 30;
+  for (const e of mobs) { if (e.dead) continue; const ex = clamp(cx, e.x, e.x + e.w), ey = clamp(cy, e.y, e.y + e.h), dx = ex - cx, dy = ey - cy, dist = Math.hypot(dx, dy); let da = Math.abs(Math.atan2(dy, dx) - ang); if (da > Math.PI) da = Math.PI * 2 - da; if (dist < range && (da < 1.15 || dist < 12)) damageMob(e, dmg, P.face); }
+}
+function fireBow(a) {
+  if (!count(P.inv, 'arrow')) { tipOnce('沒有箭了'); atkCD = .3; return; }
+  take(P.inv, 'arrow', 1); atkCD = .55; swing = 1; hudDirty = true; const cx = P.x + P.w / 2, cy = P.y + 8, ang = Math.atan2(a.wy - cy, a.wx - cx);
+  P.face = Math.cos(ang) > 0 ? 1 : -1; const bonus = 1 + S.era * .35;
+  shots.push({ x:cx, y:cy, vx:Math.cos(ang) * 470, vy:Math.sin(ang) * 470, t:1.6, dmg:ITEMS.bow.dmg * bonus, mine:true, grav:true, c:'#ded8c4' }); SFX.shot();
+}
+function useAt(a, it) {
+  const npc = S.npcs.find(n => a.wx > n.x && a.wx < n.x + 14 && a.wy > n.y && a.wy < n.y + 28);
+  if (npc && Math.hypot(n2(npc.x) - (P.x + 6), npc.y - P.y) < REACH * 1.2) { mouse.r = false; openNpc(npc); return; }
+  if (a.dist > REACH) return;
+  const t = get(a.x, a.y), i = inB(a.x, a.y) ? ID(a.x, a.y) : -1;
+  if (i < 0) return;
+  if (interact(a.x, a.y, t, i)) { mouse.r = false; placeCD = .2; return; }
+  if (it?.heal && it.tile === undefined || it?.heal && !keys.ShiftLeft && t !== T.air) { eat(it); return; }
+  if (it?.life) { take(P.inv, it.id, 1); P.maxHp += it.life; P.hp += it.life; note(`生命上限 +${it.life}`, 'good'); SFX.eat(); placeCD = .4; hudDirty = true; return; }
+  if (it?.heal && P.hp < P.maxHp && !(it.tile !== undefined && t === T.air && canPlace(a.x, a.y, it))) { eat(it); return; }
+  if (it?.tile !== undefined) place(a.x, a.y, it);
+  else if (it?.wall) placeWall(a.x, a.y, it);
+}
+const n2 = v => v + 7;
+function eat(it) { if (P.hp >= P.maxHp) { tipOnce('生命已滿'); placeCD = .3; return; } take(P.inv, it.id, 1); P.hp = Math.min(P.maxHp, P.hp + it.heal); floatText(P.x + 6, P.y - 8, '+' + it.heal, '#7cf0c4'); SFX.eat(); placeCD = .35; hudDirty = true; }
+function canPlace(x, y, it) {
+  if (!inB(x, y) || get(x, y) !== T.air) return false;
+  const D = TD[it.tile], below = get(x, y + 1);
+  if (D.floor && !TD[below].solid) return false;
+  if (D.key === 'sapling' && ![T.dirt, T.moss, T.frost, T.sand].includes(below)) return false;
+  if (D.key === 'crop') return false;
+  const has = DIRS.some(d => get(x + d[0], y + d[1]) !== T.air) || wall[ID(x, y)];
+  if (!has) return false;
+  if (D.solid && blockedBy(x, y)) return false;
+  return true;
+}
+function place(x, y, it) {
+  if (it.id === 'potato') return;
+  if (!canPlace(x, y, it)) return;
+  take(P.inv, it.id, 1); setTile(x, y, it.tile); placeCD = .13; SFX.place(); hudDirty = true;
+  const D = TD[it.tile], i = ID(x, y);
+  if (D.dir) meta.set(i, { dir:P.face > 0 ? 0 : 2, out:D.key === 'notgate', c:0 });
+  if (D.key === 'chest') meta.set(i, { inv:Array(27).fill(null) });
+  if (D.key === 'lever') meta.set(i, { on:false });
+  if (D.key === 'clock') meta.set(i, { p:4, c:0, on:false });
+  if (D.key === 'sapling') S.growers.push([i, S.time + DAY * (.3 + Math.random() * .4)]);
+  if (D.key === 'bed') { P.spawn = [x, y]; note('重生點設在這張床', 'good'); }
+  if (D.key === 'boundary') { S.stones[i] = { best:0 }; note('界碑立好了。右鍵可測量聚落', 'good'); }
+  if (D.key === 'altar') note('星門已架好。右鍵開啟', 'gold');
+}
+function placeWall(x, y, it) { if (!inB(x, y)) return; const i = ID(x, y); if (wall[i]) return; if (TD[tile[i]].solid && !TD[tile[i]].clear) return; take(P.inv, it.id, 1); wall[i] = it.wall; placeCD = .1; SFX.place(); hudDirty = true; }
+function interact(x, y, t, i) {
+  switch (t) {
+    case T.door: tile[i] = T.dooropen; recomputeSky(x); SFX.click(); return true;
+    case T.dooropen: if (!blockedBy(x, y)) { tile[i] = T.door; recomputeSky(x); SFX.click(); } return true;
+    case T.chest: openChest(i); return true;
+    case T.lever: { const m = mOf(i, { on:false }); m.on = !m.on; SFX.click(); return true; }
+    case T.board: openJournal('bounty'); return true;
+    case T.stele: openJournal('era'); return true;
+    case T.boundary: openSurvey(x, y, i); return true;
+    case T.bed: P.spawn = [x, y]; note('重生點設在這張床', 'good'); return true;
+    case T.clock: { const m = mOf(i, { p:4, c:0, on:false }); m.p = m.p >= 16 ? 1 : m.p * 2; note(`脈衝間隔 ${m.p * .25} 秒`); return true; }
+    case T.delay: { const m = mOf(i, { dir:0 }); m.n = (m.n || 2) >= 8 ? 1 : (m.n || 2) + 1; note(`延遲 ${m.n * .25} 秒`); return true; }
+    case T.altar: if (!activeBoss) { closePanel(); summon('starfall', x * TS, (y - 12) * TS); } return true;
+    case T.dirt: case T.moss: case T.frost: { // 種地薯
+      const it = heldItem(); if (it?.id === 'potato' && get(x, y - 1) === T.air) { take(P.inv, 'potato', 1); setTile(x, y - 1, T.crop); S.growers.push([ID(x, y - 1), S.time + DAY * .35]); SFX.place(); hudDirty = true; return true; } return false; }
+  }
+  return false;
+}
+
+function dayLight() { const t = (S.time % DAY) / DAY; return clamp(Math.sin((t - .02) * Math.PI * 2) * 2.1 + .5, .1, 1); }
+function trySpawn(tx, ty) {
+  const cap = 11; if (mobs.filter(m => !m.d.boss).length >= cap) return;
+  for (let k = 0; k < 8; k++) {
+    const sx = tx + (Math.random() < .5 ? -1 : 1) * (24 + Math.floor(Math.random() * 16)), sy = clamp(ty + Math.floor((Math.random() - .5) * 34), 2, H - 6);
+    if (!inB(sx, sy) || get(sx, sy) !== T.air || wall[ID(sx, sy)]) continue;
+    let y = sy, ok = false; for (let i = 0; i < 12 && y < H - 2; i++, y++) if (TD[get(sx, y + 1)].solid) { ok = true; break; }
+    if (Object.keys(S.stones).some(k => { const n = +k, ax = n % W, ay = Math.floor(n / W); return Math.abs(sx - ax) < 24 && Math.abs(y - ay) < 16; })) continue;
+    if (Math.abs(sx - S.camp.x) < 22 && Math.abs(y - S.camp.y) < 14) continue;
+    const below = y > surf[sx] + 4, sky = S.islands && y < 60, night = dayLight() < .4;
+    let type = null, r = Math.random();
+    if (sky) type = 'wraith';
+    else if (y >= SEAL_Y + 3) type = r < .45 ? 'golem' : r < .8 ? 'flame' : 'archer';
+    else if (below) { const d = y - SURF; if (d > 75) type = r < .35 ? 'archer' : r < .6 ? 'bomber' : r < .85 ? 'bat' : 'golem'; else if (d > 35) type = r < .3 ? 'archer' : r < .55 ? 'bat' : r < .75 ? 'bomber' : 'walker'; else type = r < .55 ? 'walker' : r < .85 ? 'bat' : 'slug'; }
+    else if (night) type = r < .65 ? 'walker' : r < .85 ? 'bomber' : 'slug';
+    else if (r < .28) type = 'slug';
+    if (!type) return;
+    if (!ok && !['bat','flame','wraith'].includes(type)) continue;
+    const d = MOBS[type], e = spawnMob(type, sx * TS, (y + 1) * TS - d.h - 1, Math.random() < .05);
+    if (boxHits(e.x, e.y, e.w, e.h)) e.dead = true;
+    return;
+  }
+}
+function updateMob(e, dt) {
+  const d = e.d; e.t += dt; e.cd -= dt; e.flash = Math.max(0, e.flash - dt);
+  const dx = P.x + P.w / 2 - (e.x + e.w / 2), dy = P.y + P.h / 2 - (e.y + e.h / 2), dist = Math.hypot(dx, dy), aware = dist < 240 && !P.dead, mul = e.dmgMul || 1;
+  if (d.boss) return updateBoss(e, dt, dx, dy, dist);
+  e.hitWall = false;
+  switch (d.ai) {
+    case 'hop': e.vy += 1000 * dt; if (e.ground) { e.vx *= .8; if (e.cd <= 0) { e.cd = .9 + Math.random() * .9; e.vy = -300; e.vx = (aware ? Math.sign(dx) : e.dir) * d.speed * 1.5; if (Math.random() < .2) e.dir = -e.dir; } } moveEnt(e, dt); break;
+    case 'walk': case 'bomb': case 'shoot': {
+      e.vy += 1000 * dt; let want = aware ? Math.sign(dx) : (e.t % 6 < 3 ? e.dir : 0);
+      if (d.ai === 'shoot' && aware && dist < 170) { want = dist < 70 ? -Math.sign(dx) : 0; if (e.cd <= 0) { e.cd = 1.8; const v = 260, gy = -Math.abs(dx) * .22; const a = Math.atan2(dy + gy, dx); shots.push({ x:e.x + e.w / 2, y:e.y + 8, vx:Math.cos(a) * v, vy:Math.sin(a) * v, t:2.2, dmg:d.dmg * mul, grav:true, c:'#ded8c4' }); SFX.shot(); } }
+      if (Math.abs(e.vx) <= d.speed * 1.2 || e.ground) e.vx += (want * d.speed - e.vx) * Math.min(1, dt * 7);
+      moveEnt(e, dt, true);
+      if (e.hitWall && e.ground) e.vy = -330;
+      if (want) e.face = want;
+      if (d.ai === 'bomb' && aware && dist < 34) { e.fuse = (e.fuse || 0) + dt; if (e.fuse > .75) { e.dead = true; SFX.boom(); shake = 7; burst(e.x + e.w / 2, e.y + e.h / 2, '#ffb648', 26); if (dist < 58) hurtPlayer(d.dmg * mul, e.x); } } else e.fuse = 0;
+      break; }
+    case 'fly': case 'flyshoot': {
+      const a = aware ? Math.atan2(dy - 14 * Math.sin(e.t * 3), dx) : Math.sin(e.t * .7) * 3; e.vx += (Math.cos(a) * d.speed - e.vx) * dt * 3; e.vy += (Math.sin(a) * d.speed + Math.sin(e.t * 6) * 40 - e.vy) * dt * 3; moveEnt(e, dt);
+      if (d.ai === 'flyshoot' && aware && dist < 210 && e.cd <= 0) { e.cd = 2; const v = 200; shots.push({ x:e.x + e.w / 2, y:e.y + e.h / 2, vx:dx / dist * v, vy:dy / dist * v, t:2.2, dmg:d.dmg * mul, c:d.c }); SFX.shot(); }
+      break; }
+  }
+  if (!P.dead && d.ai !== 'bomb' && overlap(e, P)) hurtPlayer(d.dmg * mul, e.x);
+}
+function updateBoss(e, dt, dx, dy, dist) {
+  const d = e.d; e.vx *= 1 - dt * .5; e.vy *= 1 - dt * .5;
+  if (e.charging > 0) { e.charging -= dt; }
+  else { const a = Math.atan2(dy - 50, dx); e.vx += Math.cos(a) * d.speed * dt * 2.4; e.vy += Math.sin(a) * d.speed * dt * 2.4; const sp = Math.hypot(e.vx, e.vy); if (sp > d.speed) { e.vx *= d.speed / sp; e.vy *= d.speed / sp; } }
+  e.x += e.vx * dt; e.y += e.vy * dt; e.y = clamp(e.y, 4, H * TS - 80);
+  e.at = (e.at || 3) - dt;
+  if (e.at <= 0) { const phase = e.hp < e.maxHp * .5; e.mode = (e.mode || 0) + 1; e.at = phase ? 2.2 : 3;
+    if (e.mode % 3 === 1) { const a = Math.atan2(dy, dx); e.vx = Math.cos(a) * d.speed * 3.4; e.vy = Math.sin(a) * d.speed * 3.4; e.charging = .7; SFX.shot(); }
+    else if (e.mode % 3 === 2) { const n = phase ? 16 : 10; for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2 + e.t; shots.push({ x:e.x + e.w / 2, y:e.y + e.h / 2, vx:Math.cos(a) * 170, vy:Math.sin(a) * 170, t:3, dmg:d.proj, c:d.c, thru:1 }); } SFX.boom(); }
+    else if (mobs.length < 8) { for (let i = 0; i < 2; i++) { const m = spawnMob(d.minion, e.x + (i ? e.w : -10), e.y + e.h, false); if (boxHits(m.x, m.y, m.w, m.h)) m.dead = true; } } }
+  if (!P.dead && overlap(e, P)) hurtPlayer(d.dmg, e.x);
+  if (dist > 90 * TS) { e.dead = true; activeBoss = null; note(`${d.name}離開了`, 'dim'); }
+}
+
+/* ========== 繪製 ========== */
+const canvas = $('view'), ctx = canvas.getContext('2d');
+const lightC = document.createElement('canvas'), lightG = lightC.getContext('2d');
+let LW = 0, LH = 0, LX = 0, LY = 0, LD = null, LI = null;
+function resize() { canvas.width = innerWidth; canvas.height = innerHeight; Z = Math.max(2, Math.round(innerHeight / (16 * 24))); }
+addEventListener('resize', resize); resize();
+function computeLight() {
+  const vw = Math.ceil(canvas.width / Z / TS) + 2, vh = Math.ceil(canvas.height / Z / TS) + 2, m = 12;
+  LX = Math.floor(cam.x / TS) - m; LY = Math.floor(cam.y / TS) - m; const w = vw + m * 2, h = vh + m * 2;
+  if (w !== LW || h !== LH) { LW = w; LH = h; LD = new Float32Array(w * h); lightC.width = vw; lightC.height = vh; LI = lightG.createImageData(vw, vh); }
+  const dl = dayLight();
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const wx = LX + x, wy = LY + y; let l = 0;
+    if (inB(wx, wy)) { const t = tile[ID(wx, wy)], D = TD[t]; if (wy < skyH[wx] && !opaque(t)) l = dl; if (D.light && l < D.light) l = D.light;
+      if ((t === T.lamp && power.has(ID(wx, wy)))) l = 1; else if (t === T.wire && power.has(ID(wx, wy)) && l < .25) l = .25; } else if (wy < 0) l = dl;
+    LD[y * w + x] = l; }
+  const px = Math.floor((P.x + 6) / TS) - LX, py = Math.floor((P.y + 14) / TS) - LY; if (px >= 0 && py >= 0 && px < w && py < h) { const i = py * w + px; LD[i] = Math.max(LD[i], .58); }
+  const fall = (x, y) => { const wx = LX + x, wy = LY + y; return inB(wx, wy) && opaque(tile[ID(wx, wy)]) ? .15 : .05; };
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = y * w + x, f = fall(x, y); let v = LD[i]; if (x > 0 && LD[i - 1] - f > v) v = LD[i - 1] - f; if (y > 0 && LD[i - w] - f > v) v = LD[i - w] - f; LD[i] = v; }
+  for (let y = h - 1; y >= 0; y--) for (let x = w - 1; x >= 0; x--) { const i = y * w + x, f = fall(x, y); let v = LD[i]; if (x < w - 1 && LD[i + 1] - f > v) v = LD[i + 1] - f; if (y < h - 1 && LD[i + w] - f > v) v = LD[i + w] - f; LD[i] = v; }
+  const d = LI.data; for (let y = 0; y < vh; y++) for (let x = 0; x < vw; x++) { const v = LD[(y + m) * w + x + m], k = (y * vw + x) * 4, a = Math.round((1 - clamp(v, .03, 1)) * 255); d[k] = 6; d[k + 1] = 8; d[k + 2] = 16; d[k + 3] = a; }
+  lightG.putImageData(LI, 0, 0);
+}
+const skyIslands = (() => { const r = mulberry(4242), a = []; for (let i = 0; i < 9; i++) a.push({ x:r() * 3000, y:18 + r() * 110, w:60 + r() * 120, d:.1 + r() * .18, s:r() * 100 }); return a; })();
+const stars = (() => { const r = mulberry(99), a = []; for (let i = 0; i < 130; i++) a.push([r(), r() * .8, r() < .1 ? 2 : 1, r() * 6]); return a; })();
+function drawSky(vw, vh) {
+  const dl = dayLight(), t = (S.time % DAY) / DAY, dusk = Math.max(0, 1 - Math.abs(dl - .45) * 3);
+  const g = ctx.createLinearGradient(0, 0, 0, vh);
+  const mix = (a, b, k) => a.map((v, i) => Math.round(v + (b[i] - v) * k));
+  const top = mix([11,12,32], [52,120,168], dl), bot = mix([28,20,52], [172,214,206], dl), botD = mix(bot, [224,122,92], dusk * .7);
+  g.addColorStop(0, `rgb(${top})`); g.addColorStop(1, `rgb(${botD})`);
+  ctx.fillStyle = g; ctx.fillRect(0, 0, vw, vh);
+  if (dl < .6) { const a = (1 - dl / .6); ctx.fillStyle = '#fff'; for (const s of stars) { ctx.globalAlpha = a * (.4 + .6 * Math.abs(Math.sin(S.played * .8 + s[3]))); ctx.fillRect(s[0] * vw, s[1] * vh, s[2], s[2]); }
+    // 極光
+    ctx.globalAlpha = a * .22; for (let k = 0; k < 3; k++) { ctx.fillStyle = k === 1 ? '#c8f135' : '#58f0c8'; ctx.beginPath(); ctx.moveTo(0, vh * .2); for (let x = 0; x <= vw; x += 24) ctx.lineTo(x, vh * (.18 + k * .05) + Math.sin(x / 70 + S.played * .25 + k) * 14); for (let x = vw; x >= 0; x -= 24) ctx.lineTo(x, vh * (.3 + k * .05) + Math.sin(x / 60 + S.played * .2 + k) * 10); ctx.fill(); }
+    ctx.globalAlpha = 1; }
+  // 天體
+  const ang = t * Math.PI * 2 - Math.PI / 2 - Math.PI / 2 + Math.PI / 2, sx = vw / 2 + Math.cos(ang - Math.PI / 2) * vw * .42, sy = vh * .6 + Math.sin(ang - Math.PI / 2) * vh * .55;
+  ctx.fillStyle = dl > .3 ? '#fff4c2' : '#dfe6ff'; ctx.fillRect(sx - 12, sy - 12, 24, 24);
+  // 遠景浮島：還沒到天穹時代時，就看得見目標
+  const tone = mix([14,16,36], [96,138,152], dl);
+  ctx.fillStyle = `rgb(${tone})`;
+  for (const i of skyIslands) { const x = ((i.x - cam.x * i.d) % (vw + 300) + vw + 300) % (vw + 300) - 150, y = i.y - cam.y * i.d * .25 + 40 + Math.sin(S.played * .15 + i.s) * 3;
+    ctx.fillRect(x, y, i.w, 5); ctx.fillRect(x + i.w * .1, y + 5, i.w * .8, 5); ctx.fillRect(x + i.w * .25, y + 10, i.w * .5, 5); ctx.fillRect(x + i.w * .4, y + 15, i.w * .2, 4); }
+}
+function draw() {
+  const vw = canvas.width / Z, vh = canvas.height / Z;
+  cam.x = clamp(P.x + P.w / 2 - vw / 2, 0, W * TS - vw); cam.y = clamp(P.y + P.h / 2 - vh / 2, 0, H * TS - vh);
+  const sx = shake > 0 ? (Math.random() - .5) * shake : 0, sy = shake > 0 ? (Math.random() - .5) * shake : 0; shake = Math.max(0, shake - .5);
+  ctx.setTransform(Z, 0, 0, Z, 0, 0); ctx.imageSmoothingEnabled = false; drawSky(vw, vh);
+  ctx.setTransform(Z, 0, 0, Z, Math.round((-cam.x + sx) * Z), Math.round((-cam.y + sy) * Z));
+  const x0 = Math.floor(cam.x / TS) - 1, x1 = Math.ceil((cam.x + vw) / TS) + 1, y0 = Math.max(0, Math.floor(cam.y / TS) - 1), y1 = Math.min(H, Math.ceil((cam.y + vh) / TS) + 1);
+  for (let y = y0; y < y1; y++) for (let x = Math.max(0, x0); x < Math.min(W, x1); x++) { const i = ID(x, y), t = tile[i], px = x * TS, py = y * TS;
+    if (wall[i]) ctx.drawImage(wallTex[wall[i]], px, py);
+    else if (y > surf[x] && (y >= 60 || !S.islands)) ctx.drawImage(y >= SEAL_Y ? bgDeep : y > surf[x] + 8 ? bgStone : bgDirt, px, py);
+    if (t === T.air) continue;
+    const D = TD[t]; if (D.tex) ctx.drawImage(D.tex[(x * 7 + y * 13) % VAR], px, py);
+    if (t === T.crop && meta.get(i)?.ripe) { ctx.fillStyle = '#f5c542'; ctx.fillRect(px + 3, py + 9, 3, 2); ctx.fillRect(px + 7, py + 6, 3, 2); ctx.fillRect(px + 11, py + 9, 3, 2); }
+    if (D.logic) drawLogic(t, i, x, y, px, py); }
+  for (const n of S.npcs) drawNpc(n);
+  for (const d of drops) { const im = dropImg(d.id); if (im) ctx.drawImage(im, d.x - 1, d.y - 1 + Math.sin(d.t * 4) * 1, 10, 10); }
+  for (const e of mobs) drawMob(e);
+  if (!P.dead) drawPlayer();
+  for (const s of shots) { ctx.fillStyle = s.c; ctx.fillRect(s.x - 2, s.y - 1, 4, 2); }
+  for (const p of parts) { ctx.fillStyle = p.c; ctx.fillRect(p.x, p.y, p.s, p.s); }
+  if (mine && !mine.wall) { const x = mine.i % W, y = Math.floor(mine.i / W); ctx.fillStyle = `rgba(0,0,0,${mine.p * .55})`; ctx.fillRect(x * TS, y * TS, TS, TS); ctx.strokeStyle = '#fff'; ctx.lineWidth = .5; const n = Math.floor(mine.p * 5); for (let k = 0; k < n; k++) { const r = mulberry(mine.i + k); ctx.beginPath(); ctx.moveTo(x * TS + 8, y * TS + 8); ctx.lineTo(x * TS + r() * 16, y * TS + r() * 16); ctx.stroke(); } }
+  // 光照
+  lightT--; if (lightT <= 0) { lightT = 4; computeLight(); }
+  ctx.imageSmoothingEnabled = true; ctx.drawImage(lightC, Math.floor(cam.x / TS) * TS, Math.floor(cam.y / TS) * TS, lightC.width * TS, lightC.height * TS); ctx.imageSmoothingEnabled = false;
+  // 游標
+  if (!paused && !P.dead) { const a = aimTile(); if (inB(a.x, a.y)) { ctx.strokeStyle = a.dist <= REACH ? '#c8f135cc' : '#ffffff44'; ctx.lineWidth = 1; ctx.strokeRect(a.x * TS + .5, a.y * TS + .5, TS - 1, TS - 1); } }
+  ctx.font = '7px "DM Mono",monospace'; ctx.textAlign = 'center';
+  for (const f of floats) { ctx.globalAlpha = clamp(f.t * 2, 0, 1); ctx.fillStyle = '#000'; ctx.fillText(f.s, f.x + .5, f.y + .5); ctx.fillStyle = f.c; ctx.fillText(f.s, f.x, f.y); } ctx.globalAlpha = 1;
+  for (const n of S.npcs) { ctx.fillStyle = '#000'; ctx.fillText(n.name, n.x + 7.5, n.y - 2.5); ctx.fillStyle = '#c8f135'; ctx.fillText(n.name, n.x + 7, n.y - 3); }
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  if (P.dead) { ctx.fillStyle = 'rgba(70,0,0,.35)'; ctx.fillRect(0, 0, canvas.width, canvas.height); }
+}
+const imgCache = {};
+function dropImg(id) { if (imgCache[id]) return imgCache[id].complete ? imgCache[id] : null; const im = new Image(); im.src = icon(id); imgCache[id] = im; return null; }
+function drawLogic(t, i, x, y, px, py) {
+  const on = power.has(i);
+  if (t === T.wire) { ctx.fillStyle = on ? '#c8f135' : '#3f5a3a'; ctx.fillRect(px + 6, py + 6, 4, 4); for (const [dx, dy, a, b, w, h] of [[1,0,10,6,6,4],[-1,0,0,6,6,4],[0,1,6,10,4,6],[0,-1,6,0,4,6]]) { const n = get(x + dx, y + dy); if (n !== T.air && TD[n].logic) ctx.fillRect(px + a, py + b, w, h); } }
+  else if (t === T.lever) { const m = meta.get(i); if (m?.on) { ctx.fillStyle = '#c8f135'; ctx.fillRect(px + 7, py + 3, 2, 2); } }
+  else if (t === T.lamp && on) { ctx.fillStyle = '#fff1a8'; ctx.fillRect(px + 3, py + 3, 10, 10); }
+  else if (t === T.plate) { const m = meta.get(i); if (m?.on) { ctx.fillStyle = '#c8f135'; ctx.fillRect(px + 1, py + 14, 14, 1); } }
+  else if (t === T.clock || t === T.notgate || t === T.delay || t === T.drill) { const m = meta.get(i) || {}; const live = t === T.clock ? m.on : t === T.drill ? on : m.out; if (live) { ctx.fillStyle = '#c8f135'; ctx.fillRect(px + 1, py + 1, 2, 2); }
+    if (t !== T.clock) { const d = DIRS[m.dir || 0]; ctx.fillStyle = '#fff'; ctx.fillRect(px + 7 + d[0] * 5, py + 7 + d[1] * 5, 2, 2); } }
+  else if (t === T.seller && on) { ctx.fillStyle = '#c8f135'; ctx.fillRect(px + 1, py + 1, 2, 2); }
+}
+function drawPlayer() {
+  if (P.iframe > 0 && Math.floor(P.iframe * 14) % 2) return;
+  const x = Math.round(P.x), y = Math.round(P.y), f = P.face, w = Math.sin(P.walk * .12) * (Math.abs(P.vx) > 8 ? 3 : 0);
+  const R = (c, a, b, wd, h) => { ctx.fillStyle = c; ctx.fillRect(f > 0 ? x + a : x + P.w - a - wd, y + b, wd, h); };
+  R('#22333a', 3, 21 + 0, 3, 7 - Math.max(0, w)); R('#22333a', 7, 21, 3, 7 - Math.max(0, -w));
+  R('#2c7a73', 1, 9, 10, 13); R('#1f5d58', 1, 19, 10, 3); R('#c8f135', 2, 8, 9, 2);
+  R('#e0b08c', 3, 2, 7, 6); R('#2c7a73', 2, 0, 9, 3); R('#2c7a73', 2, 0, 2, 8); R('#101418', 8, 4, 1, 2);
+  const it = heldItem(); if (it) { const im = dropImg(it.id); if (im) { const a = swing > 0 ? (1 - swing) * 2 - 1 : -.25; ctx.save(); ctx.translate(x + P.w / 2 + f * 5, y + 14); ctx.rotate(f * (a + .25)); ctx.scale(f, 1); ctx.drawImage(im, 0, -11, 12, 12); ctx.restore(); } }
+}
+function drawNpc(n) {
+  const x = n.x, y = n.y; const c = n.type === 'scrap' ? ['#8a6d3a','#5e4a22'] : ['#2a4d85','#f5c542'];
+  ctx.fillStyle = c[0]; ctx.fillRect(x + 2, y + 9, 10, 15); ctx.fillStyle = c[1]; ctx.fillRect(x + 2, y + 18, 10, 2); ctx.fillStyle = '#2b2b30'; ctx.fillRect(x + 3, y + 24, 3, 4); ctx.fillRect(x + 8, y + 24, 3, 4);
+  ctx.fillStyle = '#d7a57e'; ctx.fillRect(x + 3, y + 2, 8, 7); ctx.fillStyle = c[1]; ctx.fillRect(x + 2, y, 10, 3); ctx.fillStyle = '#111'; ctx.fillRect(x + 5, y + 5, 1, 1); ctx.fillRect(x + 8, y + 5, 1, 1);
+}
+function drawMob(e) {
+  const x = Math.round(e.x), y = Math.round(e.y), d = e.d, c = e.flash > 0 ? '#ffffff' : d.c, R = (col, a, b, w, h) => { ctx.fillStyle = e.flash > 0 ? '#fff' : col; ctx.fillRect(x + a, y + b, w, h); }, f = Math.floor(e.t * 6) % 2, dk = d.c.length === 7 ? shade(d.c, .7) : c;
+  if (e.elite) { ctx.fillStyle = '#f5c54266'; ctx.fillRect(x - 2, y - 2, e.w + 4, e.h + 4); }
+  switch (e.type) {
+    case 'slug': R(c, 1, 2, 12, 8); R(dk, 0, 6, 14, 4); R('#111', 3, 4, 2, 2); R('#111', 9, 4, 2, 2); break;
+    case 'walker': case 'archer': { const lim = e.type === 'archer' ? '#ded8c4' : '#4f6a4a'; R(lim, 2, 20, 3, 6 - f * 2); R(lim, 7, 20, 3, 4 + f * 2); R(e.type === 'archer' ? '#b5ae98' : '#3d5560', 1, 8, 10, 12); R(c, 2, 0, 8, 8); R('#c0262b', 3, 3, 2, 2); R('#c0262b', 7, 3, 2, 2); if (e.type === 'archer') R('#7d5e3a', 10, 6, 2, 14); break; }
+    case 'bat': R(c, 4, 2, 4, 5); R(dk, f ? 0 : 1, f ? 0 : 3, 4, 2); R(dk, f ? 8 : 7, f ? 0 : 3, 4, 2); R('#ff6b5e', 5, 3, 1, 1); break;
+    case 'bomber': R(c, 1, 2, 12, 7); R(dk, 0, 9, 14, 3); R('#ffb648', 4, 3, 6, 3); if (e.fuse && Math.floor(e.t * 16) % 2) R('#fff', 1, 2, 12, 7); break;
+    case 'golem': R(dk, 2, 22, 6, 8 - f); R(dk, 12, 22, 6, 7 + f); R(c, 0, 8, 20, 15); R(dk, 5, 1, 10, 8); R('#ffb648', 7, 4, 2, 2); R('#ffb648', 11, 4, 2, 2); break;
+    case 'flame': R(c, 2, 4, 10, 10); R('#ffc44d', 4, 2 + f, 6, 8); R('#fff1a8', 6, 6, 2, 3); break;
+    case 'wraith': R(c, 4, 3, 10, 8); R(dk, f ? 0 : 1, f ? 2 : 6, 5, 3); R(dk, f ? 13 : 12, f ? 2 : 6, 5, 3); R('#101418', 7, 5, 4, 2); R(dk, 7, 11, 4, 4); break;
+    default: { // 首領
+      const s = Math.sin(e.t * 3) * 2; R(dk, 0, 8 + s, e.w, e.h - 14); R(c, 4, 0 + s, e.w - 8, e.h - 12); R('#101018', e.w * .25, e.h * .2 + s, e.w * .5, e.h * .22); R('#fff', e.w * .3, e.h * .26 + s, 4, 4); R('#fff', e.w * .62, e.h * .26 + s, 4, 4); for (let i = 0; i < 4; i++) R(dk, 4 + i * (e.w - 10) / 3, e.h - 8 + Math.sin(e.t * 5 + i) * 3, 5, 8); }
+  }
+  if (e.hp < e.maxHp && !d.boss) { ctx.fillStyle = '#000a'; ctx.fillRect(x, y - 4, e.w, 2); ctx.fillStyle = '#ff6b5e'; ctx.fillRect(x, y - 4, e.w * clamp(e.hp / e.maxHp, 0, 1), 2); }
+}
+
+/* ========== HUD ========== */
+function slotHtml(s, idx, cls = '') { return `<div class="slot ${cls}" data-i="${idx}" ${s ? `data-item="${s.id}"` : ''}>${s ? `<img src="${icon(s.id)}" alt="">${s.n > 1 ? `<span>${s.n}</span>` : ''}` : ''}</div>`; }
+function renderHotbar() { let h = ''; for (let i = 0; i < 9; i++) h += slotHtml(P.inv[i], i, i === slot ? 'sel' : ''); $('hotbar').innerHTML = h; }
+function updateHud() {
+  if (!P) return;
+  $('hpBar').style.width = (P.hp / P.maxHp * 100) + '%'; $('hpText').textContent = `${Math.ceil(P.hp)} / ${P.maxHp}`; $('money').textContent = fmt(S.money) + ' 元';
+  const depth = Math.floor((P.y + P.h) / TS) - SURF; $('pos').textContent = `${depth > 0 ? '深度 ' + depth : depth < -20 ? '高度 ' + -depth : '地表'}`;
+  const E = ERAS[S.era], nx = ERAS[S.era + 1]; $('eraName').textContent = E.name;
+  $('cpFill').style.width = (nx ? clamp((S.cp - E.cp) / (nx.cp - E.cp), 0, 1) * 100 : 100) + '%'; $('cpText').textContent = nx ? `文明 ${fmt(S.cp)} / ${fmt(nx.cp)}` : `文明 ${fmt(S.cp)}`;
+  const d = Math.floor(S.time / DAY) + 1, phase = dayLight() < .35 ? '夜' : '日'; $('clock').textContent = `第 ${d} 天　${phase}`;
+  renderHotbar();
+  const b = activeBoss && !activeBoss.dead ? activeBoss : null; $('boss').hidden = !b; if (b) { $('bossName').textContent = b.d.name; $('bossFill').style.width = (b.hp / b.maxHp * 100) + '%'; }
+  if (tipT > 0) { tipT -= .25; if (tipT <= 0) $('tip').textContent = ''; }
+}
+function note(s, cls = '') { const el = document.createElement('div'); el.textContent = s; if (cls) el.className = cls; const f = $('feed'); f.appendChild(el); while (f.children.length > 6) f.firstChild.remove(); setTimeout(() => { el.style.opacity = 0; setTimeout(() => el.remove(), 700); }, 6000); }
+
+/* ========== 面板 ========== */
+function openPanel(title, html, kind = 'info') { panelKind = kind; paused = true; mouse.l = mouse.r = false; $('panelTitle').textContent = title; $('panelBody').innerHTML = html; $('panel').hidden = false; $('itemTip').hidden = true; }
+function closePanel() { if (heldCursor) { const left = addTo(P.inv, heldCursor.id, heldCursor.n); if (left) spawnDrop(P.x + 6, P.y, heldCursor.id, left, true); heldCursor = null; renderCursor(); } panelKind = null; chestOpen = null; paused = false; $('panel').hidden = true; $('itemTip').hidden = true; hudDirty = true; }
+$('panelClose').onclick = closePanel;
+function renderCursor() { const c = $('cursorItem'); if (!heldCursor) { c.hidden = true; return; } c.hidden = false; c.innerHTML = `<img src="${icon(heldCursor.id)}" alt="">${heldCursor.n > 1 ? `<span>${heldCursor.n}</span>` : ''}`; }
+function itemDesc(id) { const it = ITEMS[id]; if (!it) return id; const x = []; if (it.pick) x.push(`鎬 ${it.pick} 階`); if (it.dmg) x.push(`傷害 ${it.dmg}`); if (it.def) x.push(`持有即減傷 ${Math.round(it.def * 100)}%`); if (it.heal) x.push(`恢復 ${it.heal}`); if (it.life) x.push(`生命上限 +${it.life}`); if (id === 'glider') x.push('持有後按住空白滑翔'); const p = S ? priceOf(id) : 0; if (p) x.push(`回收 ${p} 元`); return it.name + (x.length ? `　${x.join('、')}` : ''); }
+
+function nearStation(key) { const tx = Math.floor((P.x + 6) / TS), ty = Math.floor((P.y + 14) / TS); for (let y = ty - 4; y <= ty + 4; y++) for (let x = tx - 5; x <= tx + 5; x++) if (TD[get(x, y)].key === key) return true; return false; }
+function invGrids() { return `<div class="label">背包</div><div class="grid" data-inv="p">${P.inv.slice(9).map((s, i) => slotHtml(s, i + 9)).join('')}</div><div class="label">快捷列</div><div class="grid" data-inv="p">${P.inv.slice(0, 9).map((s, i) => slotHtml(s, i, i === slot ? 'sel' : '')).join('')}</div>`; }
+function openBag() { paused = true; panelKind = 'bag'; const stn = { bench:'工作台', furnace:'熔爐', anvil:'鐵砧' };
+  const avail = RECIPES.filter(r => r.era <= S.era);
+  const ok = r => Object.entries(r.need).every(([k, v]) => count(P.inv, k) >= v) && (!r.st || nearStation(r.st));
+  avail.sort((a, b) => (ok(b) ? 1 : 0) - (ok(a) ? 1 : 0));
+  const list = avail.map(r => { const idx = RECIPES.indexOf(r), on = ok(r), need = Object.entries(r.need).map(([k, v]) => `<span class="${count(P.inv, k) >= v ? '' : 'bad'}">${ITEMS[k].name}${v}</span>`).join(' ');
+    return `<div class="line ${on ? '' : 'off'}" data-item="${r.out}"><img src="${icon(r.out)}" alt=""><div class="grow">${ITEMS[r.out].name}${r.n > 1 ? ` ×${r.n}` : ''}<small>${need}${r.st ? `　<span class="${nearStation(r.st) ? 'good' : 'bad'}">${stn[r.st]}</span>` : ''}</small></div><button data-craft="${idx}" ${on ? '' : 'disabled'}>合成</button></div>`; }).join('');
+  openPanel('背包與合成', `<div class="cols"><div>${invGrids()}<div class="label dim">點一下拿起、再點放下。Shift＋點擊可快速移動。</div></div><div><div class="label">合成</div><div class="list" style="max-height:60vh;overflow:auto">${list}</div></div></div>`, 'bag'); }
+function openChest(i) { const m = mOf(i, { inv:Array(27).fill(null) }); chestOpen = m;
+  if (m.ruin) { m.ruin = 0; for (const id in S.bounties) { const b = bountyList().find(x => x.id === id); if (b?.t === 'ruin') { S.bounties[id].p = (S.bounties[id].p || 0) + 1; if (S.bounties[id].p === b.n) note(`懸賞達成：${b.title}`, 'good'); } } addCp(40 + Math.floor(S.deepest / 8)); }
+  renderChest(); }
+function renderChest() { const m = chestOpen; openPanel('箱子', `<div class="label">箱子</div><div class="grid" data-inv="c">${m.inv.map((s, i) => slotHtml(s, i)).join('')}</div>${invGrids()}<div style="margin-top:8px"><button data-act="chestAll">全部放入同類</button></div>`, 'chest'); }
+function refreshInv() { if (panelKind === 'bag') openBag(); else if (panelKind === 'chest') renderChest(); else if (panelKind === 'sell') openSell(); hudDirty = true; updateHud(); }
+
+function openNpc(n) { if (n.type === 'scrap') openSell(); else openShop(); }
+function openSell() { const rows = []; const seenIds = new Set(); P.inv.forEach(s => { if (s && priceOf(s.id) && !seenIds.has(s.id)) { seenIds.add(s.id); const c = count(P.inv, s.id), p = priceOf(s.id); rows.push(`<div class="line" data-item="${s.id}"><img src="${icon(s.id)}" alt=""><div class="grow">${ITEMS[s.id].name} ×${c}<small>${p} 元／個</small></div><button data-sell="${s.id}" data-n="1">賣 1</button><button data-sell="${s.id}" data-n="${c}">全賣 ${fmt(p * c)}</button></div>`); } });
+  const total = [...seenIds].reduce((a, id) => a + priceOf(id) * count(P.inv, id), 0);
+  const nonGear = [...seenIds].filter(id => !ITEMS[id].tile && !ITEMS[id].heal);
+  openPanel('回收員', `<div class="label">持有 <span class="gold">${fmt(S.money)} 元</span>${S.era >= 2 ? '　價格每天浮動' : ''}</div><div class="list">${rows.join('') || '<div class="dim">背包裡沒有可賣的東西。</div>'}</div>${nonGear.length ? `<div style="margin-top:10px"><button class="main" data-act="sellMat">賣掉所有素材</button></div>` : ''}`, 'sell'); }
+function openShop() { const rows = SHOP.filter(s => s.era <= S.era).map((s, i) => { const room = fits(P.inv, s.id, s.n), afford = S.money >= s.price; return `<div class="line ${afford ? '' : 'off'}" data-item="${s.id}"><img src="${icon(s.id)}" alt=""><div class="grow">${ITEMS[s.id].name}${s.n > 1 ? ` ×${s.n}` : ''}<small>${fmt(s.price)} 元</small></div><button data-buy="${SHOP.indexOf(s)}" ${afford && room ? '' : 'disabled'}>${room ? '買' : '背包滿'}</button></div>`; }).join('');
+  openPanel('工匠', `<div class="label">持有 <span class="gold">${fmt(S.money)} 元</span></div><div class="list">${rows}</div>`, 'shop'); }
+
+function bountyState(b) {
+  const a = S.bounties[b.id]; if (S.once[b.id]) return 'done'; if (!a) return (S.cool[b.id] || 0) > S.time ? 'cool' : 'open';
+  return bountyReady(b, a) ? 'ready' : 'active';
+}
+function bountyProg(b, a) { switch (b.t) { case 'kill': case 'ruin': return [Math.min(a.p || 0, b.n), b.n]; case 'collect': return [Math.min(count(P.inv, b.target), b.n), b.n]; case 'depth': return [Math.min(S.deepest, b.n), b.n]; case 'build': return [Math.min(S.best, b.n), b.n]; case 'sky': return [S.seenSky ? 1 : 0, 1]; default: return [0, b.n || 1]; } }
+const bountyReady = (b, a) => { const [p, n] = bountyProg(b, a); return p >= n; };
+function goalText(b) { switch (b.t) { case 'kill': return `擊殺 ${MOBS[b.target]?.name || b.target} ${b.n}`; case 'collect': return `交出 ${ITEMS[b.target]?.name || b.target} ${b.n}`; case 'depth': return `抵達深度 ${b.n - SURF}`; case 'ruin': return `開啟遺跡箱 ${b.n}`; case 'build': return `聚落評分 ${b.n}`; case 'sky': return '站上浮空島'; default: return ''; } }
+function openJournal(tab = 'bounty') { panelKind = 'journal'; paused = true;
+  const tabs = `<div class="tabs">${[['bounty','懸賞'],['era','時代與建設'],['mods','模組']].map(([k, n]) => `<button data-tab="${k}" class="${tab === k ? 'on' : ''}">${n}</button>`).join('')}</div>`;
+  let body = '';
+  if (tab === 'bounty') { const r = rankOf(S.rep), nr = RANKS[r + 1];
+    const rows = bountyList().filter(b => (b.rank || 0) <= r + 1 && !S.once[b.id]).sort((a, b) => ({ ready:0, active:1, open:2, cool:3 }[bountyState(a)] || 0) - ({ ready:0, active:1, open:2, cool:3 }[bountyState(b)] || 0)).map(b => { const st = bountyState(b), locked = (b.rank || 0) > r, a = S.bounties[b.id];
+      const prog = a ? (() => { const [p, n] = bountyProg(b, a); return `　<span class="good">${fmt(p)}/${fmt(n)}</span>`; })() : '';
+      let btn = ''; if (locked) btn = `<span class="dim">${RANKS[b.rank][0]} 級</span>`; else if (st === 'open') btn = `<button data-bounty="${b.id}">接受</button>`; else if (st === 'ready') btn = `<button class="main" data-claim="${b.id}">回報</button>`; else if (st === 'active') btn = `<button data-drop="${b.id}">放棄</button>`; else if (st === 'cool') btn = `<span class="dim">明天再來</span>`;
+      return `<div class="line ${locked ? 'off' : ''}"><div class="grow">${esc(b.title)}${prog}<small>${esc(goalText(b))}　→　${fmt(b.money || 0)} 元、信譽 ${b.rep || 0}${b.cp ? `、文明 ${b.cp}` : ''}</small></div>${btn}</div>`; }).join('');
+    body = `<div class="label">冒險者 <b class="good">${RANKS[r][0]} 級</b>　信譽 ${fmt(S.rep)}${nr ? ` / ${fmt(nr[1])}` : ''}</div><div class="list">${rows}</div>`;
+  } else if (tab === 'era') { const E = ERAS[S.era], nx = ERAS[S.era + 1];
+    const rows = PROJECTS.map(p => { const done = S.projects[p.id], lock = p.era > S.era; if (lock) return `<div class="line off"><div class="grow">？？？<small>${ERAS[p.era].name}開放</small></div></div>`; return `<div class="line ${done ? 'off' : ''}"><div class="grow">${p.name}<small>${p.desc}　→　文明 +${fmt(p.cp)}</small></div>${done ? '<span class="good">已完工</span>' : `<button data-proj="${p.id}" ${S.money >= p.cost ? '' : 'disabled'}>${fmt(p.cost)} 元</button>`}</div>`; }).join('');
+    body = `<div class="label"><b class="good">${E.name}</b>　文明 ${fmt(S.cp)}${nx ? ` / ${fmt(nx.cp)}（下一個：${nx.name}）` : ''}</div><div class="label">建設</div><div class="list">${rows}</div><div class="label">也可以直接捐款：每 5 元換 1 點文明</div><div><button data-donate="500" ${S.money >= 500 ? '' : 'disabled'}>捐 500</button> <button data-donate="5000" ${S.money >= 5000 ? '' : 'disabled'}>捐 5,000</button></div><div class="label">紀錄</div><div class="dim">討伐 ${fmt(S.kills)}　倒下 ${S.deaths}　最深 ${Math.max(0, S.deepest - SURF)}　聚落最高評分 ${S.best}　遊玩 ${Math.floor(S.played / 60)} 分鐘</div>`;
+  } else body = `<div class="label dim">改價格、加懸賞。儲存在這個世界的存檔裡。</div><textarea id="modText" spellcheck="false" placeholder='{\n  "prices": { "log": 10 },\n  "bounties": [\n    { "id": "my_1", "t": "kill", "target": "bat", "n": 5, "title": "我的懸賞", "money": 500, "rep": 10, "cp": 20, "rank": 0 }\n  ]\n}'>${esc(S.mods || '')}</textarea><div style="margin-top:8px"><button class="main" data-act="modSave">套用</button> <span id="modMsg" class="dim"></span></div><div class="label">t 可用：kill、collect、depth、ruin、build、sky。怪物 id：${Object.keys(MOBS).join('、')}</div>`;
+  openPanel('日誌', tabs + body, 'journal'); curTab = tab; }
+let curTab = 'bounty';
+function surveyScore(ax, ay) {
+  const c = { wall:0, kinds:new Set(), door:0, bed:0, chest:0, station:0, light:0, machine:0, roofed:0 };
+  for (let y = ay - 16; y <= ay + 16; y++) for (let x = ax - 24; x <= ax + 24; x++) { if (!inB(x, y)) continue; const i = ID(x, y), t = tile[i], k = TD[t].key;
+    if (wall[i]) { c.wall++; let roof = false; for (let u = 1; u < 10 && !roof; u++) roof = TD[get(x, y - u)].solid; if (roof) c.roofed++; }
+    if (['plank','brick','glass','wall','cobble','log'].includes(k)) c.kinds.add(k); if (wall[i]) c.kinds.add('w' + wall[i]);
+    if (t === T.door || t === T.dooropen || t === T.gate || t === T.gateopen) c.door++; if (t === T.bed) c.bed++; if (t === T.chest) c.chest++; if (['bench','furnace','anvil','board'].includes(k)) c.station++; if (t === T.torch || t === T.lamp) c.light++; if (['drill','seller','clock','notgate','delay','lever','plate','lamp'].includes(k)) c.machine++; }
+  const parts = [['有屋頂的牆面', Math.min(120, Math.floor(c.roofed / 3))], ['建材種類', c.kinds.size * 10], ['門', Math.min(30, c.door * 10)], ['床', Math.min(60, c.bed * 20)], ['箱子', Math.min(40, c.chest * 5)], ['工作站', Math.min(60, c.station * 12)], ['照明', Math.min(40, c.light * 3)], ['機關', Math.min(80, c.machine * 4)]];
+  return { total:parts.reduce((a, p) => a + p[1], 0), parts };
+}
+function openSurvey(x, y, i) { const s = S.stones[i] || (S.stones[i] = { best:0 }), r = surveyScore(x, y); let gain = 0;
+  if (r.total > s.best) { gain = (r.total - s.best) * 6; s.best = r.total; addCp(gain); } S.best = Math.max(S.best, r.total);
+  openPanel('聚落測量', `<div class="label">這裡的評分 <b class="good">${r.total}</b>　這塊界碑的最高紀錄 ${s.best}${gain ? `　<span class="good">文明 +${gain}</span>` : ''}</div><div class="list">${r.parts.map(([n, v]) => `<div class="line"><div class="grow">${n}</div><span>${v}</span></div>`).join('')}</div><div class="label dim">範圍：左右 24 格、上下 16 格。範圍內不會自然生怪。</div>`, 'survey'); }
+
+// 面板事件委派
+$('panelBody').addEventListener('click', e => {
+  const t = e.target.closest('button,.slot'); if (!t) return;
+  if (t.classList.contains('slot')) return slotClick(t, e);
+  const D = t.dataset;
+  if (D.craft !== undefined) { const r = RECIPES[+D.craft]; if (Object.entries(r.need).every(([k, v]) => count(P.inv, k) >= v)) { for (const k in r.need) take(P.inv, k, r.need[k]); give(r.out, r.n); SFX.click(); if (r.out === 'glider') {} openBag(); } }
+  else if (D.sell) { const n = +D.n, have = count(P.inv, D.sell), c = Math.min(n, have), p = priceOf(D.sell); if (c && p && take(P.inv, D.sell, c)) { S.money += p * c; SFX.coin(); openSell(); hudDirty = true; } }
+  else if (D.buy !== undefined) { const s = SHOP[+D.buy]; if (s && S.money >= s.price && fits(P.inv, s.id, s.n)) { S.money -= s.price; addTo(P.inv, s.id, s.n); SFX.coin(); openShop(); hudDirty = true; } }
+  else if (D.tab) openJournal(D.tab);
+  else if (D.bounty) { S.bounties[D.bounty] = { p:0 }; SFX.click(); openJournal('bounty'); }
+  else if (D.drop) { delete S.bounties[D.drop]; openJournal('bounty'); }
+  else if (D.claim) claim(D.claim);
+  else if (D.proj) { const p = PROJECTS.find(x => x.id === D.proj); if (p && !S.projects[p.id] && S.money >= p.cost && p.era <= S.era) { S.money -= p.cost; S.projects[p.id] = 1; if (p.id === 'port') give('glider', 1); addCp(p.cp); SFX.coin(); note(`${p.name}完工：${p.desc}`, 'gold'); openJournal('era'); } }
+  else if (D.donate) { const m = +D.donate; if (S.money >= m) { S.money -= m; addCp(Math.floor(m / 5)); SFX.coin(); openJournal('era'); } }
+  else if (D.act === 'sellMat') { let total = 0; for (let i = 0; i < P.inv.length; i++) { const s = P.inv[i]; if (s && priceOf(s.id) && !ITEMS[s.id].tile && !ITEMS[s.id].heal) { total += priceOf(s.id) * s.n; P.inv[i] = null; } } if (total) { S.money += total; SFX.coin(); note(`賣得 ${fmt(total)} 元`, 'gold'); } openSell(); hudDirty = true; }
+  else if (D.act === 'chestAll') { const m = chestOpen; for (let i = 9; i < P.inv.length; i++) { const s = P.inv[i]; if (s && count(m.inv, s.id) > 0) { const left = addTo(m.inv, s.id, s.n); if (left) s.n = left; else P.inv[i] = null; } } renderChest(); }
+  else if (D.act === 'modSave') { const txt = $('modText').value.trim(), msg = $('modMsg'); if (txt) { try { JSON.parse(txt); } catch (err) { msg.textContent = 'JSON 有誤：' + err.message; msg.className = 'bad'; return; } } S.mods = txt; applyMods(); msg.textContent = `已套用，${MOD.bounties.length} 個自訂懸賞`; msg.className = 'good'; }
+});
+function claim(id) { const b = bountyList().find(x => x.id === id), a = S.bounties[id]; if (!b || !a || !bountyReady(b, a)) return;
+  if (b.t === 'collect' && !take(P.inv, b.target, b.n)) return;
+  delete S.bounties[id]; if (b.once) S.once[id] = 1; else S.cool[id] = S.time + DAY;
+  const money = Math.round((b.money || 0) * (hasPerk('guild') ? 1.25 : 1)); S.money += money; S.rep += b.rep || 0; addCp(b.cp || 0); SFX.coin();
+  const old = rankOf(S.rep - (b.rep || 0)), nw = rankOf(S.rep); note(`完成懸賞　+${fmt(money)} 元`, 'gold'); if (nw > old) note(`冒險者階級升到 ${RANKS[nw][0]}`, 'gold'); openJournal('bounty'); hudDirty = true; }
+function slotClick(el, e) {
+  const invKind = el.parentElement.dataset.inv; if (!invKind) return; const arr = invKind === 'c' ? chestOpen.inv : P.inv, i = +el.dataset.i;
+  if (e.shiftKey && !heldCursor) { const s = arr[i]; if (!s) return; const to = invKind === 'c' ? P.inv : chestOpen ? chestOpen.inv : (i < 9 ? P.inv.slice(9) : P.inv.slice(0, 9));
+    if (invKind === 'p' && !chestOpen) { const r = i < 9 ? [9, 36] : [0, 9]; let n = s.n; for (let k = r[0]; k < r[1] && n > 0; k++) { const x = P.inv[k]; if (x && x.id === s.id && x.n < STACK(s.id)) { const m = Math.min(n, STACK(s.id) - x.n); x.n += m; n -= m; } } for (let k = r[0]; k < r[1] && n > 0; k++) if (!P.inv[k]) { const m = Math.min(n, STACK(s.id)); P.inv[k] = { id:s.id, n:m }; n -= m; } if (n) s.n = n; else arr[i] = null; }
+    else { const left = addTo(to, s.id, s.n); if (left) s.n = left; else arr[i] = null; }
+    SFX.click(); refreshInv(); return; }
+  const cur = heldCursor, s = arr[i];
+  if (!cur) { if (s) { heldCursor = s; arr[i] = null; } }
+  else if (!s) { arr[i] = cur; heldCursor = null; }
+  else if (s.id === cur.id && s.n < STACK(s.id)) { const m = Math.min(cur.n, STACK(s.id) - s.n); s.n += m; cur.n -= m; if (!cur.n) heldCursor = null; }
+  else { arr[i] = cur; heldCursor = s; }
+  SFX.click(); renderCursor(); refreshInv();
+}
+$('panelBody').addEventListener('contextmenu', e => { e.preventDefault(); const el = e.target.closest('.slot'); if (!el) return; const kind = el.parentElement.dataset.inv; if (!kind) return; const arr = kind === 'c' ? chestOpen.inv : P.inv, i = +el.dataset.i, s = arr[i];
+  if (heldCursor) { if (!s) { arr[i] = { id:heldCursor.id, n:1 }; heldCursor.n--; } else if (s.id === heldCursor.id && s.n < STACK(s.id)) { s.n++; heldCursor.n--; } if (!heldCursor.n) heldCursor = null; } else if (s && s.n > 1) { const half = Math.ceil(s.n / 2); heldCursor = { id:s.id, n:half }; s.n -= half; }
+  renderCursor(); refreshInv(); });
+document.addEventListener('mousemove', e => { const c = $('cursorItem'); c.style.left = e.clientX - 14 + 'px'; c.style.top = e.clientY - 14 + 'px'; const it = e.target.closest?.('[data-item]'), tip = $('itemTip'); if (it && S && !heldCursor) { tip.hidden = false; tip.textContent = itemDesc(it.dataset.item); tip.style.left = Math.min(innerWidth - 270, e.clientX + 14) + 'px'; tip.style.top = e.clientY + 14 + 'px'; } else tip.hidden = true; });
+function openMap() { paused = true; const mapH = 300, mapW = 800; openPanel('地圖', `<canvas id="mapC" width="${mapW}" height="${mapH}"></canvas><div class="label dim">黃點是你，綠點是營地與界碑，粉紅點是流星。</div>`, 'map');
+  const g = $('mapC').getContext('2d'), im = g.createImageData(mapW, mapH), d = im.data; const col = {}; const c = t => { if (col[t]) return col[t]; const D = TD[t]; if (!D.tex) return col[t] = [0, 0, 0]; const s = sampleColor(D).match(/\d+/g).map(Number); return col[t] = s; };
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const i = ID(x, y), k = i * 4; if (!seen[i]) { d[k + 3] = 255; d[k] = 12; d[k + 1] = 12; d[k + 2] = 14; continue; } const t = tile[i]; let rgb = t === T.air ? (y < surf[x] ? [40, 60, 84] : [24, 24, 30]) : c(t); d[k] = rgb[0]; d[k + 1] = rgb[1]; d[k + 2] = rgb[2]; d[k + 3] = 255; }
+  g.putImageData(im, 0, 0); const dot = (x, y, cl, r = 3) => { g.fillStyle = cl; g.fillRect(x - r / 2, y - r / 2, r, r); }; dot(S.camp.x, S.camp.y, '#c8f135', 4); Object.keys(S.stones).forEach(k => dot(+k % W, Math.floor(+k / W), '#c8f135', 4)); if (S.lastMeteor && hasPerk('observe')) dot(S.lastMeteor[0], S.lastMeteor[1], '#ff9ee8', 5); dot(P.x / TS, P.y / TS, '#f5c542', 5); }
+function openMenu() { paused = true; saveGame(true); openPanel('選單', `<div class="list"><div class="dim">已自動存檔。</div><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="main" data-menu="resume">繼續</button><button data-menu="save">存檔</button><button data-menu="export">匯出存檔</button><button data-menu="title">回標題</button></div></div>`, 'menu'); }
+$('panelBody').addEventListener('click', e => { const b = e.target.closest('[data-menu]'); if (!b) return; const m = b.dataset.menu; if (m === 'resume') closePanel(); else if (m === 'save') saveGame(); else if (m === 'export') exportSave(slotNo); else if (m === 'title') { saveGame(true); closePanel(); running = false; showTitle(); } });
+
+/* ========== 輸入 ========== */
+addEventListener('keydown', e => {
+  if (!running) return; const inText = e.target.tagName === 'TEXTAREA';
+  if (inText && e.code !== 'Escape') return;
+  if (['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code)) e.preventDefault();
+  if (e.code === 'Escape') { e.preventDefault(); if (panelKind) closePanel(); else openMenu(); return; }
+  if (e.code === 'KeyE') { if (panelKind === 'bag' || panelKind === 'chest') closePanel(); else if (!panelKind) openBag(); return; }
+  if (e.code === 'KeyJ') { if (panelKind === 'journal') closePanel(); else if (!panelKind) openJournal(curTab); return; }
+  if (e.code === 'KeyM') { if (panelKind === 'map') closePanel(); else if (!panelKind) openMap(); return; }
+  if (paused) return;
+  keys[e.code] = true;
+  if (/^Digit[1-9]$/.test(e.code)) { slot = +e.code.slice(5) - 1; mine = null; hudDirty = true; }
+  if (e.code === 'KeyR') { const a = aimTile(); if (inB(a.x, a.y)) { const t = get(a.x, a.y); if (TD[t].dir) { const m = mOf(ID(a.x, a.y), { dir:0 }); m.dir = ((m.dir || 0) + 1) % 4; SFX.click(); } } }
+  if (e.code === 'KeyS' && e.ctrlKey) { e.preventDefault(); saveGame(); }
+});
+addEventListener('keyup', e => { keys[e.code] = false; });
+addEventListener('blur', () => { keys = {}; mouse.l = mouse.r = false; });
+canvas.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
+canvas.addEventListener('mousedown', e => { mouse.x = e.clientX; mouse.y = e.clientY; if (e.button === 0) { mouse.l = true; mouse.lq = true; } if (e.button === 2) { mouse.r = true; mouse.rq = true; placeCD = 0; } });
+addEventListener('mouseup', e => { if (e.button === 0) mouse.l = false; if (e.button === 2) mouse.r = false; });
+canvas.addEventListener('contextmenu', e => e.preventDefault());
+canvas.addEventListener('wheel', e => { if (paused) return; slot = (slot + (e.deltaY > 0 ? 1 : 8)) % 9; mine = null; hudDirty = true; e.preventDefault(); }, { passive:false });
+$('hotbar').addEventListener('click', e => { const s = e.target.closest('.slot'); if (s) { slot = +s.dataset.i; hudDirty = true; } });
+addEventListener('pagehide', () => { if (running) saveGame(true); });
+addEventListener('visibilitychange', () => { if (document.hidden && running) saveGame(true); });
+
+/* ========== 主迴圈與標題 ========== */
+function frame(ts) {
+  requestAnimationFrame(frame); if (!running) return;
+  const dt = Math.min(.05, (ts - last) / 1000 || 0); last = ts;
+  if (!paused) update(dt);
+  draw();
+}
+function startRunning() { running = true; paused = false; panelKind = null; $('title').hidden = true; $('hud').hidden = false; $('panel').hidden = true; last = performance.now(); saveT = 0; keys = {}; hudDirty = true; lightT = 0; updateHud(); }
+function newGame(n) { slotNo = n; newState((Date.now() ^ Math.floor(Math.random() * 1e9)) & 0x7fffffff); saveGame(true); startRunning(); note('右鍵石碑看時代，懸賞板在左邊。'); }
+function loadGame(n) { const raw = (() => { try { return JSON.parse(localStorage.getItem(WORLD_KEY(n))); } catch { return null; } })(); slotNo = n; if (!raw || !deserialize(raw)) { alert('存檔損毀，無法讀取。'); return; } startRunning(); note('歡迎回來', 'good'); }
+function exportSave(n) { const s = (() => { try { return localStorage.getItem(WORLD_KEY(n)); } catch { return null; } })(); if (!s) return; const url = URL.createObjectURL(new Blob([s], { type:'application/json' })), a = document.createElement('a'); a.href = url; a.download = `sky-frontier-${n}.json`; a.click(); setTimeout(() => URL.revokeObjectURL(url), 2000); }
+let importTo = 1;
+$('importFile').addEventListener('change', e => { const f = e.target.files[0]; if (!f) return; f.text().then(t => { let d; try { d = JSON.parse(t); } catch { alert('不是有效的存檔檔案。'); return; } if (d?.S?.v !== 1 || !d.tile) { alert('不是天穹拓荒的存檔。'); return; } try { localStorage.setItem(WORLD_KEY(importTo), t); } catch { alert('瀏覽器儲存空間不足。'); return; } renderSaves(); }); e.target.value = ''; });
+function renderSaves() { let h = ''; for (let n = 1; n <= 3; n++) { const i = slotInfo(n);
+  if (i && !i.broken) h += `<div class="save"><div class="grow">存檔 ${n}　<span class="good">${ERAS[i.era].name}</span><small>第 ${i.day} 天　${fmt(i.money)} 元　${new Date(i.at).toLocaleString('zh-TW', { hour12:false })}${i.won ? '　已討伐墜星' : ''}</small></div><button class="main" data-load="${n}">繼續</button><button data-exp="${n}">匯出</button><button data-del="${n}">刪除</button></div>`;
+  else h += `<div class="save"><div class="grow">存檔 ${n}<small>${i?.broken ? '檔案損毀' : '空白'}</small></div><button class="main" data-new="${n}">新世界</button><button data-imp="${n}">匯入</button></div>`; }
+  $('saves').innerHTML = h; }
+$('saves').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; const D = b.dataset;
+  if (D.load) loadGame(+D.load); else if (D.new) newGame(+D.new); else if (D.exp) exportSave(+D.exp); else if (D.imp) { importTo = +D.imp; $('importFile').click(); }
+  else if (D.del && confirm(`確定刪除存檔 ${D.del}？這個動作無法復原。`)) { try { localStorage.removeItem(WORLD_KEY(+D.del)); } catch {} let any = false; for (let n = 1; n <= 3; n++) if (slotInfo(n)) any = true; if (!any) try { localStorage.removeItem(SAVE_KEY); } catch {} renderSaves(); } });
+function showTitle() { $('title').hidden = false; $('hud').hidden = true; renderSaves(); }
+showTitle(); requestAnimationFrame(frame);
+
+// 測試用入口（不影響遊戲）
+window.SF = { get S() { return S; }, get P() { return P; }, get mobs() { return mobs; }, T, TD, ITEMS, get, setTile, addCp, give, signalTick, count, spawnMob, saveGame, loadGame, newGame, get power() { return power; }, meta, get metaMap() { return meta; }, serialize, deserialize, tile, wall, surf, ID, W, H, RECIPES, surveyScore, openJournal, openBag, closePanel, update, mouse, get keys() { return keys; }, breakTile, aimTile, trySpawn, get slot() { return slot; }, set slot(v) { slot = v; } };
+</script>
+</body>
+</html>

@@ -257,6 +257,11 @@
       <div class="card-name">霓虹彈幕</div>
       <div class="card-meta">彈幕射擊</div>
     </a>
+    <a class="game-card" href="./sky-frontier/" data-game="sky-frontier" data-icon="icons/sky-frontier.webp">
+      <div class="card-icon">🏝️</div>
+      <div class="card-name">天穹拓荒</div>
+      <div class="card-meta">沙盒</div>
+    </a>
   </div>
 
   <footer class="footer"><span id="game-count"></span> 個遊戲 · 玩了 <span id="play-count">0</span> 次</footer>
@@ -307,6 +312,10 @@
     'neon-danmaku': st => {
       const best = Math.max(st.story?.best?.score || 0, st.endless?.best?.score || 0);
       return best ? `🏆 ${best.toLocaleString()} 分` : '';
+    },
+    'sky-frontier': st => {
+      if (st.won) return '🏆 已討伐墜星';
+      return st.best?.era ? `${['拓荒','開墾','商業','工業','天穹','星辰'][st.best.era]}時代` : '';
     },
   };
   // 每日挑戰（各遊戲寫入 arcade-<遊戲>-daily：{ last: { date, won }, streak, lastWin }）

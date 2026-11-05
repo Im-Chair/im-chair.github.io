@@ -37,6 +37,7 @@
 | 6e | `icon-outpost` | 1024×1024 | `icons/outpost.webp` | 同上（晨昏線前哨） | ★★★ |
 | 6f | `icon-deep-miner` | 1024×1024 | `icons/deep-miner.webp` | 同上（深掘！像素礦工） | ★★★ |
 | 6g | `icon-neon-danmaku` | 1024×1024 | `icons/neon-danmaku.webp` | 同上（霓虹彈幕狂想曲） | ★★★ |
+| 6h | `icon-sky-frontier` | 1024×1024 | `icons/sky-frontier.webp` | 同上（天穹拓荒） | ★★★ |
 | 7 | `solitaire-back` | 1024×1536（直式） | `solitaire/back.webp`（300×420） | 接龍牌背 | ★★ |
 | 8 | `solitaire-felt` | 1024×1024 | `solitaire/felt.webp`（512，鋪滿） | 接龍桌布 | ★★ |
 | 9 | `minesweeper-flag` | 1024×1024 透明 | `minesweeper/flag.webp`（96） | 掃雷旗子 | ★ |
@@ -85,6 +86,7 @@
 | `icon-outpost` | 同樣風格，下一張主題：**迫降前哨** —— 從斜上方看的一截墜毀太空船殘骸，半埋在碎石裡，船身插著一根傾斜的通訊天線，天線頂端發亮，發出兩三道同心的訊號弧線。 |
 | `icon-deep-miner` | 同樣風格，下一張主題：**礦坑深處** —— 一把十字鎬斜插在碎裂的岩塊上，鎬柄上掛著一盞亮著的老式礦燈，岩縫間露出幾顆發光的晶礦。 |
 | `icon-neon-danmaku` | 同樣風格，下一張主題：**彈幕** —— 從正上方看的一架尖銳小型三角戰機，機頭朝上，周圍環繞一圈螺旋排列的發光菱形子彈，戰機正好穿過子彈之間的缺口。 |
+| `icon-sky-frontier` | 同樣風格，下一張主題：**天空拓荒** —— 一座懸浮在空中的小島，底部是參差的岩塊，島上有一棵小樹。單一物件置中。 |
 
 ### 驗收
 

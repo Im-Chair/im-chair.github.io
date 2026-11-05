@@ -30,6 +30,7 @@
 ├── outpost/            # 晨昏線前哨（單一 index.html；Core 純邏輯、UI 介面分開，可用 node 模擬；紀錄 story.best.lost）
 ├── deep-miner/         # 深掘礦工（單一 index.html）
 ├── neon-danmaku/       # 霓虹彈幕狂想曲（單一 index.html，Canvas；紀錄 best.score 越大越好）
+├── sky-frontier/       # 天穹拓荒（單一 index.html，桌機限定 2D 沙盒；世界存 arcade-sky-frontier-world-<1~3>，紀錄 best.era）
 ├── rpg/                # 貪婪深淵（Roguelite，模組化多檔案 — 見下）
 ├── icons/              # 首頁卡片圖示 <遊戲>.webp（可缺，缺的卡片沿用 emoji）
 └── tools/process_art.py  # 小遊戲美術後製（Pillow；不是網站的一部分）。流程見 美術需求_ChatGPT出圖.md
