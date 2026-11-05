@@ -1,4 +1,4 @@
-const CACHE = 'arcade-v70';
+const CACHE = 'arcade-v71';
 // 珠界的圖獨立一個快取、不跟 CACHE 改版：改版時不必重抓，也不用每次打開都等網路
 const ART_CACHE = 'arcade-pokemo-art';
 // RPG 敵人圖示：檔名＝ENEMIES／首領／域限精英的 key。v385 起 50 隻全數有圖，已無 SVG 回落。
@@ -88,7 +88,7 @@ self.addEventListener('install', e => {
 });
 
 // 離線用的快取在背景慢慢補：同時最多 2 個、低優先，已經有的不重抓，沒補完下次打開首頁會接著補
-let filling = null;
+let filling = null, pendingArt = 0;   // pendingArt：遊戲正在等的圖，還沒抓完時背景補快取要讓路
 function fillCaches() {
   return filling || (filling = (async () => {
     await new Promise(r => setTimeout(r, 3000));   // 先讓使用者點進遊戲
@@ -96,6 +96,7 @@ function fillCaches() {
     let failed = 0;
     const worker = async () => {
       while (jobs.length) {
+        while (pendingArt > 0) await new Promise(r => setTimeout(r, 300));
         const [name, u] = jobs.shift();
         const c = await caches.open(name);
         if (await c.match(u)) continue;
@@ -128,7 +129,8 @@ self.addEventListener('fetch', e => {
       const hit = await c.match(e.request, { ignoreSearch: true });
       const net = fetch(e.request, hit ? { priority: 'low' } : {}).then(res => { if (res.ok) c.put(e.request, res.clone()); return res; });
       if (hit) { e.waitUntil(net.catch(() => {})); return hit; }
-      return net;
+      pendingArt++;
+      return net.finally(() => { pendingArt--; });
     }));
     return;
   }

@@ -934,19 +934,39 @@ function chImg(c){
   if(!c.img){c.img=new Image();c.img.onload=redrawMap;c.img.onerror=()=>setTimeout(()=>{c.img=null;redrawMap()},3000);c.img.src=c.src}
   return c.img;
 }
-async function mapArtReady(){   // 等太久就先進地圖，圖到了會自己換上
-  const need=['tiles','tree1','tree2','house','fountain','sign','gate','rock','bush'].map(k=>needArt(artKey(k)));
-  ['main',...(NPCS||[]).map(n=>n.ch)].forEach(k=>{if(CH[k])need.push(imgDone(chImg(CH[k])))});
-  const tip=setTimeout(()=>{$('#fade').textContent='載入中…'},400);
-  await Promise.race([Promise.all(need),sleep(3000)]);
-  clearTimeout(tip);$('#fade').textContent='';
+function mapArtNeed(id){   // 這張地圖要用的所有圖
+  const m=MAPS[id]||MAPS.grass,a=m.art||{};
+  const need=['tiles','tree1','tree2','house','fountain','sign','gate','rock','bush'].map(k=>needArt(a[k]||k));
+  Object.values(m.props||{}).forEach(k=>need.push(needArt(k)));
+  ['main',...(m.npcs||[]).map(n=>n.ch)].forEach(k=>{if(CH[k])need.push(imgDone(chImg(CH[k])))});
+  return need;
+}
+const artImgs={};
+function artImg(n){   // 戰鬥圖：同一張只抓一次，CSS 背景會直接用瀏覽器已載入的這張
+  return artImgs[n]||(artImgs[n]=new Promise(r=>{const im=new Image();im.onload=()=>r(im);im.onerror=()=>{delete artImgs[n];r()};im.src=`art/${n}.webp`}));
+}
+const sheetOf=sp=>sp.boss?'bosses':`sheet-${AK[sp.attr]}`;
+function battleArtNeed(foes){   // 對手、我方隊伍與戰鬥背景
+  const names=[...foes.map(f=>sheetOf(f.sp)),...P.team.map(m=>sheetOf(SP[m.id])),`bg-${CUR.battleBg||AK[foes[0].attr]}`];
+  return [...new Set(names)].map(artImg);
+}
+async function artGate(need,ms){   // 在黑幕上等圖到齊才開幕，網路真的不通才逾時放行
+  const el=$('#fade');let done=0,on=false;
+  const tip=()=>{if(on)el.textContent=`載入中… ${done}/${need.length}`};
+  need.forEach(p=>p.then(()=>{done++;tip()}));
+  const t=setTimeout(()=>{on=true;tip()},300);
+  await Promise.race([Promise.all(need),sleep(ms)]);
+  clearTimeout(t);el.textContent='';
+}
+async function mapArtReady(){
+  await artGate(mapArtNeed(CURID),20000);
   preloadBattleArt();
 }
 let battleArt=null;
-async function preloadBattleArt(){   // 進地圖後才一張一張在背景抓戰鬥用圖，第一場戰鬥就不用等
+async function preloadBattleArt(){   // 一張一張在背景抓戰鬥用圖，第一場戰鬥就不用等
   if(battleArt)return;battleArt=[];
   for(const k of ['sheet-water','sheet-fire','sheet-wood','sheet-light','sheet-dark','bosses','bg-water','bg-fire','bg-wood','bg-light','bg-dark','bg-coast','bg-ember','bg-marsh','bg-sky','bg-abyss']){
-    const im=new Image();battleArt.push(im);im.src=`art/${k}.webp`;await imgDone(im);
+    await artImg(k);
   }
 }
 const ARTW={tree1:1.9,tree2:1.55,house:3.35,fountain:1.55,sign:1.1,gate:3.7,rock:1.15,bush:1.25,   // 地圖素材的顯示寬度（單位：格）
@@ -1766,6 +1786,7 @@ async function startTeamBattle(cfg){   // 對人戰（守衛／小兵）：foes�
 }
 async function beginBattle(cfg){
   await fade(true);
+  await artGate(battleArtNeed(cfg.foes),15000);
   const tm=teamMax();
   B={kind:cfg.kind,onWin:cfg.onWin,foeCombo:cfg.foeCombo||null,foeName:cfg.foeName||'',foes:cfg.foes,foeFreeze:0,foeScale:FOE_TEAM_SCALE(cfg.foes.length)*(cfg.foeScaleMul||1),canCap:cfg.canCap,charm:0,busy:true,over:false,
      teamHp:Math.max(1,Math.round(P.hpFrac*tm)),teamMax:tm,weights:weightsFor(cfg.canCap),exp:0,drops:[],shield:0,shieldV:0,foeShield:0,foeShieldV:0,foeAmp:1,amp:1,lure:0,
@@ -2194,6 +2215,7 @@ async function continueGame(){
   // 選配美術：兩張按鍵框都存在才換上，沒有就用 CSS 版（出圖流程見 美術需求_ChatGPT出圖.md 第 14 節）
   Promise.all(['ui-btn','ui-btn-pri'].map(k=>new Promise((ok,no)=>{const im=new Image();im.onload=ok;im.onerror=no;im.src=`art/${k}.webp`}))).then(()=>document.body.classList.add('btn-art'),()=>{});
   const sv=loadSave();
+  Promise.all(mapArtNeed(sv&&sv.map||'grass')).then(preloadBattleArt);   // 停在主畫面時就先下載，按下去才不用等
   if(sv&&sv.flags&&sv.flags.intro&&sv.team.length)$('#btnCont').style.display='block';
   $('#btnCont').onclick=()=>{P=sv;continueGame()};
   $('#btnNew').onclick=async()=>{
