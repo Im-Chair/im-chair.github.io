@@ -30,7 +30,7 @@
 ├── outpost/            # 晨昏線前哨（單一 index.html；Core 純邏輯、UI 介面分開，可用 node 模擬；紀錄 story.best.lost）
 ├── deep-miner/         # 深掘礦工（單一 index.html）
 ├── neon-danmaku/       # 霓虹彈幕狂想曲（單一 index.html，Canvas；紀錄 best.score 越大越好）
-├── sky-frontier/       # 天穹拓荒（單一 index.html，桌機限定 2D 沙盒；世界存 arcade-sky-frontier-world-<1~3>，紀錄 best.era）
+├── sky-frontier/       # 天穹拓荒（單一 index.html，桌機限定 2D 沙盒；世界存 arcade-sky-frontier-world-<1~3>，紀錄 best.era；選配美術放 art/，由 tools/process_art.py 產生 index.json，有圖用圖、沒圖用程式繪製）
 ├── rpg/                # 貪婪深淵（Roguelite，模組化多檔案 — 見下）
 ├── icons/              # 首頁卡片圖示 <遊戲>.webp（可缺，缺的卡片沿用 emoji）
 └── tools/process_art.py  # 小遊戲美術後製（Pillow；不是網站的一部分）。流程見 美術需求_ChatGPT出圖.md
@@ -41,7 +41,7 @@
 - **存檔／紀錄**：各遊戲用 localStorage `arcade-<遊戲>-save`（進行中的局）與 `arcade-<遊戲>-stats`（`{ 模式: { plays, wins, best: {…越小越好} } }`）。首頁卡片會讀這兩個 key 顯示最佳紀錄與「進行中」。
 - **每日挑戰**（數獨、掃雷、幾A幾B）：以日期字串為種子（`seededRng('<遊戲>-YYYY-MM-DD')`），同一天大家同一題、一天一次。紀錄在 `arcade-<遊戲>-daily`（`{ last, streak, best, lastWin }`），進度另存 `arcade-<遊戲>-daily-save`，與一般模式互不覆蓋。**改動產生器或亂數消耗順序會讓同一天的題目變掉**，上線當天別改。
 - **音效**：各小遊戲內嵌一段 `SFX`（WebAudio 即時合成，無音檔）；總開關在首頁統計列，localStorage `arcade-sound`（`'off'` 為關，每次出聲前重讀）。
-- **選配美術**：圖檔存在就換上、不存在維持 emoji／CSS（首頁 `icons/`、接龍 `back.webp`/`felt.webp`、掃雷 `flag.webp`/`mine.webp`）。
+- **選配美術**：圖檔存在就換上、不存在維持 emoji／CSS（首頁 `icons/`、接龍 `back.webp`/`felt.webp`、掃雷 `flag.webp`/`mine.webp`、天穹拓荒 `art/`）。
 - **Service Worker 快取**：三支 SW（根、`sudoku/`、`tower-orbs/`）的 activate 只能刪**自己前綴**的舊快取——快取空間整站共用。
 
 ## 兩種遊戲型態

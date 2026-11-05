@@ -36,6 +36,7 @@ h1,h2,h3 { font-family:Syne,'Microsoft JhengHei',sans-serif; margin:0; }
 .slot { position:relative; width:42px; height:42px; background:#111c; border:1px solid var(--line); border-radius:3px; display:flex; align-items:center; justify-content:center; cursor:pointer; }
 .slot.sel { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent); }
 .slot img { width:30px; height:30px; image-rendering:pixelated; pointer-events:none; }
+body.art .slot img, body.art .line img, body.art #cursorItem img { image-rendering:auto; }
 .slot span { position:absolute; right:2px; bottom:0; font-size:11px; text-shadow:0 1px 1px #000,0 0 2px #000; pointer-events:none; }
 .slot:hover { border-color:#fff8; }
 #feed { position:absolute; left:12px; bottom:66px; display:flex; flex-direction:column; gap:2px; max-width:440px; text-shadow:0 1px 2px #000; }
@@ -453,15 +454,50 @@ buildAtlas();
 const bgDirt = makeBg('#2c2029'), bgStone = makeBg('#20252f'), bgDeep = makeBg('#14151f');
 function makeBg(c) { const k = document.createElement('canvas'); k.width = k.height = TS; speck(k.getContext('2d'), mulberry(c.length * 13 + c.charCodeAt(2)), c, 22, .12); return k; }
 const wallTex = WALLS.map((w, i) => { if (!w) return null; const k = document.createElement('canvas'); k.width = k.height = TS; const g = k.getContext('2d'); if (i === 1) { g.fillStyle = w.c; g.fillRect(0, 0, TS, TS); g.fillStyle = shade(w.c, .8); for (let x = 3; x < TS; x += 5) g.fillRect(x, 0, 1, TS); } else courses(g, w.c, shade(w.c, .75)); return k; });
+const bgTex = [bgDirt, bgStone, bgDeep];
+
+/* ========== 選配美術 ========== */
+// art/index.json 是 tools/process_art.py 產生的清單：有圖就換上，沒圖維持上面的程式繪製，所以可以一張一張補。
+const ART = {}, ART_GRID = 4, NIGHT = [14, 16, 36];
+// 連續材質：一張圖橫跨 4×4 格，方塊依世界座標取其中一格，看不出重複花紋
+const ART_SHEET = ['dirt','sand','stone','cobble','deep','seal','bedrock','plank','brick','cloud','ruin','lava'];
+// 貼片：先畫底下的方塊，再疊透明圖
+const ART_BASE = { moss:'dirt', frost:'dirt', o_coal:'stone', o_iron:'stone', o_gold:'stone', o_crystal:'stone', o_blue:'deep', o_aether:'cloud', o_star:'deep' };
+const ART_ON = { lamp:'lamp-on', lever:'lever-on', crop:'crop-ripe' };
+const bgArt = [null, null, null], wallArt = WALLS.map(() => null);
+let artZ = 0;
+function artCell(n, paint) { const k = document.createElement('canvas'); k.width = k.height = n; const g = k.getContext('2d'); g.imageSmoothingQuality = 'high'; paint(g); return k; }
+function artSheet(im, n, dim = 0) { const a = [], c = im.width / ART_GRID; for (let y = 0; y < ART_GRID; y++) for (let x = 0; x < ART_GRID; x++) a.push(artCell(n, g => { g.drawImage(im, x * c, y * c, c, c, 0, 0, n, n); if (dim) { g.fillStyle = `rgba(10,10,22,${dim})`; g.fillRect(0, 0, n, n); } })); return a; }
+function artNight(im) { const k = document.createElement('canvas'); k.width = im.width; k.height = im.height; const g = k.getContext('2d'); g.drawImage(im, 0, 0); g.globalCompositeOperation = 'source-atop'; g.fillStyle = `rgba(${NIGHT},.62)`; g.fillRect(0, 0, k.width, k.height); return k; }
+// 依目前的縮放切成剛好的像素大小，畫的時候 1:1，不會糊也不會有接縫
+function rebuildArt() {
+  if (!Object.keys(ART).length) return;
+  const n = TS * Z; artZ = Z;
+  for (const key of ART_SHEET) { const im = ART['tile-' + key], D = TD[T[key]]; if (im) { D.tex = artSheet(im, n); D.grid = 1; D.art = 1; } }
+  TD.forEach(D => { const im = ART['tile-' + D.key]; if (!D.key || ART_SHEET.includes(D.key)) return;
+    const on = ART['tile-' + ART_ON[D.key]]; if (on) D.texOn = artCell(n, g => g.drawImage(on, 0, 0, n, n));
+    if (!im) return; const base = ART_BASE[D.key] && TD[T[ART_BASE[D.key]]];
+    if (base?.grid) { D.tex = base.tex.map(b => artCell(n, g => { g.drawImage(b, 0, 0, n, n); g.drawImage(im, 0, 0, n, n); })); D.grid = 1; }
+    else { const c = artCell(n, g => { if (base) g.drawImage(base.tex[0], 0, 0, n, n); g.drawImage(im, 0, 0, n, n); }); D.tex = [c, c, c]; }
+    D.art = 1; });
+  ['dirt','stone','deep'].forEach((k, i) => { if (ART['cave-' + k]) bgArt[i] = artSheet(ART['cave-' + k], n, .5); });
+  WALLS.forEach((w, i) => { if (w && ART[w.key]) wallArt[i] = artSheet(ART[w.key], n, .15); });
+  for (const key in ART) if (key.startsWith('bg-') && !ART[key].night) { ART[key].night = artNight(ART[key]); }
+  for (const key of ['bg-far', 'bg-mid']) { const im = ART[key]; if (im && !im.fill) { const k = artCell(1, g => g.drawImage(im, im.width / 2, im.height - 2, 1, 1, 0, 0, 1, 1)), d = k.getContext('2d').getImageData(0, 0, 1, 1).data; im.fill = [d[0], d[1], d[2]]; } }
+  for (const k in iconCache) delete iconCache[k]; for (const k in imgCache) delete imgCache[k];
+  document.body.classList.add('art');
+  if (typeof P !== 'undefined' && P) { try { renderHotbar(); } catch {} }
+}
+fetch('art/index.json').then(r => r.ok ? r.json() : []).then(list => Promise.all(list.map(name => new Promise(done => { const im = new Image(); im.onload = () => { ART[name] = im; done(); }; im.onerror = done; im.src = `art/${name}.webp`; })))).then(rebuildArt).catch(() => {});
 
 // 物品圖示（給介面用的 data URL）
 const iconCache = {};
 function icon(id) {
   if (iconCache[id]) return iconCache[id];
-  const it = ITEMS[id] || { c:'#888' }, k = document.createElement('canvas'); k.width = k.height = TS; const g = k.getContext('2d'), c = it.c || '#888';
+  const it = ITEMS[id] || { c:'#888' }, k = document.createElement('canvas'), artIt = it.tile !== undefined ? TD[it.tile].art : it.wall && wallArt[it.wall]; k.width = k.height = artIt ? TS * 3 : TS; const g = k.getContext('2d'), c = it.c || '#888';
   const P = (col, x, y, w, h) => { g.fillStyle = col; g.fillRect(x, y, w, h); };
-  if (it.tile !== undefined && TD[it.tile].tex) g.drawImage(TD[it.tile].tex[0], 0, 0);
-  else if (it.wall) g.drawImage(wallTex[it.wall], 0, 0);
+  if (it.tile !== undefined && TD[it.tile].tex) g.drawImage(TD[it.tile].tex[0], 0, 0, k.width, k.height);
+  else if (it.wall) g.drawImage(wallArt[it.wall] ? wallArt[it.wall][0] : wallTex[it.wall], 0, 0, k.width, k.height);
   else switch (it.shape) {
     case 'pick': P('#7d5e3a', 7, 4, 2, 11); P(c, 2, 2, 12, 2); P(c, 1, 4, 2, 2); P(c, 13, 4, 2, 2); break;
     case 'sword': P(c, 7, 1, 2, 10); P(shade(c.length === 7 ? c : '#888888', 1.25), 7, 1, 1, 9); P('#5e4529', 4, 11, 8, 1); P('#7d5e3a', 7, 12, 2, 3); break;
@@ -954,7 +990,7 @@ function updateBoss(e, dt, dx, dy, dist) {
 const canvas = $('view'), ctx = canvas.getContext('2d');
 const lightC = document.createElement('canvas'), lightG = lightC.getContext('2d');
 let LW = 0, LH = 0, LX = 0, LY = 0, LD = null, LI = null;
-function resize() { canvas.width = innerWidth; canvas.height = innerHeight; Z = Math.max(2, Math.round(innerHeight / (16 * 24))); }
+function resize() { canvas.width = innerWidth; canvas.height = innerHeight; Z = Math.max(2, Math.round(innerHeight / (16 * 24))); if (artZ && artZ !== Z) rebuildArt(); }
 addEventListener('resize', resize); resize();
 function computeLight() {
   const vw = Math.ceil(canvas.width / Z / TS) + 2, vh = Math.ceil(canvas.height / Z / TS) + 2, m = 12;
@@ -987,12 +1023,23 @@ function drawSky(vw, vh) {
     ctx.globalAlpha = 1; }
   // 天體
   const ang = t * Math.PI * 2 - Math.PI / 2 - Math.PI / 2 + Math.PI / 2, sx = vw / 2 + Math.cos(ang - Math.PI / 2) * vw * .42, sy = vh * .6 + Math.sin(ang - Math.PI / 2) * vh * .55;
-  ctx.fillStyle = dl > .3 ? '#fff4c2' : '#dfe6ff'; ctx.fillRect(sx - 12, sy - 12, 24, 24);
+  ctx.imageSmoothingEnabled = true;
+  const orb = ART[dl > .3 ? 'bg-sun' : 'bg-moon'];
+  if (orb) ctx.drawImage(orb, sx - 20, sy - 20, 40, 40); else { ctx.fillStyle = dl > .3 ? '#fff4c2' : '#dfe6ff'; ctx.fillRect(sx - 12, sy - 12, 24, 24); }
+  const dayNight = (im, x, y, w, h) => { ctx.drawImage(im.night, x, y, w, h); ctx.globalAlpha = dl; ctx.drawImage(im, x, y, w, h); ctx.globalAlpha = 1; };
+  const layer = (im, d, lift) => { if (!im?.night) return; const h = vh * .62, w = im.width / im.height * h, base = vh / 2 + lift + (SURF * TS - vh / 2 - cam.y) * d;
+    // 左右交替翻轉：生成的圖左右接不起來，鏡像相接一定對得上
+    for (let n = Math.floor(cam.x * d / w), x = -(cam.x * d % w); x < vw; x += w, n++) { if (n % 2) { ctx.save(); ctx.translate(x + w, 0); ctx.scale(-1, 1); dayNight(im, 0, base - h, w, h); ctx.restore(); } else dayNight(im, x, base - h, w, h); }
+    if (base < vh) { ctx.fillStyle = `rgb(${mix(mix(im.fill, NIGHT, .62), im.fill, dl)})`; ctx.fillRect(0, base - .5, vw, vh - base + 1); } };
+  layer(ART['bg-far'], .12, 34);
   // 遠景浮島：還沒到天穹時代時，就看得見目標
-  const tone = mix([14,16,36], [96,138,152], dl);
+  const tone = mix(NIGHT, [96,138,152], dl);
   ctx.fillStyle = `rgb(${tone})`;
-  for (const i of skyIslands) { const x = ((i.x - cam.x * i.d) % (vw + 300) + vw + 300) % (vw + 300) - 150, y = i.y - cam.y * i.d * .25 + 40 + Math.sin(S.played * .15 + i.s) * 3;
-    ctx.fillRect(x, y, i.w, 5); ctx.fillRect(x + i.w * .1, y + 5, i.w * .8, 5); ctx.fillRect(x + i.w * .25, y + 10, i.w * .5, 5); ctx.fillRect(x + i.w * .4, y + 15, i.w * .2, 4); }
+  skyIslands.forEach((i, n) => { const x = ((i.x - cam.x * i.d) % (vw + 300) + vw + 300) % (vw + 300) - 150, y = i.y - cam.y * i.d * .25 + 40 + Math.sin(S.played * .15 + i.s) * 3, im = ART['bg-island-' + (n % 3 + 1)];
+    if (im?.night) { dayNight(im, x, y - 8, i.w, i.w * im.height / im.width); return; }
+    ctx.fillRect(x, y, i.w, 5); ctx.fillRect(x + i.w * .1, y + 5, i.w * .8, 5); ctx.fillRect(x + i.w * .25, y + 10, i.w * .5, 5); ctx.fillRect(x + i.w * .4, y + 15, i.w * .2, 4); });
+  layer(ART['bg-mid'], .28, 58);
+  ctx.imageSmoothingEnabled = false;
 }
 function draw() {
   const vw = canvas.width / Z, vh = canvas.height / Z;
@@ -1002,11 +1049,15 @@ function draw() {
   ctx.setTransform(Z, 0, 0, Z, Math.round((-cam.x + sx) * Z), Math.round((-cam.y + sy) * Z));
   const x0 = Math.floor(cam.x / TS) - 1, x1 = Math.ceil((cam.x + vw) / TS) + 1, y0 = Math.max(0, Math.floor(cam.y / TS) - 1), y1 = Math.min(H, Math.ceil((cam.y + vh) / TS) + 1);
   for (let y = y0; y < y1; y++) for (let x = Math.max(0, x0); x < Math.min(W, x1); x++) { const i = ID(x, y), t = tile[i], px = x * TS, py = y * TS;
-    if (wall[i]) ctx.drawImage(wallTex[wall[i]], px, py);
-    else if (y > surf[x] && (y >= 60 || !S.islands)) ctx.drawImage(y >= SEAL_Y ? bgDeep : y > surf[x] + 8 ? bgStone : bgDirt, px, py);
+    const cell = (x & 3) + (y & 3) * ART_GRID;
+    if (wall[i]) ctx.drawImage(wallArt[wall[i]] ? wallArt[wall[i]][cell] : wallTex[wall[i]], px, py, TS, TS);
+    else if (y > surf[x] && (y >= 60 || !S.islands)) { const b = y >= SEAL_Y ? 2 : y > surf[x] + 8 ? 1 : 0; ctx.drawImage(bgArt[b] ? bgArt[b][cell] : bgTex[b], px, py, TS, TS); }
     if (t === T.air) continue;
-    const D = TD[t]; if (D.tex) ctx.drawImage(D.tex[(x * 7 + y * 13) % VAR], px, py);
-    if (t === T.crop && meta.get(i)?.ripe) { ctx.fillStyle = '#f5c542'; ctx.fillRect(px + 3, py + 9, 3, 2); ctx.fillRect(px + 7, py + 6, 3, 2); ctx.fillRect(px + 11, py + 9, 3, 2); }
+    const D = TD[t], lit = D.texOn && (t === T.lamp ? power.has(i) : meta.get(i)?.[t === T.crop ? 'ripe' : 'on']);
+    if (lit) ctx.drawImage(D.texOn, px, py, TS, TS); else if (D.tex) ctx.drawImage(D.grid ? D.tex[cell] : D.tex[(x * 7 + y * 13) % VAR], px, py, TS, TS);
+    // 連續材質沒有格線，露出來的邊另外加深，地形的輪廓才看得清楚
+    if (D.grid) { const open = (a, b) => inB(a, b) && !TD[get(a, b)].solid; ctx.fillStyle = 'rgba(16,12,28,.34)'; if (open(x, y + 1)) ctx.fillRect(px, py + TS - 2, TS, 2); if (open(x - 1, y)) ctx.fillRect(px, py, 1, TS); if (open(x + 1, y)) ctx.fillRect(px + TS - 1, py, 1, TS); if (open(x, y - 1)) { ctx.fillStyle = 'rgba(255,248,226,.2)'; ctx.fillRect(px, py, TS, 1); } }
+    if (t === T.crop && !D.texOn && meta.get(i)?.ripe) { ctx.fillStyle = '#f5c542'; ctx.fillRect(px + 3, py + 9, 3, 2); ctx.fillRect(px + 7, py + 6, 3, 2); ctx.fillRect(px + 11, py + 9, 3, 2); }
     if (D.logic) drawLogic(t, i, x, y, px, py); }
   for (const n of S.npcs) drawNpc(n);
   for (const d of drops) { const im = dropImg(d.id); if (im) ctx.drawImage(im, d.x - 1, d.y - 1 + Math.sin(d.t * 4) * 1, 10, 10); }
@@ -1031,31 +1082,43 @@ function dropImg(id) { if (imgCache[id]) return imgCache[id].complete ? imgCache
 function drawLogic(t, i, x, y, px, py) {
   const on = power.has(i);
   if (t === T.wire) { ctx.fillStyle = on ? '#c8f135' : '#3f5a3a'; ctx.fillRect(px + 6, py + 6, 4, 4); for (const [dx, dy, a, b, w, h] of [[1,0,10,6,6,4],[-1,0,0,6,6,4],[0,1,6,10,4,6],[0,-1,6,0,4,6]]) { const n = get(x + dx, y + dy); if (n !== T.air && TD[n].logic) ctx.fillRect(px + a, py + b, w, h); } }
-  else if (t === T.lever) { const m = meta.get(i); if (m?.on) { ctx.fillStyle = '#c8f135'; ctx.fillRect(px + 7, py + 3, 2, 2); } }
-  else if (t === T.lamp && on) { ctx.fillStyle = '#fff1a8'; ctx.fillRect(px + 3, py + 3, 10, 10); }
+  else if (t === T.lever) { const m = meta.get(i); if (m?.on && !TD[t].texOn) { ctx.fillStyle = '#c8f135'; ctx.fillRect(px + 7, py + 3, 2, 2); } }
+  else if (t === T.lamp && on) { if (!TD[t].texOn) { ctx.fillStyle = '#fff1a8'; ctx.fillRect(px + 3, py + 3, 10, 10); } }
   else if (t === T.plate) { const m = meta.get(i); if (m?.on) { ctx.fillStyle = '#c8f135'; ctx.fillRect(px + 1, py + 14, 14, 1); } }
   else if (t === T.clock || t === T.notgate || t === T.delay || t === T.drill) { const m = meta.get(i) || {}; const live = t === T.clock ? m.on : t === T.drill ? on : m.out; if (live) { ctx.fillStyle = '#c8f135'; ctx.fillRect(px + 1, py + 1, 2, 2); }
     if (t !== T.clock) { const d = DIRS[m.dir || 0]; ctx.fillStyle = '#fff'; ctx.fillRect(px + 7 + d[0] * 5, py + 7 + d[1] * 5, 2, 2); } }
   else if (t === T.seller && on) { ctx.fillStyle = '#c8f135'; ctx.fillRect(px + 1, py + 1, 2, 2); }
 }
+// 單張立繪：原圖面向右。腳底對齊碰撞框底部（飛行者對齊中心），走路的感覺靠輕微傾斜與上下晃動
+function drawSprite(im, x, y, w, h, { face = 1, mw = 1.6, mh = 1.2, air = 0, tilt = 0, squash = 0, flash = 0 } = {}) {
+  const s = Math.min(w * mw / im.width, h * mh / im.height), dw = im.width * s, dh = im.height * s;
+  ctx.save(); ctx.imageSmoothingEnabled = true; ctx.translate(x + w / 2, air ? y + h / 2 : y + h); ctx.rotate(tilt); ctx.scale(face * (1 + squash), 1 - squash);
+  if (flash) ctx.filter = 'brightness(2.6)';
+  ctx.drawImage(im, -dw / 2, air ? -dh / 2 : -dh, dw, dh); ctx.restore();
+}
 function drawPlayer() {
   if (P.iframe > 0 && Math.floor(P.iframe * 14) % 2) return;
-  const x = Math.round(P.x), y = Math.round(P.y), f = P.face, w = Math.sin(P.walk * .12) * (Math.abs(P.vx) > 8 ? 3 : 0);
+  const x = Math.round(P.x), y = Math.round(P.y), f = P.face, moving = Math.abs(P.vx) > 8, w = Math.sin(P.walk * .12) * (moving ? 3 : 0);
   const R = (c, a, b, wd, h) => { ctx.fillStyle = c; ctx.fillRect(f > 0 ? x + a : x + P.w - a - wd, y + b, wd, h); };
-  R('#22333a', 3, 21 + 0, 3, 7 - Math.max(0, w)); R('#22333a', 7, 21, 3, 7 - Math.max(0, -w));
+  if (ART.player) drawSprite(ART.player, x, y - Math.abs(w) * .35, P.w, P.h, { face:f, mw:2.2, mh:1.12, tilt:w * .025 });
+  else { R('#22333a', 3, 21 + 0, 3, 7 - Math.max(0, w)); R('#22333a', 7, 21, 3, 7 - Math.max(0, -w));
   R('#2c7a73', 1, 9, 10, 13); R('#1f5d58', 1, 19, 10, 3); R('#c8f135', 2, 8, 9, 2);
-  R('#e0b08c', 3, 2, 7, 6); R('#2c7a73', 2, 0, 9, 3); R('#2c7a73', 2, 0, 2, 8); R('#101418', 8, 4, 1, 2);
+  R('#e0b08c', 3, 2, 7, 6); R('#2c7a73', 2, 0, 9, 3); R('#2c7a73', 2, 0, 2, 8); R('#101418', 8, 4, 1, 2); }
   const it = heldItem(); if (it) { const im = dropImg(it.id); if (im) { const a = swing > 0 ? (1 - swing) * 2 - 1 : -.25; ctx.save(); ctx.translate(x + P.w / 2 + f * 5, y + 14); ctx.rotate(f * (a + .25)); ctx.scale(f, 1); ctx.drawImage(im, 0, -11, 12, 12); ctx.restore(); } }
 }
 function drawNpc(n) {
-  const x = n.x, y = n.y; const c = n.type === 'scrap' ? ['#8a6d3a','#5e4a22'] : ['#2a4d85','#f5c542'];
+  const x = n.x, y = n.y; if (ART['npc-' + n.type]) { drawSprite(ART['npc-' + n.type], x, y, 14, 28, { mw:2.4, mh:1.12 }); return; }
+  const c = n.type === 'scrap' ? ['#8a6d3a','#5e4a22'] : ['#2a4d85','#f5c542'];
   ctx.fillStyle = c[0]; ctx.fillRect(x + 2, y + 9, 10, 15); ctx.fillStyle = c[1]; ctx.fillRect(x + 2, y + 18, 10, 2); ctx.fillStyle = '#2b2b30'; ctx.fillRect(x + 3, y + 24, 3, 4); ctx.fillRect(x + 8, y + 24, 3, 4);
   ctx.fillStyle = '#d7a57e'; ctx.fillRect(x + 3, y + 2, 8, 7); ctx.fillStyle = c[1]; ctx.fillRect(x + 2, y, 10, 3); ctx.fillStyle = '#111'; ctx.fillRect(x + 5, y + 5, 1, 1); ctx.fillRect(x + 8, y + 5, 1, 1);
 }
 function drawMob(e) {
   const x = Math.round(e.x), y = Math.round(e.y), d = e.d, c = e.flash > 0 ? '#ffffff' : d.c, R = (col, a, b, w, h) => { ctx.fillStyle = e.flash > 0 ? '#fff' : col; ctx.fillRect(x + a, y + b, w, h); }, f = Math.floor(e.t * 6) % 2, dk = d.c.length === 7 ? shade(d.c, .7) : c;
   if (e.elite) { ctx.fillStyle = '#f5c54266'; ctx.fillRect(x - 2, y - 2, e.w + 4, e.h + 4); }
-  switch (e.type) {
+  const art = ART['mob-' + e.type];
+  if (art) { if (Math.abs(e.vx) > 2) e.artFace = e.vx < 0 ? -1 : 1; const air = d.boss || d.ai === 'fly' || d.ai === 'flyshoot', bob = air ? Math.sin(e.t * 5) * 1.5 : 0;
+    drawSprite(art, x, y + bob, e.w, e.h, { face:e.artFace || 1, air, mw:d.boss ? 1.25 : 1.7, mh:d.boss ? 1.25 : 1.35, tilt:!air && d.ai !== 'hop' && Math.abs(e.vx) > 2 ? Math.sin(e.t * 9) * .07 : 0, squash:d.ai === 'hop' || d.ai === 'bomb' ? clamp(Math.abs(e.vy) / 2000, 0, .12) * (e.vy < 0 ? -1 : 1) : 0, flash:e.flash > 0 || (e.fuse && Math.floor(e.t * 16) % 2) });
+  } else switch (e.type) {
     case 'slug': R(c, 1, 2, 12, 8); R(dk, 0, 6, 14, 4); R('#111', 3, 4, 2, 2); R('#111', 9, 4, 2, 2); break;
     case 'walker': case 'archer': { const lim = e.type === 'archer' ? '#ded8c4' : '#4f6a4a'; R(lim, 2, 20, 3, 6 - f * 2); R(lim, 7, 20, 3, 4 + f * 2); R(e.type === 'archer' ? '#b5ae98' : '#3d5560', 1, 8, 10, 12); R(c, 2, 0, 8, 8); R('#c0262b', 3, 3, 2, 2); R('#c0262b', 7, 3, 2, 2); if (e.type === 'archer') R('#7d5e3a', 10, 6, 2, 14); break; }
     case 'bat': R(c, 4, 2, 4, 5); R(dk, f ? 0 : 1, f ? 0 : 3, 4, 2); R(dk, f ? 8 : 7, f ? 0 : 3, 4, 2); R('#ff6b5e', 5, 3, 1, 1); break;
