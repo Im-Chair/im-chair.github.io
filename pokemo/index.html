@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>珠界：歸一之子</title>
+<link rel="icon" href="/icon.png">
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;touch-action:none}
 html,body{margin:0;height:100%;background:#070a14;color:#eef1ff;font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;overflow:hidden}
@@ -442,10 +443,16 @@ function say(lines){
       pos=0;txt.textContent='';clearInterval(timer);
       timer=setInterval(()=>{pos++;txt.textContent=full.slice(0,pos);if(pos>=full.length)clearInterval(timer)},22);
     };
-    d.onclick=()=>{
+    const next=()=>{
       if(pos<full.length){clearInterval(timer);pos=full.length;txt.textContent=full;return}
-      i++;if(i>=lines.length){clearInterval(timer);$('#dlgP').style.display='none';d.classList.remove('on');d.onclick=null;res()}else showLine();
+      i++;if(i>=lines.length){clearInterval(timer);$('#dlgP').style.display='none';d.classList.remove('on');d.onclick=null;removeEventListener('keydown',onKey);res()}else showLine();
     };
+    // 桌機：Enter／空白鍵等同點一下對話框。先取消預設並放掉焦點，免得同一下又按到留有焦點的按鈕
+    const onKey=e=>{
+      if((e.key!=='Enter'&&e.key!==' ')||e.repeat||$('#modal').classList.contains('on'))return;
+      e.preventDefault();if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();next();
+    };
+    d.onclick=next;addEventListener('keydown',onKey);
     showLine();
   });
 }
@@ -2134,7 +2141,7 @@ function chooseStarter(){
     await fade(false);
     $('#stwrap').onclick=e=>{const c=e.target.closest('.stcard');if(!c)return;sel=c.dataset.id;document.querySelectorAll('.stcard').forEach(x=>x.classList.toggle('sel',x===c));$('#stOk').style.opacity=1};
     $('#stOk').onclick=async()=>{
-      if(!sel)return;
+      if(!sel){toast('先點一隻夥伴');return}
       const sp=SP[sel];
       const r=await modal(`<h3>${sp.name}，可以嗎？</h3><p>${ATTR[sp.attr]}屬性。</p>`,[{t:'再想想'},{t:'就牠了',c:'pri'}]);
       if(r===1){$('#stOk').onclick=null;res(sel)}
