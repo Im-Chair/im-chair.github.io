@@ -315,7 +315,8 @@ const FOE_TEAM_SCALE=n=>n>1?1.7/(n+1):1;
 const WILD_HIT_MUL=1/3;      // 野生珠獸每回合直接攻擊，單次傷害是舊版（每 3 回合一次）的 ⅓
 const NO_ATK_SIZE=5;         // 我方單組消除達此顆數，該屬性本回合不攻擊
 const FOE_SPR_MIN=56;
-const FOE_MUL={guard:[1.6,0.85],boss:[1.6,0.9],trainer:[1.3,0.8]};   // 對人戰：[血量倍率, 攻擊倍率]（守衛隊員／首領／小兵）
+const LV_GAP_FREE=3,LV_GAP_MY=.03,LV_GAP_FOE=.05;   // 對人戰：隊伍平均等級比對手平均低超過 FREE 級後，每差 1 級我方傷害 -3%（最低 40%）、對手傷害 +5%（最高 250%）
+const FOE_MUL={guard:[2.56,0.85],boss:[2.56,0.9],trainer:[2.08,0.8]};   // 對人戰：[血量倍率, 攻擊倍率]（守衛隊員／首領／小兵）
 const CORE_NAMES=['水核','火核','木核','光核','暗核'];         // 多隻上場時，每隻圖的最小尺寸（px）      // 開場時第 i 隻的倒數多加 i×此值，讓牠們錯開出手   // 隊伍平均等級低於「守衛第一波等級＋此值」時，挑戰前跳出提醒
 function legacyZone1(){ // 舊怪物資料（NEWMON=false）用
   const t=[],w2={water:10,fire:10,wood:12,light:3,dark:3},w3={water:2,fire:2,wood:3,light:1,dark:1};
@@ -1209,7 +1210,7 @@ async function guardEvent(){
 }
 async function levelCheck(title,L){   // 隊伍平均等級太低時先提醒；回傳 true＝開打
   const avg=teamAvg();if(avg>=L[0]+GUARD_WARN_GAP)return true;
-  const r=await modal(`<h3>${title}</h3><div class="note">對方 Lv${L[0]}～${L[L.length-1]}，你的隊伍平均 Lv${avg.toFixed(1)}。</div>`,[{t:'晚點再來'},{t:'開打',c:'warn'}]);
+  const r=await modal(`<h3>${title}</h3><div class="note">對方 Lv${L[0]}～${L[L.length-1]}，你的隊伍平均 Lv${avg.toFixed(1)}。差太多時，我方傷害會變低、對手傷害會變高。</div>`,[{t:'晚點再來'},{t:'開打',c:'warn'}]);
   return r===1;
 }
 async function afterGuardWin(){
@@ -1729,6 +1730,8 @@ async function beginBattle(cfg){
      teamHp:Math.max(1,Math.round(P.hpFrac*tm)),teamMax:tm,weights:weightsFor(cfg.canCap),exp:0,drops:[],shield:0,shieldV:0,foeShield:0,foeShieldV:0,foeAmp:1,amp:1,lure:0,
      skch:P.team.map(m=>CAPSK.includes(SKILLS[skillOf(m)].t)?skCost(m):Math.round(skCost(m)*.5))};
   B.maxHp=B.hp=B.foes.reduce((a,f)=>a+f.maxHp,0);   // 對手共用一條血量
+  const over=cfg.canCap?0:Math.max(0,B.foes.reduce((a,f)=>a+f.lv,0)/B.foes.length-teamAvg()-LV_GAP_FREE);
+  B.dmgMul=Math.max(.4,1-LV_GAP_MY*over);B.foeMul=Math.min(2.5,1+LV_GAP_FOE*over);
   B.foes.forEach(f=>{if(!P.dex[f.sp.id])P.dex[f.sp.id]=1});
   B.enemy=B.foes[0];
   show('sBattle');resizeBoard();initGrid();
@@ -1737,7 +1740,7 @@ async function beginBattle(cfg){
   $('#bRun').style.visibility=B.kind==='wild'?'visible':'hidden';
   renderBattle();msg(cfg.intro);
   await fade(false);
-  await sleep(500);msg('連成 3 顆就會消除；一組 5 顆以上，該屬性這回合不攻擊。');B.busy=false;
+  await sleep(500);msg(over>0?`等級差距大：我方傷害 -${Math.round((1-B.dmgMul)*100)}%，對手傷害 +${Math.round((B.foeMul-1)*100)}%。`:'連成 3 顆就會消除；一組 5 顆以上，該屬性這回合不攻擊。');B.busy=false;
 }
 function msg(t){$('#bMsg').textContent=t}
 const needNow=()=>Math.max(10,TUNE.need-((B&&B.cut)||0));
@@ -1847,7 +1850,7 @@ async function foeSkillAction(){
  const [f,id]=ready[ri(0,ready.length-1)],k=SKILLS[id],team=teamInfo();let note='';
  if(k.t==='strike'||k.t==='drain'){
    const rel=team.reduce((a,t)=>a+relIn(f.attr,t.sp.attr),0)/Math.max(1,team.length);
-   let d=Math.max(1,Math.round(f.atk*k.v*rel));if(B.shield>0)d=Math.max(1,Math.round(d*(1-B.shieldV)));
+   let d=Math.max(1,Math.round(f.atk*k.v*rel*B.foeMul));if(B.shield>0)d=Math.max(1,Math.round(d*(1-B.shieldV)));
    B.teamHp=Math.max(0,B.teamHp-d);note=`${f.sp.name} 使用【${k.n}】，隊伍受到 ${d} 傷害`;
    if(k.t==='drain'){const h=Math.min(B.maxHp-B.hp,Math.round(d*(id==='drn2'?.6:.5)));B.hp+=h;if(h)note+=`，回復 ${h}`}
  }else if(k.t==='heal'){
@@ -1864,7 +1867,7 @@ function foeTeamDamage(groups,combo){   // 消到場上任一隻的屬性：全�
  const hit=groups.filter(g=>B.foes.some(f=>f.attr===g.t)),amp=B.foeAmp||1;B.foeAmp=1;
  if(!hit.length)return 0;
  const team=teamInfo(),cm=FOE_COMBO_BASE*(1+FOE_COMBO_STEP*(Math.max(1,combo)-1)),size=1+.25*(Math.max(...hit.map(g=>g.cells.length))-3);
- return Math.round(B.foes.reduce((a,f)=>a+f.atk*size*cm*(team.reduce((x,t)=>x+relIn(f.attr,t.sp.attr),0)/Math.max(1,team.length))*B.foeScale*amp,0));
+ return Math.round(B.foes.reduce((a,f)=>a+f.atk*size*cm*(team.reduce((x,t)=>x+relIn(f.attr,t.sp.attr),0)/Math.max(1,team.length))*B.foeScale*amp*B.foeMul,0));
 }
 async function afterMove(){
   if(!B||B.busy||B.over)return;
@@ -1880,7 +1883,7 @@ async function afterMove(){
   let capLeft=B.canCap?Math.max(1,Math.round(B.maxHp*TUNE.cap/100*B.amp)):Infinity;   // 野生珠獸單回合最多承受 TUNE.cap% 最大血量
   for(const[at,v]of calcHits(groups,combo)){
     if(B.hp<=0)break;
-    let d=Math.round(v*relOutAll(at)*B.amp);if(B.foeShield>0)d=Math.max(1,Math.round(d*(1-B.foeShieldV)));if(d>capLeft){d=capLeft;capped=true}
+    let d=Math.round(v*relOutAll(at)*B.amp*B.dmgMul);if(B.foeShield>0)d=Math.max(1,Math.round(d*(1-B.foeShieldV)));if(d>capLeft){d=capLeft;capped=true}
     d=Math.min(d,B.hp);B.hp-=d;dmg+=d;capLeft-=d;
   }
   if(combo)B.amp=1;if(B.foeShield>0)B.foeShield--;
@@ -1938,7 +1941,7 @@ async function useSkill(i){
   else if(k.t==='purify'){const l=shuffle(cells(o=>o.t===5)).slice(0,k.v);l.forEach(o=>o.t=sp.attr);note=`${l.length} 顆符被淨化成${ATTR[sp.attr]}珠`}
   else if(k.t==='recolor'){const l=shuffle(cells(o=>o.t<5&&o.t!==sp.attr)).slice(0,k.v);l.forEach(o=>o.t=sp.attr);note=`${l.length} 顆珠變成了${ATTR[sp.attr]}珠`}
   else if(k.t==='strike'||k.t==='drain'){
-    let d=Math.max(1,Math.round(s.atk*k.v*relOutAll(sp.attr)));if(B.foeShield>0)d=Math.max(1,Math.round(d*(1-B.foeShieldV)));
+    let d=Math.max(1,Math.round(s.atk*k.v*relOutAll(sp.attr)*B.dmgMul));if(B.foeShield>0)d=Math.max(1,Math.round(d*(1-B.foeShieldV)));
     if(B.canCap)d=Math.min(d,Math.max(0,B.hp-1));
     d=Math.min(d,B.hp);B.hp-=d;
     $('#eSpr').classList.remove('flash');void $('#eSpr').offsetWidth;$('#eSpr').classList.add('flash');
