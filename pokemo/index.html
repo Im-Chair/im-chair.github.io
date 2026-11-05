@@ -62,13 +62,7 @@ textarea{height:90px;font-size:12px}
 #foeWrap{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;background:#0a0e27cc;z-index:5}
 #foeWrap.on{display:flex}
 .foes{display:flex;gap:8px;justify-content:center;align-items:flex-end}
-.foe{position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;padding:3px;border-radius:10px;border:2px solid transparent;cursor:pointer}
-.foe.tgt{border-color:#ffd84a;background:#ffd84a1a}
-.foe.dead{opacity:.18;pointer-events:none}
-.fhp{display:block;width:90%;height:5px;background:#0008;border-radius:3px;overflow:hidden}
-.fhp b{display:block;height:100%;background:linear-gradient(#ff7a7a,#e03b3b)}
-.fcd{position:absolute;right:-4px;top:-4px;background:#d63b4b;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800}
-.fcd:empty{display:none}
+.foe{position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;padding:3px;border-radius:10px;border:2px solid transparent}
 #foeBoard{width:min(62vw,250px);aspect-ratio:6/5;border-radius:10px;background:#141a3a}
 #foeCombo{margin-top:6px;font-size:22px;font-weight:900;color:#ffd84a;min-height:30px;text-shadow:0 2px 4px #000}
 #eCd{position:absolute;right:-26px;top:-4px;background:#d63b4b;border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-weight:800;border:2px solid #fff}
@@ -316,8 +310,10 @@ const FOE_COMBO_BASE=0.75;   // 1 Combo 時的傷害倍率（相對於攻擊力�
 const FOE_COMBO_STEP=0.25;   // 每多 1 Combo 多加的倍率
 const FOE_STEP_MS=230;       // 每消一組的演出時間
 const FOE_SKYFALL_MAX=6;     // 天降最多連鎖幾輪
-/* 對手多隻同時上場：消到與其屬性相同的珠子時，各自出手；攻擊力依隊伍人數縮放。 */
-const FOE_TEAM_SCALE=n=>n>1?2/(n+1):1;
+/* 對手多隻同時上場：共用一條血量；消到場上任一隻的屬性時全體各打一下（每回合一次）。攻擊力依隊伍人數縮放。 */
+const FOE_TEAM_SCALE=n=>n>1?1.7/(n+1):1;
+const WILD_HIT_MUL=1/3;      // 野生珠獸每回合直接攻擊，單次傷害是舊版（每 3 回合一次）的 ⅓
+const NO_ATK_SIZE=5;         // 我方單組消除達此顆數，該屬性本回合不攻擊
 const FOE_SPR_MIN=56;
 const FOE_MUL={guard:[1.6,0.85],boss:[1.6,0.9],trainer:[1.3,0.8]};   // 對人戰：[血量倍率, 攻擊倍率]（守衛隊員／首領／小兵）
 const CORE_NAMES=['水核','火核','木核','光核','暗核'];         // 多隻上場時，每隻圖的最小尺寸（px）      // 開場時第 i 隻的倒數多加 i×此值，讓牠們錯開出手   // 隊伍平均等級低於「守衛第一波等級＋此值」時，挑戰前跳出提醒
@@ -352,8 +348,8 @@ const SKILLS={
  heal1:{n:'療癒',t:'heal',cd:5,v:.18,d:'回復隊伍 18% 最大體力（依回復力浮動）'},
  heal2:{n:'祝福',t:'heal',cd:7,v:.3,d:'回復隊伍 30% 最大體力（依回復力浮動）'},
  heal3:{n:'生命之泉',t:'heal',cd:9,v:.45,d:'回復隊伍 45% 最大體力（依回復力浮動）'},
- frz1:{n:'凍結',t:'freeze',cd:6,v:2,d:'敵人的行動倒數 +2'},
- frz2:{n:'時間停滯',t:'freeze',cd:8,v:3,d:'敵人的行動倒數 +3'},
+ frz1:{n:'凍結',t:'freeze',cd:6,v:2,d:'對手跳過 2 回合'},
+ frz2:{n:'時間停滯',t:'freeze',cd:8,v:3,d:'對手跳過 3 回合'},
  shd1:{n:'守護',t:'shield',cd:6,v:.5,d:'2 回合內，受到的傷害 -50%'},
  shd2:{n:'聖壁',t:'shield',cd:8,v:.75,d:'2 回合內，受到的傷害 -75%'},
  amp1:{n:'激昂',t:'amp',cd:5,v:1.5,d:'下一次消珠的傷害 ×1.5（也提高野生珠獸的傷害上限）'},
@@ -1675,7 +1671,7 @@ function runTimer(){
 /* ================= 戰鬥：流程 ================= */
 function mkEnemy(id,lv,hpMul,atkMul){
   const sp=SP[id],s=st({id,lv});
-  const cd=hpMul===3?3:2;return{sp,lv,attr:sp.attr,maxHp:Math.round(s.hp*hpMul),hp:Math.round(s.hp*hpMul),atk:Math.round(s.atk*atkMul),cd,cdMax:cd};
+  return{sp,lv,attr:sp.attr,maxHp:Math.round(s.hp*hpMul),atk:Math.round(s.atk*atkMul)};
 }
 function encWeights(tx,ty){   // 目前位置的 [水,火,木,光,暗] 權重
   const w=[0,0,0,0,0];(CUR.encBase||[1,1,1,0,0]).forEach((v,k)=>w[k]=v);
@@ -1729,10 +1725,11 @@ async function startTeamBattle(cfg){   // 對人戰（守衛／小兵）：foes�
 async function beginBattle(cfg){
   await fade(true);
   const tm=teamMax();
-  B={kind:cfg.kind,onWin:cfg.onWin,foeCombo:cfg.foeCombo||null,foeName:cfg.foeName||'',foes:cfg.foes,tgt:0,foeScale:FOE_TEAM_SCALE(cfg.foes.length)*(cfg.foeScaleMul||1),canCap:cfg.canCap,charm:0,busy:true,over:false,
+  B={kind:cfg.kind,onWin:cfg.onWin,foeCombo:cfg.foeCombo||null,foeName:cfg.foeName||'',foes:cfg.foes,foeFreeze:0,foeScale:FOE_TEAM_SCALE(cfg.foes.length)*(cfg.foeScaleMul||1),canCap:cfg.canCap,charm:0,busy:true,over:false,
      teamHp:Math.max(1,Math.round(P.hpFrac*tm)),teamMax:tm,weights:weightsFor(cfg.canCap),exp:0,drops:[],shield:0,shieldV:0,foeShield:0,foeShieldV:0,foeAmp:1,amp:1,lure:0,
      skch:P.team.map(m=>CAPSK.includes(SKILLS[skillOf(m)].t)?skCost(m):Math.round(skCost(m)*.5))};
-  B.foes.forEach(f=>{f.cd=f.cdMax;if(!P.dex[f.sp.id])P.dex[f.sp.id]=1});
+  B.maxHp=B.hp=B.foes.reduce((a,f)=>a+f.maxHp,0);   // 對手共用一條血量
+  B.foes.forEach(f=>{if(!P.dex[f.sp.id])P.dex[f.sp.id]=1});
   B.enemy=B.foes[0];
   show('sBattle');resizeBoard();initGrid();
   if(!boardRun){boardRun=true;requestAnimationFrame(boardLoop)}
@@ -1740,28 +1737,28 @@ async function beginBattle(cfg){
   $('#bRun').style.visibility=B.kind==='wild'?'visible':'hidden';
   renderBattle();msg(cfg.intro);
   await fade(false);
-  await sleep(500);msg('拖曳珠子，連成 3 顆就會消除。');B.busy=false;
+  await sleep(500);msg('連成 3 顆就會消除；一組 5 顆以上，該屬性這回合不攻擊。');B.busy=false;
 }
 function msg(t){$('#bMsg').textContent=t}
 const needNow=()=>Math.max(10,TUNE.need-((B&&B.cut)||0));
 function capChance(){
-  const e=B.enemy,base=CAPBASE[e.sp.rar],hpf=1+(1-e.hp/e.maxHp)*1.5,lvf=clamp(1+(teamAvg()-e.lv)*.06,.5,1.5);
+  const e=B.enemy,base=CAPBASE[e.sp.rar],hpf=1+(1-B.hp/B.maxHp)*1.5,lvf=clamp(1+(teamAvg()-e.lv)*.06,.5,1.5);
   return clamp(base*hpf*lvf+(B.lure||0),.03,.95);
 }
 function sprSize(){return clamp(innerHeight-560,100,180)+(B.kind==='guard'?10:0)}
 function renderBattle(){
-  const e=B.enemy;
-  $('#eName').textContent=e.sp.name;$('#eLv').textContent='Lv'+e.lv;
-  $('#eAttr').innerHTML=`<span class="tag" style="background:${ATTRC[e.attr]}">${ATTR[e.attr]}</span>`;
-  $('#eRar').textContent=RAR[e.sp.rar];
+  const e=B.enemy,multi=B.foes.length>1,attrs=[...new Set(B.foes.map(f=>f.attr))];
+  $('#eName').textContent=multi?(B.foeName||'對手')+' 的隊伍':e.sp.name;$('#eLv').textContent=multi?'':'Lv'+e.lv;
+  $('#eAttr').innerHTML=attrs.map(a=>`<span class="tag" style="background:${ATTRC[a]}">${ATTR[a]}</span>`).join('');
+  $('#eRar').textContent=multi?'':RAR[e.sp.rar];
   $('#bTop').dataset.bg=CUR.battleBg||AK[e.attr];   // 地圖有自己的戰鬥背景就用地圖的
-  if(B.foes.length===1){$('#eSpr').innerHTML=spr(e.sp,sprSize());$('#eCd').style.display=B.foeCombo?'none':'';$('#eCd').textContent=B.foeCombo?'':(e.freezeTurns?'❄':e.cd)}
-  else{   // 多隻同時上場：點選要攻擊的對象
+  $('#eCd').style.display=B.foeFreeze>0?'':'none';$('#eCd').textContent=B.foeFreeze>0?'❄':'';
+  if(!multi)$('#eSpr').innerHTML=spr(e.sp,sprSize());
+  else{   // 多隻同時上場：共用血量，這裡只顯示陣容
     const n=B.foes.length,sz=Math.round(clamp((Math.min(innerWidth,480)-48)/n-18,FOE_SPR_MIN,sprSize()*.7));
-    $('#eCd').style.display='none';
-    $('#eSpr').innerHTML=`<div class="foes">${B.foes.map((f,i)=>`<div class="foe ${f===e?'tgt':''} ${f.hp<=0?'dead':''}" data-fi="${i}">${spr(f.sp,sz)}<i class="fhp"><b style="width:${Math.max(0,f.hp)/f.maxHp*100}%"></b></i><span class="fcd">${f.hp>0?(B.foeCombo?(f.freezeTurns?'❄':''):f.cd):''}</span></div>`).join('')}</div>`;
+    $('#eSpr').innerHTML=`<div class="foes">${B.foes.map(f=>`<div class="foe">${spr(f.sp,sz)}</div>`).join('')}</div>`;
   }
-  $('#eHp').style.width=(e.hp/e.maxHp*100)+'%';$('#eHpTxt').textContent=`${Math.max(0,e.hp)}/${e.maxHp}`;
+  $('#eHp').style.width=(B.hp/B.maxHp*100)+'%';$('#eHpTxt').textContent=`${Math.max(0,B.hp)}/${B.maxHp}`;
   $('#tHp').style.width=(B.teamHp/B.teamMax*100)+'%';$('#tHpTxt').textContent=`${Math.max(0,Math.round(B.teamHp))}/${B.teamMax}`;
   $('#bTeamRow').innerHTML=teamInfo().map((t,i)=>{const k=SKILLS[skillOf(t.m)],cost=skCost(t.m),ch=Math.min(cost,(B.skch||[])[i]||0),rdy=ch>=cost&&!B.busy&&!B.over;
     return `<div class="tm ${rdy?'rdy':''}" data-mi="${i}">${spr(t.sp,40)}<span style="color:${ATTRC[t.sp.attr]}">${ATTR[t.sp.attr]} Lv${t.m.lv}</span><span class="sk">${k.n} ${ch>=cost?'✦':ch+'/'+cost}</span><i class="skb"><b style="width:${ch/cost*100}%"></b></i></div>`}).join('');
@@ -1818,29 +1815,30 @@ async function foeTurn(range,attrs){   // 對手每回合轉一次；回傳實�
   lab.textContent=combo?combo+' Combo！':'沒有消除';await sleep(400);w.classList.remove('on');
   return{combo,groups};
 }
+const noAtkAttrs=groups=>new Set(groups.filter(g=>g.t<5&&g.cells.length>=NO_ATK_SIZE).map(g=>g.t));   // 本回合不攻擊的屬性
+const relOutAll=at=>B.foes.reduce((a,f)=>a+relOut(at,f.attr),0)/B.foes.length;   // 共用血量：相剋取對全體的平均
 function calcHits(groups,combo){   // 每一下攻擊：[我方屬性, 未算相剋的傷害]
-  const info=teamInfo(),cm=1+.25*(combo-1),hits=[];
+  const info=teamInfo(),cm=1+.25*(combo-1),hits=[],noAtk=noAtkAttrs(groups);
   groups.forEach(g=>{
-    if(g.t>=5)return;
+    if(g.t>=5||noAtk.has(g.t))return;
     const sz=1+.25*(g.cells.length-3);
     info.filter(t=>t.sp.attr===g.t).forEach(t=>hits.push([t.sp.attr,t.s.atk*sz*cm]));  // 只有同屬性的珠子才會造成傷害
   });
   return hits;
 }
 function calcDamage(groups,combo){   // 對目前目標的總傷害（測試與顯示用）
-  const e=B.enemy;return Math.round(calcHits(groups,combo).reduce((a,[at,v])=>a+v*relOut(at,e.attr),0));
+  return Math.round(calcHits(groups,combo).reduce((a,[at,v])=>a+v*relOutAll(at),0));
 }
-const aliveFoes=()=>B.foes.filter(f=>f.hp>0);
-function retarget(){if(B.enemy&&B.enemy.hp>0)return;const i=B.foes.findIndex(f=>f.hp>0);if(i>=0){B.tgt=i;B.enemy=B.foes[i]}}
-async function handleDowns(){   // 處理倒下的對手；全部倒下就結束戰鬥（回傳 true）
-  for(const f of B.foes)if(f.hp<=0&&!f.down){f.down=true;B.exp+=Math.floor((6+f.lv*5)*rarMul(f.sp.rar));msg(`${f.sp.name} 倒下了。`);renderBattle();await sleep(700)}
-  if(!aliveFoes().length){await sleep(200);await endBattle('win');return true}
-  retarget();renderBattle();return false;
+async function handleDowns(){   // 對手血量歸零就結束戰鬥（回傳 true）
+  if(B.hp>0){renderBattle();return false}
+  B.foes.forEach(f=>{B.exp+=Math.floor((6+f.lv*5)*rarMul(f.sp.rar))});
+  msg(`${B.foes.length>1?(B.foeName||'對手')+' 的隊伍':B.enemy.sp.name} 倒下了。`);renderBattle();await sleep(900);
+  await endBattle('win');return true;
 }
 const FOE_SKILL_CHANCE=.2;
 async function foeSkillAction(){
  if(Math.random()>=FOE_SKILL_CHANCE)return '';
- const ready=aliveFoes().filter(f=>!f.freezeTurns).flatMap(f=>{
+ const ready=B.foes.flatMap(f=>{
    const learned=skillList(f.sp).filter(([lv])=>lv<=f.lv).map(([,id])=>id).reverse();
    const id=learned.find(id=>['strike','drain','heal','shield','amp'].includes(SKILLS[id].t));
    return id?[[f,id]]:[];
@@ -1851,10 +1849,10 @@ async function foeSkillAction(){
    const rel=team.reduce((a,t)=>a+relIn(f.attr,t.sp.attr),0)/Math.max(1,team.length);
    let d=Math.max(1,Math.round(f.atk*k.v*rel));if(B.shield>0)d=Math.max(1,Math.round(d*(1-B.shieldV)));
    B.teamHp=Math.max(0,B.teamHp-d);note=`${f.sp.name} 使用【${k.n}】，隊伍受到 ${d} 傷害`;
-   if(k.t==='drain'){const h=Math.min(f.maxHp-f.hp,Math.round(d*(id==='drn2'?.6:.5)));f.hp+=h;if(h)note+=`，回復 ${h}`}
+   if(k.t==='drain'){const h=Math.min(B.maxHp-B.hp,Math.round(d*(id==='drn2'?.6:.5)));B.hp+=h;if(h)note+=`，回復 ${h}`}
  }else if(k.t==='heal'){
-   const target=aliveFoes().slice().sort((a,b)=>a.hp/a.maxHp-b.hp/b.maxHp)[0],h=Math.min(target.maxHp-target.hp,Math.round(target.maxHp*k.v));target.hp+=h;
-   note=`${f.sp.name} 使用【${k.n}】，${target.sp.name} 回復 ${h}`;
+   const h=Math.min(B.maxHp-B.hp,Math.round(f.maxHp*k.v));B.hp+=h;
+   note=`${f.sp.name} 使用【${k.n}】，對手回復 ${h}`;
  }else if(k.t==='shield'){
    B.foeShield=1;B.foeShieldV=k.v;note=`${f.sp.name} 使用【${k.n}】，下一回合受到的傷害會減少`;
  }else if(k.t==='amp'){
@@ -1862,40 +1860,35 @@ async function foeSkillAction(){
  }
  msg(note);renderBattle();await sleep(550);return note;
 }
-function foeTeamDamage(groups,foes,combo){
- const team=teamInfo(),cm=FOE_COMBO_BASE*(1+FOE_COMBO_STEP*(Math.max(1,combo)-1));let damage=0;
- for(const g of groups){if(g.t<0||g.t>=5)continue;const matching=foes.filter(f=>f.hp>0&&!f.freezeTurns&&f.attr===g.t);if(!matching.length)continue;
-   const size=1+.25*(g.cells.length-3);
-   for(const f of matching){const rel=team.reduce((a,t)=>a+relIn(f.attr,t.sp.attr),0)/Math.max(1,team.length);damage+=f.atk*size*cm*rel*B.foeScale*(B.foeAmp||1)}
- }
- foes.forEach(f=>{if(f.freezeTurns>0)f.freezeTurns--});
- B.foeAmp=1;
- return Math.round(damage);
+function foeTeamDamage(groups,combo){   // 消到場上任一隻的屬性：全體各打一下，每回合一次；Combo 與最大的一組只影響倍率
+ const hit=groups.filter(g=>B.foes.some(f=>f.attr===g.t)),amp=B.foeAmp||1;B.foeAmp=1;
+ if(!hit.length)return 0;
+ const team=teamInfo(),cm=FOE_COMBO_BASE*(1+FOE_COMBO_STEP*(Math.max(1,combo)-1)),size=1+.25*(Math.max(...hit.map(g=>g.cells.length))-3);
+ return Math.round(B.foes.reduce((a,f)=>a+f.atk*size*cm*(team.reduce((x,t)=>x+relIn(f.attr,t.sp.attr),0)/Math.max(1,team.length))*B.foeScale*amp,0));
 }
 async function afterMove(){
   if(!B||B.busy||B.over)return;
   B.busy=true;
   const groups=await resolveBoard();
-  if(!groups.length&&!B.foeCombo){B.busy=false;return}
-  const combo=groups.length,e=B.enemy;
+  const combo=groups.length;
   P.team.forEach((m,i)=>{let n=0;groups.forEach(g=>{if(g.t===SP[m.id].attr)n+=g.cells.length});B.skch[i]=Math.min(skCost(m),(B.skch[i]||0)+n)});
   // 符
   let charmGain=0;groups.forEach(g=>{if(g.t===5)charmGain+=g.cells.length});
   if(B.canCap)B.charm+=charmGain;
   // 傷害
   let dmg=0,capped=false;const ampUsed=B.amp>1;
-  let capLeft=B.canCap?Math.max(1,Math.round(e.maxHp*TUNE.cap/100*B.amp)):Infinity;   // 野生珠獸單回合最多承受 TUNE.cap% 最大血量
+  let capLeft=B.canCap?Math.max(1,Math.round(B.maxHp*TUNE.cap/100*B.amp)):Infinity;   // 野生珠獸單回合最多承受 TUNE.cap% 最大血量
   for(const[at,v]of calcHits(groups,combo)){
-    retarget();const t=B.enemy;if(!t||t.hp<=0)break;
-    let d=Math.round(v*relOut(at,t.attr)*B.amp);if(B.foeShield>0)d=Math.max(1,Math.round(d*(1-B.foeShieldV)));if(d>capLeft){d=capLeft;capped=true}
-    d=Math.min(d,t.hp);t.hp-=d;dmg+=d;capLeft-=d;
+    if(B.hp<=0)break;
+    let d=Math.round(v*relOutAll(at)*B.amp);if(B.foeShield>0)d=Math.max(1,Math.round(d*(1-B.foeShieldV)));if(d>capLeft){d=capLeft;capped=true}
+    d=Math.min(d,B.hp);B.hp-=d;dmg+=d;capLeft-=d;
   }
-  B.amp=1;if(B.foeShield>0)B.foeShield--;
-  $('#eSpr').classList.remove('flash');void $('#eSpr').offsetWidth;$('#eSpr').classList.add('flash');
-  pop('-'+dmg,'#ffe27a',true);
-  msg(`${combo} Combo，${dmg} 傷害`+(capped?'（已達單回合上限）':'')+(charmGain&&B.canCap?`，符 +${charmGain}`:''));
+  if(combo)B.amp=1;if(B.foeShield>0)B.foeShield--;
+  if(dmg>0){$('#eSpr').classList.remove('flash');void $('#eSpr').offsetWidth;$('#eSpr').classList.add('flash');pop('-'+dmg,'#ffe27a',true)}
+  const noAtk=[...noAtkAttrs(groups)].map(t=>ATTR[t]).join('、');
+  msg(combo?`${combo} Combo，${dmg} 傷害`+(capped?'（已達單回合上限）':'')+(charmGain&&B.canCap?`，符 +${charmGain}`:'')+(noAtk?`；${noAtk}屬性一組消太多，沒有攻擊`:''):'沒有消除。');
   // 回復
-  renderBattle();await sleep(700);
+  renderBattle();await sleep(noAtk?1500:700);
   if(await handleDowns())return;
   // 收服判定
   if(B.canCap&&B.charm>=needNow()){
@@ -1904,28 +1897,25 @@ async function afterMove(){
     if(Math.random()<p){await onCapture();return}
     msg('牠掙脫了。');pop('失敗','#ff8a8a',true);await sleep(900);
   }
-  if(B.foeCombo){
+  if(B.foeFreeze>0){
+    B.foeFreeze--;msg(`${B.foeName||B.enemy.sp.name} 被定住了，這回合無法行動。`);
+  }else if(B.foeCombo){
     const who=B.foeName||'對手',skillNote=await foeSkillAction();
     if(B.teamHp<=0){await onDefeat();return}
     msg(`${who} 的隊伍轉珠中……`);
-    const turn=await foeTurn(B.foeCombo,aliveFoes().map(f=>f.attr));
-    const enemyAlive=aliveFoes(),matching=turn.groups.some(g=>enemyAlive.some(f=>f.attr===g.t&&!f.freezeTurns));
-    const rawDamage=foeTeamDamage(turn.groups,enemyAlive,turn.combo);
+    const turn=await foeTurn(B.foeCombo,B.foes.map(f=>f.attr));
+    const matching=turn.groups.some(g=>B.foes.some(f=>f.attr===g.t));
+    const rawDamage=foeTeamDamage(turn.groups,turn.combo);
     const d=B.shield>0&&rawDamage>0?Math.max(1,Math.round(rawDamage*(1-B.shieldV))):rawDamage;B.teamHp=Math.max(0,B.teamHp-d);
     if(d>0){$('#bTop').classList.remove('shake');void $('#bTop').offsetWidth;$('#bTop').classList.add('shake')}
     const result=d?`${turn.combo} Combo，隊伍受到 ${d} 傷害`:matching?'對手出手了，沒有造成傷害':'對手沒消到自己屬性的珠，沒有出手';
     msg(`${who}：${result}${skillNote?'；'+skillNote:''}`);
   }else{
-    const alive=aliveFoes();alive.forEach(f=>f.cd--);
-    const atk=alive.filter(f=>f.cd<=0);
-    if(atk.length){
-      const info=teamInfo(),who=B.foeName||atk[0].sp.name;
-      let d=0;atk.forEach(f=>{const m=info.reduce((a,t)=>a+relIn(f.attr,t.sp.attr),0)/Math.max(1,info.length);d+=f.atk*rnd(.85,1.15)*m});
-      d=Math.max(1,Math.round(d*B.foeScale));if(B.shield>0)d=Math.max(1,Math.round(d*(1-B.shieldV)));
-      B.teamHp=Math.max(0,B.teamHp-d);atk.forEach(f=>f.cd=f.cdMax);
-      $('#bTop').classList.remove('shake');void $('#bTop').offsetWidth;$('#bTop').classList.add('shake');
-      msg(`${who} 攻擊，隊伍受到 ${d} 傷害`);
-    }
+    const f=B.enemy,info=teamInfo(),m=info.reduce((a,t)=>a+relIn(f.attr,t.sp.attr),0)/Math.max(1,info.length);   // 野生珠獸：每回合直接攻擊
+    let d=Math.max(1,Math.round(f.atk*WILD_HIT_MUL*rnd(.85,1.15)*m*B.foeScale));if(B.shield>0)d=Math.max(1,Math.round(d*(1-B.shieldV)));
+    B.teamHp=Math.max(0,B.teamHp-d);
+    $('#bTop').classList.remove('shake');void $('#bTop').offsetWidth;$('#bTop').classList.add('shake');
+    msg(`${f.sp.name} 攻擊，隊伍受到 ${d} 傷害`);
   }
   if(B.shield>0)B.shield--;
   renderBattle();await sleep(500);
@@ -1936,7 +1926,7 @@ async function afterMove(){
 async function useSkill(i){
   if(!B||B.busy||B.over)return;
   const m=P.team[i];if(!m)return;
-  const id=skillOf(m),k=SKILLS[id],sp=SP[m.id],s=st(m),e=B.enemy;
+  const id=skillOf(m),k=SKILLS[id],sp=SP[m.id],s=st(m);
   const cost=skCost(m);if((B.skch[i]||0)<cost){toast(`【${k.n}】還需消除 ${cost-(B.skch[i]||0)} 顆${ATTR[sp.attr]}珠`);return}
   if(k.t==='charm'&&!B.canCap){toast('這場戰鬥沒有符。');return}
   if((k.t==='lure'||k.t==='seal')&&!B.canCap){toast('只對野生珠獸有效');return}
@@ -1948,9 +1938,9 @@ async function useSkill(i){
   else if(k.t==='purify'){const l=shuffle(cells(o=>o.t===5)).slice(0,k.v);l.forEach(o=>o.t=sp.attr);note=`${l.length} 顆符被淨化成${ATTR[sp.attr]}珠`}
   else if(k.t==='recolor'){const l=shuffle(cells(o=>o.t<5&&o.t!==sp.attr)).slice(0,k.v);l.forEach(o=>o.t=sp.attr);note=`${l.length} 顆珠變成了${ATTR[sp.attr]}珠`}
   else if(k.t==='strike'||k.t==='drain'){
-    let d=Math.max(1,Math.round(s.atk*k.v*relOut(sp.attr,e.attr)));if(B.foeShield>0)d=Math.max(1,Math.round(d*(1-B.foeShieldV)));
-    if(B.canCap)d=Math.min(d,Math.max(0,e.hp-1));
-    d=Math.min(d,e.hp);e.hp-=d;
+    let d=Math.max(1,Math.round(s.atk*k.v*relOutAll(sp.attr)));if(B.foeShield>0)d=Math.max(1,Math.round(d*(1-B.foeShieldV)));
+    if(B.canCap)d=Math.min(d,Math.max(0,B.hp-1));
+    d=Math.min(d,B.hp);B.hp-=d;
     $('#eSpr').classList.remove('flash');void $('#eSpr').offsetWidth;$('#eSpr').classList.add('flash');
     pop('-'+d,'#ffe27a',true);note=`造成 ${d} 傷害`;
     if(k.t==='drain'){const h=Math.round(d*(id==='drn2'?.6:.5));B.teamHp=Math.min(B.teamMax,B.teamHp+h);note+=`，隊伍回復 ${h}`}
@@ -1959,7 +1949,7 @@ async function useSkill(i){
     const f=clamp(s.rec/(s.hp*.11),.7,1.4),h=Math.round(B.teamMax*k.v*f);
     B.teamHp=Math.min(B.teamMax,B.teamHp+h);pop('+'+h,'#7dff8c',false);note=`隊伍回復 ${h} 體力`;
   }
-  else if(k.t==='freeze'){if(B.foeCombo){e.freezeTurns=(e.freezeTurns||0)+k.v;note=`${e.sp.name} 暫時無法攻擊 ${k.v} 回合`}else{e.cd=Math.min(e.cdMax+3,e.cd+k.v);note=`敵人行動倒數 +${k.v}`}}
+  else if(k.t==='freeze'){B.foeFreeze=Math.max(B.foeFreeze,k.v);note=`對手跳過 ${k.v} 回合`}
   else if(k.t==='shield'){B.shield=2;B.shieldV=k.v;note=`2 回合內受到傷害 -${Math.round(k.v*100)}%`}
   else if(k.t==='amp'){B.amp=k.v;note=`下一次消珠傷害 ×${k.v}`}
   else if(k.t==='seal'){const before=needNow();B.cut=(B.cut||0)+k.v;note=`所需符 ${before} → ${needNow()}`}
@@ -1971,7 +1961,6 @@ async function useSkill(i){
   B.busy=false;renderBattle();
 }
 $('#bTeamRow').onclick=e=>{const t=e.target.closest('[data-mi]');if(t)useSkill(+t.dataset.mi)};
-$('#eSpr').onclick=e=>{const t=e.target.closest('[data-fi]');if(!t||!B||B.over)return;const f=B.foes[+t.dataset.fi];if(f&&f.hp>0){B.tgt=+t.dataset.fi;B.enemy=f;renderBattle()}};
 async function onCapture(){
   const e=B.enemy,m=newMon(e.sp.id,e.lv);
   P.dex[e.sp.id]=2;
