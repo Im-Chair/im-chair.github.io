@@ -920,19 +920,25 @@ const ART_SRC={tiles:'art/map-tiles.webp',tree1:'art/map-tree1.webp',tree2:'art/
  tiles_abyss:'art/map-tiles_abyss.webp',tree1_abyss:'art/map-tree1_abyss.webp',tree2_abyss:'art/map-tree2_abyss.webp',house_abyss:'art/map-house_abyss.webp',fountain_abyss:'art/map-fountain_abyss.webp',sign_abyss:'art/map-sign_abyss.webp',gate_abyss:'art/map-gate_abyss.webp',rock_abyss:'art/map-rock_abyss.webp',bush_abyss:'art/map-bush_abyss.webp',special_abyss:'art/map-special_abyss.webp'};
 // 圖在 art/ 資料夾，要用到才載入：主畫面不必等，進地圖前只等該地圖要用的圖
 const artLoad={};
+function redrawMap(){if(cur==='sMap')drawMap(performance.now())}   // 開場對話等鎖定中地圖不會自己重畫，圖到了要補畫一次
 function needArt(k){
   return artLoad[k]||(artLoad[k]=new Promise(r=>{
     if(!ART_SRC[k])return r();
-    const im=new Image();im.onload=()=>{ART[k]=im;r()};im.onerror=()=>r();im.src=ART_SRC[k];
+    const im=new Image();im.onload=()=>{ART[k]=im;redrawMap();r()};
+    im.onerror=()=>{setTimeout(()=>{delete artLoad[k];if(cur==='sMap')needArt(k)},3000);r()};   // 抓失敗過幾秒再試
+    im.src=ART_SRC[k];
   }));
 }
 const imgDone=im=>im.complete?Promise.resolve():new Promise(r=>{im.addEventListener('load',r);im.addEventListener('error',r)});
-function chImg(c){if(!c.img){c.img=new Image();c.img.src=c.src}return c.img}
+function chImg(c){
+  if(!c.img){c.img=new Image();c.img.onload=redrawMap;c.img.onerror=()=>setTimeout(()=>{c.img=null;redrawMap()},3000);c.img.src=c.src}
+  return c.img;
+}
 async function mapArtReady(){   // 等太久就先進地圖，圖到了會自己換上
   const need=['tiles','tree1','tree2','house','fountain','sign','gate','rock','bush'].map(k=>needArt(artKey(k)));
   ['main',...(NPCS||[]).map(n=>n.ch)].forEach(k=>{if(CH[k])need.push(imgDone(chImg(CH[k])))});
   const tip=setTimeout(()=>{$('#fade').textContent='載入中…'},400);
-  await Promise.race([Promise.all(need),sleep(8000)]);
+  await Promise.race([Promise.all(need),sleep(3000)]);
   clearTimeout(tip);$('#fade').textContent='';
   preloadBattleArt();
 }

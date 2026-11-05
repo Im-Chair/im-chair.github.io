@@ -406,6 +406,7 @@
 <script>
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js').catch(() => {});
+    navigator.serviceWorker.ready.then(r => r.active && r.active.postMessage('fill'));   // 背景補離線快取
   }
 </script>
 </body>

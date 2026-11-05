@@ -1,4 +1,4 @@
-const CACHE = 'arcade-v69';
+const CACHE = 'arcade-v70';
 // 珠界的圖獨立一個快取、不跟 CACHE 改版：改版時不必重抓，也不用每次打開都等網路
 const ART_CACHE = 'arcade-pokemo-art';
 // RPG 敵人圖示：檔名＝ENEMIES／首領／域限精英的 key。v385 起 50 隻全數有圖，已無 SVG 回落。
@@ -63,7 +63,7 @@ const ASSETS = [
   '/pokemo/',               // v56：珠界：歸一之子（單檔、內嵌美術）
   '/outpost/', '/deep-miner/', '/neon-danmaku/',   // v59：晨昏線前哨、深掘礦工、霓虹彈幕（皆單檔）
   '/sky-frontier/',         // v63：天穹拓荒（單檔）
-  // v45：小遊戲美術（可一張一張補；檔案還不存在時 install 只會略過，不會失敗）。產出流程見 美術需求_ChatGPT出圖.md
+  // v45：小遊戲美術（可一張一張補；檔案還不存在時只會略過）。產出流程見 美術需求_ChatGPT出圖.md
   ...['sudoku','minesweeper','bulls-cows','solitaire','rpg','tower-orbs','drift-ark','tetris','pokemo','outpost','deep-miner','neon-danmaku','sky-frontier'].map(k => `/icons/${k}.webp`),
   '/solitaire/back.webp', '/solitaire/felt.webp', '/minesweeper/flag.webp', '/minesweeper/mine.webp',
   // RPG：預先快取核心檔，讓「裝了 App 但還沒連網進過 RPG」的使用者也能離線開啟。
@@ -77,27 +77,45 @@ const ASSETS = [
   ...RPG_MON, ...RPG_EQ, ...RPG_UI,
 ];
 
+// 安裝只抓首頁必要檔案、馬上啟用。其餘交給 fillCaches，安裝時全抓會塞滿網路，遊戲的圖要排在幾百個請求後面
+const CORE = ['/', '/index.html', '/manifest.json', '/icon.png'];
 self.addEventListener('install', e => {
-  e.waitUntil(Promise.all([
-    caches.open(CACHE).then(c =>
-      // 逐一加入：單一資源失敗（例如某檔改名或某主機不支援目錄網址）不讓整個 install 掛掉
-      Promise.all(ASSETS.map(u => c.add(u).catch(err => console.warn('[sw] 預快取略過', u, err))))
-    ),
-    // 珠界的圖已經有的就不重抓
-    caches.open(ART_CACHE).then(c =>
-      Promise.all(POKEMO_ART.map(u => c.match(u).then(m => m || c.add(u).catch(() => {}))))
-    ),
-  ]));
+  e.waitUntil(caches.open(CACHE).then(c =>
+    // 逐一加入：單一資源失敗不讓整個 install 掛掉
+    Promise.all(CORE.map(u => c.add(u).catch(err => console.warn('[sw] 預快取略過', u, err))))
+  ));
   self.skipWaiting();
 });
 
-self.addEventListener('activate', e => {
-  e.waitUntil(
-    caches.keys().then(keys =>
-      // 只清自己（arcade-*）的舊版。快取空間整站共用，數獨／轉珠之塔的快取不能動。
-      Promise.all(keys.filter(k => k.startsWith('arcade-') && k !== CACHE && k !== ART_CACHE).map(k => caches.delete(k)))
-    )
-  );
+// 離線用的快取在背景慢慢補：同時最多 2 個、低優先，已經有的不重抓，沒補完下次打開首頁會接著補
+let filling = null;
+function fillCaches() {
+  return filling || (filling = (async () => {
+    await new Promise(r => setTimeout(r, 3000));   // 先讓使用者點進遊戲
+    const jobs = [...ASSETS.map(u => [CACHE, u]), ...POKEMO_ART.map(u => [ART_CACHE, u])];
+    let failed = 0;
+    const worker = async () => {
+      while (jobs.length) {
+        const [name, u] = jobs.shift();
+        const c = await caches.open(name);
+        if (await c.match(u)) continue;
+        try {
+          const res = await fetch(u, { priority: 'low' });
+          if (res.ok) await c.put(u, res);
+        } catch (err) { failed++; }
+      }
+    };
+    await Promise.all([worker(), worker()]);
+    // 都補完才清舊版，補的途中離線還有舊快取可用。只清自己（arcade-*）的舊版，數獨／轉珠之塔的快取不能動
+    if (!failed) {
+      const keys = await caches.keys();
+      await Promise.all(keys.filter(k => k.startsWith('arcade-') && k !== CACHE && k !== ART_CACHE).map(k => caches.delete(k)));
+    }
+  })().finally(() => { filling = null; }));
+}
+self.addEventListener('message', e => { if (e.data === 'fill') e.waitUntil(fillCaches()); });
+
+self.addEventListener('activate', () => {
   self.clients.claim();
 });
 
@@ -108,7 +126,7 @@ self.addEventListener('fetch', e => {
   if (url.origin === location.origin && url.pathname.startsWith('/pokemo/art/')) {
     e.respondWith(caches.open(ART_CACHE).then(async c => {
       const hit = await c.match(e.request, { ignoreSearch: true });
-      const net = fetch(e.request).then(res => { if (res.ok) c.put(e.request, res.clone()); return res; });
+      const net = fetch(e.request, hit ? { priority: 'low' } : {}).then(res => { if (res.ok) c.put(e.request, res.clone()); return res; });
       if (hit) { e.waitUntil(net.catch(() => {})); return hit; }
       return net;
     }));
