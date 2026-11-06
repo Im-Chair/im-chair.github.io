@@ -1,0 +1,138 @@
+'use strict';
+/* ============ data.js — 新版貪婪深淵的純資料：技能、敵人、財寶、貪婪階級、事件文字。
+   調平衡改這裡；規則本身在 core.js。 ============ */
+
+/* 美術沿用舊版 rpg/。之後新版取代 rpg/ 時，把這裡改成 './' 即可 */
+const ART = '../rpg/';
+
+const GAME = {
+  hp: 70,          // 起始生命
+  ap: 3,           // 每回合行動點
+  hand: 5,         // 每回合抽牌數
+  bag: 6,          // 背包格數
+  rows: 10,        // 地圖列數（最後一列是首領）
+  exitRows: [4, 7],// 這幾列多一個撤離點
+  stepGreed: 1,    // 每走一格增加的貪婪
+  restHeal: 0.3,   // 營火回復比例
+  chestMimic: 0.35,// 寶箱「再翻一次」遇到寶箱怪的機率
+  burnAp: 1,       // 燒一件財寶換到的行動點（每回合一次）
+};
+
+/* 技能
+   k：atk 攻擊／def 防禦／skl 技巧／bad 雜物
+   r：0 基礎（獎勵不出）／1 普通／2 稀有
+   t：卡面短文字，{d} 傷害（含加成）、{b} 格擋、其他由 up 覆寫
+   long：長按時的完整說明
+   up：強化後覆寫的欄位 */
+const CARDS = {
+  /* —— 起始牌 —— */
+  chop:   {n:'劈砍', c:1, k:'atk', r:0, dmg:6, t:'傷害 {d}', long:'造成 {d} 點傷害。', up:{dmg:9}},
+  raise:  {n:'舉盾', c:1, k:'def', r:0, blk:6, t:'格擋 {b}', long:'獲得 {b} 點格擋。', up:{blk:9}},
+  ram:    {n:'盾撞', c:1, k:'atk', r:0, fn:'ram', bonus:0, t:'傷害＝格擋', long:'造成等同目前格擋的傷害（現在 {d}），格擋不會消失。', up:{bonus:4, t:'傷害＝格擋+4', long:'造成「目前格擋 +4」的傷害（現在 {d}），格擋不會消失。'}},
+  rend:   {n:'裂甲', c:2, k:'atk', r:0, dmg:8, vuln:2, t:'傷害 {d}\n易傷 2', long:'造成 {d} 點傷害，並給予 2 回合易傷（受到的傷害 +50%）。', up:{dmg:11, vuln:3, t:'傷害 {d}\n易傷 3', long:'造成 {d} 點傷害，並給予 3 回合易傷（受到的傷害 +50%）。'}},
+
+  /* —— 攻擊 —— */
+  twin:   {n:'連斬', c:1, k:'atk', r:1, dmg:4, hits:2, t:'傷害 {d}×2', long:'造成 {d} 點傷害，共 2 次。力量每次都算。', up:{dmg:5, hits:3, t:'傷害 {d}×3', long:'造成 {d} 點傷害，共 3 次。力量每次都算。'}},
+  cleave: {n:'重劈', c:2, k:'atk', r:1, dmg:15, t:'傷害 {d}', long:'造成 {d} 點傷害。', up:{dmg:21}},
+  sweep:  {n:'橫掃', c:1, k:'atk', r:1, dmg:5, all:1, t:'全體傷害 {d}', long:'對所有敵人造成 {d} 點傷害。', up:{dmg:8}},
+  finish: {n:'處決', c:2, k:'atk', r:1, dmg:9, fn:'finish', t:'傷害 {d}\n殘血×2', long:'造成 {d} 點傷害；目標生命低於 40% 時傷害加倍。', up:{dmg:13}},
+  stake:  {n:'搏命', c:0, k:'atk', r:1, dmg:8, selfHp:3, t:'傷害 {d}\n失去 3 生命', long:'失去 3 點生命（無視格擋），造成 {d} 點傷害。', up:{dmg:12}},
+  debt:   {n:'血債', c:1, k:'atk', r:1, fn:'debt', base:4, per:3, t:'傷害 4\n傷痕每層+3', long:'造成 4 點傷害，本場每層傷痕再 +3（現在 {d}）。傷痕：每次被打到掉血時 +1。', up:{base:6, per:4, t:'傷害 6\n傷痕每層+4', long:'造成 6 點傷害，本場每層傷痕再 +4（現在 {d}）。傷痕：每次被打到掉血時 +1。'}},
+  fling:  {n:'擲金', c:1, k:'atk', r:1, fn:'fling', base:3, t:'傷害 3\n+貪婪÷4', long:'造成 3 點傷害，再加上貪婪值 ÷4（現在 {d}）。越貪越痛。', up:{base:6, t:'傷害 6\n+貪婪÷4', long:'造成 6 點傷害，再加上貪婪值 ÷4（現在 {d}）。越貪越痛。'}},
+  melt:   {n:'熔金', c:1, k:'atk', r:2, fn:'melt', base:18, exhaust:1, t:'燒最便宜財寶\n傷害 {d}', long:'燒掉背包裡最便宜的財寶（貪婪隨之下降），造成 {d} 點傷害。背包沒東西就沒傷害。本場消耗。', up:{base:26}},
+
+  /* —— 防禦 —— */
+  wall:   {n:'鐵壁', c:2, k:'def', r:1, blk:14, t:'格擋 {b}', long:'獲得 {b} 點格擋。', up:{blk:20}},
+  parry:  {n:'招架', c:1, k:'def', r:1, blk:4, draw:1, t:'格擋 {b}\n抽 1', long:'獲得 {b} 點格擋，抽 1 張。', up:{blk:7}},
+  hold:   {n:'堅守', c:1, k:'def', r:2, blk:4, keep:1, t:'格擋 {b}\n下回合不衰減', long:'獲得 {b} 點格擋。下回合開始時，格擋不會減半。', up:{blk:8}},
+
+  /* —— 技巧 —— */
+  breath: {n:'喘息', c:1, k:'skl', r:1, draw:2, t:'抽 2', long:'抽 2 張。', up:{c:0}},
+  shout:  {n:'戰吼', c:1, k:'skl', r:2, str:2, exhaust:1, t:'力量 +2\n本場消耗', long:'本場戰鬥力量 +2（每次攻擊傷害 +2）。使用後本場消耗。', up:{str:3, t:'力量 +3\n本場消耗', long:'本場戰鬥力量 +3（每次攻擊傷害 +3）。使用後本場消耗。'}},
+  rage:   {n:'怒火', c:1, k:'skl', r:2, fn:'rage', exhaust:1, t:'傷痕全轉力量\n本場消耗', long:'清空傷痕，每層轉成 1 點力量。使用後本場消耗。', up:{c:0}},
+  lick:   {n:'舔傷', c:1, k:'skl', r:1, heal:6, exhaust:1, t:'回復 6\n本場消耗', long:'回復 6 點生命。使用後本場消耗。', up:{heal:10, t:'回復 10\n本場消耗', long:'回復 10 點生命。使用後本場消耗。'}},
+  lust:   {n:'貪念', c:0, k:'skl', r:2, ap:2, greed:5, exhaust:1, t:'行動點 +2\n貪婪 +5', long:'獲得 2 行動點，貪婪 +5。使用後本場消耗。', up:{ap:3, t:'行動點 +3\n貪婪 +5', long:'獲得 3 行動點，貪婪 +5。使用後本場消耗。'}},
+
+  /* —— 敵人塞進牌堆的雜物 —— */
+  goo:    {n:'黏液', c:1, k:'bad', r:-1, exhaust:1, t:'沒有效果\n打掉才會消失', long:'沒有任何效果，只佔手牌。花 1 行動點打掉就會消失。'},
+};
+const STARTER_DECK = ['chop','chop','chop','chop','raise','raise','raise','raise','ram','rend'];
+
+/* 敵人
+   pat 依序循環：a 攻擊（x 連擊）／d 格擋／weak·vuln·psn 附加狀態／charge 蓄力（只是預告）
+                 goo 塞雜物／steal 偷財寶／flee 帶著贓物逃跑／summon 叫小怪／str 加力量
+   nm：招式名（沒有就只顯示數字） */
+const ENEMIES = {
+  rat:    {n:'岩背豬',   hp:20, pat:[{a:5},{a:4,weak:1,nm:'撕咬'},{a:6}]},
+  bat:    {n:'穴居蝠',   hp:14, pat:[{a:3,x:2},{a:4},{a:2,x:3}]},
+  spider: {n:'食影絨團', hp:20, pat:[{a:3,psn:2,nm:'毒牙'},{d:5},{a:6}]},
+  slime:  {n:'洞穴黏泥', hp:28, pat:[{a:4},{goo:2,nm:'噴黏液'},{a:6}]},
+  skel:   {n:'骷髏兵',   hp:22, revive:0.4, pat:[{a:6},{d:6},{a:8}]},
+  thief:  {n:'拾荒哥布林',hp:24, pat:[{a:4},{steal:1,nm:'順手牽羊'},{flee:1,nm:'開溜'}]},
+  garg:   {n:'落石怪',   hp:36, pat:[{d:8},{charge:1,nm:'蓄力'},{a:15,nm:'崩落'}]},
+  /* 菁英 */
+  miner:  {n:'廢坑礦工', hp:62, elite:1, pat:[{a:8},{a:4,x:3,nm:'亂鎬'},{str:2,d:8,nm:'喃喃自語'}]},
+  ratking:{n:'鼠王', hp:54, elite:1, pat:[{summon:'rat',nm:'呼朋引伴'},{a:9},{a:5,weak:2,nm:'咆哮'}]},
+  mimic:  {n:'寶箱怪',   hp:58, elite:1, pat:[{a:12,nm:'咬合'},{steal:1,nm:'吞掉財寶'},{a:7,x:2}]},
+  /* 首領 */
+  /* 舊版首領圖（mb0 等）是元素系 Q 版角色，跟石棺對不上；先借用棺龕造型的 reliq，之後可換專屬圖 */
+  sarc:   {n:'石棺守衛', art:'reliq', hp:110, boss:1, pat:[{a:10},{d:12},{charge:1,nm:'高舉棺蓋'},{a:22,nm:'棺蓋砸落'},{summon:'skel',nm:'開棺'},{a:6,x:2}]},
+};
+
+/* 每一段地圖會遇到的組合（越下面越硬） */
+const ENCOUNTERS = [
+  [['rat'],['bat','bat'],['spider'],['slime']],
+  [['rat','bat'],['skel'],['thief'],['garg'],['spider','bat'],['slime','bat']],
+  [['skel','spider'],['garg','bat'],['thief','skel'],['slime','rat'],['garg','spider'],['rat','rat','bat']],
+];
+const ELITES = ['miner','ratking'];
+
+/* 財寶：v 帶回去值多少，g 帶在身上加多少貪婪。
+   icon 用內嵌向量圖（舊版 ui/coin.webp 其實是井，不能用）；cls:'clip' 裁掉圖檔的黑色方底 */
+const TREASURES = [
+  {id:'coin',    n:'碎銀',   icon:'gold',         v:20,  g:3},
+  {id:'pendant', n:'骨墜',   img:'eq/pendant.webp',v:40,  g:5},
+  {id:'ring',    n:'無名指環',img:'eq/ring.webp',  v:70,  g:8},
+  {id:'watch',   n:'停擺懷錶',img:'eq/watch.webp', v:110, g:12},
+  {id:'lamp',    n:'前人油燈',img:'eq/lamp.webp',  v:170, g:17},
+  {id:'gem',     n:'深淵晶',  img:'ui/gem.webp',   v:260, g:24, cls:'clip'},
+];
+
+/* 貪婪階級：同時決定敵人多凶、財寶多好。
+   bias 越小，抽財寶越偏向貴重（rand^bias）。
+   start：開場格擋；traits：每隻敵人開場帶幾個詞綴 */
+const GREED_TIERS = [
+  {min:0,  n:'知足',    hp:1.00, dmg:1.00, bias:2.6, start:0, traits:0, desc:'敵人維持原樣。'},
+  {min:12, n:'動心',    hp:1.10, dmg:1.10, bias:2.0, start:0, traits:0, desc:'敵人生命與傷害 +10%，財寶變好。'},
+  {min:28, n:'眼紅',    hp:1.20, dmg:1.20, bias:1.6, start:5, traits:0, desc:'敵人 +20%，開場帶 5 格擋，財寶更好。'},
+  {min:45, n:'貪得無厭',hp:1.30, dmg:1.30, bias:1.3, start:5, traits:1, desc:'敵人 +30%，每隻帶 1 個詞綴，財寶很好。'},
+  {min:65, n:'深淵注視',hp:1.45, dmg:1.40, bias:1.0, start:8, traits:2, desc:'敵人 +40% 以上，每隻帶 2 個詞綴，財寶最好。'},
+];
+const TRAITS = {
+  thorn: {n:'帶刺', d:'每次被攻擊，反彈 2 點傷害'},
+  tough: {n:'硬殼', d:'每回合開始獲得 4 格擋'},
+  frenzy:{n:'嗜血', d:'每回合力量 +1'},
+};
+
+/* 地圖節點 */
+const NODE_ART = {
+  fight:'ui/door_fight.webp', elite:'ui/door_elite.webp', chest:'ui/door_chest.webp',
+  rest:'ui/door_rest.webp', event:'ui/door_unknown.webp', exit:'ui/ev_rope.webp', boss:'mon/reliq.webp',
+};
+const NODE_NAME = {fight:'戰鬥', elite:'菁英', chest:'寶箱', rest:'營火', event:'未知', exit:'撤離', boss:'首領'};
+
+/* 事件：文字與選項在這裡，效果在 core.js 的 EVENT_FX */
+const EVENTS = {
+  corpse:{title:'前人的屍體', img:'ui/ev_corpse.webp',
+    text:'一具還背著背包的屍體靠在岩壁上。背包的帶子被什麼東西咬過。',
+    opts:[{id:'search', t:'翻背包', d:'可能拿到財寶，也可能被咬一口'},{id:'leave', t:'走開', d:'沒有效果'}]},
+  dice:{title:'暗處的賭客', img:'ui/ev_dice.webp',
+    text:'「押一件，贏了拿兩件更好的。」它把骰子在指節間滾來滾去，你看不見它的臉。',
+    opts:[{id:'bet', t:'押最便宜的財寶', d:'一半機率換兩件，一半機率全沒', need:'bag'},{id:'leave', t:'不賭', d:'沒有效果'}]},
+  shrine:{title:'血跡斑斑的祭壇', img:'ui/ev_shrine.webp',
+    text:'祭壇上的凹槽剛好放得下一隻手。凹槽底部是乾掉的血，一層疊一層。',
+    opts:[{id:'blood', t:'獻血', d:'失去 8 生命，從 3 張稀有技能選 1 張'},{id:'offer', t:'獻上最貴的財寶', d:'失去它，回復 25 生命', need:'bag'},{id:'leave', t:'走開', d:'沒有效果'}]},
+  crack:{title:'發光的裂縫', img:'ui/ev_crack.webp',
+    text:'岩縫裡滲出微光，靠近時你開始想著「再多拿一點也沒關係」。',
+    opts:[{id:'stare', t:'盯著看', d:'貪婪 +10，最大生命 +8'},{id:'leave', t:'別過頭', d:'沒有效果'}]},
+};

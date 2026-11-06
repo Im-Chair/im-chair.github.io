@@ -22,3 +22,5 @@ rpg/_audit_assets.js
 pokemo/*
 !pokemo/index.html
 !pokemo/art/
+# 新版貪婪深淵的本機平衡模擬
+rpg-next/_sim.js

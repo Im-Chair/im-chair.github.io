@@ -32,6 +32,7 @@
 ├── neon-danmaku/       # 霓虹彈幕狂想曲（單一 index.html，Canvas；紀錄 best.score 越大越好）
 ├── sky-frontier/       # 天穹拓荒（單一 index.html，桌機限定 2D 沙盒；世界存 arcade-sky-frontier-world-<1~3>，紀錄 best.era；選配美術放 art/，由 tools/process_art.py 產生 index.json，有圖用圖、沒圖用程式繪製）
 ├── rpg/                # 貪婪深淵（Roguelite，模組化多檔案 — 見下）
+├── rpg-next/           # 貪婪深淵重製版（開發中，首頁有獨立試玩卡片，使用者確認後才取代 rpg/ 與舊卡片）。data → core（純邏輯，_sim.js 可用 node 模擬，不上 GitHub）→ ui；美術借用 ../rpg/（data.js 的 ART）；改 js/css 要升 index.html 的 NEXT_VER；存檔 abyss2-run、abyss2-meta
 ├── icons/              # 首頁卡片圖示 <遊戲>.webp（可缺，缺的卡片沿用 emoji）
 └── tools/process_art.py  # 小遊戲美術後製（Pillow；不是網站的一部分）。流程見 美術需求_ChatGPT出圖.md
 ```
