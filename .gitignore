@@ -24,3 +24,6 @@ pokemo/*
 !pokemo/art/
 # 新版貪婪深淵的本機平衡模擬
 rpg-next/_sim.js
+
+# 新版貪婪深淵的壓力測試
+rpg-next/_fuzz.js
