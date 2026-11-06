@@ -21,13 +21,14 @@ function shuffle(S, a){
 const emit = (S, e) => { (S.fx = S.fx || []).push(e); };
 
 /* —— 建立新的一趟 —— */
-function newRun(seed, load, depth){
+/* own：玩家已擁有的裝備 id 清單（回程補缺用；要可 JSON 化，所以直接存進 S）。舊呼叫不傳也行 */
+function newRun(seed, load, depth, own){
   load = load || {};
   depth = depth || 0;
   const S = {
     v: 1, rng: seed | 0, uid: 1, screen: 'map',
     hp: GAME.hp + (load.hp || 0), maxHp: GAME.hp + (load.hp || 0), greed: 0,
-    load, depth, bagCap: GAME.bag + (load.bag || 0),
+    load, depth, own: (own || []).slice(), bagCap: GAME.bag + (load.bag || 0),
     deck: STARTER_DECK.map(id => ({id, up: 0})),
     bag: [], at: null, map: null, battle: null, reward: null, event: null, result: null,
     stats: {kills: 0, steps: 0, burned: 0},
@@ -98,20 +99,35 @@ function addGreed(S, n){
 }
 
 /* —— 財寶 —— */
-function rollTreasure(S, boost){
+const FAM_ORDER = ['gold', 'relic', 'curse'];
+const FAM_W = {gold: 0.4, relic: 0.4, curse: 0.2};   // 不指定類別時的抽中比例
+function rollFam(S){
+  let x = rand(S);
+  for(const f of FAM_ORDER){ if((x -= FAM_W[f]) < 0) return f; }
+  return 'gold';
+}
+/* 在某一類內抽一件：貪婪階級的 bias 越小越偏向該類較貴重（較後面）的；boost 直接往後推 */
+function rollTreasure(S, boost, fam){
+  fam = fam || rollFam(S);
+  const pool = TREASURES.filter(t => t.fam === fam);
   const p = greedTier(S).bias;
-  const i = Math.min(TREASURES.length - 1, Math.floor(Math.pow(rand(S), p) * TREASURES.length) + (boost || 0));
-  return TREASURES[i].id;
+  const i = Math.min(pool.length - 1, Math.floor(Math.pow(rand(S), p) * pool.length) + (boost || 0));
+  return pool[i].id;
 }
 const treasure = id => TREASURES.find(t => t.id === id);
+/* 三選一要混類：有多個選項時至少一個遺物、至少一個金銀或詛咒；同一次不重複 */
 function rollLoot(S, n, boost){
   const out = [];
+  const add = fam => {
+    for(let g = 0; g < 12; g++){
+      const id = rollTreasure(S, boost, fam);
+      if(!out.includes(id)){ out.push(id); return; }
+    }
+  };
+  if(n >= 2){ add('relic'); add(rand(S) < 0.35 ? 'curse' : 'gold'); }
   let guard = 0;
-  while(out.length < n && guard++ < 40){
-    const id = rollTreasure(S, boost);
-    if(!out.includes(id)) out.push(id);
-  }
-  return out;
+  while(out.length < n && guard++ < 40) add(null);
+  return shuffle(S, out);
 }
 /* 越深的財寶越值錢 */
 const treasureValue = (S, id) => Math.round(treasure(id).v * (1 + DEPTH_K.value * (S.depth || 0)));
@@ -216,6 +232,7 @@ function startBattle(S, keys, kind, reward){
   S.screen = 'battle';
   emit(S, {k: 'battle'});
   startTurn(S);
+  if(S.screen !== 'battle') return;   // 詛咒的失血在第一回合就可能致死
   /* 素質、裝備、身上財寶的開場效果。放在 startTurn 之後，開場格擋才不會被第一回合的衰減砍半 */
   const c = carry(S);
   b.str += (S.load.str || 0) + c.str;
@@ -225,7 +242,7 @@ function startBattle(S, keys, kind, reward){
 }
 /* 身上財寶的效果加總：撿到就生效，燒掉或被偷就沒了 */
 function carry(S){
-  const c = {blk: 0, str: 0, drawFirst: 0, blkTurn: 0, apFirst: 0};
+  const c = {blk: 0, str: 0, drawFirst: 0, blkTurn: 0, apFirst: 0, bleed: 0, drawLess: 0};
   S.bag.forEach(id => { const t = treasure(id); for(const k in c) c[k] += t[k] || 0; });
   return c;
 }
@@ -268,7 +285,12 @@ function startTurn(S){
     b.psn--;
     if(S.screen !== 'battle') return;
   }
-  drawCards(S, GAME.hand);
+  const c = carry(S);
+  if(c.bleed){
+    loseHp(S, c.bleed, 'curse');
+    if(S.screen !== 'battle') return;
+  }
+  drawCards(S, Math.max(1, GAME.hand - c.drawLess));
   fixTarget(b);
 }
 
@@ -514,7 +536,7 @@ function winBattle(S){
     S.bag.push('gem');
     addGreed(S, treasure('gem').g);
     emit(S, {k: 'coin'});
-    S.reward = {title: '石棺開了', text: '棺底躺著一顆深淵晶，已經進了你的背包。其他的再挑一件。', loot: rollLoot(S, 3, 3), cards: null, after};
+    S.reward = {title: '石棺開了', text: '棺底躺著一顆深淵晶，已經進了你的背包。其他的再挑一件。', loot: rollLoot(S, 3, 2), cards: null, after};
   }else if(b.kind === 'elite'){
     S.reward = {title: '戰利品', text: '菁英身上的東西比較值錢。', loot: rollLoot(S, 3, 1), cards: rollCards(S, 3, 0.4), after};
   }else if(b.reward === 'loot'){
@@ -676,10 +698,15 @@ const depthName = d => DEPTHS[d % DEPTHS.length] + (d >= DEPTHS.length ? ' ' + (
 function gearRarity(greed, bossDown){
   return Math.min(RARITY.length - 1, greedTierIndex(greed) + (bossDown ? 1 : 0));
 }
+/* 同稀有度內：先給「該部位完全沒有裝備」的，其次給還沒擁有的，都有了才給重複（換金幣） */
 function rollGear(S, r){
-  return rpick(S, Object.keys(GEAR).filter(id => GEAR[id].r === r));
+  const all = Object.keys(GEAR).filter(id => GEAR[id].r === r);
+  const own = S.own || [];
+  const slots = new Set(own.map(id => GEAR[id] && GEAR[id].slot));
+  const tiers = [all.filter(id => !slots.has(GEAR[id].slot)), all.filter(id => !own.includes(id)), all];
+  return rpick(S, tiers.find(t => t.length));
 }
-function statCost(k, lv){ return STAT_UPS[k].base + STAT_UPS[k].grow * lv; }
+function statCost(k, lv){ return Math.round(STAT_UPS[k].base * Math.pow(STAT_UPS[k].mult, lv)); }
 function buyStat(meta, k){
   const u = STAT_UPS[k], lv = meta.stats[k] || 0;
   if(lv >= u.max || meta.gold < statCost(k, lv)) return false;
@@ -687,6 +714,22 @@ function buyStat(meta, k){
   meta.stats[k] = lv + 1;
   return true;
 }
+/* 鐵匠鋪：能買的稀有度上限＝已解鎖深度。回傳 ok／owned／locked／poor */
+function gearBuyState(meta, id){
+  const g = GEAR[id];
+  if(meta.owned.includes(id)) return 'owned';
+  if(g.r > Math.min(meta.depth || 0, RARITY.length - 1)) return 'locked';
+  return meta.gold < RARITY[g.r].buy ? 'poor' : 'ok';
+}
+function buyGear(meta, id){
+  if(!GEAR[id] || gearBuyState(meta, id) !== 'ok') return false;
+  meta.gold -= RARITY[GEAR[id].r].buy;
+  meta.owned.push(id);
+  if(!meta.equip[GEAR[id].slot]) meta.equip[GEAR[id].slot] = id;
+  return true;
+}
+/* 開新局時帶進去的已擁有清單（回程補缺用） */
+const ownedOf = meta => meta.owned.slice();
 function equipGear(meta, id){
   if(!meta.owned.includes(id)) return false;
   meta.equip[GEAR[id].slot] = id;

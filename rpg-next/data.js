@@ -76,7 +76,7 @@ const ENEMIES = {
   mimic:  {n:'寶箱怪',   hp:58, elite:1, pat:[{a:12,nm:'咬合'},{steal:1,nm:'吞掉財寶'},{a:7,x:2}]},
   /* 首領 */
   /* 舊版首領圖（mb0 等）是元素系 Q 版角色，跟石棺對不上；先借用棺龕造型的 reliq，之後可換專屬圖 */
-  sarc:   {n:'石棺守衛', art:'reliq', hp:110, boss:1, pat:[{a:10},{d:12},{charge:1,nm:'高舉棺蓋'},{a:22,nm:'棺蓋砸落'},{summon:'skel',nm:'開棺'},{a:6,x:2}]},
+  sarc:   {n:'石棺守衛', art:'reliq', hp:220, boss:1, pat:[{a:10},{d:12},{charge:1,nm:'高舉棺蓋'},{a:22,nm:'棺蓋砸落'},{summon:'skel',nm:'開棺'},{a:6,x:2}]},
 };
 
 /* 每一段地圖會遇到的組合（越下面越硬） */
@@ -87,16 +87,30 @@ const ENCOUNTERS = [
 ];
 const ELITES = ['miner','ratking'];
 
-/* 財寶：v 帶回去值多少金幣，g 帶在身上加多少貪婪，ef 是帶在身上時的效果（可疊加，燒掉或被偷就沒了）。
-   icon 用內嵌向量圖（舊版 ui/coin.webp 其實是井，不能用）；cls:'clip' 裁掉圖檔的黑色方底 */
+/* 財寶分三類，價值與效果反向——讓玩家在「帶錢」和「變強」之間取捨：
+   gold 金銀：沒效果，賣價高、貪婪也高；relic 遺物：幾乎不值錢，效果強；curse 詛咒：非常值錢，但帶著有負面效果。
+   v 帶回去值多少金幣，g 帶在身上加多少貪婪，ef 是帶在身上時的效果（可疊加，燒掉或被偷就沒了）。
+   各類內依 v 由低到高排列（抽財寶時依貪婪階級偏向後面）。
+   icon 用內嵌向量圖（舊版 ui/coin.webp 其實是井，不能用）；cls:'clip' 裁掉圖檔的黑色方底。
+   效果鍵：blk 開場格擋／str 力量／drawFirst 第一回合多抽／blkTurn 每回合格擋／apFirst 第一回合行動點／
+           bleed 每回合開始失去生命／drawLess 每回合少抽（手牌至少留 1） */
 const TREASURES = [
-  {id:'coin',    n:'碎銀',   icon:'gold',         v:20,  g:3,  blk:2,      ef:'開場格擋 +2'},
-  {id:'pendant', n:'骨墜',   img:'eq/pendant.webp',v:40,  g:5,  blk:4,      ef:'開場格擋 +4'},
-  {id:'ring',    n:'無名指環',img:'eq/ring.webp',  v:70,  g:8,  str:1,      ef:'力量 +1'},
-  {id:'watch',   n:'停擺懷錶',img:'eq/watch.webp', v:110, g:12, drawFirst:1,ef:'第一回合多抽 1'},
-  {id:'lamp',    n:'前人油燈',img:'eq/lamp.webp',  v:170, g:17, blkTurn:2,  ef:'每回合格擋 +2'},
-  {id:'gem',     n:'深淵晶',  img:'ui/gem.webp',   v:260, g:24, apFirst:1,  ef:'第一回合行動點 +1', cls:'clip'},
+  {id:'coin',    fam:'gold',  n:'碎銀',    icon:'gold',            v:30,  g:4,  ef:''},
+  {id:'cup',     fam:'gold',  n:'金杯',    img:'ui/ev_can.webp', v:80,  g:9,  ef:''},
+  {id:'gem',     fam:'gold',  n:'深淵晶',  img:'ui/gem.webp',      v:150, g:14, ef:'', cls:'clip'},
+  {id:'pendant', fam:'relic', n:'骨墜',    img:'eq/pendant.webp',  v:10,  g:3,  blk:5,       ef:'開場格擋 +5'},
+  {id:'ring',    fam:'relic', n:'無名指環',img:'eq/ring.webp',     v:15,  g:5,  str:1,       ef:'力量 +1'},
+  {id:'watch',   fam:'relic', n:'停擺懷錶',img:'eq/watch.webp',    v:15,  g:4,  drawFirst:2, ef:'第一回合多抽 2'},
+  {id:'lamp',    fam:'relic', n:'前人油燈',img:'eq/lamp.webp',     v:20,  g:6,  blkTurn:3,   ef:'每回合格擋 +3'},
+  {id:'eye',     fam:'relic', n:'深淵之眼',img:'eq/bell.webp',     v:25,  g:8,  apFirst:1,   ef:'第一回合行動點 +1'},
+  {id:'crown',   fam:'curse', n:'染血金冠',icon:'poison',           v:220, g:16, bleed:2,     ef:'每回合開始失去 2 生命'},
+  {id:'drill',   fam:'curse', n:'噬魂鑽',  icon:'skull',            v:320, g:22, drawLess:1,  ef:'每回合少抽 1 張'},
 ];
+const FAM = {
+  gold:  {n:'金銀', c:'#d8a84c', d:'沒有效果，但賣得貴'},
+  relic: {n:'遺物', c:'#6fbf8f', d:'幾乎不值錢，帶著有強效果'},
+  curse: {n:'詛咒', c:'#d05252', d:'非常值錢，但帶著有負面效果'},
+};
 
 /* 貪婪階級：同時決定敵人多凶、財寶多好。
    bias 越小，抽財寶越偏向貴重（rand^bias）。
@@ -139,23 +153,24 @@ const EVENTS = {
 
 /* 深度：打贏首領解鎖下一層。敵人變強、財寶更值錢；新敵人與新規則在第 3 階段補上，目前先換區域與數值 */
 const DEPTHS = ['淺穴', '哥布林聚落', '無光通道', '舊都', '熔獄'];
-const DEPTH_K = {hp: 0.5, dmg: 0.35, value: 0.5};
+const DEPTH_K = {hp: 0.8, dmg: 0.6, value: 0.25};
 
 /* —— 回到營地之後 —— */
-/* 素質：花金幣永久提升。第 lv 級的價格＝base + grow×lv */
+/* 素質：花金幣永久提升。第 lv 級（從 0 起算）的價格＝round(base × mult^lv) */
 const STAT_UPS = {
-  hp:  {n:'體魄',   d:'最大生命 +5',     key:'hp',  per:5, max:10, base:60,  grow:45},
-  blk: {n:'架勢',   d:'每場開場格擋 +3', key:'blk', per:3, max:5,  base:80,  grow:70},
-  str: {n:'臂力',   d:'力量 +1',         key:'str', per:1, max:5,  base:200, grow:220},
-  bag: {n:'大背包', d:'背包 +1 格',      key:'bag', per:1, max:2,  base:300, grow:400},
+  hp:  {n:'體魄',   d:'最大生命 +5',     key:'hp',  per:5, max:20, base:60,  mult:1.25},
+  blk: {n:'架勢',   d:'每場開場格擋 +2', key:'blk', per:2, max:10, base:80,  mult:1.3},
+  str: {n:'臂力',   d:'力量 +1',         key:'str', per:1, max:8,  base:250, mult:1.6},
+  bag: {n:'大背包', d:'背包 +1 格',      key:'bag', per:1, max:3,  base:400, mult:2.5},
 };
-/* 裝備：活著回來時依最終貪婪階級給一件（打贏首領再高一階）。已有的會換成金幣 */
+/* 裝備：活著回來時依最終貪婪階級給一件（打贏首領再高一階），優先補沒有的部位；已有的會換成金幣。
+   也可以在營地鐵匠鋪用 buy 價直接買，能買的稀有度上限＝已解鎖深度 */
 const RARITY = [
-  {n:'普通', c:'#b8bcc8', sell:30},
-  {n:'精良', c:'#6fbf8f', sell:80},
-  {n:'稀有', c:'#5a9bd4', sell:160},
-  {n:'史詩', c:'#b98ae0', sell:320},
-  {n:'傳說', c:'#e0813f', sell:600},
+  {n:'普通', c:'#b8bcc8', sell:15,  buy:300},
+  {n:'精良', c:'#6fbf8f', sell:40,  buy:800},
+  {n:'稀有', c:'#5a9bd4', sell:80,  buy:2000},
+  {n:'史詩', c:'#b98ae0', sell:160, buy:5000},
+  {n:'傳說', c:'#e0813f', sell:300, buy:12000},
 ];
 const SLOTS = {weapon:'武器', armor:'護甲', trinket:'飾品'};
 const GEAR = {

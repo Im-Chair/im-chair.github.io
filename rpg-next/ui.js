@@ -1,7 +1,7 @@
 'use strict';
 /* ============ ui.js — 畫面與演出。規則都在 core.js，這裡只讀狀態、呼叫動作、播 S.fx。 ============ */
 
-const RUN_KEY = 'abyss2-run', META_KEY = 'abyss2-meta';
+const RUN_KEY = 'abyss2-run', META_KEY = 'abyss2-meta', META_VER = 2;
 const $ = id => document.getElementById(id);
 const ic = (n, cls) => `<svg class="ic ${cls || ''}"><use href="#ic-${n}"/></svg>`;
 const art = p => `${ART}${p}?v=4`;
@@ -14,13 +14,21 @@ let view = 'title';      // 沒有進行中的一趟時顯示 title 或 camp
 let diveDepth = null;    // 營地選的下潛深度（null＝最深）
 
 function loadMeta(){
-  const blank = {runs: 0, escapes: 0, best: 0, bank: 0, seenHelp: 0, depth: 0, stats: {}, owned: [], equip: {}};
+  const blank = () => ({v: META_VER, runs: 0, escapes: 0, best: 0, bank: 0, seenHelp: 0, depth: 0, gold: 0, stats: {}, owned: [], equip: {}});
   try{
-    const m = Object.assign(blank, JSON.parse(localStorage.getItem(META_KEY) || '{}'));
-    /* 營地上線前帶回的價值，當初沒地方花，一次換成金幣 */
-    if(m.gold === undefined) m.gold = m.bank;
-    return m;
-  }catch(e){ return Object.assign(blank, {gold: 0}); }
+    const raw = localStorage.getItem(META_KEY);
+    if(raw === null) return blank();
+    let m = null;
+    try{ m = JSON.parse(raw); }catch(e){}
+    if(m && m.v === META_VER) return Object.assign(blank(), m);
+    /* 一次性遷移：舊版（沒有 v:2）的素質已灌滿，測不出新節奏。原樣備份後重來，並清掉舊局（財寶 id 可能已不存在）。
+       存回新資料之後就有 v:2，不會重複觸發；seenHelp 不沿用（說明有更新） */
+    localStorage.setItem(META_KEY + '-bak', raw);
+    localStorage.removeItem(RUN_KEY);
+    const fresh = blank();
+    localStorage.setItem(META_KEY, JSON.stringify(fresh));
+    return fresh;
+  }catch(e){ return blank(); }
 }
 function saveMeta(){ try{ localStorage.setItem(META_KEY, JSON.stringify(meta)); }catch(e){} }
 function saveRun(){
@@ -38,6 +46,7 @@ function loadRun(){
     r.load = r.load || {};
     r.bagCap = r.bagCap || GAME.bag;
     r.depth = r.depth || 0;
+    r.own = r.own || [];
     return r;
   }
   catch(e){ return null; }
@@ -110,7 +119,7 @@ function hud(){
       <div class="bar"><i style="width:${hpPct}%"></i></div></div>
     <button class="chip greed t${ti}" id="greedChip" data-act="greedInfo">
       <span class="gn"><span>${T.n}</span><span>${S.greed}</span></span><span class="bar"><i style="width:${pct}%"></i></span></button>
-    <button class="chip" data-act="bagSheet" aria-label="背包">${ic('bag')} ${S.bag.length}/${GAME.bag}</button>
+    <button class="chip" data-act="bagSheet" aria-label="背包">${ic('bag')} ${S.bag.length}/${S.bagCap}</button>
   </div>`;
 }
 
@@ -167,8 +176,15 @@ function campHtml(){
   }).join('');
   const ups = Object.keys(STAT_UPS).map(k => {
     const u = STAT_UPS[k], lv = meta.stats[k] || 0, full = lv >= u.max, cost = statCost(k, lv);
-    return `<div class="up-row"><div class="up-t"><b>${u.n}</b> <small>${lv}/${u.max}</small><div class="up-d">${u.d}</div></div>
+    return `<div class="up-row"><div class="up-t"><b>${u.n}</b> <small>Lv ${lv} / ${u.max}</small><div class="up-d">${u.d}</div></div>
       <button class="btn up-btn" data-act="buy:${k}" ${full || meta.gold < cost ? 'disabled' : ''}>${full ? '已滿' : `${ic('gold')} ${cost}`}</button></div>`;
+  }).join('');
+  const smith = Object.keys(GEAR).filter(id => !meta.owned.includes(id)).sort((a, b) => GEAR[a].r - GEAR[b].r).map(id => {
+    const g = GEAR[id], R = RARITY[g.r], st = gearBuyState(meta, id);
+    return `<div class="up-row${st === 'locked' ? ' locked' : ''}">${gearIcon(id)}
+      <div class="up-t"><b style="color:${R.c}">${g.n}</b> <small>${SLOTS[g.slot]}・${R.n}</small><div class="up-d">${g.d}</div></div>
+      ${st === 'locked' ? `<span class="lock-note">解鎖第 ${g.r + 1} 層後開放</span>`
+        : `<button class="btn up-btn" data-act="smith:${id}" ${st === 'ok' ? '' : 'disabled'}>${ic('gold')} ${R.buy}</button>`}</div>`;
   }).join('');
   return `<div class="camp-head" style="background-image:linear-gradient(180deg,rgba(8,6,5,.35),var(--bg)),url('${ART}camp3.webp')">
       <button class="chip camp-back" data-act="toTitle">標題</button>
@@ -185,6 +201,8 @@ function campHtml(){
       <div class="col" style="gap:6px">${slots}</div>
       <div class="sect">素質（永久提升）</div>
       ${ups}
+      <div class="sect">鐵匠鋪（金幣買裝備，稀有度上限＝解鎖到第幾層）</div>
+      ${smith || '<div class="sheet-p" style="color:var(--dim)">全部都買齊了。</div>'}
     </div>
     <div class="camp-foot">
       ${saved ? `<button class="btn primary" data-act="resume">繼續這一趟<small>${saved.bag.length} 件財寶還在身上</small></button>
@@ -291,6 +309,10 @@ function battleHtml(){
   if(b.vuln) status.push(`<span class="tag vul">易傷${b.vuln}</span>`);
   if(b.psn) status.push(`<span class="tag tr">中毒${b.psn}</span>`);
   if(b.keep) status.push(`<span class="tag blk">堅守</span>`);
+  /* 身上遺物與詛咒的效果也要看得到（點一下開背包） */
+  S.bag.forEach(id => { const t = treasure(id);
+    if(t.fam === 'relic') status.push(`<span class="tag rel" data-act="bagSheet">${t.n}</span>`);
+    else if(t.fam === 'curse') status.push(`<span class="tag cur" data-act="bagSheet">${t.n}：${t.ef}</span>`); });
   const hand = b.hand.map((c, i) => cardHtml(c, {deal: 1, off: !myTurn || cardDef(c).c > b.ap, target, delay: 0,
     attr: `data-card="${i}"`})).join('');
   const burnable = myTurn && !b.burned && S.bag.length > 0;
@@ -312,15 +334,16 @@ function battleHtml(){
 }
 
 /* —— 獎勵 —— */
+function famTag(t){ return `<span class="fam fam-${t.fam}">${FAM[t.fam].n}</span>`; }
 function lootTile(id, i){
   const t = treasure(id);
-  return `<button class="loot" data-act="loot:${i}">${treasureImg(t)}${t.n}
-    <div class="ef">${t.ef}</div><div class="v">${ic('gold')} ${treasureValue(S, id)}</div><div class="g">貪婪 +${t.g}</div></button>`;
+  return `<button class="loot ${t.fam}" data-act="loot:${i}">${famTag(t)}${treasureImg(t)}${t.n}
+    <div class="ef">${t.ef || '沒有效果'}</div><div class="v">${ic('gold')} 賣 ${treasureValue(S, id)}</div><div class="g">貪婪 +${t.g}</div></button>`;
 }
 function rewardHtml(){
   const R = S.reward;
   let body = '';
-  if(R.loot) body += `<div class="sect">財寶 · 挑一件（背包 ${S.bag.length}/${GAME.bag}）</div>
+  if(R.loot) body += `<div class="sect">財寶 · 挑一件（背包 ${S.bag.length}/${S.bagCap}）</div>
     <div class="loot-row">${R.loot.map(lootTile).join('')}</div>
     <button class="btn" style="margin-top:8px" data-act="skipLoot">不拿</button>`;
   if(R.cards) body += `<div class="sect">技能 · 挑一張</div>
@@ -397,14 +420,14 @@ function openSheet(html){
 function closeSheet(){ $('sheet').classList.remove('show'); pendingLoot = null; }
 function bagLine(id, i, btn){
   const t = treasure(id);
-  return `<div class="bag-line">${treasureImg(t)}<div>${t.n} <span class="ef">${t.ef}</span><div class="sub">值 ${treasureValue(S, id)} 金幣 · 貪婪 ${t.g}</div></div>${btn || ''}</div>`;
+  return `<div class="bag-line">${treasureImg(t)}<div>${t.n} ${famTag(t)} <span class="ef ${t.fam === 'curse' ? 'bad' : ''}">${t.ef}</span><div class="sub">賣 ${treasureValue(S, id)} 金幣 · 貪婪 ${t.g}</div></div>${btn || ''}</div>`;
 }
 function openBag(){
   const b = S.battle;
   const canBurn = b && b.phase === 'player' && !b.burned;
   const rows = S.bag.map((id, i) => bagLine(id, i, canBurn
     ? `<button class="btn" data-act="burn:${i}" style="color:#f0a35e">${ic('fire')} 燒掉</button>` : '')).join('');
-  openSheet(`<div class="sheet-t">背包 ${S.bag.length}/${GAME.bag}</div>
+  openSheet(`<div class="sheet-t">背包 ${S.bag.length}/${S.bagCap}</div>
     <div class="sheet-p">帶著就有效果，回去能賣 <b style="color:var(--gold)">${bagValue(S)}</b> 金幣。死了就全沒，走到撤離點才算你的。${canBurn ? '<br>戰鬥中每回合可以燒一件：+1 行動點，貪婪也隨之下降。' : ''}</div>
     ${rows || '<div class="sheet-p" style="color:var(--dim)">什麼都沒有。</div>'}
     <button class="btn" style="margin-top:10px" data-act="closeSheet">關閉</button>`);
@@ -438,8 +461,9 @@ function openGreedInfo(){
 function openHelp(){
   openSheet(`<div class="sheet-t">怎麼玩</div>
     <div class="sheet-p"><b>目標：一趟趟變強，打倒首領，往更深的層走。</b></div>
-    <div class="sheet-p"><b>下潛：</b>在分岔地圖往下走。撿到的財寶帶著就有效果（例如力量 +1），但死了就全沒。走到<span style="color:var(--green)">撤離點</span>或打倒首領，才算帶回來。</div>
-    <div class="sheet-p"><b>回營地：</b>財寶賣成金幣，用來永久提升素質；另外依貪婪值拿一件裝備，貪婪越高越好。</div>
+    <div class="sheet-p"><b>下潛：</b>在分岔地圖往下走。死了身上財寶就全沒。走到<span style="color:var(--green)">撤離點</span>或打倒首領，才算帶回來。</div>
+    <div class="sheet-p"><b>財寶有三類：</b><span style="color:var(--gold)">金銀</span>賣得貴、沒效果；<span style="color:var(--green)">遺物</span>幾乎不值錢、帶著變強；<span style="color:var(--red)">詛咒</span>最值錢、但帶著有代價。帶錢還是變強，自己取捨。</div>
+    <div class="sheet-p"><b>回營地：</b>財寶賣成金幣，用來永久提升素質、到鐵匠鋪買裝備；另外依貪婪值拿一件裝備（優先補沒有的部位）。</div>
     <div class="sheet-p"><b>貪婪：</b>撿得越多、走得越深就越高。敵人更凶，回去的裝備也更好。撤不撤，你自己賭。</div>
     <div class="sheet-p"><b>戰鬥：</b>每回合 3 行動點、抽 5 張。敵人頭上會顯示下一招。點敵人換目標，點技能直接使用，<b>長按技能看說明</b>。你的格擋每回合只衰減一半，可以累積。</div>
     <div class="sheet-p"><b>燒財寶：</b>快撐不住時，每回合可以燒一件財寶換 1 行動點，貪婪也會降。</div>
@@ -581,7 +605,7 @@ const ACT = {
     closeSheet();
     localStorage.removeItem(RUN_KEY);
     const maxD = meta.depth || 0;
-    S = newRun((Date.now() ^ (Math.random() * 1e9)) | 0, loadoutFrom(meta), diveDepth === null ? maxD : Math.min(diveDepth, maxD));
+    S = newRun((Date.now() ^ (Math.random() * 1e9)) | 0, loadoutFrom(meta), diveDepth === null ? maxD : Math.min(diveDepth, maxD), ownedOf(meta));
     S.fx = [];
     seenCards = new Set();
     render();
@@ -603,6 +627,7 @@ const ACT = {
   toTitle(){ S = null; view = 'title'; closeSheet(); $('app').removeAttribute('style'); render(); },
   toCamp(){ S = null; view = 'camp'; diveDepth = null; closeSheet(); $('app').removeAttribute('style'); render(); },
   buy(k){ if(buyStat(meta, k)){ saveMeta(); SFX.clink(); render(); } },
+  smith(id){ if(buyGear(meta, id)){ saveMeta(); SFX.clink(); render(); } },
   gearSheet(slot){ openGearSheet(slot); },
   equip(id){ if(equipGear(meta, id)){ saveMeta(); closeSheet(); SFX.clink(); render(); } },
   depth(d){ diveDepth = +d; render(); },
