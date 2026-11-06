@@ -5,6 +5,7 @@ const RUN_KEY = 'abyss2-run', META_KEY = 'abyss2-meta', META_VER = 2;
 const $ = id => document.getElementById(id);
 const ic = (n, cls) => `<svg class="ic ${cls || ''}"><use href="#ic-${n}"/></svg>`;
 const art = p => `${ART}${p}?v=4`;
+const foeArt = (a, k) => a && a[0] === '@' ? `${a.slice(1)}?v=4` : art('mon/' + (a || k) + '.webp');
 let S = null;          // 目前這一趟（null＝標題畫面）
 let meta = loadMeta();
 let busy = false;      // 敵方回合與轉場時鎖輸入
@@ -300,7 +301,7 @@ function openRecords(){
     const keys = Object.keys(ENEMIES);
     body = `<div class="sheet-p" style="color:var(--dim);font-size:12px">遇過 ${keys.filter(k => seenFoe[k]).length} / ${keys.length}</div><div class="bag-grid">${keys.map(k => {
       const d = ENEMIES[k];
-      return seenFoe[k] ? `<div class="bag-it">${img(art('mon/' + (d.art || k) + '.webp'))}${d.n}</div>` : `<div class="bag-it unk"><span class="unk-q">？</span>？？？</div>`;
+      return seenFoe[k] ? `<div class="bag-it">${img(foeArt(d.art, k))}${d.n}</div>` : `<div class="bag-it unk"><span class="unk-q">？</span>？？？</div>`;
     }).join('')}</div>`;
   }else if(recTab === 'tre'){
     body = `<div class="bag-grid">${TREASURES.map(t => seenTre[t.id]
@@ -439,7 +440,7 @@ function foeHtml(e, i, b){
   if(e.loot.length) tags.push(`<span class="tag vul">${ic('bag')}贓物</span>`);
   return `<button class="foe${b.target === i ? ' target' : ''}${e.boss ? ' boss' : ''}${e.elite ? ' elite' : ''}${gone ? ' dead' : ''}" data-uid="${e.uid}" data-act="foe:${i}">
     ${gone ? '<span class="intent">&nbsp;</span>' : intentHtml(e)}
-    <img src="${art('mon/' + (edef(e).art || e.key) + '.webp')}" alt="${e.n}">
+    <img src="${foeArt(edef(e).art, e.key)}" alt="${e.n}">
     <span class="fname">${e.n}</span>
     <span class="bar"><i style="width:${e.hp / e.max * 100}%"></i><span>${e.hp}/${e.max}</span></span>
     <span class="tags">${tags.join('')}</span></button>`;

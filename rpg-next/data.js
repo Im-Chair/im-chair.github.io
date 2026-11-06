@@ -202,12 +202,12 @@ const ENEMIES = {
   magma:  {n:'熔血魔',   hp:24, pat:[{a:4,burn:2,nm:'熔血'},{a:7},{d:5}]},
   acolyte:{n:'焚魂使者', hp:58, elite:1, pat:[{a:5,burn:3,nm:'焚魂'},{a:9},{d:8,burn:1,nm:'灼風'}]},
   stoker: {n:'提燈巡爐者',hp:56, elite:1, pat:[{astr:2,d:6,nm:'添柴'},{a:8},{a:5,x:2}]},
-  /* —— 區域首領（美術借用 rpg/mon/ 與 mon/_spare/）—— */
-  warlord:{n:'聚落霸主', art:'_spare/D43', hp:220, boss:1, pat:[{a:10},{summon:'jelly',nm:'吹哨集結'},{a:5,x:2},{charge:1,d:6,nm:'舉起大棒'},{a:23,nm:'碎顱重擊'},{d:10}]},
-  brood:  {n:'闇域吞光者', art:'_spare/B22', hp:220, boss:1, pat:[{a:8,drain:1,nm:'啃噬'},{goo:2,nm:'吐出瘴氣'},{a:5,x:2},{d:8,goo:1,nm:'盤踞'},{charge:1,d:6,nm:'深吸一口氣'},{a:18,drain:1,nm:'吞光'}]},
+  /* —— 區域首領（美術借用 rpg/mon/，開頭 @ 的放在 rpg-next/art/；GitHub Pages 不部署底線開頭的資料夾，所以不能直接用 mon/_spare）—— */
+  warlord:{n:'聚落霸主', art:'@art/boss_warlord.webp', hp:220, boss:1, pat:[{a:10},{summon:'jelly',nm:'吹哨集結'},{a:5,x:2},{charge:1,d:6,nm:'舉起大棒'},{a:23,nm:'碎顱重擊'},{d:10}]},
+  brood:  {n:'闇域吞光者', art:'@art/boss_brood.webp', hp:220, boss:1, pat:[{a:8,drain:1,nm:'啃噬'},{goo:2,nm:'吐出瘴氣'},{a:5,x:2},{d:8,goo:1,nm:'盤踞'},{charge:1,d:6,nm:'深吸一口氣'},{a:18,drain:1,nm:'吞光'}]},
   citylord:{n:'亡城之主', art:'feign', hp:220, boss:1, half:{str:3, nm:'亡城之主怒吼'}, pat:[{a:9},{d:10},{a:5,x:2},{charge:1,d:6,nm:'舉劍'},{a:20,nm:'處決'},{weak:1,d:8,nm:'亡城詔令'}]},
   heart:  {n:'深淵之心', art:'final', hp:170, boss:1, pat:[{a:9},{d:12},{a:5,burn:2,nm:'灼熱脈動'},{charge:1,d:6,nm:'蓄血'},{a:20,nm:'心搏'}],
-           form2:{n:'深淵之心（顯形）', art:'_spare/B12', heal:0.05, grow:1, pat:[{a:4,x:3,nm:'狂跳'},{a:5,x:3,weak:1},{a:3,x:5,nm:'亂搏'},{a:6,x:3,burn:1}]}},
+           form2:{n:'深淵之心（顯形）', art:'@art/boss_heart2.webp', heal:0.05, grow:1, pat:[{a:4,x:3,nm:'狂跳'},{a:5,x:3,weak:1},{a:3,x:5,nm:'亂搏'},{a:6,x:3,burn:1}]}},
 };
 
 /* 每一段地圖會遇到的組合（越下面越硬） */
