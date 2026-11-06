@@ -21,10 +21,13 @@ function shuffle(S, a){
 const emit = (S, e) => { (S.fx = S.fx || []).push(e); };
 
 /* —— 建立新的一趟 —— */
-function newRun(seed){
+function newRun(seed, load, depth){
+  load = load || {};
+  depth = depth || 0;
   const S = {
     v: 1, rng: seed | 0, uid: 1, screen: 'map',
-    hp: GAME.hp, maxHp: GAME.hp, greed: 0,
+    hp: GAME.hp + (load.hp || 0), maxHp: GAME.hp + (load.hp || 0), greed: 0,
+    load, depth, bagCap: GAME.bag + (load.bag || 0),
     deck: STARTER_DECK.map(id => ({id, up: 0})),
     bag: [], at: null, map: null, battle: null, reward: null, event: null, result: null,
     stats: {kills: 0, steps: 0, burned: 0},
@@ -110,7 +113,9 @@ function rollLoot(S, n, boost){
   }
   return out;
 }
-const bagValue = S => S.bag.reduce((s, id) => s + treasure(id).v, 0);
+/* 越深的財寶越值錢 */
+const treasureValue = (S, id) => Math.round(treasure(id).v * (1 + DEPTH_K.value * (S.depth || 0)));
+const bagValue = S => S.bag.reduce((s, id) => s + treasureValue(S, id), 0);
 function addTreasure(S, id){
   S.bag.push(id);
   addGreed(S, treasure(id).g);
@@ -193,7 +198,7 @@ function chestAgain(S){
 /* —— 戰鬥 —— */
 function spawn(S, key){
   const d = ENEMIES[key], T = greedTier(S);
-  const hp = Math.round(d.hp * T.hp);
+  const hp = Math.round(d.hp * T.hp * (1 + DEPTH_K.hp * S.depth));
   const e = {uid: S.uid++, key, n: d.n, hp, max: hp, block: T.start, step: 0, str: 0, weak: 0, vuln: 0, psn: 0,
              traits: [], revived: 0, loot: [], gone: 0, boss: !!d.boss, elite: !!d.elite};
   const pool = shuffle(S, Object.keys(TRAITS));
@@ -211,6 +216,18 @@ function startBattle(S, keys, kind, reward){
   S.screen = 'battle';
   emit(S, {k: 'battle'});
   startTurn(S);
+  /* 素質、裝備、身上財寶的開場效果。放在 startTurn 之後，開場格擋才不會被第一回合的衰減砍半 */
+  const c = carry(S);
+  b.str += (S.load.str || 0) + c.str;
+  b.block += (S.load.blk || 0) + c.blk;
+  b.ap += c.apFirst;
+  drawCards(S, (S.load.drawFirst || 0) + c.drawFirst);
+}
+/* 身上財寶的效果加總：撿到就生效，燒掉或被偷就沒了 */
+function carry(S){
+  const c = {blk: 0, str: 0, drawFirst: 0, blkTurn: 0, apFirst: 0};
+  S.bag.forEach(id => { const t = treasure(id); for(const k in c) c[k] += t[k] || 0; });
+  return c;
 }
 const alive = b => b.enemies.filter(e => e.hp > 0 && !e.gone);
 function fixTarget(b){
@@ -239,11 +256,13 @@ function startTurn(S){
   const b = S.battle;
   b.turn++;
   b.phase = 'player';
-  b.ap = GAME.ap;
+  b.ap = GAME.ap + (S.load.ap || 0);
   b.burned = 0;
+  b.atkUsed = 0;
   /* 劍士的職業規則：格擋只衰減一半，所以防禦可以累積 */
-  b.block = b.keep ? b.block : Math.floor(b.block / 2);
+  b.block = (b.keep || S.load.noDecay) ? b.block : Math.floor(b.block / 2);
   b.keep = 0;
+  b.block += (S.load.blkTurn || 0) + carry(S).blkTurn;
   if(b.psn > 0){
     loseHp(S, b.psn, 'poison');
     b.psn--;
@@ -268,6 +287,7 @@ function calcDmg(S, def, t){
   const base = baseDmg(S, def, t);
   if(base <= 0) return 0;
   let v = base + b.str;
+  if(S.load.firstAtk && !b.atkUsed && def.k === 'atk') v += S.load.firstAtk;
   if(b.weak > 0) v *= 0.75;
   if(t && t.vuln > 0) v *= 1.5;
   return Math.floor(v);
@@ -292,6 +312,7 @@ function hitEnemy(S, e, amt){
   e.hp = 0;
   S.stats.kills++;
   emit(S, {k: 'die', uid: e.uid});
+  if(S.load.killHeal) heal(S, S.load.killHeal);
   e.loot.forEach(id => { addTreasure(S, id); emit(S, {k: 'toast', t: `拿回了${treasure(id).n}`}); });
   e.loot = [];
   /* 首領一倒，叫出來的小怪跟著散掉，不用再清場 */
@@ -319,7 +340,7 @@ function loseHp(S, amt, why){
 function checkDead(S){
   if(S.hp <= 0 && S.screen === 'battle'){
     S.hp = 0;
-    finishRun(S, false, S.battle.kind === 'boss' ? '倒在石棺前' : '倒在淺穴裡');
+    finishRun(S, false, S.battle.kind === 'boss' ? '倒在石棺前' : `倒在${depthName(S.depth)}裡`);
   }
 }
 function checkWin(S){
@@ -369,6 +390,7 @@ function playCard(S, i){
   if(d.ap) b.ap += d.ap;
   if(d.greed) addGreed(S, d.greed);
   if(d.draw) drawCards(S, d.draw);
+  if(d.k === 'atk') b.atkUsed = 1;
   (d.exhaust ? b.exh : b.disc).push(c);
   checkWin(S);
   if(S.screen === 'battle') fixTarget(b);
@@ -425,7 +447,7 @@ function intent(S, e){
 }
 function enemyHitValue(S, e, base){
   const b = S.battle;
-  let v = Math.round(base * greedTier(S).dmg) + e.str;
+  let v = Math.round(base * greedTier(S).dmg * (1 + DEPTH_K.dmg * S.depth)) + e.str;
   if(e.weak > 0) v *= 0.75;
   if(b.vuln > 0) v *= 1.5;
   return Math.floor(v);
@@ -509,7 +531,7 @@ function winBattle(S){
 function takeLoot(S, i, dropIdx){
   const R = S.reward;
   if(!R || !R.loot || !R.loot[i]) return false;
-  if(S.bag.length >= GAME.bag){
+  if(S.bag.length >= S.bagCap){
     if(dropIdx === undefined || dropIdx === null) return 'full';
     removeTreasure(S, dropIdx);
   }
@@ -585,7 +607,7 @@ const EVENT_FX = {
   search(S){
     if(rand(S) < 0.55){
       const id = rollTreasure(S, 1);
-      if(S.bag.length < GAME.bag){ addTreasure(S, id); return `背包底部壓著${treasure(id).n}。`; }
+      if(S.bag.length < S.bagCap){ addTreasure(S, id); return `背包底部壓著${treasure(id).n}。`; }
       return `背包底部壓著${treasure(id).n}，但你已經拿不下了。`;
     }
     S.hp = Math.max(1, S.hp - 7);
@@ -598,7 +620,7 @@ const EVENT_FX = {
     if(rand(S) < 0.5){
       const a = rollTreasure(S, 1), c = rollTreasure(S, 1);
       addTreasure(S, a);
-      if(S.bag.length < GAME.bag) addTreasure(S, c);
+      if(S.bag.length < S.bagCap) addTreasure(S, c);
       return `贏了。它把${treasure(a).n}和${treasure(c).n}推過來，笑得很難聽。`;
     }
     return `輸了。${treasure(old).n}消失在它袖子裡。`;
@@ -636,11 +658,68 @@ function closeEvent(S){ S.event = null; S.screen = 'map'; }
 /* —— 結算 —— */
 function finishRun(S, ok, why){
   const items = S.bag.slice();
+  const bossDown = ok && S.at && S.at[0] === GAME.rows - 1;
+  const rarity = gearRarity(S.greed, bossDown);
+  const gear = ok ? rollGear(S, rarity) : null;
   S.result = {ok, why, items: ok ? items : [], lost: ok ? [] : items, value: ok ? bagValue(S) : 0, greed: S.greed,
-              steps: S.stats.steps, kills: S.stats.kills, burned: S.stats.burned};
+              steps: S.stats.steps, kills: S.stats.kills, burned: S.stats.burned, gear, bossDown, depth: S.depth};
   S.battle = null;
   S.reward = null;
   S.event = null;
   S.screen = 'result';
   emit(S, {k: ok ? 'extract' : 'death'});
+}
+
+const depthName = d => DEPTHS[d % DEPTHS.length] + (d >= DEPTHS.length ? ' ' + (Math.floor(d / DEPTHS.length) + 1) : '');
+
+/* —— 營地：永久成長。meta 是存在 localStorage 的帳號資料 —— */
+function gearRarity(greed, bossDown){
+  return Math.min(RARITY.length - 1, greedTierIndex(greed) + (bossDown ? 1 : 0));
+}
+function rollGear(S, r){
+  return rpick(S, Object.keys(GEAR).filter(id => GEAR[id].r === r));
+}
+function statCost(k, lv){ return STAT_UPS[k].base + STAT_UPS[k].grow * lv; }
+function buyStat(meta, k){
+  const u = STAT_UPS[k], lv = meta.stats[k] || 0;
+  if(lv >= u.max || meta.gold < statCost(k, lv)) return false;
+  meta.gold -= statCost(k, lv);
+  meta.stats[k] = lv + 1;
+  return true;
+}
+function equipGear(meta, id){
+  if(!meta.owned.includes(id)) return false;
+  meta.equip[GEAR[id].slot] = id;
+  return true;
+}
+/* 素質＋裝備 → 這一趟的起始加成 */
+function loadoutFrom(meta){
+  const L = {};
+  for(const k in meta.stats) L[STAT_UPS[k].key] = (L[STAT_UPS[k].key] || 0) + STAT_UPS[k].per * meta.stats[k];
+  Object.values(meta.equip).forEach(id => {
+    const fx = GEAR[id].fx;
+    for(const k in fx) L[k] = (L[k] || 0) + fx[k];
+  });
+  return L;
+}
+/* 把結算入帳。重複的裝備換成金幣；該欄空著就直接穿上 */
+function bankRewards(meta, r){
+  if(r.banked) return;
+  r.banked = 1;
+  meta.runs++;
+  if(!r.ok) return;
+  meta.escapes++;
+  meta.bank += r.value;
+  meta.gold += r.value;
+  meta.best = Math.max(meta.best, r.value);
+  if(r.bossDown && r.depth >= meta.depth){ meta.depth = r.depth + 1; r.newDepth = meta.depth; }
+  if(!r.gear) return;
+  if(meta.owned.includes(r.gear)){
+    r.dupGold = RARITY[GEAR[r.gear].r].sell;
+    meta.gold += r.dupGold;
+  }else{
+    meta.owned.push(r.gear);
+    const slot = GEAR[r.gear].slot;
+    if(!meta.equip[slot]){ meta.equip[slot] = r.gear; r.autoEquip = 1; }
+  }
 }

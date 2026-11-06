@@ -10,10 +10,17 @@ let meta = loadMeta();
 let busy = false;      // 敵方回合與轉場時鎖輸入
 let seenCards = new Set();
 let pendingLoot = null;
+let view = 'title';      // 沒有進行中的一趟時顯示 title 或 camp
+let diveDepth = null;    // 營地選的下潛深度（null＝最深）
 
 function loadMeta(){
-  try{ return Object.assign({runs: 0, escapes: 0, best: 0, bank: 0, seenHelp: 0}, JSON.parse(localStorage.getItem(META_KEY) || '{}')); }
-  catch(e){ return {runs: 0, escapes: 0, best: 0, bank: 0, seenHelp: 0}; }
+  const blank = {runs: 0, escapes: 0, best: 0, bank: 0, seenHelp: 0, depth: 0, stats: {}, owned: [], equip: {}};
+  try{
+    const m = Object.assign(blank, JSON.parse(localStorage.getItem(META_KEY) || '{}'));
+    /* 營地上線前帶回的價值，當初沒地方花，一次換成金幣 */
+    if(m.gold === undefined) m.gold = m.bank;
+    return m;
+  }catch(e){ return Object.assign(blank, {gold: 0}); }
 }
 function saveMeta(){ try{ localStorage.setItem(META_KEY, JSON.stringify(meta)); }catch(e){} }
 function saveRun(){
@@ -24,7 +31,15 @@ function saveRun(){
   }catch(e){}
 }
 function loadRun(){
-  try{ const r = JSON.parse(localStorage.getItem(RUN_KEY) || 'null'); return r && r.v === 1 ? r : null; }
+  try{
+    const r = JSON.parse(localStorage.getItem(RUN_KEY) || 'null');
+    if(!r || r.v !== 1) return null;
+    /* 營地上線前的舊進度沒有這些欄位 */
+    r.load = r.load || {};
+    r.bagCap = r.bagCap || GAME.bag;
+    r.depth = r.depth || 0;
+    return r;
+  }
   catch(e){ return null; }
 }
 
@@ -107,8 +122,8 @@ function treasureImg(t){
 /* —— 主繪製 —— */
 function render(){
   const app = $('app');
-  if(!S){ app.innerHTML = titleHtml(); return; }
-  const realmVar = `--realm:url('${art('ui/realm0.webp')}')`;
+  if(!S){ app.innerHTML = view === 'camp' ? campHtml() : titleHtml(); return; }
+  const realmVar = `--realm:url('${art('ui/realm' + (S.depth % DEPTHS.length) + '.webp')}')`;
   app.setAttribute('style', realmVar);
   const f = {map: mapHtml, battle: battleHtml, reward: rewardHtml, rest: restHtml, event: eventHtml, result: resultHtml}[S.screen];
   app.innerHTML = f();
@@ -124,13 +139,70 @@ function titleHtml(){
     <div class="grow"></div>
     <h1 class="title">貪婪深淵</h1>
     <div class="subtitle">重製版可玩切片</div>
-    <div class="meta-line"><span>下潛 <b>${meta.runs}</b></span><span>生還 <b>${meta.escapes}</b></span><span>單趟最高 <b>${meta.best}</b></span><span>累計 <b>${meta.bank}</b></span></div>
+    <div class="meta-line"><span>下潛 <b>${meta.runs}</b></span><span>生還 <b>${meta.escapes}</b></span><span>單趟最高 <b>${meta.best}</b></span><span>金幣 <b>${meta.gold}</b></span></div>
     <div class="col">
       ${saved ? `<button class="btn primary" data-act="resume">繼續這一趟<small>${saved.bag.length} 件財寶還在身上</small></button>` : ''}
-      <button class="btn ${saved ? '' : 'primary'}" data-act="${saved ? 'confirmNew' : 'newGame'}">新的一趟</button>
+      <button class="btn ${saved ? '' : 'primary'}" data-act="toCamp">進營地</button>
       <button class="btn" data-act="help">怎麼玩</button>
       <button class="btn" data-act="home">回遊戲列表</button>
     </div></div>`;
+}
+
+/* —— 營地 —— */
+function gearIcon(id){
+  const g = GEAR[id];
+  return `<img src="${art(g.img)}" alt="" style="filter:drop-shadow(0 0 5px ${RARITY[g.r].c})">`;
+}
+function campHtml(){
+  const L = loadoutFrom(meta);
+  const saved = loadRun();
+  const maxD = meta.depth || 0;
+  const d = diveDepth === null ? maxD : Math.min(diveDepth, maxD);
+  const slots = Object.keys(SLOTS).map(k => {
+    const id = meta.equip[k], g = id && GEAR[id];
+    return `<button class="slot" data-act="gearSheet:${k}">
+      ${g ? gearIcon(id) : '<span class="slot-empty">空</span>'}
+      <span class="slot-t"><small>${SLOTS[k]}</small><b style="color:${g ? RARITY[g.r].c : 'var(--dim)'}">${g ? g.n : '還沒有裝備'}</b>
+      <small>${g ? g.d : '活著回來就會拿到'}</small></span></button>`;
+  }).join('');
+  const ups = Object.keys(STAT_UPS).map(k => {
+    const u = STAT_UPS[k], lv = meta.stats[k] || 0, full = lv >= u.max, cost = statCost(k, lv);
+    return `<div class="up-row"><div class="up-t"><b>${u.n}</b> <small>${lv}/${u.max}</small><div class="up-d">${u.d}</div></div>
+      <button class="btn up-btn" data-act="buy:${k}" ${full || meta.gold < cost ? 'disabled' : ''}>${full ? '已滿' : `${ic('gold')} ${cost}`}</button></div>`;
+  }).join('');
+  return `<div class="camp-head" style="background-image:linear-gradient(180deg,rgba(8,6,5,.35),var(--bg)),url('${ART}camp3.webp')">
+      <button class="chip camp-back" data-act="toTitle">標題</button>
+      <div class="page-title">營地</div>
+      <div class="camp-gold">${ic('gold')} ${meta.gold}</div>
+    </div>
+    <div class="screen">
+      <div class="sect">下一趟的你</div>
+      <div class="camp-power">
+        <span>生命 <b>${GAME.hp + (L.hp || 0)}</b></span><span>力量 <b>${L.str || 0}</b></span>
+        <span>開場格擋 <b>${L.blk || 0}</b></span><span>背包 <b>${GAME.bag + (L.bag || 0)}</b></span>
+      </div>
+      <div class="sect">裝備（點一下更換）</div>
+      <div class="col" style="gap:6px">${slots}</div>
+      <div class="sect">素質（永久提升）</div>
+      ${ups}
+    </div>
+    <div class="camp-foot">
+      ${saved ? `<button class="btn primary" data-act="resume">繼續這一趟<small>${saved.bag.length} 件財寶還在身上</small></button>
+        <button class="btn danger" style="margin-top:6px;padding:8px" data-act="confirmNew">放棄這一趟</button>`
+      : `${maxD > 0 ? `<div class="depth-pick"><button class="chip" data-act="depth:${d - 1}" ${d <= 0 ? 'disabled' : ''}>較淺</button>
+          <span>第 ${d + 1} 層・${depthName(d)}<small>敵人 +${Math.round(DEPTH_K.hp * d * 100)}%・財寶 +${Math.round(DEPTH_K.value * d * 100)}%</small></span>
+          <button class="chip" data-act="depth:${d + 1}" ${d >= maxD ? 'disabled' : ''}>較深</button></div>` : ''}
+        <button class="btn primary" data-act="newGame">下潛</button>`}
+    </div>`;
+}
+function openGearSheet(slot){
+  const list = meta.owned.filter(id => GEAR[id].slot === slot).sort((a, b) => GEAR[b].r - GEAR[a].r);
+  openSheet(`<div class="sheet-t">${SLOTS[slot]}</div>
+    ${list.length ? list.map(id => { const g = GEAR[id], on = meta.equip[slot] === id;
+      return `<div class="bag-line">${gearIcon(id)}<div><span style="color:${RARITY[g.r].c}">${g.n}</span> <span class="sub">${RARITY[g.r].n}</span><div class="sub">${g.d}</div></div>
+        ${on ? '<span class="sub" style="margin-left:auto;flex:none">穿著中</span>' : `<button class="btn" data-act="equip:${id}">穿上</button>`}</div>`;
+    }).join('') : '<div class="sheet-p" style="color:var(--dim)">還沒有這類裝備。活著回來就會拿到一件，貪婪越高越好。</div>'}
+    <button class="btn" style="margin-top:10px" data-act="closeSheet">關閉</button>`);
 }
 
 /* —— 地圖 —— */
@@ -163,7 +235,7 @@ function mapHtml(){
       <svg class="lines">${lines}</svg>${nodes}</div></div>
     <div class="map-foot">
       <button class="chip" data-act="deckSheet">${ic('book')} 技能 ${S.deck.length}</button>
-      <button class="chip" data-act="bagSheet">${ic('gold')} 身上值 ${bagValue(S)}</button>
+      <button class="chip" data-act="bagSheet">${ic('gold')} 可賣 ${bagValue(S)}</button>
       <button class="chip" data-act="menu">選單</button>
     </div>`;
 }
@@ -243,7 +315,7 @@ function battleHtml(){
 function lootTile(id, i){
   const t = treasure(id);
   return `<button class="loot" data-act="loot:${i}">${treasureImg(t)}${t.n}
-    <div class="v">${ic('gold')} ${t.v}</div><div class="g">貪婪 +${t.g}</div></button>`;
+    <div class="ef">${t.ef}</div><div class="v">${ic('gold')} ${treasureValue(S, id)}</div><div class="g">貪婪 +${t.g}</div></button>`;
 }
 function rewardHtml(){
   const R = S.reward;
@@ -289,28 +361,30 @@ function eventHtml(){
 function resultHtml(){
   const r = S.result;
   const list = (ids, lost) => ids.map(id => { const t = treasure(id);
-    return `<div class="bag-it${lost ? ' lost' : ''}">${treasureImg(t)}${t.n}<br>${t.v}</div>`; }).join('');
+    return `<div class="bag-it${lost ? ' lost' : ''}">${treasureImg(t)}${t.n}<br>${Math.round(t.v * (1 + DEPTH_K.value * r.depth))}</div>`; }).join('');
   return `<div class="screen">
     <div class="result-t ${r.ok ? 'ok' : 'no'}">${r.ok ? '活著回來' : '葬身深淵'}</div>
     <div class="result-why">${r.why}</div>
-    <div class="result-v">${r.value}<small>${r.ok ? '這一趟帶回的價值' : '帶回的價值'}</small></div>
-    ${r.items.length ? `<div class="sect">帶回</div><div class="bag-grid">${list(r.items)}</div>` : ''}
-    ${r.lost.length ? `<div class="sect">永遠留在下面（值 ${r.lost.reduce((s, id) => s + treasure(id).v, 0)}）</div><div class="bag-grid">${list(r.lost, 1)}</div>` : ''}
+    <div class="result-v">${ic('gold')} ${r.value}<small>${r.ok ? '財寶賣掉換到的金幣' : '什麼都沒帶回來'}</small></div>
+    ${r.gear ? gearReward(r) : ''}
+    ${r.newDepth ? `<div class="unlock">解鎖第 ${r.newDepth + 1} 層・${depthName(r.newDepth)}</div>` : ''}
+    ${r.items.length ? `<div class="sect">賣掉的財寶</div><div class="bag-grid">${list(r.items)}</div>` : ''}
+    ${r.lost.length ? `<div class="sect">永遠留在下面</div><div class="bag-grid">${list(r.lost, 1)}</div>` : ''}
     <div class="stat-row"><span>走了 <b>${r.steps}</b> 格</span><span>打倒 <b>${r.kills}</b></span><span>燒掉 <b>${r.burned}</b></span><span>最終貪婪 <b>${r.greed}</b></span></div>
     <div class="grow"></div>
-    <div class="col"><button class="btn primary" data-act="newGame">再下去一趟</button><button class="btn" data-act="toTitle">回標題</button></div>
+    <div class="col"><button class="btn primary" data-act="toCamp">回營地${r.ok ? '<small>花金幣變強、換裝備</small>' : ''}</button></div>
   </div>`;
 }
+function gearReward(r){
+  const g = GEAR[r.gear], R = RARITY[g.r];
+  const note = r.dupGold ? `已經有了，換成 ${r.dupGold} 金幣` : r.autoEquip ? '已自動穿上' : '到營地可以換上';
+  return `<div class="gear-get" style="border-color:${R.c}">${gearIcon(r.gear)}
+    <div><small>依最終貪婪 ${r.greed}${r.bossDown ? '＋打贏首領' : ''} 獲得</small>
+    <b style="color:${R.c}">${g.n}</b> <small>${R.n}</small><div>${g.d}</div><small>${note}</small></div></div>`;
+}
 function bankResult(){
-  const r = S.result;
-  if(!r || r.banked) return;
-  r.banked = 1;
-  meta.runs++;
-  if(r.ok){
-    meta.escapes++;
-    meta.bank += r.value;
-    meta.best = Math.max(meta.best, r.value);
-  }
+  if(!S.result || S.result.banked) return;
+  bankRewards(meta, S.result);
   saveMeta();
 }
 
@@ -323,7 +397,7 @@ function openSheet(html){
 function closeSheet(){ $('sheet').classList.remove('show'); pendingLoot = null; }
 function bagLine(id, i, btn){
   const t = treasure(id);
-  return `<div class="bag-line">${treasureImg(t)}<div>${t.n}<div class="sub">值 ${t.v} · 貪婪 ${t.g}</div></div>${btn || ''}</div>`;
+  return `<div class="bag-line">${treasureImg(t)}<div>${t.n} <span class="ef">${t.ef}</span><div class="sub">值 ${treasureValue(S, id)} 金幣 · 貪婪 ${t.g}</div></div>${btn || ''}</div>`;
 }
 function openBag(){
   const b = S.battle;
@@ -331,7 +405,7 @@ function openBag(){
   const rows = S.bag.map((id, i) => bagLine(id, i, canBurn
     ? `<button class="btn" data-act="burn:${i}" style="color:#f0a35e">${ic('fire')} 燒掉</button>` : '')).join('');
   openSheet(`<div class="sheet-t">背包 ${S.bag.length}/${GAME.bag}</div>
-    <div class="sheet-p">身上值 <b style="color:var(--gold)">${bagValue(S)}</b>。死了就全沒，走到撤離點才算你的。${canBurn ? '<br>戰鬥中每回合可以燒一件：+1 行動點，貪婪也隨之下降。' : ''}</div>
+    <div class="sheet-p">帶著就有效果，回去能賣 <b style="color:var(--gold)">${bagValue(S)}</b> 金幣。死了就全沒，走到撤離點才算你的。${canBurn ? '<br>戰鬥中每回合可以燒一件：+1 行動點，貪婪也隨之下降。' : ''}</div>
     ${rows || '<div class="sheet-p" style="color:var(--dim)">什麼都沒有。</div>'}
     <button class="btn" style="margin-top:10px" data-act="closeSheet">關閉</button>`);
 }
@@ -357,14 +431,16 @@ function openRestPick(mode){
 function openGreedInfo(){
   const ti = greedTierIndex(S.greed);
   openSheet(`<div class="sheet-t">貪婪 ${S.greed}</div>
-    <div class="sheet-p">每走一格 +${GAME.stepGreed}，撿到財寶再加。越貪，敵人越凶，掉的東西也越好。把財寶燒掉或被偷，貪婪就會降回來。</div>
+    <div class="sheet-p">每走一格 +${GAME.stepGreed}，撿到財寶再加。越貪，敵人越凶，但活著回去拿到的裝備也越好。把財寶燒掉或被偷，貪婪就會降回來。</div>
     ${GREED_TIERS.map((t, i) => `<div class="tier-line${i === ti ? ' on' : ''}"><span>${t.min}+</span><span>${t.n}</span><span>${t.desc}</span></div>`).join('')}
     <button class="btn" style="margin-top:10px" data-act="closeSheet">關閉</button>`);
 }
 function openHelp(){
   openSheet(`<div class="sheet-t">怎麼玩</div>
-    <div class="sheet-p"><b>帶多少走，你自己決定。</b>在分岔地圖往下走，每一格都能看到路上有什麼。身上的財寶死了就全沒，只有走到<span style="color:var(--green)">撤離點</span>或打倒首領，才真的屬於你。</div>
-    <div class="sheet-p"><b>貪婪：</b>撿得越多、走得越深，貪婪越高。敵人更凶，掉落也更好。</div>
+    <div class="sheet-p"><b>目標：一趟趟變強，打倒首領，往更深的層走。</b></div>
+    <div class="sheet-p"><b>下潛：</b>在分岔地圖往下走。撿到的財寶帶著就有效果（例如力量 +1），但死了就全沒。走到<span style="color:var(--green)">撤離點</span>或打倒首領，才算帶回來。</div>
+    <div class="sheet-p"><b>回營地：</b>財寶賣成金幣，用來永久提升素質；另外依貪婪值拿一件裝備，貪婪越高越好。</div>
+    <div class="sheet-p"><b>貪婪：</b>撿得越多、走得越深就越高。敵人更凶，回去的裝備也更好。撤不撤，你自己賭。</div>
     <div class="sheet-p"><b>戰鬥：</b>每回合 3 行動點、抽 5 張。敵人頭上會顯示下一招。點敵人換目標，點技能直接使用，<b>長按技能看說明</b>。你的格擋每回合只衰減一半，可以累積。</div>
     <div class="sheet-p"><b>燒財寶：</b>快撐不住時，每回合可以燒一件財寶換 1 行動點，貪婪也會降。</div>
     <button class="btn primary" data-act="closeSheet">知道了</button>`);
@@ -503,16 +579,19 @@ function runEnemyPhase(){
 const ACT = {
   newGame(){
     closeSheet();
-    S = newRun((Date.now() ^ (Math.random() * 1e9)) | 0);
+    localStorage.removeItem(RUN_KEY);
+    const maxD = meta.depth || 0;
+    S = newRun((Date.now() ^ (Math.random() * 1e9)) | 0, loadoutFrom(meta), diveDepth === null ? maxD : Math.min(diveDepth, maxD));
     S.fx = [];
     seenCards = new Set();
     render();
     if(!meta.seenHelp){ meta.seenHelp = 1; saveMeta(); openHelp(); }
   },
   confirmNew(){
-    openSheet(`<div class="sheet-t">放棄這一趟？</div><div class="sheet-p">身上的財寶會全部失去，不算進紀錄。</div>
-      <div class="col"><button class="btn danger" data-act="newGame">放棄並重新開始</button><button class="btn" data-act="closeSheet">算了</button></div>`);
+    openSheet(`<div class="sheet-t">放棄這一趟？</div><div class="sheet-p">身上的財寶會全部失去，也拿不到裝備。</div>
+      <div class="col"><button class="btn danger" data-act="abandon">放棄</button><button class="btn" data-act="closeSheet">算了</button></div>`);
   },
+  abandon(){ localStorage.removeItem(RUN_KEY); closeSheet(); render(); },
   resume(){
     S = loadRun();
     if(!S) return render();
@@ -521,17 +600,22 @@ const ACT = {
     render();
     if(S.battle && S.battle.phase === 'enemy') runEnemyPhase();
   },
-  toTitle(){ S = null; $('app').removeAttribute('style'); render(); },
+  toTitle(){ S = null; view = 'title'; closeSheet(); $('app').removeAttribute('style'); render(); },
+  toCamp(){ S = null; view = 'camp'; diveDepth = null; closeSheet(); $('app').removeAttribute('style'); render(); },
+  buy(k){ if(buyStat(meta, k)){ saveMeta(); SFX.clink(); render(); } },
+  gearSheet(slot){ openGearSheet(slot); },
+  equip(id){ if(equipGear(meta, id)){ saveMeta(); closeSheet(); SFX.clink(); render(); } },
+  depth(d){ diveDepth = +d; render(); },
   home(){ location.href = '../'; },
   help: openHelp,
   closeSheet,
   menu(){
     openSheet(`<div class="sheet-t">選單</div><div class="col">
       <button class="btn" data-act="help">怎麼玩</button>
-      <button class="btn" data-act="saveQuit">存檔回標題</button>
+      <button class="btn" data-act="saveQuit">存檔回營地</button>
       <button class="btn" data-act="closeSheet">繼續</button></div>`);
   },
-  saveQuit(){ closeSheet(); saveRun(); ACT.toTitle(); },
+  saveQuit(){ closeSheet(); saveRun(); ACT.toCamp(); },
   greedInfo: openGreedInfo,
   bagSheet: openBag,
   deckSheet: openDeck,
@@ -539,7 +623,7 @@ const ACT = {
     const [r, c] = arg.split(',').map(Number);
     if(S.map[r][c].t === 'exit'){
       openSheet(`<div class="sheet-t">從這裡撤離？</div>
-        <div class="sheet-p">帶走身上 ${S.bag.length} 件財寶，價值 <b style="color:var(--gold)">${bagValue(S)}</b>。這一趟就結束了。</div>
+        <div class="sheet-p">賣掉身上 ${S.bag.length} 件財寶得 <b style="color:var(--gold)">${bagValue(S)}</b> 金幣，再依貪婪拿一件<b style="color:${RARITY[gearRarity(S.greed + GAME.stepGreed, false)].c}">${RARITY[gearRarity(S.greed + GAME.stepGreed, false)].n}裝備</b>。這一趟就結束了。</div>
         <div class="col"><button class="btn primary" data-act="exitGo:${arg}">爬上去</button><button class="btn" data-act="closeSheet">再貪一點</button></div>`);
       return;
     }

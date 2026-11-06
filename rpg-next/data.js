@@ -87,26 +87,26 @@ const ENCOUNTERS = [
 ];
 const ELITES = ['miner','ratking'];
 
-/* 財寶：v 帶回去值多少，g 帶在身上加多少貪婪。
+/* 財寶：v 帶回去值多少金幣，g 帶在身上加多少貪婪，ef 是帶在身上時的效果（可疊加，燒掉或被偷就沒了）。
    icon 用內嵌向量圖（舊版 ui/coin.webp 其實是井，不能用）；cls:'clip' 裁掉圖檔的黑色方底 */
 const TREASURES = [
-  {id:'coin',    n:'碎銀',   icon:'gold',         v:20,  g:3},
-  {id:'pendant', n:'骨墜',   img:'eq/pendant.webp',v:40,  g:5},
-  {id:'ring',    n:'無名指環',img:'eq/ring.webp',  v:70,  g:8},
-  {id:'watch',   n:'停擺懷錶',img:'eq/watch.webp', v:110, g:12},
-  {id:'lamp',    n:'前人油燈',img:'eq/lamp.webp',  v:170, g:17},
-  {id:'gem',     n:'深淵晶',  img:'ui/gem.webp',   v:260, g:24, cls:'clip'},
+  {id:'coin',    n:'碎銀',   icon:'gold',         v:20,  g:3,  blk:2,      ef:'開場格擋 +2'},
+  {id:'pendant', n:'骨墜',   img:'eq/pendant.webp',v:40,  g:5,  blk:4,      ef:'開場格擋 +4'},
+  {id:'ring',    n:'無名指環',img:'eq/ring.webp',  v:70,  g:8,  str:1,      ef:'力量 +1'},
+  {id:'watch',   n:'停擺懷錶',img:'eq/watch.webp', v:110, g:12, drawFirst:1,ef:'第一回合多抽 1'},
+  {id:'lamp',    n:'前人油燈',img:'eq/lamp.webp',  v:170, g:17, blkTurn:2,  ef:'每回合格擋 +2'},
+  {id:'gem',     n:'深淵晶',  img:'ui/gem.webp',   v:260, g:24, apFirst:1,  ef:'第一回合行動點 +1', cls:'clip'},
 ];
 
 /* 貪婪階級：同時決定敵人多凶、財寶多好。
    bias 越小，抽財寶越偏向貴重（rand^bias）。
    start：開場格擋；traits：每隻敵人開場帶幾個詞綴 */
 const GREED_TIERS = [
-  {min:0,  n:'知足',    hp:1.00, dmg:1.00, bias:2.6, start:0, traits:0, desc:'敵人維持原樣。'},
-  {min:12, n:'動心',    hp:1.10, dmg:1.10, bias:2.0, start:0, traits:0, desc:'敵人生命與傷害 +10%，財寶變好。'},
-  {min:28, n:'眼紅',    hp:1.20, dmg:1.20, bias:1.6, start:5, traits:0, desc:'敵人 +20%，開場帶 5 格擋，財寶更好。'},
-  {min:45, n:'貪得無厭',hp:1.30, dmg:1.30, bias:1.3, start:5, traits:1, desc:'敵人 +30%，每隻帶 1 個詞綴，財寶很好。'},
-  {min:65, n:'深淵注視',hp:1.45, dmg:1.40, bias:1.0, start:8, traits:2, desc:'敵人 +40% 以上，每隻帶 2 個詞綴，財寶最好。'},
+  {min:0,  n:'知足',    hp:1.00, dmg:1.00, bias:2.6, start:0, traits:0, desc:'敵人維持原樣。活著回去拿普通裝備。'},
+  {min:12, n:'動心',    hp:1.10, dmg:1.10, bias:2.0, start:0, traits:0, desc:'敵人 +10%，財寶變好。回去拿精良裝備。'},
+  {min:28, n:'眼紅',    hp:1.20, dmg:1.20, bias:1.6, start:5, traits:0, desc:'敵人 +20%，開場帶 5 格擋。回去拿稀有裝備。'},
+  {min:45, n:'貪得無厭',hp:1.30, dmg:1.30, bias:1.3, start:5, traits:1, desc:'敵人 +30%，每隻帶 1 個詞綴。回去拿史詩裝備。'},
+  {min:65, n:'深淵注視',hp:1.45, dmg:1.40, bias:1.0, start:8, traits:2, desc:'敵人 +40% 以上，每隻帶 2 個詞綴。回去拿傳說裝備。'},
 ];
 const TRAITS = {
   thorn: {n:'帶刺', d:'每次被攻擊，反彈 2 點傷害'},
@@ -135,4 +135,46 @@ const EVENTS = {
   crack:{title:'發光的裂縫', img:'ui/ev_crack.webp',
     text:'岩縫裡滲出微光，靠近時你開始想著「再多拿一點也沒關係」。',
     opts:[{id:'stare', t:'盯著看', d:'貪婪 +10，最大生命 +8'},{id:'leave', t:'別過頭', d:'沒有效果'}]},
+};
+
+/* 深度：打贏首領解鎖下一層。敵人變強、財寶更值錢；新敵人與新規則在第 3 階段補上，目前先換區域與數值 */
+const DEPTHS = ['淺穴', '哥布林聚落', '無光通道', '舊都', '熔獄'];
+const DEPTH_K = {hp: 0.5, dmg: 0.35, value: 0.5};
+
+/* —— 回到營地之後 —— */
+/* 素質：花金幣永久提升。第 lv 級的價格＝base + grow×lv */
+const STAT_UPS = {
+  hp:  {n:'體魄',   d:'最大生命 +5',     key:'hp',  per:5, max:10, base:60,  grow:45},
+  blk: {n:'架勢',   d:'每場開場格擋 +3', key:'blk', per:3, max:5,  base:80,  grow:70},
+  str: {n:'臂力',   d:'力量 +1',         key:'str', per:1, max:5,  base:200, grow:220},
+  bag: {n:'大背包', d:'背包 +1 格',      key:'bag', per:1, max:2,  base:300, grow:400},
+};
+/* 裝備：活著回來時依最終貪婪階級給一件（打贏首領再高一階）。已有的會換成金幣 */
+const RARITY = [
+  {n:'普通', c:'#b8bcc8', sell:30},
+  {n:'精良', c:'#6fbf8f', sell:80},
+  {n:'稀有', c:'#5a9bd4', sell:160},
+  {n:'史詩', c:'#b98ae0', sell:320},
+  {n:'傳說', c:'#e0813f', sell:600},
+];
+const SLOTS = {weapon:'武器', armor:'護甲', trinket:'飾品'};
+const GEAR = {
+  /* 武器 */
+  w0:{n:'鏽蝕短劍',   slot:'weapon',  r:0, img:'eq/sword.webp',   fx:{str:1},              d:'力量 +1'},
+  w1:{n:'碎骨斧',     slot:'weapon',  r:1, img:'eq/axe.webp',     fx:{str:2},              d:'力量 +2'},
+  w2:{n:'放血匕首',   slot:'weapon',  r:2, img:'eq/dagger.webp',  fx:{firstAtk:6},         d:'每回合第一張攻擊牌傷害 +6'},
+  w3:{n:'處刑者重斧', slot:'weapon',  r:3, img:'eq/axe.webp',     fx:{str:4},              d:'力量 +4'},
+  w4:{n:'深淵之刃',   slot:'weapon',  r:4, img:'eq/sword.webp',   fx:{str:3, killHeal:6},  d:'力量 +3，擊殺回復 6 生命'},
+  /* 護甲 */
+  a0:{n:'舊皮甲',     slot:'armor',   r:0, img:'eq/leather.webp', fx:{hp:8},               d:'最大生命 +8'},
+  a1:{n:'礦工鎖甲',   slot:'armor',   r:1, img:'eq/chain.webp',   fx:{blk:7},              d:'每場開場格擋 +7'},
+  a2:{n:'穴居鱗甲',   slot:'armor',   r:2, img:'eq/scale.webp',   fx:{blkTurn:3},          d:'每回合格擋 +3'},
+  a3:{n:'不退重板甲', slot:'armor',   r:3, img:'eq/plate.webp',   fx:{noDecay:1},          d:'格擋不再衰減'},
+  a4:{n:'深淵斗篷',   slot:'armor',   r:4, img:'eq/cloak.webp',   fx:{hp:15, blkTurn:4},   d:'最大生命 +15，每回合格擋 +4'},
+  /* 飾品 */
+  t0:{n:'銅戒',       slot:'trinket', r:0, img:'eq/ring.webp',    fx:{hp:4},               d:'最大生命 +4'},
+  t1:{n:'獵人護符',   slot:'trinket', r:1, img:'eq/pendant.webp', fx:{killHeal:3},         d:'擊殺回復 3 生命'},
+  t2:{n:'老工匠懷錶', slot:'trinket', r:2, img:'eq/watch.webp',   fx:{drawFirst:2},        d:'第一回合多抽 2'},
+  t3:{n:'守夜人提燈', slot:'trinket', r:3, img:'eq/lamp.webp',    fx:{bag:1, blk:6},       d:'背包 +1 格，每場開場格擋 +6'},
+  t4:{n:'深淵之鈴',   slot:'trinket', r:4, img:'eq/bell.webp',    fx:{ap:1},               d:'每回合行動點 +1'},
 };
