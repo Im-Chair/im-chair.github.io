@@ -520,6 +520,51 @@
 
 ---
 
+## 15　貪婪深淵重製版（rpg-next）・財寶與裝備圖示（2 批 × 9 張）
+
+> 重製版目前全部借用舊版 `rpg/` 的圖。其中有兩張借錯（金杯用了罐子事件圖、深淵之眼用了鈴鐺），五件詛咒財寶只有通用小圖示，另有多件裝備共用同一張圖，分不出差別。
+> **風格照舊版**：直接用 `rpg/貪婪深淵_美術交接文件.md` 第 5.4 節「裝備圖示 9 連」的 prompt，只把第一行的 `[WEAPON TYPE / ARMOR TYPE]` 換成下面的清單。
+> 程式還沒接：重製版的財寶和裝備目前只認 `rpg/` 下的路徑，圖出好後跟 Claude 說，會改程式並切圖。
+
+### 第一批 `rpgnext-treasure`（3×3，依序左上到右下）
+
+稀有度邊光改用財寶分類色：金銀 `#d8a84c`、遺物 `#6fbf8f`、詛咒 `#d05252`。
+
+```
+1 tarnished silver scraps (gold rim)      2 heavy ancient gold cup (gold rim)
+3 pale eye set in a bone amulet (green)   4 black contract scroll with wax seal (red)
+5 blood-stained gold crown (red)          6 cracked soul box leaking light (red)
+7 crown made of dried bones (red)         8 soul-eating drill bit (red)
+9 miser's signet seal (green)
+```
+
+### 第二批 `rpgnext-gear`（3×3）
+
+```
+1 inward-curving greed hook blade        2 shield-boss warhammer
+3 iron chestplate with thorn spikes      4 huge executioner's axe
+5 unyielding heavy plate armor           6 gambler's patched leather vest
+7 blood-streaked cloak                   8 pair of twin short blades
+9 abyss sword with faint green glow
+```
+
+### 驗收
+- [ ] 縮到 44 像素還認得出是什麼
+- [ ] 九格方向、光源一致，跟舊版裝備圖放在一起不突兀
+
+---
+
+## 待出圖總表（2026-11-07 盤點）
+
+| 順序 | 項目 | 張數 | Prompt 在哪 | 備註 |
+|---|---|---|---|---|
+| ✅ | 珠界主畫面按鍵框 | 2 | 第 14 節 | 2026-11-07 由 Codex 出圖，已上線 |
+| ✅ | 天穹拓荒 | 80 | 第 13 節 | 2026-11-08 由 Codex 出圖，全部處理完。`player` 圖已出但程式還沒讀（畫面上仍是程式畫的玩家），要另外接 |
+| 3 | 貪婪深淵重製版財寶＋裝備 | 18（2 張九宮格） | 第 15 節 | 出好後要請 Claude 接程式 |
+| — | 珠界第 7～9 章、路人樣板 | 0 | — | **原圖已經有了**（`pokemo/art_in/第七章` 等），只差改名和跑 `pokemo/tools/art_process.py`，不用再出圖 |
+
+---
+
 ## 之後可以再加的（目前程式還沒接，要做時再跟 Claude 說）
 
 - **各小遊戲自己的 PWA 圖示**：掃雷、幾A幾B、接龍目前「加到主畫面」時都是 ARCADE 的圖示和名稱。可以直接沿用上面 1–4 的首頁圖示，替每個遊戲做 manifest。
