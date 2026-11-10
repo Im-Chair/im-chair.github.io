@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#080808">
 <title>天穹拓荒</title>
 <link rel="icon" href="/icon.png">
@@ -12,8 +12,9 @@
 <style>
 :root { --bg:#080808; --panel:#121414; --panel2:#1b1e1e; --line:#2e3333; --fg:#ece9e2; --dim:#8c918c; --accent:#c8f135; --bad:#ff6b5e; --gold:#f5c542; color-scheme:dark; }
 * { box-sizing:border-box; }
-html,body { margin:0; height:100%; overflow:hidden; background:var(--bg); color:var(--fg); font:13px/1.5 'DM Mono','Microsoft JhengHei',monospace; user-select:none; }
-canvas#view { position:fixed; inset:0; width:100%; height:100%; display:block; cursor:crosshair; }
+html,body { margin:0; height:100%; overflow:hidden; background:var(--bg); color:var(--fg); font:13px/1.5 'DM Mono','Microsoft JhengHei',monospace; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; -webkit-tap-highlight-color:transparent; overscroll-behavior:none; touch-action:manipulation; }
+@supports (height:100dvh) { html,body { height:100dvh; } }
+canvas#view { position:fixed; inset:0; width:100%; height:100%; display:block; cursor:crosshair; touch-action:none; }
 [hidden] { display:none !important; }
 button { font:inherit; color:var(--fg); background:var(--panel2); border:1px solid var(--line); padding:5px 10px; border-radius:4px; cursor:pointer; }
 button:hover:not(:disabled) { border-color:var(--accent); color:var(--accent); }
@@ -71,7 +72,7 @@ body.art .slot img, body.art .line img, body.art #cursorItem img { image-renderi
 #cursorItem img { width:30px; height:30px; image-rendering:pixelated; }
 #cursorItem span { position:absolute; right:0; bottom:0; text-shadow:0 1px 1px #000; }
 #itemTip { position:fixed; z-index:10; pointer-events:none; background:#000e; border:1px solid var(--line); padding:3px 7px; border-radius:3px; max-width:260px; }
-textarea { width:100%; height:190px; background:#0b0c0c; color:var(--fg); border:1px solid var(--line); font:12px/1.5 'DM Mono',monospace; padding:8px; user-select:text; }
+textarea { width:100%; height:190px; background:#0b0c0c; color:var(--fg); border:1px solid var(--line); font:12px/1.5 'DM Mono',monospace; padding:8px; user-select:text; -webkit-user-select:text; }
 canvas#mapC { display:block; max-width:100%; image-rendering:pixelated; background:#000; }
 
 /* 標題 */
@@ -86,6 +87,57 @@ canvas#mapC { display:block; max-width:100%; image-rendering:pixelated; backgrou
 .keys b { color:var(--fg); font-weight:500; }
 #back { color:var(--dim); text-decoration:none; font-size:12px; }
 #back:hover { color:var(--accent); }
+
+/* ===== 觸控模式：只有第一次收到觸控才會加上 body.touch，桌機完全不受影響 ===== */
+body.touch { --sl:env(safe-area-inset-left,0px); --sr:env(safe-area-inset-right,0px); --st:env(safe-area-inset-top,0px); --sb:env(safe-area-inset-bottom,0px); }
+body:not(.touch) .tc { display:none !important; }
+#keysTouch { display:none; }
+body.touch #keysPc { display:none; }
+body.touch #keysTouch { display:block; }
+#stick { position:absolute; left:calc(var(--sl,0px) + 14px); bottom:calc(var(--sb,0px) + 14px); width:112px; height:112px; border-radius:50%; background:#ffffff14; border:2px solid #ffffff33; pointer-events:auto; touch-action:none; }
+#stick i { position:absolute; left:50%; top:50%; width:46px; height:46px; margin:-23px 0 0 -23px; border-radius:50%; background:#c8f13555; border:2px solid var(--accent); pointer-events:none; }
+.tbtn { position:absolute; border-radius:50%; background:#c8f13526; border:2px solid var(--accent); color:var(--accent); font-family:Syne,'Microsoft JhengHei',sans-serif; font-weight:800; padding:0; pointer-events:auto; touch-action:none; }
+.tbtn.on { background:#c8f13566; }
+#bJump { right:calc(var(--sr,0px) + 14px); bottom:calc(var(--sb,0px) + 18px); width:76px; height:76px; font-size:20px; }
+#bRot { right:calc(var(--sr,0px) + 98px); bottom:calc(var(--sb,0px) + 12px); width:46px; height:46px; font-size:15px; background:#0008; }
+#tbar { position:absolute; top:calc(var(--st,0px) + 6px); right:calc(var(--sr,0px) + 8px); gap:4px; pointer-events:auto; touch-action:none; }
+body.touch #tbar { display:flex; }
+#tbar button { padding:4px 9px; font-size:12px; background:#000a; min-height:30px; }
+#rotate { position:fixed; inset:0; z-index:20; display:none; flex-direction:column; align-items:center; justify-content:center; gap:8px; background:var(--bg); text-align:center; touch-action:none; }
+#rotate b { font:800 24px Syne,'Microsoft JhengHei',sans-serif; color:var(--accent); }
+@media (orientation:portrait) { body.touch #rotate { display:flex; } }
+body.touch #status { top:calc(var(--st) + 6px); left:calc(var(--sl) + 8px); width:150px; font-size:11px; line-height:1.35; }
+body.touch .bar { height:9px; }
+body.touch #status .row { margin-top:2px; }
+body.touch #info { top:calc(var(--st) + 40px); right:calc(var(--sr) + 8px); font-size:11px; line-height:1.35; }
+body.touch #info .era { font-size:13px; }
+body.touch #cpbar { width:130px; }
+body.touch #boss { top:calc(var(--st) + 8px); width:200px; font-size:11px; }
+body.touch #feed { top:calc(var(--st) + 66px); bottom:auto; left:calc(var(--sl) + 8px); max-width:min(260px,40vw); font-size:11px; gap:1px; line-height:1.3; }
+body.touch #feed div:nth-last-child(n+4) { display:none; }
+body.touch #tip { bottom:calc(var(--sb) + 46px); font-size:11px; max-width:44vw; text-align:center; }
+body.touch #hotbar { bottom:calc(var(--sb) + 6px); gap:2px; }
+body.touch .slot { width:36px; height:36px; }
+body.touch .slot img { width:26px; height:26px; }
+body.touch .slot span { font-size:10px; }
+body.touch #panel { padding:calc(var(--st) + 4px) calc(var(--sr) + 6px) calc(var(--sb) + 4px) calc(var(--sl) + 6px); }
+body.touch #panelBox { width:min(920px,100%); max-height:100%; }
+body.touch #panelHead { padding:5px 10px; }
+body.touch #panelHead h2 { font-size:15px; }
+body.touch #panelHead button { min-height:32px; }
+body.touch #panelBody { min-height:0; padding:8px 10px; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; }
+body.touch .grid { grid-template-columns:repeat(9,34px); gap:2px; }
+body.touch .grid .slot { width:34px; height:34px; }
+body.touch .cols { gap:10px; }
+body.touch .cols .list { max-height:calc(100vh - 90px) !important; max-height:calc(100dvh - 90px) !important; }
+body.touch .line button { padding:6px 10px; }
+body.touch textarea { height:110px; }
+body.touch canvas#mapC { width:100%; height:auto; }
+body.touch #title { overflow:auto; align-items:flex-start; padding:0 calc(var(--sr) + 8px) 0 calc(var(--sl) + 8px); }
+body.touch #titleBox { margin:auto; padding:8px 0; }
+body.touch #titleBox h1 { font-size:30px; }
+body.touch #titleBox .sub { margin-bottom:8px; }
+body.touch .keys { margin-top:8px; line-height:1.6; }
 </style>
 </head>
 <body>
@@ -106,6 +158,10 @@ canvas#mapC { display:block; max-width:100%; image-rendering:pixelated; backgrou
   <div id="feed"></div>
   <div id="tip"></div>
   <div id="hotbar"></div>
+  <div id="stick" class="tc"><i></i></div>
+  <button id="bJump" class="tbtn tc">跳</button>
+  <button id="bRot" class="tbtn tc">轉</button>
+  <div id="tbar" class="tc"><button data-k="bag">背包</button><button data-k="journal">日誌</button><button data-k="map">地圖</button><button data-k="menu">選單</button></div>
 </div>
 <div id="panel" hidden><div id="panelBox"><div id="panelHead"><h2 id="panelTitle"></h2><button id="panelClose">關閉 Esc</button></div><div id="panelBody"></div></div></div>
 <div id="cursorItem" hidden></div>
@@ -116,8 +172,10 @@ canvas#mapC { display:block; max-width:100%; image-rendering:pixelated; backgrou
   <p class="sub">打怪、探坑、建造、接機關，把世界推進到星辰時代。</p>
   <div id="saves"></div>
   <input type="file" id="importFile" accept=".json" hidden>
-  <div class="keys"><b>A D</b> 移動　<b>W S</b> 爬梯　<b>空白</b> 跳　<b>左鍵</b> 挖／打　<b>右鍵</b> 放置／互動<br><b>E</b> 背包與合成　<b>J</b> 懸賞與時代　<b>M</b> 地圖　<b>R</b> 轉向　<b>1–9／滾輪</b> 換物品　<b>Esc</b> 存檔選單<br>需要滑鼠與鍵盤。</div>
+  <div class="keys" id="keysTouch"><b>左下搖桿</b> 移動／爬梯　<b>跳</b> 按住可滑翔<br><b>點一下</b> 放置／使用／互動　<b>按住畫面</b> 挖／打／射箭<br><b>長按格子</b> 拆分　<b>轉</b> 轉向方塊　右上按鈕開背包、日誌、地圖、選單<br>請橫向遊玩。</div>
+  <div class="keys" id="keysPc"><b>A D</b> 移動　<b>W S</b> 爬梯　<b>空白</b> 跳　<b>左鍵</b> 挖／打　<b>右鍵</b> 放置／互動<br><b>E</b> 背包與合成　<b>J</b> 懸賞與時代　<b>M</b> 地圖　<b>R</b> 轉向　<b>1–9／滾輪</b> 換物品　<b>Esc</b> 存檔選單<br>需要滑鼠與鍵盤。</div>
 </div></div>
+<div id="rotate"><b>請把手機橫放</b><span class="dim">遊戲已暫停</span></div>
 
 <script>
 'use strict';
@@ -855,7 +913,7 @@ function digAt(a, it, dt) {
   if (mine.p >= 1) { breakTile(a.x, a.y); mine = null; hudDirty = true; }
 }
 let tipT = 0, tipMsg = '';
-function tipOnce(s) { if (tipMsg !== s || tipT <= 0) { tipMsg = s; $('tip').textContent = s; tipT = 2; } tipT = 2; }
+function tipOnce(s) { if (tipMsg !== s || tipT <= 0) { tipMsg = s; $('tip').textContent = tx(s); tipT = 2; } tipT = 2; }
 function melee(a, it) {
   atkCD = it?.sword ? .34 : .45; swing = 1; P.face = a.wx > P.x + P.w / 2 ? 1 : -1;
   const dmg = (it?.dmg || 4) * (.9 + Math.random() * .2), cx = P.x + P.w / 2, cy = P.y + P.h / 2, ang = Math.atan2(a.wy - cy, a.wx - cx), range = it?.sword ? 46 : 30;
@@ -992,7 +1050,7 @@ const canvas = $('view'), ctx = canvas.getContext('2d');
 const lightC = document.createElement('canvas'), lightG = lightC.getContext('2d');
 let LW = 0, LH = 0, LX = 0, LY = 0, LD = null, LI = null;
 function resize() { canvas.width = innerWidth; canvas.height = innerHeight; Z = Math.max(2, Math.round(innerHeight / (16 * 24))); if (artZ && artZ !== Z) rebuildArt(); }
-addEventListener('resize', resize); resize();
+addEventListener('resize', resize); addEventListener('orientationchange', () => setTimeout(resize, 250)); resize();
 function computeLight() {
   const vw = Math.ceil(canvas.width / Z / TS) + 2, vh = Math.ceil(canvas.height / Z / TS) + 2, m = 12;
   LX = Math.floor(cam.x / TS) - m; LY = Math.floor(cam.y / TS) - m; const w = vw + m * 2, h = vh + m * 2;
@@ -1147,14 +1205,14 @@ function updateHud() {
   const b = activeBoss && !activeBoss.dead ? activeBoss : null; $('boss').hidden = !b; if (b) { $('bossName').textContent = b.d.name; $('bossFill').style.width = (b.hp / b.maxHp * 100) + '%'; }
   if (tipT > 0) { tipT -= .25; if (tipT <= 0) $('tip').textContent = ''; }
 }
-function note(s, cls = '') { const el = document.createElement('div'); el.textContent = s; if (cls) el.className = cls; const f = $('feed'); f.appendChild(el); while (f.children.length > 6) f.firstChild.remove(); setTimeout(() => { el.style.opacity = 0; setTimeout(() => el.remove(), 700); }, 6000); }
+function note(s, cls = '') { const el = document.createElement('div'); el.textContent = tx(s); if (cls) el.className = cls; const f = $('feed'); f.appendChild(el); while (f.children.length > 6) f.firstChild.remove(); setTimeout(() => { el.style.opacity = 0; setTimeout(() => el.remove(), 700); }, 6000); }
 
 /* ========== 面板 ========== */
-function openPanel(title, html, kind = 'info') { panelKind = kind; paused = true; mouse.l = mouse.r = false; $('panelTitle').textContent = title; $('panelBody').innerHTML = html; $('panel').hidden = false; $('itemTip').hidden = true; }
+function openPanel(title, html, kind = 'info') { panelKind = kind; paused = true; mouse.l = mouse.r = false; $('panelTitle').textContent = tx(title); $('panelBody').innerHTML = tx(html); $('panel').hidden = false; $('itemTip').hidden = true; }
 function closePanel() { if (heldCursor) { const left = addTo(P.inv, heldCursor.id, heldCursor.n); if (left) spawnDrop(P.x + 6, P.y, heldCursor.id, left, true); heldCursor = null; renderCursor(); } panelKind = null; chestOpen = null; paused = false; $('panel').hidden = true; $('itemTip').hidden = true; hudDirty = true; }
 $('panelClose').onclick = closePanel;
 function renderCursor() { const c = $('cursorItem'); if (!heldCursor) { c.hidden = true; return; } c.hidden = false; c.innerHTML = `<img src="${icon(heldCursor.id)}" alt="">${heldCursor.n > 1 ? `<span>${heldCursor.n}</span>` : ''}`; }
-function itemDesc(id) { const it = ITEMS[id]; if (!it) return id; const x = []; if (it.pick) x.push(`鎬 ${it.pick} 階`); if (it.dmg) x.push(`傷害 ${it.dmg}`); if (it.def) x.push(`持有即減傷 ${Math.round(it.def * 100)}%`); if (it.heal) x.push(`恢復 ${it.heal}`); if (it.life) x.push(`生命上限 +${it.life}`); if (id === 'glider') x.push('持有後按住空白滑翔'); const p = S ? priceOf(id) : 0; if (p) x.push(`回收 ${p} 元`); return it.name + (x.length ? `　${x.join('、')}` : ''); }
+function itemDesc(id) { const it = ITEMS[id]; if (!it) return id; const x = []; if (it.pick) x.push(`鎬 ${it.pick} 階`); if (it.dmg) x.push(`傷害 ${it.dmg}`); if (it.def) x.push(`持有即減傷 ${Math.round(it.def * 100)}%`); if (it.heal) x.push(`恢復 ${it.heal}`); if (it.life) x.push(`生命上限 +${it.life}`); if (id === 'glider') x.push('持有後按住空白滑翔'); const p = S ? priceOf(id) : 0; if (p) x.push(`回收 ${p} 元`); return tx(it.name + (x.length ? `　${x.join('、')}` : '')); }
 
 function nearStation(key) { const tx = Math.floor((P.x + 6) / TS), ty = Math.floor((P.y + 14) / TS); for (let y = ty - 4; y <= ty + 4; y++) for (let x = tx - 5; x <= tx + 5; x++) if (TD[get(x, y)].key === key) return true; return false; }
 function invGrids() { return `<div class="label">背包</div><div class="grid" data-inv="p">${P.inv.slice(9).map((s, i) => slotHtml(s, i + 9)).join('')}</div><div class="label">快捷列</div><div class="grid" data-inv="p">${P.inv.slice(0, 9).map((s, i) => slotHtml(s, i, i === slot ? 'sel' : '')).join('')}</div>`; }
@@ -1250,10 +1308,11 @@ function slotClick(el, e) {
   else { arr[i] = cur; heldCursor = s; }
   SFX.click(); renderCursor(); refreshInv();
 }
-$('panelBody').addEventListener('contextmenu', e => { e.preventDefault(); const el = e.target.closest('.slot'); if (!el) return; const kind = el.parentElement.dataset.inv; if (!kind) return; const arr = kind === 'c' ? chestOpen.inv : P.inv, i = +el.dataset.i, s = arr[i];
+$('panelBody').addEventListener('contextmenu', e => { e.preventDefault(); if (TOUCH.on && touchNow() - TOUCH.last < 1500) return; /* 觸控長按由 slotSplit 自己處理，避免重複拆分 */ const el = e.target.closest('.slot'); if (el) slotSplit(el); });
+function slotSplit(el) { const kind = el.parentElement.dataset.inv; if (!kind) return; const arr = kind === 'c' ? chestOpen.inv : P.inv, i = +el.dataset.i, s = arr[i];
   if (heldCursor) { if (!s) { arr[i] = { id:heldCursor.id, n:1 }; heldCursor.n--; } else if (s.id === heldCursor.id && s.n < STACK(s.id)) { s.n++; heldCursor.n--; } if (!heldCursor.n) heldCursor = null; } else if (s && s.n > 1) { const half = Math.ceil(s.n / 2); heldCursor = { id:s.id, n:half }; s.n -= half; }
-  renderCursor(); refreshInv(); });
-document.addEventListener('mousemove', e => { const c = $('cursorItem'); c.style.left = e.clientX - 14 + 'px'; c.style.top = e.clientY - 14 + 'px'; const it = e.target.closest?.('[data-item]'), tip = $('itemTip'); if (it && S && !heldCursor) { tip.hidden = false; tip.textContent = itemDesc(it.dataset.item); tip.style.left = Math.min(innerWidth - 270, e.clientX + 14) + 'px'; tip.style.top = e.clientY + 14 + 'px'; } else tip.hidden = true; });
+  renderCursor(); refreshInv(); }
+document.addEventListener('mousemove', e => { if (simMouse()) return; const c = $('cursorItem'); c.style.left = e.clientX - 14 + 'px'; c.style.top = e.clientY - 14 + 'px'; const it = e.target.closest?.('[data-item]'), tip = $('itemTip'); if (it && S && !heldCursor) { tip.hidden = false; tip.textContent = itemDesc(it.dataset.item); tip.style.left = Math.min(innerWidth - 270, e.clientX + 14) + 'px'; tip.style.top = e.clientY + 14 + 'px'; } else tip.hidden = true; });
 function openMap() { paused = true; const mapH = 300, mapW = 800; openPanel('地圖', `<canvas id="mapC" width="${mapW}" height="${mapH}"></canvas><div class="label dim">黃點是你，綠點是營地與界碑，粉紅點是流星。</div>`, 'map');
   const g = $('mapC').getContext('2d'), im = g.createImageData(mapW, mapH), d = im.data; const col = {}; const c = t => { if (col[t]) return col[t]; const D = TD[t]; if (!D.tex) return col[t] = [0, 0, 0]; const s = sampleColor(D).match(/\d+/g).map(Number); return col[t] = s; };
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const i = ID(x, y), k = i * 4; if (!seen[i]) { d[k + 3] = 255; d[k] = 12; d[k + 1] = 12; d[k + 2] = 14; continue; } const t = tile[i]; let rgb = t === T.air ? (y < surf[x] ? [40, 60, 84] : [24, 24, 30]) : c(t); d[k] = rgb[0]; d[k + 1] = rgb[1]; d[k + 2] = rgb[2]; d[k + 3] = 255; }
@@ -1262,25 +1321,122 @@ function openMenu() { paused = true; saveGame(true); openPanel('選單', `<div c
 $('panelBody').addEventListener('click', e => { const b = e.target.closest('[data-menu]'); if (!b) return; const m = b.dataset.menu; if (m === 'resume') closePanel(); else if (m === 'save') saveGame(); else if (m === 'export') exportSave(slotNo); else if (m === 'title') { saveGame(true); closePanel(); running = false; showTitle(); } });
 
 /* ========== 輸入 ========== */
+// 鍵盤與觸控按鈕共用的動作（從 keydown 抽出，內容不變）
+function escAction() { if (!running) return; if (panelKind) closePanel(); else openMenu(); }
+function toggleBag() { if (!running) return; if (panelKind === 'bag' || panelKind === 'chest') closePanel(); else if (!panelKind) openBag(); }
+function toggleJournal() { if (!running) return; if (panelKind === 'journal') closePanel(); else if (!panelKind) openJournal(curTab); }
+function toggleMap() { if (!running) return; if (panelKind === 'map') closePanel(); else if (!panelKind) openMap(); }
+function rotateAim() { if (!running || paused) return; const a = aimTile(); if (inB(a.x, a.y)) { const t = get(a.x, a.y); if (TD[t].dir) { const m = mOf(ID(a.x, a.y), { dir:0 }); m.dir = ((m.dir || 0) + 1) % 4; SFX.click(); } } }
+
+/* ---------- 觸控輸入（手機橫向）----------
+   觸控只是替鍵盤／滑鼠「代打」：搖桿寫 keys.KeyA/D/W/S、跳鈕寫 keys.Space、
+   畫布手勢寫 mouse.*，遊戲邏輯完全共用。第一次收到觸控才加 body.touch，桌機看不到任何觸控 UI。 */
+const TOUCH = { on:false, last:-1e9 };
+const touchNow = () => performance.now();
+const simMouse = () => touchNow() - TOUCH.last < 500; // 觸控後瀏覽器會補發模擬滑鼠事件，500ms 內一律忽略
+function tx(s) { // 提示文字共用出口：觸控模式把「右鍵／左鍵」換成「點一下／按住」
+  if (!TOUCH.on) return s;
+  return String(s).replace(/Shift＋點擊可快速移動。/g, '長按格子可拆分。').replace(/按住空白/g, '按住跳鈕').replace(/右鍵/g, '點一下').replace(/左鍵/g, '按住');
+}
+function enableTouch() { if (TOUCH.on) return; TOUCH.on = true; document.body.classList.add('touch'); $('panelClose').textContent = '關閉'; }
+function touchSeen(e) { TOUCH.last = touchNow(); enableTouch(); }
+if (matchMedia('(pointer:coarse)').matches) enableTouch();
+addEventListener('touchstart', touchSeen, { passive:true, capture:true });
+document.addEventListener('gesturestart', e => e.preventDefault()); // iOS 雙指縮放
+document.addEventListener('contextmenu', e => { if (TOUCH.on && !e.target.closest?.('textarea')) e.preventDefault(); });
+
+// 畫布：手指碰到＝設定瞄準點；短點＝右鍵一次；按住超過 200ms（或拖動超過 12px）＝左鍵按住
+const AIM = { id:null, t0:0, x0:0, y0:0, moved:false, hold:false, timer:0 };
+function aimHold() { if (AIM.id === null || AIM.hold) return; clearTimeout(AIM.timer); AIM.hold = true; mouse.l = true; mouse.lq = true; }
+function aimEnd(e, cancel) {
+  if (e.pointerId !== AIM.id) return; clearTimeout(AIM.timer);
+  if (AIM.hold) mouse.l = false;
+  else if (!cancel) {
+    if (!AIM.moved && touchNow() - AIM.t0 < 200) { mouse.x = AIM.x0; mouse.y = AIM.y0; placeCD = 0; mouse.rq = true; } // 只設 rq：updateAim 讀一次就清掉，不會連發
+    else mouse.lq = true; // 計時器被拖慢、沒來得及進入按住：補一下攻擊／挖
+  }
+  AIM.id = null;
+}
+canvas.addEventListener('pointerdown', e => {
+  if (e.pointerType !== 'touch' || !running || AIM.id !== null) return; // 只有一根手指當瞄準指
+  e.preventDefault(); try { canvas.setPointerCapture(e.pointerId); } catch {}
+  Object.assign(AIM, { id:e.pointerId, t0:touchNow(), x0:e.clientX, y0:e.clientY, moved:false, hold:false });
+  mouse.x = e.clientX; mouse.y = e.clientY; AIM.timer = setTimeout(aimHold, 200);
+});
+canvas.addEventListener('pointermove', e => {
+  if (e.pointerId !== AIM.id) return; mouse.x = e.clientX; mouse.y = e.clientY;
+  if (!AIM.hold && Math.hypot(e.clientX - AIM.x0, e.clientY - AIM.y0) > 12) { AIM.moved = true; aimHold(); }
+});
+canvas.addEventListener('pointerup', e => aimEnd(e, false));
+canvas.addEventListener('pointercancel', e => aimEnd(e, true));
+
+// 左下搖桿：左右＝A/D，上下＝W/S（爬梯）
+const STICK = { id:null }, stickEl = $('stick'), knob = stickEl.firstElementChild;
+function stickMove(e) {
+  const r = stickEl.getBoundingClientRect(), R = r.width / 2; let dx = e.clientX - (r.left + R), dy = e.clientY - (r.top + R); const d = Math.hypot(dx, dy), lim = R * .6;
+  if (d > lim) { dx *= lim / d; dy *= lim / d; } knob.style.transform = `translate(${dx}px,${dy}px)`;
+  keys.KeyD = dx > R * .22; keys.KeyA = dx < -R * .22; keys.KeyS = dy > R * .35; keys.KeyW = dy < -R * .35;
+}
+function stickEnd(e) { if (e.pointerId !== STICK.id) return; STICK.id = null; keys.KeyA = keys.KeyD = keys.KeyW = keys.KeyS = false; knob.style.transform = ''; }
+stickEl.addEventListener('pointerdown', e => { if (STICK.id !== null) return; e.preventDefault(); STICK.id = e.pointerId; try { stickEl.setPointerCapture(e.pointerId); } catch {} stickMove(e); });
+stickEl.addEventListener('pointermove', e => { if (e.pointerId === STICK.id) stickMove(e); });
+stickEl.addEventListener('pointerup', stickEnd); stickEl.addEventListener('pointercancel', stickEnd);
+
+// 右下「跳」（按住＝Space 持續為真，才能滑翔）與「轉」
+const bJump = $('bJump');
+bJump.addEventListener('pointerdown', e => { e.preventDefault(); try { bJump.setPointerCapture(e.pointerId); } catch {} keys.Space = true; bJump.classList.add('on'); });
+const jumpEnd = () => { keys.Space = false; bJump.classList.remove('on'); };
+bJump.addEventListener('pointerup', jumpEnd); bJump.addEventListener('pointercancel', jumpEnd);
+$('bRot').addEventListener('click', rotateAim);
+// 右上：背包／日誌／地圖／選單
+$('tbar').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; ({ bag:toggleBag, journal:toggleJournal, map:toggleMap, menu:escAction })[b.dataset.k]?.(); });
+
+// 面板：長按格子約 400ms＝右鍵拆分；點格子／列＝在上方顯示 #itemTip（不被手指擋住）
+const LP = { timer:0, x:0, y:0, fired:-1e9 }, TIP = { id:null, rect:null, at:-1e9 };
+function showTip() {
+  const t = $('itemTip'); if (!TIP.id || !S) return; t.textContent = itemDesc(TIP.id); t.hidden = false;
+  const w = t.offsetWidth, h = t.offsetHeight, r = TIP.rect; let y = r.top - h - 6; if (y < 4) y = r.bottom + 6;
+  t.style.left = Math.max(4, Math.min(innerWidth - w - 4, r.left + r.width / 2 - w / 2)) + 'px'; t.style.top = Math.max(4, Math.min(innerHeight - h - 4, y)) + 'px';
+}
+function dragCursor(e) { const c = $('cursorItem'); c.style.left = e.clientX - 14 + 'px'; c.style.top = e.clientY - 56 + 'px'; } // 拿著的物品顯示在手指上方
+document.addEventListener('pointerdown', e => {
+  if (e.pointerType !== 'touch') return; touchSeen(e); dragCursor(e);
+  if (!e.target.closest?.('[data-item]')) $('itemTip').hidden = true; // 點別處消失
+}, true);
+document.addEventListener('pointermove', e => { if (e.pointerType === 'touch') { TOUCH.last = touchNow(); dragCursor(e); } }, true);
+document.addEventListener('pointerup', e => {
+  if (e.pointerType !== 'touch') return; TOUCH.last = touchNow();
+  const it = e.target.closest?.('[data-item]'); if (it && !$('panel').hidden) { TIP.id = it.dataset.item; TIP.rect = it.getBoundingClientRect(); TIP.at = touchNow(); showTip(); }
+}, true);
+document.addEventListener('click', () => { if (touchNow() - TIP.at < 400 && !$('panel').hidden) { TIP.at = -1e9; showTip(); } }); // 點擊後面板會重繪並收掉 tip，這裡補回
+const lpStop = () => clearTimeout(LP.timer);
+$('panelBody').addEventListener('pointerdown', e => {
+  if (e.pointerType !== 'touch') return; const el = e.target.closest('.slot'); if (!el || !el.parentElement.dataset.inv) return;
+  LP.x = e.clientX; LP.y = e.clientY; lpStop(); LP.timer = setTimeout(() => { LP.fired = touchNow(); slotSplit(el); }, 400);
+});
+$('panelBody').addEventListener('pointermove', e => { if (Math.hypot(e.clientX - LP.x, e.clientY - LP.y) > 10) lpStop(); });
+$('panelBody').addEventListener('pointerup', lpStop); $('panelBody').addEventListener('pointercancel', lpStop);
+$('panelBody').addEventListener('click', e => { if (touchNow() - LP.fired < 700) { e.stopPropagation(); e.preventDefault(); } }, true); // 長按放開後的 click 不再當成拿起／放下
+
 addEventListener('keydown', e => {
   if (!running) return; const inText = e.target.tagName === 'TEXTAREA';
   if (inText && e.code !== 'Escape') return;
   if (['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code)) e.preventDefault();
-  if (e.code === 'Escape') { e.preventDefault(); if (panelKind) closePanel(); else openMenu(); return; }
-  if (e.code === 'KeyE') { if (panelKind === 'bag' || panelKind === 'chest') closePanel(); else if (!panelKind) openBag(); return; }
-  if (e.code === 'KeyJ') { if (panelKind === 'journal') closePanel(); else if (!panelKind) openJournal(curTab); return; }
-  if (e.code === 'KeyM') { if (panelKind === 'map') closePanel(); else if (!panelKind) openMap(); return; }
+  if (e.code === 'Escape') { e.preventDefault(); escAction(); return; }
+  if (e.code === 'KeyE') { toggleBag(); return; }
+  if (e.code === 'KeyJ') { toggleJournal(); return; }
+  if (e.code === 'KeyM') { toggleMap(); return; }
   if (paused) return;
   keys[e.code] = true;
   if (/^Digit[1-9]$/.test(e.code)) { slot = +e.code.slice(5) - 1; mine = null; hudDirty = true; }
-  if (e.code === 'KeyR') { const a = aimTile(); if (inB(a.x, a.y)) { const t = get(a.x, a.y); if (TD[t].dir) { const m = mOf(ID(a.x, a.y), { dir:0 }); m.dir = ((m.dir || 0) + 1) % 4; SFX.click(); } } }
+  if (e.code === 'KeyR') rotateAim();
   if (e.code === 'KeyS' && e.ctrlKey) { e.preventDefault(); saveGame(); }
 });
 addEventListener('keyup', e => { keys[e.code] = false; });
 addEventListener('blur', () => { keys = {}; mouse.l = mouse.r = false; });
-canvas.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
-canvas.addEventListener('mousedown', e => { mouse.x = e.clientX; mouse.y = e.clientY; if (e.button === 0) { mouse.l = true; mouse.lq = true; } if (e.button === 2) { mouse.r = true; mouse.rq = true; placeCD = 0; } });
-addEventListener('mouseup', e => { if (e.button === 0) mouse.l = false; if (e.button === 2) mouse.r = false; });
+canvas.addEventListener('mousemove', e => { if (simMouse()) return; mouse.x = e.clientX; mouse.y = e.clientY; });
+canvas.addEventListener('mousedown', e => { if (simMouse()) return; mouse.x = e.clientX; mouse.y = e.clientY; if (e.button === 0) { mouse.l = true; mouse.lq = true; } if (e.button === 2) { mouse.r = true; mouse.rq = true; placeCD = 0; } });
+addEventListener('mouseup', e => { if (simMouse()) return; if (e.button === 0) mouse.l = false; if (e.button === 2) mouse.r = false; });
 canvas.addEventListener('contextmenu', e => e.preventDefault());
 canvas.addEventListener('wheel', e => { if (paused) return; slot = (slot + (e.deltaY > 0 ? 1 : 8)) % 9; mine = null; hudDirty = true; e.preventDefault(); }, { passive:false });
 $('hotbar').addEventListener('click', e => { const s = e.target.closest('.slot'); if (s) { slot = +s.dataset.i; hudDirty = true; } });
@@ -1291,7 +1447,7 @@ addEventListener('visibilitychange', () => { if (document.hidden && running) sav
 function frame(ts) {
   requestAnimationFrame(frame); if (!running) return;
   const dt = Math.min(.05, (ts - last) / 1000 || 0); last = ts;
-  if (!paused) update(dt);
+  if (!paused && !(TOUCH.on && innerHeight > innerWidth)) update(dt); // 觸控直向時暫停（遮罩請玩家橫放）
   draw();
 }
 function startRunning() { running = true; paused = false; panelKind = null; $('title').hidden = true; $('hud').hidden = false; $('panel').hidden = true; last = performance.now(); saveT = 0; keys = {}; hudDirty = true; lightT = 0; updateHud(); }
