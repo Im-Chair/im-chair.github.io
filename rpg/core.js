@@ -167,7 +167,6 @@ function syncWallet(){
     if(withIcon) el.innerHTML = '<svg class="ic"><use href="#' + ic + '"/></svg> ' + get(G);
     else el.textContent = get(G);
   }
-  const sc = document.getElementById('stash-count'); if(sc) sc.textContent = '倉庫 ' + G.stash.length + ' 件';
 }
 function save(){ if(G) G.run = R; accSave(); syncWallet(); }
 

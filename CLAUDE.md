@@ -30,7 +30,7 @@
 ├── outpost/            # 晨昏線前哨（單一 index.html；Core 純邏輯、UI 介面分開，可用 node 模擬；紀錄 story.best.lost）
 ├── deep-miner/         # 深掘礦工（單一 index.html）
 ├── neon-danmaku/       # 霓虹彈幕狂想曲（單一 index.html，Canvas；紀錄 best.score 越大越好）
-├── sky-frontier/       # 天穹拓荒（單一 index.html，桌機限定 2D 沙盒；世界存 arcade-sky-frontier-world-<1~3>，紀錄 best.era；選配美術放 art/，由 tools/process_art.py 產生 index.json，有圖用圖、沒圖用程式繪製）
+├── sky-frontier/       # 天穹拓荒（單一 index.html，桌機限定2D 沙盒；世界存 arcade-sky-frontier-world-<1~3>，紀錄 best.era；選配美術放 art/，由 tools/process_art.py 產生 index.json，有圖用圖、沒圖用程式繪製）
 ├── rpg/                # 貪婪深淵（Roguelite，模組化多檔案 — 見下）
 ├── rpg-next/           # 貪婪深淵重製版（四職、五區、異變、噩夢階；首頁有獨立卡片，使用者確認後才取代 rpg/ 與舊卡片）。data → core（純邏輯，_sim.js 平衡模擬與 _fuzz.js 壓力測試都用 node 跑，不上 GitHub）→ ui；美術借用 ../rpg/（data.js 的 ART；三張首領圖放 rpg-next/art/，因為 GitHub Pages 不部署底線開頭的資料夾）；改 js/css 要升 index.html 的 NEXT_VER；存檔 abyss2-run（這一趟）、abyss2-meta（v:2，金幣、素質、裝備、深度、職業、成就）
 ├── icons/              # 首頁卡片圖示 <遊戲>.webp（可缺，缺的卡片沿用 emoji）
@@ -92,6 +92,8 @@ RPG 內部版號已集中到 `rpg/index.html` `<head>` 的單一常數 **`RPG_VE
 
 - 根 `sw.js` 採 **network-first**（先抓網路、失敗才用快取）。快取名為 `arcade-vN`；**改動需要立即生效的資源時，把 `CACHE` 版本號 +1**，舊快取會在 activate 時清除。
 - `sudoku/` 有自己一套 `manifest.json` + `sw.js` + `icons/`，是獨立 PWA，與根設定分開維護。
+- 天穹拓荒的選配美術由 `fillCaches` 讀 `sky-frontier/art/index.json` 自動補快取，新增圖不必改 `sw.js`。
+- 根目錄 `_config.yml` 供 GitHub Pages（Jekyll）排除開發文件（CLAUDE.md、AGENTS.md、美術需求文件、`tools/`），不部署到網站。
 
 ## 本機預覽
 

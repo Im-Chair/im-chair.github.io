@@ -11,6 +11,7 @@ rpg/貪婪深淵-怪物素材/
 rpg/貪婪深淵_系統設定文件.pdf
 rpg/貪婪深淵_系統設定文件_backup_v312.pdf
 rpg/貪婪深淵_美術交接文件.md
+rpg/平衡盤點_v460.md
 # 開發文件與測試腳本：只留本機，不公開
 rpg/更新日誌.md
 rpg/開發守則.md
@@ -27,3 +28,8 @@ rpg-next/_sim.js
 
 # 新版貪婪深淵的壓力測試
 rpg-next/_fuzz.js
+
+# 本機用的試算表與 task-router 地圖
+*.xlsx
+.claude/task-router/map.json
+.claude/task-router/map.md

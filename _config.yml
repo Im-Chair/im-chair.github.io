@@ -1,0 +1,6 @@
+# GitHub Pages（Jekyll）設定：只用來排除開發文件，不讓它們部署到網站
+exclude:
+  - CLAUDE.md
+  - AGENTS.md
+  - 美術需求_ChatGPT出圖.md
+  - tools
