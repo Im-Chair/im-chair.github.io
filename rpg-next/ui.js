@@ -1,7 +1,7 @@
 'use strict';
 /* ============ ui.js — 畫面與演出。規則都在 core.js，這裡只讀狀態、呼叫動作、播 S.fx。 ============ */
 
-const RUN_KEY = 'abyss2-run', META_KEY = 'abyss2-meta', META_VER = 2;
+const RUN_KEY = 'abyss2-run', META_KEY = 'abyss2-meta', META_VER = 3;
 const $ = id => document.getElementById(id);
 const ic = (n, cls) => `<svg class="ic ${cls || ''}"><use href="#ic-${n}"/></svg>`;
 const art = p => `${ART}${p}?v=4`;
@@ -32,8 +32,8 @@ function loadMeta(){
       if(checkAchievements(mm, null).length){ try{ localStorage.setItem(META_KEY, JSON.stringify(mm)); }catch(e){} }
       return mm;
     }
-    /* 一次性遷移：舊版（沒有 v:2）的素質已灌滿，測不出新節奏。原樣備份後重來，並清掉舊局（財寶 id 可能已不存在）。
-       存回新資料之後就有 v:2，不會重複觸發；seenHelp 不沿用（說明有更新） */
+    /* 一次性遷移（v < 3）：存檔重置，測新節奏（回程裝備受深度限制、首領只吃一半貪婪）。原樣備份後重來，並清掉舊局。
+       存回新資料之後就有 v:3，不會重複觸發；seenHelp 不沿用（說明有更新） */
     localStorage.setItem(META_KEY + '-bak', raw);
     localStorage.removeItem(RUN_KEY);
     const fresh = blank();
@@ -589,7 +589,7 @@ function gearReward(r){
   const g = GEAR[r.gear], R = RARITY[g.r];
   const note = r.dupGold ? `已經有了，換成 ${r.dupGold} 金幣` : r.autoEquip ? '已自動穿上' : '到營地可以換上';
   return `<div class="gear-get" style="border-color:${R.c}">${gearIcon(r.gear)}
-    <div><small>依最終貪婪 ${r.greed}${r.bossDown ? '＋打贏首領' : ''} 獲得</small>
+    <div><small>依最終貪婪 ${r.greed}${r.bossDown ? '＋打贏首領' : ''} 獲得${r.greed >= 12 && greedTierIndex(r.greed) > (r.depth || 0) + 1 ? '（受下潛深度限制，往更深才有更好的）' : ''}</small>
     <b style="color:${R.c}">${g.n}</b> <small>${R.n}</small><div>${g.d}</div><small>${note}</small></div></div>`;
 }
 function bankResult(){
@@ -642,7 +642,7 @@ function openRestPick(mode){
 function openGreedInfo(){
   const ti = greedTierIndex(S.greed);
   openSheet(`<div class="sheet-t">貪婪 ${S.greed}</div>
-    <div class="sheet-p">每走一格 +${GAME.stepGreed}，撿到財寶再加。越貪，敵人越凶，但活著回去拿到的裝備也越好。把財寶燒掉或被偷，貪婪就會降回來。</div>
+    <div class="sheet-p">每走一格 +${GAME.stepGreed}，撿到財寶再加。越貪，敵人越凶，但活著回去拿到的裝備也越好（稀有度最高＝下潛層數 + 1 階，打贏首領再高一階）。首領只吃一半的加成。把財寶燒掉或被偷，貪婪就會降回來。</div>
     ${GREED_TIERS.map((t, i) => `<div class="tier-line${i === ti ? ' on' : ''}"><span>${t.min}+</span><span>${t.n}</span><span>${t.desc}</span></div>`).join('')}
     <button class="btn" style="margin-top:10px" data-act="closeSheet">關閉</button>`);
 }
@@ -873,12 +873,26 @@ const ACT = {
   deckSheet: openDeck,
   node(arg){
     const [r, c] = arg.split(',').map(Number);
+    if(S.map[r][c].t === 'boss' && greedTierIndex(S.greed) > 0){
+      const T = greedTier(S), pc = m => Math.round((1 + (m - 1) / 2 - 1) * 100);
+      openSheet(`<div class="sheet-t">貪婪還沒放下</div>
+        <div class="sheet-p">目前貪婪「${T.n}」：${bossName(S)}血量 <b>+${pc(T.hp)}%</b>、傷害 <b>+${pc(T.dmg)}%</b>${T.start >= 2 ? `、開場格擋 ${Math.floor(T.start / 2)}` : ''}。進去前可以先燒掉或丟掉財寶，把貪婪降下來。</div>
+        <div class="col"><button class="btn primary" data-act="bossGo:${arg}">進去</button><button class="btn" data-act="bagSheet">看背包</button><button class="btn" data-act="closeSheet">再想想</button></div>`);
+      return;
+    }
     if(S.map[r][c].t === 'exit'){
       openSheet(`<div class="sheet-t">從這裡撤離？</div>
         <div class="sheet-p">賣掉身上 ${S.bag.length} 件財寶得 <b style="color:var(--gold)">${bagValue(S)}</b> 金幣${S.mutation ? `（已含異變「${MUTATIONS[S.mutation].n}」：${MUTATIONS[S.mutation].good}）` : ''}，再依貪婪拿一件<b style="color:${RARITY[runGearRarity(S, S.greed + stepGreedOf(S), false)].c}">${RARITY[runGearRarity(S, S.greed + stepGreedOf(S), false)].n}裝備</b>。這一趟就結束了。</div>
+        ${gearDepthCapped(S, S.greed + stepGreedOf(S)) ? `<div class="sheet-p" style="color:var(--dim);font-size:12px">貪婪夠高，但這一層最多只能拿${RARITY[runGearRarity(S, S.greed + stepGreedOf(S), false)].n}的裝備；往更深走才有更好的。打贏首領還能再升一階。</div>` : ''}
         <div class="col"><button class="btn primary" data-act="exitGo:${arg}">爬上去</button><button class="btn" data-act="closeSheet">再貪一點</button></div>`);
       return;
     }
+    enterNode(S, r, c);
+    commit();
+  },
+  bossGo(arg){
+    closeSheet();
+    const [r, c] = arg.split(',').map(Number);
     enterNode(S, r, c);
     commit();
   },

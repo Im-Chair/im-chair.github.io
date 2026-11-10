@@ -270,10 +270,12 @@ function chestAgain(S){
 }
 
 /* —— 戰鬥 —— */
+/* 首領只吃一半的貪婪倍率（血量、傷害）；一般敵與菁英全吃 */
+const bossShare = (d, m) => d && d.boss ? 1 + (m - 1) / 2 : m;
 function spawn(S, key){
   const d = ENEMIES[key], T = greedTier(S);
-  const hp = Math.round(d.hp * T.hp * depthMul('hp', S.depth || 0) * (mutOf(S).hp || 1) * (nmOn(S, 1) ? 1.1 : 1) * (d.boss && nmOn(S, 4) ? 1.2 : 1));
-  const e = {uid: S.uid++, key, n: d.n, hp, max: hp, block: T.start, step: 0, str: d.boss && nmOn(S, 10) ? 3 : 0, weak: 0, vuln: 0, psn: 0, mk: 0,
+  const hp = Math.round(d.hp * bossShare(d, T.hp) * depthMul('hp', S.depth || 0) * (mutOf(S).hp || 1) * (nmOn(S, 1) ? 1.1 : 1) * (d.boss && nmOn(S, 4) ? 1.2 : 1));
+  const e = {uid: S.uid++, key, n: d.n, hp, max: hp, block: d.boss ? Math.floor(T.start / 2) : T.start, step: 0, str: d.boss && nmOn(S, 10) ? 3 : 0, weak: 0, vuln: 0, psn: 0, mk: 0,
              traits: [], revived: 0, loot: [], gone: 0, boss: !!d.boss, elite: !!d.elite};
   const pool = shuffle(S, Object.keys(TRAITS));
   const nmTrait = d.boss ? 0 : d.elite ? (nmOn(S, 2) ? 1 : 0) : (nmOn(S, 6) ? 1 : 0);   // 噩夢 2：菁英；噩夢 6：一般敵
@@ -660,7 +662,7 @@ function intent(S, e){
 }
 function enemyHitValue(S, e, base){
   const b = S.battle;
-  let v = Math.round(base * greedTier(S).dmg * depthMul('dmg', S.depth || 0) * (nmOn(S, 9) ? 1.15 : 1)) + e.str;
+  let v = Math.round(base * bossShare(edef(e), greedTier(S).dmg) * depthMul('dmg', S.depth || 0) * (nmOn(S, 9) ? 1.15 : 1)) + e.str;
   if(e.weak > 0) v *= 0.75;
   if(b.vuln > 0) v *= 1.5;
   return playerTakes(S, Math.floor(v));
@@ -1088,11 +1090,14 @@ function finishRun(S, ok, why){
 const depthName = d => DEPTHS[d % DEPTHS.length] + (d >= DEPTHS.length ? ' ' + (Math.floor(d / DEPTHS.length) + 1) : '');
 
 /* —— 營地：永久成長。meta 是存在 localStorage 的帳號資料 —— */
-function gearRarity(greed, bossDown){
-  return Math.min(RARITY.length - 1, greedTierIndex(greed) + (bossDown ? 1 : 0));
+/* 貪婪階級換算的稀有度，上限＝下潛深度 + 1（第 1 層最多精良，depth 3 以後才可能傳說）。打贏首領再 +1 */
+function gearRarity(greed, bossDown, depth){
+  return Math.min(RARITY.length - 1, Math.min(greedTierIndex(greed), (depth || 0) + 1) + (bossDown ? 1 : 0));
 }
 /* 這一趟回程能拿的裝備稀有度（黑暗異變高一階）。撤離確認與結算都走這裡 */
-const runGearRarity = (S, greed, bossDown) => Math.min(RARITY.length - 1, gearRarity(greed, bossDown) + (mutOf(S).gearUp || 0));
+const runGearRarity = (S, greed, bossDown) => Math.min(RARITY.length - 1, gearRarity(greed, bossDown, S.depth || 0) + (mutOf(S).gearUp || 0));
+/* 貪婪本來能換到的稀有度有沒有被深度壓低？給 UI 提示用 */
+const gearDepthCapped = (S, greed) => greedTierIndex(greed) > (S.depth || 0) + 1;
 /* 同稀有度內：先給「該部位完全沒有裝備」的，其次給還沒擁有的，都有了才給重複（換金幣） */
 function rollGear(S, r){
   const all = Object.keys(GEAR).filter(id => GEAR[id].r === r && (!GEAR[id].ach || hasAch(S, GEAR[id].ach)));
