@@ -306,7 +306,8 @@ const NODE_ART = {
   fight:'ui/door_fight.webp', elite:'ui/door_elite.webp', chest:'ui/door_chest.webp',
   rest:'ui/door_rest.webp', event:'ui/door_unknown.webp', exit:'ui/ev_rope.webp', boss:'mon/reliq.webp',
 };
-const NODE_NAME = {fight:'戰鬥', elite:'菁英', chest:'寶箱', rest:'營火', event:'未知', exit:'撤離', boss:'首領'};
+const NODE_NAME = {fight:'戰鬥', elite:'菁英', chest:'寶箱', rest:'營火', event:'未知', exit:'撤離', boss:'首領', vault:'密室'};
+const NODE_EMOJI = {vault:'🗝️'};   // 沒有圖檔、用 emoji 當圖示的節點（銀匠密室）
 
 /* 事件：文字與選項在這裡，效果在 core.js 的 EVENT_FX（鍵＝選項 id，全部事件共用一張表，id 不可重複）。
    選項條件 need（空白分隔）：bag 背包有東西／gold 有金銀／curse 有詛咒／room 背包有空位／deck 牌組多於 5 張；
@@ -445,14 +446,66 @@ const STAT_UPS = {
   str: {n:'臂力',   d:'力量 +1',         key:'str', per:1, max:8,  base:250, mult:1.6},
   bag: {n:'大背包', d:'背包 +1 格',      key:'bag', per:1, max:3,  base:400, mult:2.5},
 };
-/* 素質等級上限分段表：索引＝已打贏首領的最深層數（meta.depth，0＝一層都沒通關；超過表長取最後一格）。
+/* 素質等級「正常價格」上限分段表：索引＝已打贏首領的最深層數（meta.depth，0＝一層都沒通關；超過表長取最後一格）。
    每段單調遞增、起點 ≥ 1；通關第 5 層全開（＝各項 max）。
+   超過這個等級仍可購買，但價格乘 STAT_OVER_MULT（絕對上限是 STAT_UPS 的 max）。
    例外：大背包最高只有 3 級，6 格放不下「每層至少多開 1 級」，所以兩層共用一段 */
 const STAT_CAPS = {
   hp:  [4, 8, 12, 16, 18, 20],
   blk: [2, 4, 6, 8, 9, 10],
   str: [1, 2, 4, 5, 7, 8],
   bag: [1, 1, 2, 2, 3, 3],
+};
+/* 超過正常上限的那幾級，價格乘這個倍數（打贏更深的首領、上限提高後恢復原價；已買的不退差價） */
+const STAT_OVER_MULT = 3;
+/* 出發前補給：花金幣買，只管這一趟（效果記在 S.sup）。每種每趟最多一個。
+   價格＝round(base × (1 + SUPPLY_DEPTH_K × (層數 − 1)))，層數＝這一趟要下的第幾層（從 1 起算） */
+const SUPPLY_DEPTH_K = 0.5;
+const SUPPLIES = [
+  {id:'rope',   n:'保命繩',     d:'死在深淵裡，仍帶回最值錢的一件財寶', base:300},
+  {id:'sketch', n:'嚮導的草圖', d:'開局就知道首領的名字與弱點',         base:200},
+  {id:'wine',   n:'烈酒',       d:'第一場戰鬥，行動點多 1 點',          base:150},
+];
+/* —— 委託板 ——
+   每趟出發前從「目前解鎖的池子」抽 QUEST_SHOW 張，最多接 QUEST_MAX 張。完成＝活著回營（撤離或打贏首領；死亡、靠保命繩帶回的不算），失敗不罰。
+   gold＝基礎獎勵，實發＝gold ×（1 + QUEST_DEPTH_K × 這趟的層數索引）。need＝meta.depth 至少多少才進池子。
+   k：條件種類（判定在 core.js 的 questDone）；fam/cnt＝帶回某類財寶幾件；其餘常數見下。by＝委託人（story.js 的 NPCS 鍵） */
+const QUEST_SHOW = 3, QUEST_MAX = 2, QUEST_DEPTH_K = 0.5;
+const QUEST_HIGH_TIER = GREED_TIERS.length - 2;   // 「高段」＝貪婪階級倒數第二段以上
+const QUEST_FEWFIGHT_MAX = 3;                      // 進首領房前，這趟打贏的戰鬥最多幾場
+/* 「別回頭」：地圖每列只有一個節點，每條路線進首領房前一定走 9 個，用走過的節點數量不出差別。
+   所以改數「停下來翻東西」的節點（寶箱、營火、未知）進首領房前最多幾個；想改回節點數就在 core.js 的 questDone('rush') 換條件 */
+const QUEST_RUSH_MAX_STOPS = 2;
+const QUESTS = {
+  gold3:    {by:'buyer',    n:'好貨收購', d:'帶值錢的東西回來。',       need:0, gold:120, k:'fam', fam:'gold',  cnt:3},
+  curse2:   {by:'buyer',    n:'邪門貨色', d:'詛咒越重，價錢越好。',     need:1, gold:200, k:'fam', fam:'curse', cnt:2},
+  relic2:   {by:'smith',    n:'老東西',   d:'找些還能用的老東西。',     need:0, gold:120, k:'fam', fam:'relic', cnt:2},
+  noburn:   {by:'smith',    n:'別燒東西', d:'這趟別把東西往火裡丟。',   need:0, gold:150, k:'noburn'},
+  elite2:   {by:'scholar',  n:'戰鬥紀錄', d:'記下難纏敵人的反應。',     need:0, gold:180, k:'elite', cnt:2},
+  fewfight: {by:'scholar',  n:'深處測繪', d:'少打幾場，多往裡面走。',   need:1, gold:220, k:'fewfight'},
+  greedout: {by:'survivor', n:'活著回來', d:'別為了東西把命丟了。',     need:0, gold:200, k:'greedout'},
+  rush:     {by:'survivor', n:'別回頭',   d:'這次別在路上浪費時間。',   need:1, gold:250, k:'rush'},
+};
+const QUEST_ORDER = Object.keys(QUESTS);
+
+/* —— 梅姐的專屬委託線（兌現「三角刻痕」）——
+   進度存 meta.mei＝{stage:已完成幾段, n:第一段累計帶回的刻痕銀器}。need＝meta.depth 至少多少才開放。
+   刻痕：meta.depth ≥ MEI_MARK_NEED 的趟，每件抽到的金銀財寶有 MEI_MARK_P 機率帶刻痕（財寶 id 後面加 '*'）。
+   第三段：下潛到區域索引 depth（舊都）時，地圖第 VAULT_ROW 列保證有一個銀匠密室節點 */
+const MEI_MARK_P = 0.25, MEI_MARK_NEED = 2, MEI_BONUS = 0.1, VAULT_ROW = 6;
+const MEI_STAGES = [
+  {n:'祖傳銀器',   d:'帶回兩件底部有三角刻痕的銀器。',             need:2, gold:400,  cnt:2},
+  {n:'發燙的刻痕', d:'帶著刻痕銀器，在貪婪高漲時撤離。',           need:3, gold:600},
+  {n:'舊都帳本',   d:'帶舊鑰匙進舊都的銀匠密室，把帳本帶回來。',   need:4, gold:1000, region:3},
+];
+
+/* 嚮導草圖給的首領提示（key＝REGIONS 的 boss） */
+const BOSS_HINT = {
+  sarc:    '開棺會召出骷髏；高舉棺蓋後下一擊很重',
+  warlord: '吹哨會召來小怪；舉起大棒後下一擊很重',
+  brood:   '啃噬與吞光會吸血，瘴氣會塞黏液牌',
+  citylord:'血量剩一半時力量大增；舉劍後是處決',
+  heart:   '脈動會燃燒你；蓄血之後是心搏',
 };
 /* 裝備：活著回來時依最終貪婪階級給一件（打贏首領再高一階），優先補沒有的部位；已有的會換成金幣。
    也可以在營地鐵匠鋪用 buy 價直接買，能買的稀有度上限＝已解鎖深度 */

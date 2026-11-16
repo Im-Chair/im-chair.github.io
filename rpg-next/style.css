@@ -73,6 +73,9 @@ h1.title{font-family:var(--serif);font-weight:700;font-size:44px;letter-spacing:
 .node.exit{color:var(--green);}
 .node.boss .pic{width:64px;height:64px;border-color:var(--red);}
 .node:disabled{cursor:default;}
+.node .pic.emo{display:flex;align-items:center;justify-content:center;font-size:26px;line-height:1;}
+.node.vault .pic{border-color:#c9a24a;}
+.npc-say{color:var(--gold);font-family:var(--serif);}
 .node em{font-style:normal;display:block;color:var(--gold);font-size:10px;}
 @keyframes nodeglow{50%{box-shadow:0 0 14px rgba(216,168,76,.7);}}
 @keyframes exitglow{50%{box-shadow:0 0 14px rgba(111,191,143,.8);}}

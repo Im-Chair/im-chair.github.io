@@ -30,6 +30,7 @@ function pickMutations(n, rnd){
   return ids.slice(0, n);
 }
 /* —— 區域：規則與敵人資料都從這裡讀（舊存檔沒有的欄位就當沒有） —— */
+const regionIdx = d => (d || 0) % REGIONS.length;
 const ruleOf = S => { const r = regionOf(S.depth || 0).rule; return r ? r.id : ''; };
 /* 目前形態的敵人資料（深淵之心過半血換形態後，招式、名字、圖都換） */
 const edef = e => { const d = ENEMIES[e.key]; return e.form && d.form2 ? Object.assign({}, d, d.form2) : d; };
@@ -51,7 +52,8 @@ const curseCount = S => S.bag.filter(id => treasure(id).fam === 'curse').length;
 /* —— 建立新的一趟 —— */
 /* own：玩家已擁有的裝備 id 清單（回程補缺用；要可 JSON 化，所以直接存進 S）。
    mutation：這一趟的異變 id（MUTATIONS 的鍵）。own、mutation 舊呼叫不傳也行 */
-function newRun(seed, load, depth, own, mutation, cls, nm, unlocked){
+/* qx：委託板帶進來的設定 {quests:[接下的委託 id], markOn:這趟有沒有刻痕, meiStage:梅姐線這趟開放第幾段(0＝沒有)}，由 questStart 產生 */
+function newRun(seed, load, depth, own, mutation, cls, nm, unlocked, sup, qx){
   load = load || {};
   depth = depth || 0;
   const mu = MUTATIONS[mutation] || {};
@@ -65,7 +67,14 @@ function newRun(seed, load, depth, own, mutation, cls, nm, unlocked){
     deck: CLASSES[cls].deck.map(id => ({id, up: 0})),
     bag: [], at: null, map: null, battle: null, reward: null, event: null, result: null,
     stats: {kills: 0, steps: 0, burned: 0, healed: 0, maxGreed: 0},
+    sup: {}, supHit: {},   // 出發前補給：sup[id]＝1 還沒用上（0＝已用掉）；supHit 記觸發次數
+    quests: [], markOn: 0, meiStage: 0, book: 0, qc: newQc(),   // 委託：接下的委託、刻痕開關、梅姐線這趟開放第幾段、有沒有帳本、整趟計數器
   };
+  SUPPLIES.forEach(u => { if(sup && sup[u.id]) S.sup[u.id] = 1; });
+  qx = qx || {};
+  S.quests = [...new Set(qx.quests || [])].filter(id => QUESTS[id]).slice(0, QUEST_MAX);
+  S.markOn = qx.markOn ? 1 : 0;
+  S.meiStage = qx.meiStage | 0;
   S.map = genMap(S);
   return S;
 }
@@ -100,6 +109,12 @@ function genMap(S){
     row.push({t: 'exit', x: 0.9, next: []});
     prev[prev.length - 1].next.push(row.length - 1);
   });
+  /* 梅姐第三段、下潛到舊都：中段保證一個銀匠密室（換掉該列一個節點；每個節點都有進有出，所以一定走得到） */
+  if(S.meiStage === 3 && regionIdx(S.depth) === MEI_STAGES[2].region){
+    const row = rows[Math.min(VAULT_ROW, rows.length - 2)], n = row[rint(S, row.length)];
+    n.t = 'vault';
+    delete n.reward;
+  }
   return rows;
 }
 function makeNode(S, r, boss){
@@ -130,6 +145,7 @@ function addGreed(S, n){
   S.greed = Math.max(0, S.greed + n);
   S.stats.maxGreed = Math.max(S.stats.maxGreed || 0, S.greed);
   const after = greedTierIndex(S.greed);
+  if(S.qc) S.qc.maxTier = Math.max(S.qc.maxTier || 0, after);
   if(after !== before) emit(S, {k: 'tier', up: after > before, n: GREED_TIERS[after].n});
 }
 
@@ -147,9 +163,14 @@ function rollTreasure(S, boost, fam){
   const pool = TREASURES.filter(t => t.fam === fam);
   const p = greedTier(S).bias;
   const i = Math.min(pool.length - 1, Math.floor(Math.pow(rand(S), p) * pool.length) + (boost || 0));
+  /* 刻痕只出現在金銀類，而且這趟要有開（meta.depth ≥ MEI_MARK_NEED）；沒開的局不多抽這一次亂數，舊的亂數順序不變 */
+  if(S.markOn && fam === 'gold' && rand(S) < MEI_MARK_P) return pool[i].id + '*';
   return pool[i].id;
 }
-const treasure = id => TREASURES.find(t => t.id === id);
+/* 三角刻痕（梅姐線）：帶刻痕的財寶，id 後面多一個 '*'。刻痕跟著財寶實例走（背包、獎勵選項、被偷再拿回來都不會丟），所以讀財寶資料一律走 treasure() */
+const isMarked = id => typeof id === 'string' && id.endsWith('*');
+const baseId = id => isMarked(id) ? id.slice(0, -1) : id;
+const treasure = id => TREASURES.find(t => t.id === baseId(id));
 /* 三選一要混類：有多個選項時至少一個遺物、至少一個金銀或詛咒；同一次不重複 */
 function rollLoot(S, n, boost){
   if(n >= 3){ n += mutOf(S).loot || 0; if(nmOn(S, 8)) n = Math.max(2, n - 1); }   // 鏡像：多一個選項；噩夢 8：少一個（最少 2）
@@ -237,6 +258,10 @@ function enterNode(S, r, c){
   n.done = 1;
   S.stats.steps++;
   addGreed(S, stepGreedOf(S));
+  if(S.qc){
+    if(n.t === 'boss'){ S.qc.bossFights = S.qc.fights; S.qc.bossStops = S.qc.stops; }   // 進首領房的那一刻，記下這趟打過幾場、停過幾處
+    else if(n.t === 'chest' || n.t === 'rest' || n.t === 'event' || n.t === 'vault') S.qc.stops++;
+  }
   if(n.t === 'exit'){ finishRun(S, true, '從繩梯爬回地面'); return true; }
   if(n.t === 'fight') startBattle(S, encounter(S, r), 'fight', n.reward);
   else if(n.t === 'elite') startBattle(S, pickElite(S), 'elite');
@@ -244,6 +269,7 @@ function enterNode(S, r, c){
   else if(n.t === 'rest') S.screen = 'rest';
   else if(n.t === 'chest') openChest(S);
   else if(n.t === 'event') startEvent(S);
+  else if(n.t === 'vault'){ S.vault = {n: 1}; S.screen = 'vault'; }
   return true;
 }
 function encounter(S, r){
@@ -307,6 +333,12 @@ function startBattle(S, keys, kind, reward){
   b.str += (S.load.str || 0) + c.str;
   b.block += (S.load.blk || 0) + c.blk + (S.load.hoard || 0) * S.bag.filter(id => treasure(id).fam === 'gold').length;   // 守財奴印
   b.ap += c.apFirst;
+  if(S.sup && S.sup.wine){   // 出發前補給：烈酒，只有第一場戰鬥
+    S.sup.wine = 0;
+    S.supHit.wine = (S.supHit.wine || 0) + 1;
+    b.ap += 1;
+    emit(S, {k: 'toast', t: '烈酒下肚，這一場行動點 +1'});
+  }
   drawCards(S, (S.load.drawFirst || 0) + c.drawFirst);
 }
 /* 身上財寶的效果加總：撿到就生效，燒掉或被偷就沒了 */
@@ -756,6 +788,7 @@ function enemyAct(S, e){
 function winBattle(S){
   const b = S.battle;
   emit(S, {k: 'win'});
+  if(S.qc && b.kind !== 'boss'){ S.qc.fights++; if(b.kind === 'elite') S.qc.elites++; }   // 委託計數：打贏的戰鬥（含事件與寶箱怪帶出來的菁英戰）
   const after = b.kind === 'boss' ? 'clear' : 'map';
   if(b.kind === 'boss'){
     /* 打贏首領要明顯比中途撤離划算：棺底的深淵晶直接入帳（滿了也塞得進去，算額外獎賞），再挑一件 */
@@ -1077,14 +1110,40 @@ function finishRun(S, ok, why){
   const rarity = runGearRarity(S, S.greed, bossDown);
   const gear = ok ? rollGear(S, rarity) : null;
   const ending = !!(bossDown && regionOf(S.depth || 0).final);
-  S.result = {ok, why, ending, items: ok ? items : [], lost: ok ? [] : items, value: ok ? bagValue(S) : 0, greed: S.greed,
+  /* 保命繩：死亡時仍帶回背包裡價值最高的一件（只一次），照撤離的方式結算那一件 */
+  let saved = null;
+  if(!ok && S.sup && S.sup.rope && items.length){
+    let bi = 0;
+    items.forEach((id, i) => { if(treasureValue(S, id) > treasureValue(S, items[bi])) bi = i; });
+    saved = items.splice(bi, 1)[0];
+    S.sup.rope = 0;
+    S.supHit.rope = (S.supHit.rope || 0) + 1;
+    emit(S, {k: 'toast', t: `保命繩拉回了${treasure(saved).n}`});
+  }
+  const back = ok ? items : saved ? [saved] : [];   // 這一趟實際帶回的財寶（保命繩那一件也算，但不算撤離）
+  const fams = {gold: 0, relic: 0, curse: 0};
+  back.forEach(id => { fams[treasure(id).fam]++; });
+  S.result = {ok, why, ending, items: ok ? items : saved ? [saved] : [], lost: ok ? [] : items, value: ok ? bagValue(S) : saved ? treasureValue(S, saved) : 0, rope: saved, greed: S.greed,
               steps: S.stats.steps, kills: S.stats.kills, burned: S.stats.burned, gear, bossDown, depth: S.depth, mutation: S.mutation || null, cls: clsOf(S), nm: S.nm || 0,
-              maxGreed: S.stats.maxGreed || 0, healed: S.stats.healed === undefined ? 1 : S.stats.healed};   // 舊局沒記錄過回血 ＝ 不確定，當作有回過
+              maxGreed: S.stats.maxGreed || 0, healed: S.stats.healed === undefined ? 1 : S.stats.healed,
+              /* 委託結算要用的：接下的委託、整趟計數器、帶回各類財寶件數、帶回的刻痕件數、有沒有帶著帳本撤離、這趟梅姐線開放第幾段 */
+              quests: (S.quests || []).slice(), qc: Object.assign({}, S.qc), fams, mark: ok ? items.filter(isMarked).length : 0, book: ok && S.book ? 1 : 0, meiStage: S.meiStage || 0,
+              react: reactOf(S, back)};   // 舊局沒記錄過回血 ＝ 不確定，當作有回過
   S.battle = null;
   S.reward = null;
   S.event = null;
   S.screen = 'result';
   emit(S, {k: ok ? 'extract' : 'death'});
+}
+
+/* 回營時 NPC 的反應：帶回 ≥2 件詛咒 → 隨機一位的 curse；一件都沒帶回 → 隨機一位的 empty；都不是就沒有。只在要說話時才抽亂數 */
+function reactOf(S, back){
+  const ids = Object.keys(NPCS).filter(k => NPCS[k].react);
+  const curse = back.filter(id => treasure(id).fam === 'curse').length;
+  const kind = curse >= 2 ? 'curse' : back.length === 0 ? 'empty' : null;
+  if(!kind || !ids.length) return null;
+  const id = rpick(S, ids);
+  return {npc: id, t: NPCS[id].react[kind]};
 }
 
 const depthName = d => DEPTHS[d % DEPTHS.length] + (d >= DEPTHS.length ? ' ' + (Math.floor(d / DEPTHS.length) + 1) : '');
@@ -1112,6 +1171,14 @@ function statCap(meta, k){
   const t = STAT_CAPS[k], d = Math.max(0, Math.min(meta.depth || 0, t.length - 1));
   return Math.min(STAT_UPS[k].max, t[d]);
 }
+/* 下一級是不是超出目前正常上限（要加價） */
+const statOver = (meta, k) => (meta.stats[k] || 0) >= statCap(meta, k);
+/* 下一級的實際價格：超過 statCap 的等級乘 STAT_OVER_MULT。買素質與畫面都走這裡。已滿級回傳 0 */
+function statPrice(meta, k){
+  const lv = meta.stats[k] || 0;
+  if(lv >= STAT_UPS[k].max) return 0;
+  return statCost(k, lv) * (statOver(meta, k) ? STAT_OVER_MULT : 1);
+}
 /* 要打贏第幾層首領才能升到 lv+1 級；已是最高級回傳 0 */
 function statUnlockAt(k, lv){
   if(lv >= STAT_UPS[k].max) return 0;
@@ -1119,7 +1186,7 @@ function statUnlockAt(k, lv){
   for(let i = 0; i < t.length; i++) if(t[i] > lv) return i;
   return t.length - 1;
 }
-/* 遷移：超過上限的等級退掉，依價格公式全額退金幣。可重複執行；回傳退還的金幣 */
+/* 遷移（只在 v3 以下升上來時跑一次）：超過上限的等級退掉，依價格公式全額退金幣。v4 起超額可加價購買，不可再 clamp；回傳退還的金幣 */
 function clampStats(meta){
   let refund = 0;
   meta.stats = meta.stats || {};
@@ -1134,10 +1201,27 @@ function clampStats(meta){
 }
 function buyStat(meta, k){
   const u = STAT_UPS[k], lv = meta.stats[k] || 0;
-  if(lv >= u.max || lv >= statCap(meta, k) || meta.gold < statCost(k, lv)) return false;
-  meta.gold -= statCost(k, lv);
+  if(!u || lv >= u.max) return false;
+  const price = statPrice(meta, k);
+  if(meta.gold < price) return false;
+  meta.gold -= price;
   meta.stats[k] = lv + 1;
   return true;
+}
+/* —— 出發前補給 —— */
+/* 價格隨這一趟要下的層數（depth 從 0 起）上升 */
+const supplyPrice = (id, depth) => Math.round(SUPPLIES.find(u => u.id === id).base * (1 + SUPPLY_DEPTH_K * Math.max(0, depth | 0)));
+const supplyTotal = (ids, depth) => ids.reduce((s, id) => s + supplyPrice(id, depth), 0);
+/* 一次買下勾選的補給：id 必須有效、不重複、總價付得起，否則什麼都不扣、回傳 null。成功回傳 {id:1}（交給 newRun） */
+function buySupplies(meta, ids, depth){
+  const uniq = [...new Set(ids)];
+  if(!uniq.every(id => SUPPLIES.some(u => u.id === id))) return null;
+  const total = supplyTotal(uniq, depth);
+  if(meta.gold < total) return null;
+  meta.gold -= total;
+  const sel = {};
+  uniq.forEach(id => { sel[id] = 1; });
+  return sel;
 }
 /* 鐵匠鋪：能買的稀有度上限＝已解鎖深度。回傳 ok／owned／locked／poor */
 function gearBuyState(meta, id){
@@ -1196,14 +1280,19 @@ function bankRewards(meta, r){
   r.banked = 1;
   meta.runs++;
   const cs = ((meta.clsStats = meta.clsStats || {})[r.cls || 'sword'] = meta.clsStats[r.cls || 'sword'] || {dives: 0, escapes: 0, boss: 0, deep: 0, nm: 0});
-  if(!r.ok){ checkAchievements(meta, r); return; }
+  r.sold = Math.round(r.value * (1 + (meta.meiBonus || 0)));   // 賣財寶實際入帳：梅姐線第三段完成後 +10%（先算，這一趟才新拿到的加成從下一趟起算）
+  settleQuests(meta, r);                                       // 要在更新 meta.depth 之前，梅姐線各段的門檻看的是出發時的進度
+  if(!r.ok){
+    if(r.rope && r.value > 0){ meta.bank += r.sold; meta.gold += r.sold; meta.best = Math.max(meta.best, r.sold); }   // 保命繩帶回的那一件
+    checkAchievements(meta, r); return;
+  }
   meta.escapes++;
   cs.escapes++;
   if(r.bossDown){ cs.boss++; cs.nm = Math.max(cs.nm || 0, r.nm || 0); }
   if(r.mutation) meta.mutEsc = (meta.mutEsc || 0) + 1;
-  meta.bank += r.value;
-  meta.gold += r.value;
-  meta.best = Math.max(meta.best, r.value);
+  meta.bank += r.sold;
+  meta.gold += r.sold;
+  meta.best = Math.max(meta.best, r.sold);
   if(r.bossDown && r.depth >= meta.depth){ meta.depth = r.depth + 1; r.newDepth = meta.depth; }
   if(r.ending){
     const lim0 = nmLimit(meta);
@@ -1240,3 +1329,132 @@ const markLore = (meta, id) => { meta.seenLore = meta.seenLore || {}; const fres
 const enterRegion = depth => (depth || 0) % REGION_STORY.length;
 const enterSeen = (meta, depth) => !!(meta.seenEnter || {})[enterRegion(depth)];
 const markEnter = (meta, depth) => { meta.seenEnter = meta.seenEnter || {}; meta.seenEnter[enterRegion(depth)] = 1; };
+
+/* —— 委託板與梅姐線（資料在 data.js 的 QUESTS、MEI_STAGES）—— */
+/* 整趟計數器（存在 S.qc，隨存檔存讀）：fights 打贏幾場、elites 打贏幾場菁英、stops 停過幾處（寶箱／營火／未知／密室）、
+   maxTier 貪婪到過的最高階級、bossFights／bossStops＝進首領房那一刻的 fights／stops（沒進過＝null） */
+const newQc = () => ({fights: 0, elites: 0, stops: 0, maxTier: 0, bossFights: null, bossStops: null});
+/* 讀舊局時補預設值（委託上線前的存檔沒有這些欄位） */
+function ensureQuestState(S){
+  S.quests = Array.isArray(S.quests) ? S.quests.filter(id => QUESTS[id]) : [];
+  S.markOn = S.markOn ? 1 : 0;
+  S.meiStage = S.meiStage | 0;
+  S.book = S.book ? 1 : 0;
+  const q = S.qc = Object.assign(newQc(), S.qc || {});
+  q.maxTier = Math.max(q.maxTier || 0, greedTierIndex((S.stats && S.stats.maxGreed) || S.greed || 0));
+  return S;
+}
+const questReward = (id, depth) => Math.round(QUESTS[id].gold * (1 + QUEST_DEPTH_K * Math.max(0, depth | 0)));
+const questPool = meta => QUEST_ORDER.filter(id => QUESTS[id].need <= (meta.depth || 0));
+/* 目前的委託板（3 張）：meta.board.ids。沒有或不合法才重抽（rnd＝0~1 的亂數函式，UI 傳 Math.random，不碰 S.rng）；出發時 questStart 會清掉，下一趟才重抽 */
+function ensureBoard(meta, rnd){
+  const pool = questPool(meta), b = meta.board;
+  if(b && Array.isArray(b.ids) && b.ids.length && b.ids.every(id => pool.includes(id))) return b.ids;
+  const ids = pool.slice();
+  for(let i = ids.length - 1; i > 0; i--){ const j = Math.floor(rnd() * (i + 1)); [ids[i], ids[j]] = [ids[j], ids[i]]; }
+  meta.board = {ids: ids.slice(0, QUEST_SHOW)};
+  return meta.board.ids;
+}
+/* 勾選／取消一張委託：只能接板上的，最多 QUEST_MAX 張。回傳新的選取清單 */
+function toggleQuest(meta, sel, id){
+  const ids = (meta.board && meta.board.ids) || [];
+  if(sel.includes(id)) return sel.filter(x => x !== id);
+  if(!ids.includes(id) || sel.length >= QUEST_MAX) return sel;
+  return [...sel, id];
+}
+/* 梅姐線目前開放第幾段（1～3）；沒開放或全部辦完回 0 */
+function meiActive(meta){
+  const st = (meta.mei && meta.mei.stage) | 0;
+  if(st >= MEI_STAGES.length) return 0;
+  return (meta.depth || 0) >= MEI_STAGES[st].need ? st + 1 : 0;
+}
+const meiDone = meta => ((meta.mei && meta.mei.stage) | 0) >= MEI_STAGES.length;
+/* 出發：把勾選的委託與梅姐線狀態變成 newRun 的 qx，並清掉這張委託板（下一趟重抽） */
+function questStart(meta, sel){
+  const ids = (meta.board && meta.board.ids) || [];
+  const quests = [...new Set(sel || [])].filter(id => ids.includes(id)).slice(0, QUEST_MAX);
+  meta.board = null;
+  return {quests, markOn: (meta.depth || 0) >= MEI_MARK_NEED, meiStage: meiActive(meta)};
+}
+/* 一張委託完成了沒。r 是 finishRun 做出來的結算：不是活著回營（死亡、保命繩）一律不算 */
+function questDone(id, r){
+  const q = QUESTS[id];
+  if(!q || !r || !r.ok) return false;
+  const qc = r.qc || {}, f = r.fams || {};
+  switch(q.k){
+    case 'fam': return (f[q.fam] || 0) >= q.cnt;
+    case 'noburn': return (r.burned || 0) === 0 && r.items.length >= 1;
+    case 'elite': return (qc.elites || 0) >= q.cnt;
+    case 'fewfight': return qc.bossFights != null && qc.bossFights <= QUEST_FEWFIGHT_MAX;
+    case 'greedout': return (qc.maxTier || 0) >= QUEST_HIGH_TIER;
+    case 'rush': return qc.bossStops != null && qc.bossStops <= QUEST_RUSH_MAX_STOPS;
+  }
+  return false;
+}
+/* 結算委託與梅姐線（bankRewards 呼叫，已有 r.banked 擋重複）：獎勵直接入帳，結果寫進 r.qres／r.mei。失敗不罰 */
+function settleQuests(meta, r){
+  r.qres = (r.quests || []).filter(id => QUESTS[id]).map(id => {
+    const ok = questDone(id, r), gold = ok ? questReward(id, r.depth) : 0;
+    meta.gold += gold;
+    return {id, ok, gold};
+  });
+  const st = r.meiStage | 0;
+  if(!st) return;
+  const m = meta.mei = Object.assign({stage: 0, n: 0}, meta.mei || {});
+  if(m.stage !== st - 1) return;   // 這一段已經辦完（或進度對不上），不重複發獎
+  const def = MEI_STAGES[st - 1], qc = r.qc || {};
+  let done = false;
+  if(r.ok){
+    if(st === 1){ m.n += r.mark | 0; done = m.n >= def.cnt; }
+    else if(st === 2) done = (r.mark | 0) >= 1 && (qc.maxTier || 0) >= QUEST_HIGH_TIER;
+    else if(st === 3) done = !!r.book;
+  }
+  r.mei = {stage: st, done, gold: done ? def.gold : 0, n: m.n};
+  if(!done) return;
+  m.stage = st;
+  meta.gold += def.gold;
+  meta.meiSay = (meta.meiSay || []).concat(st);   // 回營後播完成台詞（播完才清）
+  if(st === 3) meta.meiBonus = MEI_BONUS;
+}
+/* 這趟進行中的進度一行字（地圖上的委託列、委託面板用） */
+function questLive(S, id){
+  const q = QUESTS[id], qc = S.qc || newQc();
+  const fam = f => S.bag.filter(x => treasure(x).fam === f).length;
+  switch(q.k){
+    case 'fam': return `${FAM[q.fam].n} ${fam(q.fam)}/${q.cnt}`;
+    case 'noburn': return S.stats.burned ? '已經燒過了' : '還沒燒過';
+    case 'elite': return `菁英 ${qc.elites}/${q.cnt}`;
+    case 'fewfight': return qc.bossFights != null ? `進首領房時打過 ${qc.bossFights} 場` : `已打 ${qc.fights} 場（上限 ${QUEST_FEWFIGHT_MAX}）`;
+    case 'greedout': return qc.maxTier >= QUEST_HIGH_TIER ? '貪婪夠高了，活著撤離' : '貪婪還不夠高';
+    case 'rush': return qc.bossStops != null ? `進首領房時停過 ${qc.bossStops} 處` : `已停 ${qc.stops} 處（上限 ${QUEST_RUSH_MAX_STOPS}）`;
+  }
+  return '';
+}
+/* 還有沒有希望：已經確定做不到的（燒過、戰鬥場數超過…）回 false，UI 可以變灰 */
+function questAlive(S, id){
+  const q = QUESTS[id], qc = S.qc || newQc();
+  if(q.k === 'noburn') return !S.stats.burned;
+  if(q.k === 'fewfight') return (qc.bossFights != null ? qc.bossFights : qc.fights) <= QUEST_FEWFIGHT_MAX;
+  if(q.k === 'rush') return (qc.bossStops != null ? qc.bossStops : qc.stops) <= QUEST_RUSH_MAX_STOPS;
+  return true;
+}
+/* 梅姐線這一趟的進度（meiStage 1～3）：回傳一行字 */
+function meiLive(S, meta){
+  const st = S.meiStage | 0;
+  if(!st) return '';
+  const def = MEI_STAGES[st - 1], marked = S.bag.filter(isMarked).length;
+  if(st === 1) return `${def.n}：身上刻痕銀器 ${marked}（累計已帶回 ${(meta && meta.mei && meta.mei.n) | 0}/${def.cnt}）`;
+  if(st === 2) return `${def.n}：身上刻痕銀器 ${marked}・${S.qc.maxTier >= QUEST_HIGH_TIER ? '貪婪夠高了' : '貪婪還不夠高'}`;
+  return `${def.n}：${S.book ? '已拿到帳本，活著撤離' : regionIdx(S.depth) === def.region ? '找到銀匠密室' : '這一層沒有密室'}`;
+}
+
+/* —— 銀匠密室：三段敘事看完，帶走帳本（任務物品，不佔背包、不加貪婪；死了留在下面，下次再來） —— */
+function vaultNext(S){
+  if(S.screen !== 'vault' || !S.vault) return false;
+  if(S.vault.n < VAULT_STORY.length){ S.vault.n++; return true; }
+  S.book = 1;
+  S.vault = null;
+  S.screen = 'map';
+  emit(S, {k: 'toast', t: '帶走了帳本'});
+  return true;
+}

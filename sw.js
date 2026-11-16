@@ -1,4 +1,4 @@
-const CACHE = 'arcade-v77';
+const CACHE = 'arcade-v78';
 // 珠界的圖獨立一個快取、不跟 CACHE 改版：改版時不必重抓，也不用每次打開都等網路
 const ART_CACHE = 'arcade-pokemo-art';
 // RPG 敵人圖示：檔名＝ENEMIES／首領／域限精英的 key。v385 起 50 隻全數有圖，已無 SVG 回落。
@@ -79,6 +79,7 @@ const ASSETS = [
   // js/css 帶 ?v=NEXT_VER，靠 fetch fallback 的 ignoreSearch 對應。一樣只由 fillCaches 背景補，不進安裝階段
   '/rpg-next/', '/rpg-next/index.html', '/rpg-next/style.css', '/rpg-next/data.js', '/rpg-next/story.js', '/rpg-next/core.js', '/rpg-next/ui.js',
   ...['warlord','brood','heart2'].map(k => `/rpg-next/art/boss_${k}.webp`),
+  ...['smith','buyer','scholar','survivor'].map(k => `/rpg-next/art/npc-${k}.webp`),
 ];
 
 // 安裝只抓首頁必要檔案、馬上啟用。其餘交給 fillCaches，安裝時全抓會塞滿網路，遊戲的圖要排在幾百個請求後面
