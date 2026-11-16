@@ -171,7 +171,7 @@ body.btn-art #sTitle button::before,body.btn-art #sTitle button::after{display:n
     <button class="pri" id="btnCont" style="display:none">繼續遊戲</button>
     <button class="pri" id="btnNew">新遊戲</button>
     <button id="btnImp">匯入存檔碼</button>
-    <div class="ver">原型 v1.18 ・ 110 種怪物 ・ 前九章可玩</div>
+    <div class="ver">原型 v1.19 ・ 110 種怪物 ・ 前九章可玩</div>
   </div>
 
   <div id="sMap" class="screen">
@@ -401,7 +401,7 @@ function spr(sp,size){
 
 /* ================= 存檔 ================= */
 let P=null;
-function freshPlayer(){const s=MAPS.grass.spawn;return{v:1,name:'旅人',map:'grass',springs:[],cores:[],letters:[],x:s.x,y:s.y,team:[],box:[],dex:{},items:{potion:3,candy:1},flags:{},scrolls:[],hpFrac:1,uid:0}}
+function freshPlayer(){const s=MAPS.grass.spawn;return{v:1,name:'夜',map:'grass',springs:[],cores:[],letters:[],x:s.x,y:s.y,team:[],box:[],dex:{},items:{potion:3,candy:1},flags:{},scrolls:[],hpFrac:1,uid:0}}
 function save(){try{localStorage.setItem(SAVE_KEY,JSON.stringify(P))}catch(e){}}
 function loadSave(){try{const s=localStorage.getItem(SAVE_KEY);return s?JSON.parse(s):null}catch(e){return null}}
 const exportCode=()=>btoa(unescape(encodeURIComponent(JSON.stringify(P))));
@@ -1369,7 +1369,7 @@ async function interactNpc(n){
     else if(f.guardDone){await say([['老周','過關啦？……你走路的樣子，跟你爹一模一樣。去吧。']])}
     else if(!f.q1){
       await say([['老周','草叢裡那些小傢伙不兇。多跟牠們打打，再往北走。'],['老周','等等，還有件事。那枚吊墜的來歷，我還沒跟你說清楚。'],['老周','大家都告訴你，歸一會是壞人，對吧？'],
-        ['老周','西邊草原有塊古碑。十五年前我親眼看過，上頭刻的內容，和守界盟的史冊完全不同。'],['老周','帶著吊墜去碰古碑。看完上面的內容，再決定接下來要怎麼走。']]);
+        ['老周','西邊草原有塊古碑。十六年前我親眼看過，上頭刻的內容，和守界盟的史冊完全不同。'],['老周','帶著吊墜去碰古碑。看完上面的內容，再決定接下來要怎麼走。']]);
       f.q1=1;
     }else if(!f.stele){await say([['老周','古碑在西邊，高草外圍那一帶。']])}
     else if(!f.truth1){await say([['老周','看到了吧。那上面寫的，和你從小聽到的故事不一樣。去找那個披斗篷的人，他知道更多。']])}
@@ -1408,7 +1408,7 @@ async function interactNpc(n){
   }else if(n.id==='guard'){
     if(await guardEvent())return;
   }else if(n.talk){if(await n.talk(n)==='battle')return}
-  else{await say([[n.name.split(' ').pop(),'……'],'【第 '+CUR.ch+' 章製作中】'])}
+  else{await say([[n.name.split(' ').pop(),'……']])}
   G.lock=false;G.bump=0.8;
 }
 async function guardEvent(){
@@ -2319,7 +2319,7 @@ async function newGame(){
     '今天，是你十六歲的成年禮。'
   ]);
   await modal(`<h3>你的名字</h3><input id="nameIn" maxlength="6" placeholder="最多 6 個字" value="夜">`,[{t:'決定',c:'pri'}]);
-  P.name=($('#nameIn').value||'旅人').trim().slice(0,6)||'旅人';
+  P.name=($('#nameIn').value||'夜').trim().slice(0,6)||'夜';
   await say([
     ['老周',`來啦，${P.name}。十六歲了，今天可是你的大日子。`],
     ['老周','照鎮上的規矩，成年後就能挑一隻珠獸當夥伴。這三個小傢伙，我替你照顧很久了。'],
