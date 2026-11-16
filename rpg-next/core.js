@@ -36,6 +36,90 @@ const ruleOf = S => { const r = regionOf(S.depth || 0).rule; return r ? r.id : '
 const edef = e => { const d = ENEMIES[e.key]; return e.form && d.form2 ? Object.assign({}, d, d.form2) : d; };
 const pickElite = S => { const el = rpick(S, regionOf(S.depth || 0).elites); return Array.isArray(el) ? el.slice() : [el]; };
 const bossName = S => ENEMIES[regionOf(S.depth || 0).boss].n;
+
+/* —— 各區第二條規則（data.js 的 rule2；常數 GOB_STEAL_TURN、LAMP_*、TOLL_*、HEART_*）——
+   run 狀態：pouch 贓物袋（財寶 id 陣列，不在身上＝不給效果、不計貪婪）、lamp 燈油、toll 累計過路費、heart 心臟倒數、bossBack 打贏首領時歸還的件數（可能讓背包暫時超格）。
+   梅姐線的任務物品（帳本）是 S.book 旗標，不是背包裡的財寶，所以偷、吞、燒都碰不到它；刻痕銀器照一般財寶處理 */
+const rule2Of = S => { const r = regionOf(S.depth || 0).rule2; return r ? r.id : ''; };
+const lampDark = S => rule2Of(S) === 'lamp' && (S.lamp | 0) <= 0;
+/* 下一步要付的過路費（這趟第一個節點不收；身上貪婪為 0 不收） */
+const tollNext = S => rule2Of(S) === 'toll' && S.at ? Math.round((S.greed || 0) * TOLL_K) : 0;
+/* 結算時實際從賣價扣掉的過路費：累計額，最多扣到所得的 TOLL_MAX */
+const tollPaid = (S, gross) => Math.min(Math.max(0, S.toll | 0), Math.round(Math.max(0, gross) * TOLL_MAX));
+const fixHp = S => { S.hp = Math.max(1, Math.min(S.hp, S.maxHp)); };
+/* 每進一個（非撤離點）節點：在 enterNode 加貪婪之前呼叫 */
+function enterRule2(S){
+  const id = rule2Of(S);
+  if(id === 'lamp'){
+    S.lamp = Math.max(0, (S.lamp | 0) - 1);
+    if(S.lamp === 0) emit(S, {k: 'toast', t: '提燈滅了'});
+    else if(S.lamp === 1) emit(S, {k: 'toast', t: '提燈快沒油了'});
+  }else if(id === 'toll'){
+    if(S.stats.steps > 1){
+      const t = Math.round((S.greed || 0) * TOLL_K);
+      if(t > 0){ S.toll = (S.toll | 0) + t; emit(S, {k: 'toast', t: `亡魂收了 ${t} 過路費，累計 ${S.toll}`}); }
+    }
+  }else if(id === 'heart'){
+    S.heart = (S.heart | 0) - 1;
+    if(S.heart <= 0){
+      S.heart = HEART_EVERY;
+      if(S.bag.length){
+        let bi = 0;
+        S.bag.forEach((x, i) => { if(treasureValue(S, x) > treasureValue(S, S.bag[bi])) bi = i; });
+        const id2 = removeTreasure(S, bi);
+        fixHp(S);
+        emit(S, {k: 'toast', t: `心臟收縮，吞掉了${treasure(id2).n}`});
+      }else{
+        const lose = Math.max(1, Math.round(S.maxHp * HEART_HP));
+        S.hp = Math.max(1, S.hp - lose);
+        emit(S, {k: 'toast', t: `心臟收縮，身上沒東西可吞，吞了你 ${lose} 點生命`});
+      }
+    }
+  }
+}
+/* 在地圖上主動燒一件財寶（添油、餵食共用）：貪婪隨之下降，算一次「燒」（別燒東西的委託也會看到） */
+function burnOnMap(S, idx){
+  if(S.screen !== 'map' || !S.bag[idx]) return null;
+  const id = removeTreasure(S, idx);
+  fixHp(S);
+  S.stats.burned++;
+  emit(S, {k: 'burn'});
+  return id;
+}
+function lampRefuel(S, idx){
+  if(rule2Of(S) !== 'lamp') return false;
+  const id = burnOnMap(S, idx);
+  if(id === null) return false;
+  S.lamp = (S.lamp | 0) + LAMP_BURN;
+  emit(S, {k: 'toast', t: `燒了${treasure(id).n}，燈油 +${LAMP_BURN}`});
+  return true;
+}
+function heartFeed(S, idx){
+  if(rule2Of(S) !== 'heart' || (S.heart | 0) >= HEART_EVERY) return false;   // 倒數是滿的，餵了也白餵
+  const id = burnOnMap(S, idx);
+  if(id === null) return false;
+  S.heart = HEART_EVERY;
+  emit(S, {k: 'toast', t: `餵了${treasure(id).n}，心臟安靜了`});
+  return true;
+}
+/* 哥布林：贓物歸還。boss＝true 時全數歸還（不看背包格數，這一趟反正要結束）；菁英只還到背包塞得下 */
+function returnPouch(S, boss){
+  const p = S.pouch || (S.pouch = []);
+  if(!p.length) return;
+  let n = 0;
+  while(p.length && (boss || S.bag.length < S.bagCap)){ addTreasure(S, p.shift()); n++; }
+  if(boss) S.bossBack = (S.bossBack | 0) + n;
+  if(n) emit(S, {k: 'toast', t: `贓物拿回來了，${n} 件${p.length ? `（背包裝不下，還有 ${p.length} 件留在袋裡）` : ''}`});
+}
+function stealOnWin(S, b){
+  if(b.kind === 'boss'){ returnPouch(S, true); return; }
+  if(b.kind === 'elite'){ returnPouch(S, false); return; }
+  if(b.turn <= GOB_STEAL_TURN || !S.bag.length) return;
+  const id = removeTreasure(S, rint(S, S.bag.length));
+  fixHp(S);
+  (S.pouch || (S.pouch = [])).push(id);
+  emit(S, {k: 'toast', t: `這場拖了 ${b.turn} 回合，哥布林順走了${treasure(id).n}`});
+}
 /* 玩家傷害（含異變）：我方所有輸出都過這裡 */
 const dmgOut = (S, v) => Math.floor(v * (mutOf(S).dmgOut || 1));
 
@@ -67,6 +151,7 @@ function newRun(seed, load, depth, own, mutation, cls, nm, unlocked, sup, qx){
     deck: CLASSES[cls].deck.map(id => ({id, up: 0})),
     bag: [], at: null, map: null, battle: null, reward: null, event: null, result: null,
     stats: {kills: 0, steps: 0, burned: 0, healed: 0, maxGreed: 0},
+    pouch: [], lamp: LAMP_START, heart: HEART_EVERY, toll: 0, bossBack: 0,   // 各區第二條規則的狀態（見 rule2Of）
     sup: {}, supHit: {},   // 出發前補給：sup[id]＝1 還沒用上（0＝已用掉）；supHit 記觸發次數
     quests: [], markOn: 0, meiStage: 0, book: 0, qc: newQc(),   // 委託：接下的委託、刻痕開關、梅姐線這趟開放第幾段、有沒有帳本、整趟計數器
   };
@@ -257,6 +342,7 @@ function enterNode(S, r, c){
   S.at = [r, c];
   n.done = 1;
   S.stats.steps++;
+  if(n.t !== 'exit') enterRule2(S);
   addGreed(S, stepGreedOf(S));
   if(S.qc){
     if(n.t === 'boss'){ S.qc.bossFights = S.qc.fights; S.qc.bossStops = S.qc.stops; }   // 進首領房的那一刻，記下這趟打過幾場、停過幾處
@@ -315,12 +401,13 @@ function startBattle(S, keys, kind, reward){
     kind, reward: reward || null, turn: 0, phase: 'player', ei: 0,
     enemies: keys.map(k => spawn(S, k)), target: 0,
     draw: shuffle(S, cards.map(c => ({id: c.id, up: c.up, uid: S.uid++}))), hand: [], disc: [], exh: [],
-    ap: 0, block: 0, str: 0, weak: 0, vuln: 0, psn: 0, scars: 0, keep: 0, burned: 0, burn: 0, apLoss: 0,
+    ap: 0, block: 0, str: 0, weak: 0, vuln: lampDark(S) ? LAMP_DARK_VULN : 0, psn: 0, scars: 0, keep: 0, burned: 0, burn: 0, apLoss: 0,
     mana: clsDef(S).mana0 || 0, played: 0,
   };
   S.battle = b;
   S.screen = 'battle';
   emit(S, {k: 'battle'});
+  if(lampDark(S)) emit(S, {k: 'toast', t: `燈滅了，開場帶 ${LAMP_DARK_VULN} 層易傷`});
   /* 制魔師：身上每件詛咒財寶，開場給全體敵人 1 層咒印 */
   if(clsOf(S) === 'warlock'){
     const n = curseCount(S);
@@ -788,6 +875,7 @@ function enemyAct(S, e){
 function winBattle(S){
   const b = S.battle;
   emit(S, {k: 'win'});
+  if(rule2Of(S) === 'steal') stealOnWin(S, b);
   if(S.qc && b.kind !== 'boss'){ S.qc.fights++; if(b.kind === 'elite') S.qc.elites++; }   // 委託計數：打贏的戰鬥（含事件與寶箱怪帶出來的菁英戰）
   const after = b.kind === 'boss' ? 'clear' : 'map';
   if(b.kind === 'boss'){
@@ -1120,10 +1208,12 @@ function finishRun(S, ok, why){
     S.supHit.rope = (S.supHit.rope || 0) + 1;
     emit(S, {k: 'toast', t: `保命繩拉回了${treasure(saved).n}`});
   }
+  const gross = ok ? bagValue(S) : saved ? treasureValue(S, saved) : 0;
+  const toll = tollPaid(S, gross);   // 舊都過路費：從賣價扣
   const back = ok ? items : saved ? [saved] : [];   // 這一趟實際帶回的財寶（保命繩那一件也算，但不算撤離）
   const fams = {gold: 0, relic: 0, curse: 0};
   back.forEach(id => { fams[treasure(id).fam]++; });
-  S.result = {ok, why, ending, items: ok ? items : saved ? [saved] : [], lost: ok ? [] : items, value: ok ? bagValue(S) : saved ? treasureValue(S, saved) : 0, rope: saved, greed: S.greed,
+  S.result = {ok, why, ending, items: ok ? items : saved ? [saved] : [], lost: ok ? [] : items, value: gross - toll, toll, pouch: (S.pouch || []).slice(), rope: saved, greed: S.greed,
               steps: S.stats.steps, kills: S.stats.kills, burned: S.stats.burned, gear, bossDown, depth: S.depth, mutation: S.mutation || null, cls: clsOf(S), nm: S.nm || 0,
               maxGreed: S.stats.maxGreed || 0, healed: S.stats.healed === undefined ? 1 : S.stats.healed,
               /* 委託結算要用的：接下的委託、整趟計數器、帶回各類財寶件數、帶回的刻痕件數、有沒有帶著帳本撤離、這趟梅姐線開放第幾段 */
@@ -1342,6 +1432,16 @@ function ensureQuestState(S){
   S.book = S.book ? 1 : 0;
   const q = S.qc = Object.assign(newQc(), S.qc || {});
   q.maxTier = Math.max(q.maxTier || 0, greedTierIndex((S.stats && S.stats.maxGreed) || S.greed || 0));
+  return ensureRuleState(S);
+}
+/* 讀舊局時補各區第二條規則的狀態：沒有就依已走的步數推回去 */
+function ensureRuleState(S){
+  const st = (S.stats && S.stats.steps) | 0;
+  S.pouch = Array.isArray(S.pouch) ? S.pouch.filter(id => typeof id === 'string' && treasure(id)) : [];
+  S.lamp = Number.isFinite(S.lamp) ? Math.max(0, S.lamp) : Math.max(0, LAMP_START - st);
+  S.heart = Number.isFinite(S.heart) && S.heart >= 1 ? Math.min(S.heart, HEART_EVERY) : HEART_EVERY - (st % HEART_EVERY);
+  S.toll = Number.isFinite(S.toll) ? Math.max(0, S.toll) : 0;
+  S.bossBack = S.bossBack | 0;
   return S;
 }
 const questReward = (id, depth) => Math.round(QUESTS[id].gold * (1 + QUEST_DEPTH_K * Math.max(0, depth | 0)));

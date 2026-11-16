@@ -218,32 +218,46 @@ const ENCOUNTERS = [
 ];
 const ELITES = ['miner','ratking'];
 
+/* 各區第二條規則（跟財寶、貪婪有關；core.js 的 rule2Of 與 enterRule2／winBattle／finishRun 實作）。數值都在這裡，方便調
+   哥布林「尾隨的手」：一場非首領戰鬥打超過 GOB_STEAL_TURN 回合才贏，偷走一件財寶進贓物袋；打贏菁英或首領歸還
+   無光通道「提燈」：燈油 LAMP_START 格，每進一個節點 -1；0 時戰鬥開場帶 LAMP_DARK_VULN 層易傷、前方節點看不清；燒一件財寶添 LAMP_BURN 格
+   舊都「過路費」：每進一個節點（第一個除外）收 round(貪婪 × TOLL_K)；一趟裡沒有手上金幣，所以累計起來，回營從賣價扣，最多扣 TOLL_MAX
+   熔獄「心臟收縮」：每進 HEART_EVERY 個節點收縮一次，吞掉身上最貴的一件（沒有就扣 HEART_HP 比例的最大生命，最少留 1）；燒一件財寶餵食可重置倒數 */
+const GOB_STEAL_TURN = 4;
+const LAMP_START = 5, LAMP_DARK_VULN = 2, LAMP_BURN = 3;
+const TOLL_K = 0.5, TOLL_MAX = 0.5;
+const HEART_EVERY = 4, HEART_HP = 0.1;
+
 /* 五個區域：由 depth % 5 決定，深度 ≥5 時循環，難度繼續由 DEPTH_K 放大。
-   realm：背景（rpg/ui/realmN.webp，地圖與戰鬥都換）。rule：區域規則（id 由 core.js 實作）。
+   realm：背景（rpg/ui/realmN.webp，地圖與戰鬥都換）。rule、rule2：區域規則與第二條規則（id 由 core.js 實作；淺穴沒有）。
    enc：三段遭遇（比照 ENCOUNTERS）。elites：菁英（字串或陣列，陣列＝帶護衛）。boss：首領 key。
    win：打贏首領的文字；final：最終首領，打贏看結局 */
 const REGIONS = [
   {n:'淺穴', realm:0, rule:null, enc:ENCOUNTERS, elites:ELITES, boss:'sarc',
    win:{title:'石棺開了', text:'棺底躺著一顆深淵晶，已經進了你的背包。其他的再挑一件。', out:'帶著石棺裡的東西爬回地面'}},
   {n:'哥布林聚落', realm:1, rule:{id:'ap', n:'擁擠的窄道', d:'每場戰鬥第一回合，行動點 -1'},
+   rule2:{id:'steal', n:'尾隨的手', d:`一場仗拖過 ${GOB_STEAL_TURN} 回合，背包裡就有一件東西不見。打贏這一層的菁英或首領，才拿得回來`},
    enc:[[['drown'],['eel'],['jelly','jelly'],['crab']],
         [['drown','eel'],['sguard'],['siren','jelly'],['corpse2'],['crab','jelly'],['jelly','jelly','jelly']],
         [['sguard','siren'],['corpse2','eel'],['crab','drown'],['siren','jelly','jelly'],['sguard','jelly'],['corpse2','corpse2','eel']]],
    elites:['priest','raider'], boss:'warlord',
    win:{title:'霸主倒下了', text:'霸主的寶座底下壓著一顆深淵晶，已經進了你的背包。其他的再挑一件。', out:'扛著聚落的贓物爬回地面'}},
   {n:'無光通道', realm:2, rule:{id:'heal', n:'窒息的黑暗', d:'所有回復量 -25%（營火也是）'},
+   rule2:{id:'lamp', n:'提燈', d:`提燈只有 ${LAMP_START} 格油，每走一步少一格。燒完以後，戰鬥一開場就帶易傷，前方的路也看不清。可以燒一件財寶，添 ${LAMP_BURN} 格`},
    enc:[[['leech'],['clot'],['teeth'],['flower']],
         [['leech','clot'],['eye'],['hound'],['necro'],['teeth','leech'],['flower','clot']],
         [['eye','leech'],['hound','clot'],['necro','flower'],['teeth','eye'],['hound','leech'],['clot','clot','leech']]],
    elites:['stitch','swarm'], boss:'brood',
    win:{title:'黑暗退了一些', text:'牠盤踞的巢底有一顆深淵晶，已經進了你的背包。其他的再挑一件。', out:'循著回聲摸回地面'}},
   {n:'舊都', realm:3, rule:{id:'dodge', n:'虛實難辨的亡魂', d:'敵人有 12% 機率閃避你的攻擊'},
+   rule2:{id:'toll', n:'過路費', d:`每走過一步，亡魂就照你的貪婪收一次錢，回營時從賣價裡扣，最多扣一半`},
    enc:[[['monk'],['choir'],['lantern'],['knight']],
         [['monk','choir'],['lantern','monk'],['knight'],['zealot'],['reliq'],['sister','monk']],
         [['knight','sister'],['choir','lantern','monk'],['zealot','monk'],['reliq','sister'],['knight','lantern'],['choir','zealot','sister']]],
    elites:['inquis','warden'], boss:'citylord',
    win:{title:'王座空了', text:'王座扶手上嵌著一顆深淵晶，已經進了你的背包。其他的再挑一件。', out:'穿過空蕩的城門爬回地面'}},
   {n:'熔獄', realm:4, rule:{id:'rage', n:'沸騰的熔爐', d:'第 5 回合起，每回合所有敵人力量增加'},
+   rule2:{id:'heart', n:'心臟收縮', d:`腳下有東西在跳。每走 ${HEART_EVERY} 步跳一下，吞掉身上最貴的一件；身上空了，吞的是你的血。先餵它別的，這一下就算過了`},
    enc:[[['throm'],['worm'],['pulse'],['magma']],
         [['throm','pulse'],['valve'],['mist','worm'],['puppet'],['magma','pulse'],['worm','magma']],
         [['valve','mist'],['puppet','magma'],['throm','worm'],['pulse','mist','magma'],['valve','puppet'],['throm','pulse','pulse']]],

@@ -294,7 +294,7 @@ function campHtml(){
       ${saved ? `<button class="btn primary" data-act="resume">繼續這一趟<small>${saved.bag.length} 件財寶還在身上</small></button>
         <button class="btn danger" style="margin-top:6px;padding:8px" data-act="confirmNew">放棄這一趟</button>`
       : `${maxD > 0 ? `<div class="depth-pick"><button class="chip" data-act="depth:${d - 1}" ${d <= 0 ? 'disabled' : ''}>較淺</button>
-          <span>第 ${d + 1} 層・${depthName(d)}<small>敵人 +${Math.round((depthMul('hp', d) - 1) * 100)}%・財寶 +${Math.round((depthMul('value', d) - 1) * 100)}%${regionOf(d).rule ? `<br>規則：${regionOf(d).rule.n}（${regionOf(d).rule.d}）` : ''}</small></span>
+          <span>第 ${d + 1} 層・${depthName(d)}<small>敵人 +${Math.round((depthMul('hp', d) - 1) * 100)}%・財寶 +${Math.round((depthMul('value', d) - 1) * 100)}%${regionOf(d).rule ? `<br>規則：${regionOf(d).rule.n}（${regionOf(d).rule.d}）` : ''}${regionOf(d).rule2 ? `<br>規則：${regionOf(d).rule2.n}（${regionOf(d).rule2.d}）` : ''}</small></span>
           <button class="chip" data-act="depth:${d + 1}" ${d >= maxD ? 'disabled' : ''}>較深</button></div>` : ''}
         ${nmRow}
         <button class="btn primary" data-act="newGame">下潛${meta.escapes >= 1 ? '<small>下潛前可以選一個異變</small>' : ''}</button>`}
@@ -388,6 +388,47 @@ function openBoardSheet(){
     <button class="btn primary" data-act="boardNext">下一步</button>
     <button class="btn" style="margin-top:6px;padding:8px" data-act="closeSheet">先不下潛</button>`);
 }
+/* 本層第二條規則：地圖上一行即時狀態，點開看全文（無光通道、熔獄在裡面可以燒財寶） */
+function rule2Line(){
+  const r2 = regionOf(S.depth || 0).rule2;
+  if(!r2) return '';
+  switch(r2.id){
+    case 'steal': return `贓物袋 ${(S.pouch || []).length} 件`;
+    case 'lamp': { const n = Math.max(0, S.lamp | 0), tot = Math.max(LAMP_START, n);
+      return `燈油 ${'■'.repeat(n)}${'□'.repeat(tot - n)}${n ? '' : '（已滅）'}`; }
+    case 'toll': return `下一步過路費 ${tollNext(S)}（累計 ${S.toll | 0}）`;
+    case 'heart': return `再走 ${S.heart | 0} 步心臟收縮`;
+  }
+  return '';
+}
+function rule2Bar(){
+  const r2 = regionOf(S.depth || 0).rule2;
+  if(!r2 || S.battle) return '';
+  return `<button class="rule-bar" data-act="rule2Info" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r2.n}・${rule2Line()}</button>`;
+}
+function openRule2Info(){
+  const r2 = regionOf(S.depth || 0).rule2;
+  if(!r2) return;
+  const onMap = S.screen === 'map' && !S.battle;
+  let body = '';
+  if(r2.id === 'steal'){
+    const p = S.pouch || [];
+    body = `<div class="sheet-p">贓物袋裡 ${p.length} 件。袋裡的東西不給效果、不計貪婪，打贏這一層的菁英或首領會還給你；撤離或死在這裡就拿不回來。</div>${p.map(id => bagLine(id, 0, '')).join('')}`;
+  }else if(r2.id === 'lamp'){
+    const n = Math.max(0, S.lamp | 0);
+    body = `<div class="sheet-p">燈油剩 ${n} 格。燒掉一件財寶可以添 ${LAMP_BURN} 格；燒財寶會讓貪婪下降。</div>${onMap
+      ? S.bag.map((id, i) => bagLine(id, i, `<button class="btn" data-act="lampAdd:${i}" style="color:#f0a35e">${ic('fire')} 添油</button>`)).join('') || '<div class="sheet-p" style="color:var(--dim)">身上沒有財寶可以燒。</div>'
+      : '<div class="sheet-p" style="color:var(--dim)">回到地圖才能添油。</div>'}`;
+  }else if(r2.id === 'toll'){
+    body = `<div class="sheet-p">下一步要付 ${tollNext(S)}，到現在累計 ${S.toll | 0}。回營賣財寶時從所得裡扣，最多扣掉一半。貪婪越低，付得越少。</div>`;
+  }else if(r2.id === 'heart'){
+    const full = (S.heart | 0) >= HEART_EVERY;
+    body = `<div class="sheet-p">再走 ${S.heart | 0} 步，它會跳一下，吞掉身上最貴的一件。先燒一件別的餵它，這一下就算過了，倒數重來。${full ? '<br>（剛跳過，現在餵也是白餵）' : ''}</div>${onMap && !full
+      ? S.bag.map((id, i) => bagLine(id, i, `<button class="btn" data-act="heartFeed:${i}" style="color:#f0a35e">${ic('fire')} 餵食</button>`)).join('') || '<div class="sheet-p" style="color:var(--dim)">身上沒有財寶可以餵。</div>'
+      : ''}`;
+  }
+  openSheet(`<div class="sheet-t">${regionOf(S.depth || 0).n}・${r2.n}</div><div class="sheet-p">${r2.d}。</div>${body}<button class="btn" style="margin-top:10px" data-act="closeSheet">關閉</button>`);
+}
 /* 地圖上一行：這趟接了什麼、進度。點開看明細 */
 function questBar(){
   if(!S.quests.length && !S.meiStage) return '';
@@ -442,6 +483,7 @@ function mapHtml(){
   const open = reachable(S).map(p => p.join(','));
   const curR = S.at ? S.at[0] : -1;
   const sight = (S.sup && S.sup.sketch) ? 0 : MUTATIONS[S.mutation] ? MUTATIONS[S.mutation].sight : 0;   // 嚮導的草圖：黑暗也看得到節點
+  const lampOut = lampDark(S) && !(S.sup && S.sup.sketch);   // 無光通道：提燈滅了，前方一般節點的類型全藏起來
   let lines = '', nodes = '';
   const X = n => (n.x * 100).toFixed(1) + '%';
   const Y = r => r * ROW_H + 36;
@@ -455,7 +497,7 @@ function mapHtml(){
     const isOpen = open.includes(r + ',' + c);
     const here = S.at && S.at[0] === r && S.at[1] === c;
     /* 黑暗：前方超過 sight 列的一般節點看不到類型 */
-    const hidden = !!sight && r > curR + sight && !n.done && n.t !== 'exit' && n.t !== 'boss';   // 撤離點與首領的位置固定，不藏
+    const hidden = ((!!sight && r > curR + sight) || (lampOut && r > curR)) && !n.done && n.t !== 'exit' && n.t !== 'boss';   // 撤離點與首領的位置固定，不藏
     const kind = hidden ? 'event' : n.t;
     const label = hidden ? '？' : NODE_NAME[n.t];
     const extra = hidden ? '' : n.t === 'fight' ? `<em>${n.reward === 'card' ? '技能' : '財寶'}</em>`
@@ -466,7 +508,7 @@ function mapHtml(){
       ${NODE_EMOJI[kind] ? `<span class="pic emo">${NODE_EMOJI[kind]}</span>` : `<span class="pic" style="background-image:url('${art(NODE_ART[kind])}')"></span>`}${label}${extra}</button>`;
   }));
   const sketch = S.sup && S.sup.sketch ? `<div class="rule-bar">嚮導的草圖・${bossName(S)}<small>${BOSS_HINT[regionOf(S.depth || 0).boss] || ''}</small></div>` : '';
-  return `${hud()}${sketch}${questBar()}
+  return `${hud()}${sketch}${rule2Bar()}${questBar()}
     <div class="map-scroll" id="mapScroll"><div class="map" style="height:${S.map.length * ROW_H + 40}px">
       <svg class="lines">${lines}</svg>${nodes}</div></div>
     <div class="map-foot">
@@ -561,6 +603,7 @@ function battleHtml(){
   if(b.apLoss) status.push(`<span class="tag vul">下回合行動點-${b.apLoss}</span>`);
   const rg = regionOf(S.depth || 0);
   if(rg.rule) status.push(`<span class="tag vul" data-act="ruleInfo">${rg.n}・${rg.rule.n}</span>`);
+  if(rg.rule2) status.push(`<span class="tag vul" data-act="rule2Info">${rg.rule2.n}</span>`);
   if(S.nm) status.push(`<span class="tag vul" data-act="nmInfo">噩夢 ${S.nm}</span>`);
   if(S.mutation) status.push(`<span class="tag tr" data-act="mutInfo">異變・${MUTATIONS[S.mutation].n}</span>`);
   /* 身上遺物與詛咒的效果也要看得到（點一下開背包） */
@@ -661,7 +704,7 @@ function resultHtml(){
     <div class="result-why">${r.why}</div>
     <div class="result-why" style="margin-top:-4px">職業：${CLASSES[r.cls || 'sword'].n}</div>
     ${r.react ? `<div class="result-why npc-say">${NPCS[r.react.npc].n}：${r.react.t}</div>` : ''}
-    <div class="result-v">${ic('gold')} ${r.sold === undefined ? r.value : r.sold}<small>${r.ok ? '財寶賣掉換到的金幣' : r.rope ? `保命繩拉回了${treasure(r.rope).n}` : '什麼都沒帶回來'}${r.sold > r.value ? `（含梅姐收購價 +${r.sold - r.value}）` : ''}</small></div>
+    <div class="result-v">${ic('gold')} ${r.sold === undefined ? r.value : r.sold}<small>${r.ok ? '財寶賣掉換到的金幣' : r.rope ? `保命繩拉回了${treasure(r.rope).n}` : '什麼都沒帶回來'}${r.sold > r.value ? `（含梅姐收購價 +${r.sold - r.value}）` : ''}${r.toll ? `（過路費 -${r.toll}）` : ''}</small></div>
     ${questResultHtml(r)}
     ${r.mutation ? `<div class="mut-note">本趟異變　${mutInfoHtml(r.mutation)}</div>` : ''}
     ${r.nm ? `<div class="mut-note nm-note">噩夢 ${r.nm} 階　財寶賣價 +${Math.round(NM_SELL * r.nm * 100)}%</div>` : ''}
@@ -671,6 +714,7 @@ function resultHtml(){
     ${r.newDepth ? `<div class="unlock">解鎖第 ${r.newDepth + 1} 層・${depthName(r.newDepth)}</div>` : ''}
     ${r.items.length ? `<div class="sect">${r.ok ? '賣掉的財寶' : '保命繩帶回的財寶'}</div><div class="bag-grid">${list(r.items)}</div>` : ''}
     ${r.lost.length ? `<div class="sect">永遠留在下面</div><div class="bag-grid">${list(r.lost, 1)}</div>` : ''}
+    ${(r.pouch || []).length ? `<div class="sect">贓物袋裡的東西，沒拿回來</div><div class="bag-grid">${list(r.pouch, 1)}</div>` : ''}
     <div class="stat-row"><span>走了 <b>${r.steps}</b> 格</span><span>打倒 <b>${r.kills}</b></span><span>燒掉 <b>${r.burned}</b></span><span>最終貪婪 <b>${r.greed}</b></span></div>
     <div class="grow"></div>
     <div class="col"><button class="btn primary" data-act="toCamp">回營地${r.ok ? '<small>花金幣變強、換裝備</small>' : ''}</button></div>
@@ -1052,6 +1096,9 @@ const ACT = {
   depth(d){ diveDepth = +d; renderKeep(); },
   ruleInfo(){ const rg = regionOf(S.depth || 0); if(!rg.rule) return;
     openSheet(`<div class="sheet-t">${rg.n}・${rg.rule.n}</div><div class="sheet-p">${rg.rule.d}。整個區域都一樣，打贏首領前不會變。</div><button class="btn" data-act="closeSheet">關閉</button>`); },
+  rule2Info: openRule2Info,
+  lampAdd(arg){ if(lampRefuel(S, +arg)){ closeSheet(); saveRun(); commit(); } },
+  heartFeed(arg){ if(heartFeed(S, +arg)){ closeSheet(); saveRun(); commit(); } },
   burnInfo(){ openSheet(`<div class="sheet-t">燃燒</div><div class="sheet-p">每個回合結束時失去等量的生命（不被格擋擋下），之後層數 -1。</div><button class="btn" data-act="closeSheet">關閉</button>`); },
   endingNext(){ S.result.endSeen = 1; render(); },
   mutInfo(){ openSheet(`<div class="sheet-t">這一趟的異變</div><div class="mut-opt static">${mutInfoHtml(S.mutation)}</div><button class="btn" data-act="closeSheet">關閉</button>`); },
@@ -1082,7 +1129,7 @@ const ACT = {
     }
     if(S.map[r][c].t === 'exit'){
       openSheet(`<div class="sheet-t">從這裡撤離？</div>
-        <div class="sheet-p">賣掉身上 ${S.bag.length} 件財寶得 <b style="color:var(--gold)">${Math.round(bagValue(S) * (1 + (meta.meiBonus || 0)))}</b> 金幣${meta.meiBonus ? '（含梅姐收購價加成）' : ''}${S.mutation ? `（已含異變「${MUTATIONS[S.mutation].n}」：${MUTATIONS[S.mutation].good}）` : ''}，再依貪婪拿一件<b style="color:${RARITY[runGearRarity(S, S.greed + stepGreedOf(S), false)].c}">${RARITY[runGearRarity(S, S.greed + stepGreedOf(S), false)].n}裝備</b>。這一趟就結束了。</div>
+        <div class="sheet-p">賣掉身上 ${S.bag.length} 件財寶得 <b style="color:var(--gold)">${Math.round((bagValue(S) - tollPaid(S, bagValue(S))) * (1 + (meta.meiBonus || 0)))}</b> 金幣${meta.meiBonus ? '（含梅姐收購價加成）' : ''}${tollPaid(S, bagValue(S)) ? `（已扣過路費 ${tollPaid(S, bagValue(S))}）` : ''}${(S.pouch || []).length ? `，贓物袋裡還有 ${S.pouch.length} 件拿不回來` : ''}${S.mutation ? `（已含異變「${MUTATIONS[S.mutation].n}」：${MUTATIONS[S.mutation].good}）` : ''}，再依貪婪拿一件<b style="color:${RARITY[runGearRarity(S, S.greed + stepGreedOf(S), false)].c}">${RARITY[runGearRarity(S, S.greed + stepGreedOf(S), false)].n}裝備</b>。這一趟就結束了。</div>
         ${gearDepthCapped(S, S.greed + stepGreedOf(S)) ? `<div class="sheet-p" style="color:var(--dim);font-size:12px">貪婪夠高，但這一層最多只能拿${RARITY[runGearRarity(S, S.greed + stepGreedOf(S), false)].n}的裝備；往更深走才有更好的。打贏首領還能再升一階。</div>` : ''}
         <div class="col"><button class="btn primary" data-act="exitGo:${arg}">爬上去</button><button class="btn" data-act="closeSheet">再貪一點</button></div>`);
       return;
