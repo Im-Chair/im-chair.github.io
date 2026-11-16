@@ -1,7 +1,7 @@
 'use strict';
 /* ============ ui.js — 畫面與演出。規則都在 core.js，這裡只讀狀態、呼叫動作、播 S.fx。 ============ */
 
-const RUN_KEY = 'abyss2-run', META_KEY = 'abyss2-meta', META_VER = 3;
+const RUN_KEY = 'abyss2-run', META_KEY = 'abyss2-meta', META_VER = 4;
 const $ = id => document.getElementById(id);
 const ic = (n, cls) => `<svg class="ic ${cls || ''}"><use href="#ic-${n}"/></svg>`;
 const art = p => `${ART}${p}?v=4`;
@@ -16,17 +16,21 @@ let diveDepth = null;    // 營地選的下潛深度（null＝最深）
 let smithTab = 'all';    // 鐵匠鋪的部位篩選：all / weapon / armor / trinket
 let mutChoices = [];     // 下潛前這次抽到的三個異變
 let diveNm = 0;          // 營地選的噩夢階（開局時再夾到可選上限內）
-let recTab = 'cls';      // 紀錄與圖鑑的分頁：cls / ach / foe / tre / gear
+let recTab = 'cls';      // 紀錄與圖鑑的分頁：cls / ach / foe / tre / gear / lore
+let dlg = null;          // 目前開著的對話：{o:{title,sub,paras,onEnd,after,extra}, n:已顯示段數}
 
 function loadMeta(){
-  const blank = () => ({v: META_VER, runs: 0, escapes: 0, best: 0, bank: 0, seenHelp: 0, depth: 0, cleared: 0, gold: 0, stats: {}, owned: [], equip: {}, cls: 'sword', seenCls: {}, ach: {}, clsStats: {}, seenFoe: {}, seenTre: {}, nmMax: 0, mutEsc: 0, boughtLegend: 0});
+  const blank = () => ({v: META_VER, runs: 0, escapes: 0, best: 0, bank: 0, seenHelp: 0, depth: 0, cleared: 0, gold: 0, stats: {}, owned: [], equip: {}, cls: 'sword', seenCls: {}, ach: {}, clsStats: {}, seenFoe: {}, seenTre: {}, nmMax: 0, mutEsc: 0, boughtLegend: 0, talk: {}, seenEnter: {}, seenLore: {}});
   try{
     const raw = localStorage.getItem(META_KEY);
     if(raw === null) return blank();
     let m = null;
     try{ m = JSON.parse(raw); }catch(e){}
-    if(m && m.v === META_VER){
+    if(m && m.v >= 3 && m.v <= META_VER){
       const mm = Object.assign(blank(), m);
+      /* v3 → v4：素質等級受已通關層數限制，超出的退等並全額退金幣（可重複執行） */
+      const refunded = clampStats(mm);
+      if(m.v !== META_VER || refunded){ mm.v = META_VER; try{ localStorage.setItem(META_KEY, JSON.stringify(mm)); }catch(e){} }
       if(!clsUnlocked(mm, mm.cls)) mm.cls = 'sword';   // 沒有的職業或還沒解鎖，退回劍士
       /* 成就補發：舊進度已滿足、而且能從 meta 回溯的（生還過、打贏首領、累計下潛…）。有新達成就存回去 */
       if(checkAchievements(mm, null).length){ try{ localStorage.setItem(META_KEY, JSON.stringify(mm)); }catch(e){} }
@@ -235,9 +239,10 @@ function campHtml(){
       <small>${g ? g.d : '活著回來就會拿到'}</small></span></button>`;
   }).join('');
   const ups = Object.keys(STAT_UPS).map(k => {
-    const u = STAT_UPS[k], lv = meta.stats[k] || 0, full = lv >= u.max, cost = statCost(k, lv);
-    return `<div class="up-row"><div class="up-t"><b>${u.n}</b> <small>Lv ${lv} / ${u.max}</small><div class="up-d">${u.d}</div></div>
-      <button class="btn up-btn" data-act="buy:${k}" ${full || meta.gold < cost ? 'disabled' : ''}>${full ? '已滿' : `${ic('gold')} ${cost}`}</button></div>`;
+    const u = STAT_UPS[k], lv = meta.stats[k] || 0, full = lv >= u.max, cost = statCost(k, lv), cap = statCap(meta, k), capped = !full && lv >= cap;
+    return `<div class="up-row${capped ? ' locked' : ''}"><div class="up-t"><b>${u.n}</b> <small>Lv ${lv} / ${cap}（最高 ${u.max}）</small><div class="up-d">${u.d}</div></div>
+      ${capped ? `<span class="lock-note">打贏第 ${statUnlockAt(k, lv)} 層首領後解鎖</span>`
+        : `<button class="btn up-btn" data-act="buy:${k}" ${full || meta.gold < cost ? 'disabled' : ''}>${full ? '已滿' : `${ic('gold')} ${cost}`}</button>`}</div>`;
   }).join('');
   const smith = Object.keys(GEAR).filter(id => !meta.owned.includes(id) && (smithTab === 'all' || GEAR[id].slot === smithTab)).sort((a, b) => GEAR[a].r - GEAR[b].r).map(id => {
     const g = GEAR[id], R = RARITY[g.r], st = gearBuyState(meta, id);
@@ -257,7 +262,11 @@ function campHtml(){
       <div class="cls-row">${CLASS_ORDER.map(id => { const c = CLASSES[id], ok = clsUnlocked(meta, id);
         return `<button class="cls-card${meta.cls === id ? ' on' : ''}${ok ? '' : ' locked'}" data-act="setCls:${id}"><img src="${art(c.img)}" alt=""><b>${c.n}</b><small>${ok ? '生命 ' + c.hp : '打贏第 ' + c.need + ' 層首領解鎖'}</small></button>`; }).join('')}</div>
       <div class="sheet-p cls-line"><b>${CLASSES[meta.cls].n}</b>：${CLASSES[meta.cls].line}</div>
-      <button class="btn rec-btn" data-act="records">紀錄與圖鑑<small>成就 ${Object.keys(meta.ach || {}).length} / ${ACHIEVEMENTS.length}・敵人 ${Object.keys(meta.seenFoe || {}).length} / ${Object.keys(ENEMIES).length}</small></button>
+      <div class="sect">營地的人</div>
+      <div class="npc-list">${Object.keys(NPCS).map(id => { const p = NPCS[id];
+        return `<button class="npc-row" data-act="npc:${id}"><span class="npc-ic">${p.img ? `<img src="art/npc-${id}.webp" alt="">` : p.em}</span>
+          <span class="npc-t"><b>${p.n}</b> <small>${p.role}</small><span class="npc-b">${p.blurb}</span></span>${talkUnread(meta, id) ? '<i class="dot" title="有新的話"></i>' : ''}</button>`; }).join('')}</div>
+      <button class="btn rec-btn" data-act="records">紀錄與圖鑑${loreUnreadCount(meta) ? '<i class="dot"></i>' : ''}<small>成就 ${Object.keys(meta.ach || {}).length} / ${ACHIEVEMENTS.length}・敵人 ${Object.keys(meta.seenFoe || {}).length} / ${Object.keys(ENEMIES).length}・見聞 ${loreVisible(meta).length} / ${LORE.length}</small></button>
       <div class="sect">下一趟的你</div>
       <div class="camp-power">
         <span>生命 <b>${CLASSES[meta.cls].hp + (L.hp || 0)}</b></span><span>力量 <b>${L.str || 0}</b></span>
@@ -267,7 +276,7 @@ function campHtml(){
       <div class="col" style="gap:6px">${slots}</div>
       <div class="sect">素質（永久提升）</div>
       ${ups}
-      <div class="sect">鐵匠鋪（金幣買裝備，稀有度上限＝解鎖到第幾層）</div>
+      <div class="sect" id="smithSect">鐵匠鋪（金幣買裝備，稀有度上限＝解鎖到第幾層）</div>
       <div class="tabs">${[['all', '全部'], ...Object.entries(SLOTS)].map(([k, n]) => `<button class="chip${smithTab === k ? ' on' : ''}" data-act="smithTab:${k}">${n}</button>`).join('')}</div>
       ${smith || '<div class="sheet-p" style="color:var(--dim)">這一類全部都買齊了。</div>'}
     </div>
@@ -283,7 +292,7 @@ function campHtml(){
 }
 /* —— 紀錄與圖鑑 —— */
 function openRecords(){
-  const TABS = [['cls', '職業'], ['ach', '成就'], ['foe', '敵人'], ['tre', '財寶'], ['gear', '裝備']];
+  const TABS = [['cls', '職業'], ['ach', '成就'], ['foe', '敵人'], ['tre', '財寶'], ['gear', '裝備'], ['lore', '見聞']];
   const ach = meta.ach || {}, seenFoe = meta.seenFoe || {}, seenTre = meta.seenTre || {};
   const img = (src, extra) => `<img loading="lazy" decoding="async" src="${src}" alt="" ${extra || ''}>`;
   let body = '';
@@ -307,6 +316,11 @@ function openRecords(){
     body = `<div class="bag-grid">${TREASURES.map(t => seenTre[t.id]
       ? `<div class="bag-it">${treasureImg(t)}${t.n}<br><span class="sub">${FAM[t.fam].n}</span></div>`
       : `<div class="bag-it unk"><span class="unk-q">？</span>？？？</div>`).join('')}</div>`;
+  }else if(recTab === 'lore'){
+    const st = storyStage(meta);
+    body = `<div class="sheet-p" style="color:var(--dim);font-size:12px">已知 ${loreVisible(meta).length} / ${LORE.length}</div>` + LORE.map(l => l.need <= st
+      ? `<button class="lore-row" data-act="lore:${l.id}"><b>${l.n}</b>${loreUnread(meta, l.id) ? '<i class="dot"></i>' : ''}</button>`
+      : `<div class="lore-row locked"><b>？？？</b><small>打贏第 ${l.need} 層首領後解鎖</small></div>`).join('');
   }else{
     body = Object.keys(GEAR).sort((a, b) => GEAR[b].r - GEAR[a].r).map(id => {
       const g = GEAR[id], own = meta.owned.includes(id), lock = g.ach && !ach[g.ach];
@@ -317,7 +331,7 @@ function openRecords(){
     }).join('');
   }
   openSheet(`<div class="sheet-t">紀錄與圖鑑</div>
-    <div class="tabs rec-tabs">${TABS.map(([k, n]) => `<button class="chip${recTab === k ? ' on' : ''}" data-act="recTab:${k}">${n}</button>`).join('')}</div>
+    <div class="tabs rec-tabs">${TABS.map(([k, n]) => `<button class="chip${recTab === k ? ' on' : ''}" data-act="recTab:${k}">${n}${k === 'lore' && loreUnreadCount(meta) ? '<i class="dot"></i>' : ''}</button>`).join('')}</div>
     <div class="rec-body">${body}</div>
     <button class="btn sticky-close" style="margin-top:10px" data-act="closeSheet">關閉</button>`);
 }
@@ -605,7 +619,37 @@ function openSheet(html){
   el.innerHTML = `<div class="sheet-box">${html}</div>`;
   el.classList.add('show');
 }
-function closeSheet(){ $('sheet').classList.remove('show'); pendingLoot = null; }
+function closeSheet(){ $('sheet').classList.remove('show'); pendingLoot = null; dlg = null; }
+
+/* —— 對話視窗：段落一次出一段，點一下出下一段；最後一段出現後才標記已讀（onEnd）並顯示離開 ——
+   o: {title, sub, paras, onEnd, after（離開後呼叫）, extra（最後一段之後多出來的按鈕 html）} */
+const dlgP = t => `<p class="dlg-p">${t}</p>`;
+function dlgFoot(){
+  const o = dlg.o;
+  if(dlg.n < o.paras.length) return `<button class="btn" data-act="dlgNext">繼續<small>點一下看下一段（${dlg.n} / ${o.paras.length}）</small></button>`;
+  return (o.extra || '') + `<button class="btn primary" data-act="dlgDone">離開</button>`;
+}
+function dlgEnded(){
+  if(dlg.n < dlg.o.paras.length || dlg.ended) return;
+  dlg.ended = 1;
+  if(dlg.o.onEnd) dlg.o.onEnd();
+}
+function openDialog(o){
+  openSheet(`<div class="sheet-t">${o.title}</div>${o.sub ? `<div class="dlg-sub">${o.sub}</div>` : ''}
+    <div class="dlg-body" id="dlgBody" data-act="dlgNext">${dlgP(o.paras[0])}</div><div class="col" id="dlgFoot"></div>`);
+  dlg = {o, n: 1};
+  $('dlgFoot').innerHTML = dlgFoot();
+  dlgEnded();
+}
+function npcDialog(id, replay){
+  const p = NPCS[id], st = storyStage(meta);
+  const unread = talkUnread(meta, id);
+  const extra = (id === 'smith' ? `<button class="btn" data-act="dlgSmith">看鐵匠鋪</button>` : id === 'scholar' ? `<button class="btn" data-act="dlgLore">翻見聞</button>` : '')
+    + (unread ? '' : `<button class="btn" data-act="npcReplay:${id}">再聽一次</button>`);
+  openDialog({title: p.n, sub: p.role, extra,
+    paras: unread || replay ? p.talk[st] : [p.idle[Math.floor(Math.random() * p.idle.length)]],
+    onEnd: unread ? () => { markTalk(meta, id); saveMeta(); if(!S && view === 'camp') renderKeep(); } : null});
+}
 function bagLine(id, i, btn){
   const t = treasure(id);
   return `<div class="bag-line">${treasureImg(t)}<div>${t.n} ${famTag(t)} <span class="ef ${t.fam === 'curse' ? 'bad' : ''}">${t.ef}</span><div class="sub">賣 ${treasureValue(S, id)} 金幣 · 貪婪 ${t.g}</div></div>${btn || ''}</div>`;
@@ -817,8 +861,39 @@ const ACT = {
     const rg = regionOf(S.depth || 0);
     if(rg.rule) toast(`${rg.n}・${rg.rule.n}`);
     meta.seenCls = meta.seenCls || {};
-    if(!meta.seenHelp){ meta.seenHelp = 1; meta.seenCls[clsOf(S)] = 1; saveMeta(); openHelp(); }
-    else if(clsOf(S) !== 'sword' && !meta.seenCls[clsOf(S)]){ meta.seenCls[clsOf(S)] = 1; saveMeta(); openHelp(); }
+    const help = () => {
+      if(!meta.seenHelp){ meta.seenHelp = 1; meta.seenCls[clsOf(S)] = 1; saveMeta(); openHelp(); }
+      else if(clsOf(S) !== 'sword' && !meta.seenCls[clsOf(S)]){ meta.seenCls[clsOf(S)] = 1; saveMeta(); openHelp(); }
+    };
+    /* 這一層的進場劇情只播一次（新開一趟才播，讀檔續玩不會走到這裡） */
+    const depth = S.depth || 0;
+    if(!enterSeen(meta, depth)) openDialog({title: rg.n, paras: REGION_STORY[enterRegion(depth)].enter, onEnd: () => { markEnter(meta, depth); saveMeta(); }, after: help});
+    else help();
+  },
+  npc(id){ if(NPCS[id]) npcDialog(id, false); },
+  npcReplay(id){ if(NPCS[id]) npcDialog(id, true); },
+  dlgNext(){
+    if(!dlg || dlg.n >= dlg.o.paras.length) return;
+    $('dlgBody').insertAdjacentHTML('beforeend', dlgP(dlg.o.paras[dlg.n]));
+    dlg.n++;
+    $('dlgFoot').innerHTML = dlgFoot();
+    const box = document.querySelector('#sheet .sheet-box');
+    if(box) box.scrollTop = box.scrollHeight;
+    dlgEnded();
+  },
+  dlgDone(){ const after = dlg && dlg.o.after; closeSheet(); if(after) after(); },
+  dlgSmith(){
+    closeSheet();
+    const el = $('smithSect');
+    if(el) el.scrollIntoView({behavior: 'smooth', block: 'start'});
+  },
+  dlgLore(){ closeSheet(); recTab = 'lore'; openRecords(); },
+  lore(id){
+    const l = LORE.find(x => x.id === id);
+    if(!l || l.need > storyStage(meta)) return;
+    if(markLore(meta, id)){ saveMeta(); if(!S && view === 'camp') renderKeep(); }
+    openSheet(`<div class="sheet-t">${l.n}</div>${l.text.map(dlgP).join('')}
+      <div class="col"><button class="btn primary" data-act="records">回見聞</button><button class="btn" data-act="closeSheet">關閉</button></div>`);
   },
   confirmNew(){
     openSheet(`<div class="sheet-t">放棄這一趟？</div><div class="sheet-p">身上的財寶會全部失去，也拿不到裝備。</div>
@@ -873,11 +948,14 @@ const ACT = {
   deckSheet: openDeck,
   node(arg){
     const [r, c] = arg.split(',').map(Number);
-    if(S.map[r][c].t === 'boss' && greedTierIndex(S.greed) > 0){
+    if(S.map[r][c].t === 'boss'){
+      /* 首領房前一定先看到這一層的敘事；身上還有貪婪時，再加上貪婪加成的提醒 */
+      const greedy = greedTierIndex(S.greed) > 0;
       const T = greedTier(S), pc = m => Math.round((1 + (m - 1) / 2 - 1) * 100);
-      openSheet(`<div class="sheet-t">貪婪還沒放下</div>
-        <div class="sheet-p">目前貪婪「${T.n}」：${bossName(S)}血量 <b>+${pc(T.hp)}%</b>、傷害 <b>+${pc(T.dmg)}%</b>${T.start >= 2 ? `、開場格擋 ${Math.floor(T.start / 2)}` : ''}。進去前可以先燒掉或丟掉財寶，把貪婪降下來。</div>
-        <div class="col"><button class="btn primary" data-act="bossGo:${arg}">進去</button><button class="btn" data-act="bagSheet">看背包</button><button class="btn" data-act="closeSheet">再想想</button></div>`);
+      openSheet(`<div class="sheet-t">${greedy ? '貪婪還沒放下' : bossName(S)}</div>
+        ${REGION_STORY[enterRegion(S.depth)].boss.map(t => `<p class="story-p">${t}</p>`).join('')}
+        ${greedy ? `<div class="sheet-p">目前貪婪「${T.n}」：${bossName(S)}血量 <b>+${pc(T.hp)}%</b>、傷害 <b>+${pc(T.dmg)}%</b>${T.start >= 2 ? `、開場格擋 ${Math.floor(T.start / 2)}` : ''}。進去前可以先燒掉或丟掉財寶，把貪婪降下來。</div>` : ''}
+        <div class="col"><button class="btn primary" data-act="bossGo:${arg}">進去</button>${greedy ? '<button class="btn" data-act="bagSheet">看背包</button>' : ''}<button class="btn" data-act="closeSheet">再想想</button></div>`);
       return;
     }
     if(S.map[r][c].t === 'exit'){

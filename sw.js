@@ -1,4 +1,4 @@
-const CACHE = 'arcade-v76';
+const CACHE = 'arcade-v77';
 // 珠界的圖獨立一個快取、不跟 CACHE 改版：改版時不必重抓，也不用每次打開都等網路
 const ART_CACHE = 'arcade-pokemo-art';
 // RPG 敵人圖示：檔名＝ENEMIES／首領／域限精英的 key。v385 起 50 隻全數有圖，已無 SVG 回落。
@@ -77,7 +77,7 @@ const ASSETS = [
   ...RPG_MON, ...RPG_EQ, ...RPG_UI,
   // 貪婪深淵重製版（rpg-next）：自己的 4 個檔 + rpg-next/art/ 的三張首領圖（feign、final 已在 RPG_MON）。
   // js/css 帶 ?v=NEXT_VER，靠 fetch fallback 的 ignoreSearch 對應。一樣只由 fillCaches 背景補，不進安裝階段
-  '/rpg-next/', '/rpg-next/index.html', '/rpg-next/style.css', '/rpg-next/data.js', '/rpg-next/core.js', '/rpg-next/ui.js',
+  '/rpg-next/', '/rpg-next/index.html', '/rpg-next/style.css', '/rpg-next/data.js', '/rpg-next/story.js', '/rpg-next/core.js', '/rpg-next/ui.js',
   ...['warlord','brood','heart2'].map(k => `/rpg-next/art/boss_${k}.webp`),
 ];
 

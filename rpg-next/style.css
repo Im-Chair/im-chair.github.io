@@ -332,6 +332,25 @@ img.clip{clip-path:circle(44%);}
 .nm-note{border-color:#8a3a3a;background:rgba(100,25,25,.3);color:#f0b0b0;text-align:center;}
 .nm-pick span{flex:1;min-width:0;}
 .rec-btn{margin:10px 0 2px;padding:9px;}
+/* 故事：營地的人、對話、見聞 */
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--gold);box-shadow:0 0 6px var(--gold);margin-left:6px;vertical-align:middle;flex:none;}
+.npc-list{display:flex;flex-direction:column;gap:6px;}
+.npc-row{display:flex;align-items:center;gap:10px;width:100%;padding:8px 10px;background:var(--panel);border:1px solid var(--line);border-radius:10px;text-align:left;}
+.npc-row:active{background:var(--panel2);}
+.npc-ic{flex:none;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:24px;background:var(--panel2);border-radius:8px;overflow:hidden;}
+.npc-ic img{width:100%;height:100%;object-fit:cover;}
+.npc-t{flex:1;min-width:0;}
+.npc-t small{font-size:12px;color:var(--dim);margin-left:4px;}
+.npc-b{display:block;font-size:12px;color:var(--dim);line-height:1.4;}
+.dlg-sub{font-size:12px;color:var(--dim);margin:-4px 0 8px;letter-spacing:2px;}
+.dlg-body{min-height:60px;margin-bottom:10px;cursor:pointer;}
+.dlg-p{font-family:var(--serif);font-size:15px;line-height:1.9;color:#d6cdb8;margin:0 0 10px;animation:dlgin .3s;}
+.story-p{font-family:var(--serif);font-size:13px;line-height:1.8;color:var(--dim);margin:0 0 6px;}
+@keyframes dlgin{0%{opacity:0;transform:translateY(6px);}}
+.lore-row{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;padding:11px 10px;margin-bottom:6px;background:var(--panel);border:1px solid var(--line);border-radius:10px;text-align:left;font-size:15px;}
+.lore-row b{font-weight:500;}
+.lore-row small{font-size:12px;color:var(--dim);}
+.lore-row.locked{opacity:.55;}
 .rec-tabs .chip{padding:5px 2px;font-size:13px;}
 .rec-body{min-height:120px;}
 .ach-get{margin-top:6px;padding:9px 12px;border:1px solid #6d5420;border-radius:10px;background:rgba(216,168,76,.08);text-align:center;font-size:13px;line-height:1.5;}

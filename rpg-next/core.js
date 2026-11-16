@@ -1107,9 +1107,34 @@ function rollGear(S, r){
   return rpick(S, tiers.find(t => t.length));
 }
 function statCost(k, lv){ return Math.round(STAT_UPS[k].base * Math.pow(STAT_UPS[k].mult, lv)); }
+/* 這項素質目前可升到幾級：依已打贏首領的最深層數（meta.depth）查 STAT_CAPS，不超過 max */
+function statCap(meta, k){
+  const t = STAT_CAPS[k], d = Math.max(0, Math.min(meta.depth || 0, t.length - 1));
+  return Math.min(STAT_UPS[k].max, t[d]);
+}
+/* 要打贏第幾層首領才能升到 lv+1 級；已是最高級回傳 0 */
+function statUnlockAt(k, lv){
+  if(lv >= STAT_UPS[k].max) return 0;
+  const t = STAT_CAPS[k];
+  for(let i = 0; i < t.length; i++) if(t[i] > lv) return i;
+  return t.length - 1;
+}
+/* 遷移：超過上限的等級退掉，依價格公式全額退金幣。可重複執行；回傳退還的金幣 */
+function clampStats(meta){
+  let refund = 0;
+  meta.stats = meta.stats || {};
+  for(const k in STAT_UPS){
+    const cap = statCap(meta, k);
+    let lv = meta.stats[k] || 0;
+    while(lv > cap){ lv--; refund += statCost(k, lv); }
+    if(meta.stats[k] !== undefined || lv > 0) meta.stats[k] = lv;
+  }
+  meta.gold = (meta.gold || 0) + refund;
+  return refund;
+}
 function buyStat(meta, k){
   const u = STAT_UPS[k], lv = meta.stats[k] || 0;
-  if(lv >= u.max || meta.gold < statCost(k, lv)) return false;
+  if(lv >= u.max || lv >= statCap(meta, k) || meta.gold < statCost(k, lv)) return false;
   meta.gold -= statCost(k, lv);
   meta.stats[k] = lv + 1;
   return true;
@@ -1200,3 +1225,18 @@ function bankGear(meta, r){
     if(!meta.equip[slot]){ meta.equip[slot] = r.gear; r.autoEquip = 1; }
   }
 }
+
+/* —— 故事進度（NPC 對話、各層進場劇情、見聞）。文本在 story.js；meta.talk / seenEnter / seenLore 都是 {鍵:1} —— */
+const STORY_MAX = 5;
+const storyStage = meta => Math.max(0, Math.min((meta && meta.depth) || 0, STORY_MAX));   // 打贏第 N 層首領後＝N，超過 5 一律當 5
+const talkKey = (meta, id) => id + ':' + storyStage(meta);
+const talkUnread = (meta, id) => !((meta.talk || {})[talkKey(meta, id)]);
+const markTalk = (meta, id) => { meta.talk = meta.talk || {}; const k = talkKey(meta, id); const fresh = !meta.talk[k]; meta.talk[k] = 1; return fresh; };
+const talkUnreadCount = meta => Object.keys(NPCS).filter(id => talkUnread(meta, id)).length;
+const loreVisible = meta => LORE.filter(l => l.need <= storyStage(meta));
+const loreUnread = (meta, id) => !((meta.seenLore || {})[id]);
+const loreUnreadCount = meta => loreVisible(meta).filter(l => loreUnread(meta, l.id)).length;
+const markLore = (meta, id) => { meta.seenLore = meta.seenLore || {}; const fresh = !meta.seenLore[id]; meta.seenLore[id] = 1; return fresh; };
+const enterRegion = depth => (depth || 0) % REGION_STORY.length;
+const enterSeen = (meta, depth) => !!(meta.seenEnter || {})[enterRegion(depth)];
+const markEnter = (meta, depth) => { meta.seenEnter = meta.seenEnter || {}; meta.seenEnter[enterRegion(depth)] = 1; };
