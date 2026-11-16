@@ -271,7 +271,7 @@ function campHtml(){
       <div class="sect">職業</div>
       <div class="cls-row">${CLASS_ORDER.map(id => { const c = CLASSES[id], ok = clsUnlocked(meta, id);
         return `<button class="cls-card${meta.cls === id ? ' on' : ''}${ok ? '' : ' locked'}" data-act="setCls:${id}"><img src="${art(c.img)}" alt=""><b>${c.n}</b><small>${ok ? '生命 ' + c.hp : '打贏第 ' + c.need + ' 層首領解鎖'}</small></button>`; }).join('')}</div>
-      <div class="sheet-p cls-line"><b>${CLASSES[meta.cls].n}</b>：${CLASSES[meta.cls].line}</div>
+      <div class="sheet-p cls-line"><b>${CLASSES[meta.cls].n}</b>：${CLASSES[meta.cls].line}<br><b>${CLASSES[meta.cls].greed.n}</b>：${CLASSES[meta.cls].greed.d}</div>
       <div class="sect">營地的人</div>
       <div class="npc-list">${Object.keys(NPCS).map(id => { const p = NPCS[id];
         return `<button class="npc-row" data-act="npc:${id}"><span class="npc-ic">${p.img ? `<img src="art/npc-${id}.webp" alt="">` : p.em}</span>
@@ -388,7 +388,7 @@ function openBoardSheet(){
     <button class="btn primary" data-act="boardNext">下一步</button>
     <button class="btn" style="margin-top:6px;padding:8px" data-act="closeSheet">先不下潛</button>`);
 }
-/* 本層第二條規則：地圖上一行即時狀態，點開看全文（無光通道、熔獄在裡面可以燒財寶） */
+/* 本層第二條規則：地圖上一行即時狀態，點開看全文（無光通道、熔獄在裡面可以拿財寶添油或餵食） */
 function rule2Line(){
   const r2 = regionOf(S.depth || 0).rule2;
   if(!r2) return '';
@@ -416,14 +416,14 @@ function openRule2Info(){
     body = `<div class="sheet-p">贓物袋裡 ${p.length} 件。袋裡的東西不給效果、不計貪婪，打贏這一層的菁英或首領會還給你；撤離或死在這裡就拿不回來。</div>${p.map(id => bagLine(id, 0, '')).join('')}`;
   }else if(r2.id === 'lamp'){
     const n = Math.max(0, S.lamp | 0);
-    body = `<div class="sheet-p">燈油剩 ${n} 格。燒掉一件財寶可以添 ${LAMP_BURN} 格；燒財寶會讓貪婪下降。</div>${onMap
-      ? S.bag.map((id, i) => bagLine(id, i, `<button class="btn" data-act="lampAdd:${i}" style="color:#f0a35e">${ic('fire')} 添油</button>`)).join('') || '<div class="sheet-p" style="color:var(--dim)">身上沒有財寶可以燒。</div>'
+    body = `<div class="sheet-p">燈油剩 ${n} 格。拿一件財寶添油可以多 ${LAMP_BURN} 格；財寶少一件，貪婪也會降。</div>${onMap
+      ? S.bag.map((id, i) => bagLine(id, i, `<button class="btn" data-act="lampAdd:${i}" style="color:#f0a35e">${ic('fire')} 添油</button>`)).join('') || '<div class="sheet-p" style="color:var(--dim)">身上沒有財寶可以添。</div>'
       : '<div class="sheet-p" style="color:var(--dim)">回到地圖才能添油。</div>'}`;
   }else if(r2.id === 'toll'){
     body = `<div class="sheet-p">下一步要付 ${tollNext(S)}，到現在累計 ${S.toll | 0}。回營賣財寶時從所得裡扣，最多扣掉一半。貪婪越低，付得越少。</div>`;
   }else if(r2.id === 'heart'){
     const full = (S.heart | 0) >= HEART_EVERY;
-    body = `<div class="sheet-p">再走 ${S.heart | 0} 步，它會跳一下，吞掉身上最貴的一件。先燒一件別的餵它，這一下就算過了，倒數重來。${full ? '<br>（剛跳過，現在餵也是白餵）' : ''}</div>${onMap && !full
+    body = `<div class="sheet-p">再走 ${S.heart | 0} 步，它會跳一下，吞掉身上最貴的一件。先餵它一件別的，這一下就算過了，倒數重來。${full ? '<br>（剛跳過，現在餵也是白餵）' : ''}</div>${onMap && !full
       ? S.bag.map((id, i) => bagLine(id, i, `<button class="btn" data-act="heartFeed:${i}" style="color:#f0a35e">${ic('fire')} 餵食</button>`)).join('') || '<div class="sheet-p" style="color:var(--dim)">身上沒有財寶可以餵。</div>'
       : ''}`;
   }
@@ -599,6 +599,9 @@ function battleHtml(){
   if(clsOf(S) === 'rogue') status.push(`<span class="tag cb" data-act="comboInfo">連擊 ${b.played || 0}</span>`);
   if(clsOf(S) === 'mage') status.push(`<span class="tag mn" data-act="manaInfo">法力 ${b.mana || 0}/${MANA_MAX}</span>`);
   if(b.keep) status.push(`<span class="tag blk">堅守</span>`);
+  if(b.counter) status.push(`<span class="tag blk">反擊${b.counter}</span>`);
+  if(b.spikes) status.push(`<span class="tag blk">荊棘${b.spikes}</span>`);
+  if(b.still) status.push(`<span class="tag blk">不動如山</span>`);
   if(b.burn) status.push(`<span class="tag tr" data-act="burnInfo">燃燒${b.burn}</span>`);
   if(b.apLoss) status.push(`<span class="tag vul">下回合行動點-${b.apLoss}</span>`);
   const rg = regionOf(S.depth || 0);
@@ -625,7 +628,7 @@ function battleHtml(){
       </div>
       <div class="hand">${hand || `<span style="margin:auto;color:var(--dim);font-size:13px">${myTurn ? '手牌打完了' : '敵方行動中…'}</span>`}</div>
       <div class="acts">
-        <button class="btn burn" data-act="bagSheet" ${burnable ? '' : 'disabled'}>${ic('fire')} 燒財寶<small>${b.burned ? '本回合已燒' : `換 ${burnApGain(S)} 行動點`}</small></button>
+        <button class="btn burn" data-act="bagSheet" ${burnable ? '' : 'disabled'}>${ic('fire')} 餵食財寶<small>${b.burned ? '本回合已餵' : `換 ${burnApGain(S)} 行動點`}</small></button>
         <button class="btn primary" data-act="endTurn" ${myTurn ? '' : 'disabled'}>結束回合</button>
       </div>
     </div>`;
@@ -715,7 +718,7 @@ function resultHtml(){
     ${r.items.length ? `<div class="sect">${r.ok ? '賣掉的財寶' : '保命繩帶回的財寶'}</div><div class="bag-grid">${list(r.items)}</div>` : ''}
     ${r.lost.length ? `<div class="sect">永遠留在下面</div><div class="bag-grid">${list(r.lost, 1)}</div>` : ''}
     ${(r.pouch || []).length ? `<div class="sect">贓物袋裡的東西，沒拿回來</div><div class="bag-grid">${list(r.pouch, 1)}</div>` : ''}
-    <div class="stat-row"><span>走了 <b>${r.steps}</b> 格</span><span>打倒 <b>${r.kills}</b></span><span>燒掉 <b>${r.burned}</b></span><span>最終貪婪 <b>${r.greed}</b></span></div>
+    <div class="stat-row"><span>走了 <b>${r.steps}</b> 格</span><span>打倒 <b>${r.kills}</b></span><span>餵掉 <b>${r.burned}</b></span><span>最終貪婪 <b>${r.greed}</b></span></div>
     <div class="grow"></div>
     <div class="col"><button class="btn primary" data-act="toCamp">回營地${r.ok ? '<small>花金幣變強、換裝備</small>' : ''}</button></div>
   </div>`;
@@ -796,9 +799,9 @@ function openBag(){
   const b = S.battle;
   const canBurn = b && b.phase === 'player' && !b.burned;
   const rows = S.bag.map((id, i) => bagLine(id, i, canBurn
-    ? `<button class="btn" data-act="burn:${i}" style="color:#f0a35e">${ic('fire')} 燒掉</button>` : '')).join('');
+    ? `<button class="btn" data-act="burn:${i}" style="color:#f0a35e">${ic('fire')} 餵掉</button>` : '')).join('');
   openSheet(`<div class="sheet-t">背包 ${S.bag.length}/${S.bagCap}</div>
-    <div class="sheet-p">帶著就有效果，回去能賣 <b style="color:var(--gold)">${bagValue(S)}</b> 金幣。死了就全沒，走到撤離點才算你的。${canBurn ? '<br>戰鬥中每回合可以燒一件：+${burnApGain(S)} 行動點，貪婪也隨之下降。' : ''}</div>
+    <div class="sheet-p">帶著就有效果，回去能賣 <b style="color:var(--gold)">${bagValue(S)}</b> 金幣。死了就全沒，走到撤離點才算你的。${canBurn ? `<br>戰鬥中每回合可以餵一件：+${burnApGain(S)} 行動點，貪婪也隨之下降。` : ''}</div>
     ${rows || '<div class="sheet-p" style="color:var(--dim)">什麼都沒有。</div>'}
     <button class="btn" style="margin-top:10px" data-act="closeSheet">關閉</button>`);
 }
@@ -824,7 +827,7 @@ function openRestPick(mode){
 function openGreedInfo(){
   const ti = greedTierIndex(S.greed);
   openSheet(`<div class="sheet-t">貪婪 ${S.greed}</div>
-    <div class="sheet-p">每走一格 +${GAME.stepGreed}，撿到財寶再加。越貪，敵人越凶，但活著回去拿到的裝備也越好（稀有度最高＝下潛層數 + 1 階，打贏首領再高一階）。首領只吃一半的加成。把財寶燒掉或被偷，貪婪就會降回來。</div>
+    <div class="sheet-p">每走一格 +${GAME.stepGreed}，撿到財寶再加。越貪，敵人越凶，但活著回去拿到的裝備也越好（稀有度最高＝下潛層數 + 1 階，打贏首領再高一階）。首領只吃一半的加成。把財寶餵掉或被偷，貪婪就會降回來。</div>
     ${GREED_TIERS.map((t, i) => `<div class="tier-line${i === ti ? ' on' : ''}"><span>${t.min}+</span><span>${t.n}</span><span>${t.desc}</span></div>`).join('')}
     <button class="btn" style="margin-top:10px" data-act="closeSheet">關閉</button>`);
 }
@@ -833,8 +836,9 @@ function openHelp(){
   openSheet(`<div class="sheet-t">怎麼玩</div>
     <div class="sheet-p"><b>下潛：</b>在分岔地圖往下走，打倒首領或走到<span style="color:var(--green)">撤離點</span>才算帶回來；死了，身上財寶全沒。</div>
     <div class="sheet-p"><b>財寶：</b><span style="color:var(--gold)">金銀</span>賣得貴；<span style="color:var(--green)">遺物</span>不值錢但帶著變強；<span style="color:var(--red)">詛咒</span>最值錢但有代價。拿越多<b>貪婪</b>越高，敵人更凶、回去的裝備更好。</div>
-    <div class="sheet-p"><b>戰鬥：</b>每回合 3 行動點、抽 ${cd.hand || GAME.hand} 張。敵人頭上是下一招。點敵人換目標，點技能使用，<b>長按看說明</b>。快撐不住可燒一件財寶換行動點。</div>
+    <div class="sheet-p"><b>戰鬥：</b>每回合 3 行動點、抽 ${cd.hand || GAME.hand} 張。敵人頭上是下一招。點敵人換目標，點技能使用，<b>長按看說明</b>。快撐不住可餵一件財寶換行動點。</div>
     <div class="sheet-p"><b>${cd.n}：</b>${cd.how}</div>
+    <div class="sheet-p"><b>${cd.greed.n}：</b>${cd.greed.d}</div>
     <div class="sheet-p"><b>回營地：</b>財寶換成金幣，永久提升素質、買裝備。生還一次後，下潛前可選一個異變（好處配代價）。</div>
     <button class="btn primary" data-act="closeSheet">知道了</button>`);
 }
@@ -931,7 +935,9 @@ function oneFx(e){
     case 'burn': SFX.burn(); overlay('flash', 400); bumpGreed(); break;
     case 'tier':
       SFX.tier(e.up);
-      overlay('tier-banner', 1700, `${e.up ? '貪婪加深' : '貪念退去'}・${e.n}<small>${GREED_TIERS.find(t => t.n === e.n).desc}</small>`);
+      /* 只有階級真的上升才跳大橫幅；往下掉只給一句短提示 */
+      if(e.up) overlay('tier-banner', 1700, `貪婪加深・${e.n}<small>${GREED_TIERS.find(t => t.n === e.n).desc}</small>`);
+      else toast(`貪念退去・${e.n}`);
       break;
     case 'win': SFX.win(); break;
     case 'death': SFX.lose(); shake(); overlay('vig', 350); break;
@@ -941,10 +947,21 @@ function oneFx(e){
 function bumpGreed(){ retrigger($('greedChip'), 'bump'); }
 function toast(t){ overlay('toast', 1900, t); }
 
+/* 上一次畫面確認過的貪婪階級：橫幅一律拿「現在」和「上次」比，只看階級有沒有真的變，不信殘留的事件 */
+let shownTier = 0;
+function syncTier(){ shownTier = S ? greedTierIndex(S.greed) : 0; }
+function tierFx(list){
+  const cur = S ? greedTierIndex(S.greed) : 0, prev = shownTier;
+  shownTier = cur;
+  const rest = list.filter(e => e.k !== 'tier');
+  if(cur !== prev && S) rest.push({k: 'tier', up: cur > prev, n: GREED_TIERS[cur].n});
+  return rest;
+}
 /* 把這一步的狀態變化畫出來。離開戰鬥時先在舊畫面播完（才看得到最後一擊），再換頁 */
 function commit(){
-  const list = S && S.fx ? S.fx : [];
+  let list = S && S.fx ? S.fx : [];
   if(S) S.fx = [];
+  list = tierFx(list);
   const leftBattle = $('app').querySelector('.battle') && S && S.screen !== 'battle';
   if(S && S.screen === 'result'){
     bankResult();
@@ -1021,6 +1038,7 @@ const ACT = {
     cs.deep = Math.max(cs.deep || 0, S.depth + 1);
     saveMeta();
     S.fx = [];
+    syncTier();
     seenCards = new Set();
     render();
     const rg = regionOf(S.depth || 0);
@@ -1070,6 +1088,7 @@ const ACT = {
     S = loadRun();
     if(!S) return render();
     S.fx = [];
+    syncTier();
     seenCards = new Set();
     render();
     if(S.battle && S.battle.phase === 'enemy') runEnemyPhase();
@@ -1123,7 +1142,7 @@ const ACT = {
       const T = greedTier(S), pc = m => Math.round((1 + (m - 1) / 2 - 1) * 100);
       openSheet(`<div class="sheet-t">${greedy ? '貪婪還沒放下' : bossName(S)}</div>
         ${REGION_STORY[enterRegion(S.depth)].boss.map(t => `<p class="story-p">${t}</p>`).join('')}
-        ${greedy ? `<div class="sheet-p">目前貪婪「${T.n}」：${bossName(S)}血量 <b>+${pc(T.hp)}%</b>、傷害 <b>+${pc(T.dmg)}%</b>${T.start >= 2 ? `、開場格擋 ${Math.floor(T.start / 2)}` : ''}。進去前可以先燒掉或丟掉財寶，把貪婪降下來。</div>` : ''}
+        ${greedy ? `<div class="sheet-p">目前貪婪「${T.n}」：${bossName(S)}血量 <b>+${pc(T.hp)}%</b>、傷害 <b>+${pc(T.dmg)}%</b>${T.start >= 2 ? `、開場格擋 ${Math.floor(T.start / 2)}` : ''}。進去前可以先餵掉或丟掉財寶，把貪婪降下來。</div>` : ''}
         <div class="col"><button class="btn primary" data-act="bossGo:${arg}">進去</button>${greedy ? '<button class="btn" data-act="bagSheet">看背包</button>' : ''}<button class="btn" data-act="closeSheet">再想想</button></div>`);
       return;
     }

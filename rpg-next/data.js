@@ -15,7 +15,7 @@ const GAME = {
   stepGreed: 1,    // 每走一格增加的貪婪
   restHeal: 0.3,   // 營火回復比例
   chestMimic: 0.35,// 寶箱「再翻一次」遇到寶箱怪的機率
-  burnAp: 1,       // 燒一件財寶換到的行動點（每回合一次）
+  burnAp: 1,       // 餵一件財寶換到的行動點（每回合一次）
   rageStr: 1,      // 熔獄規則：第 5 回合起，敵人每回合力量增加的量
 };
 
@@ -40,12 +40,24 @@ const CARDS = {
   stake:  {n:'搏命', c:0, k:'atk', r:1, dmg:8, selfHp:3, t:'傷害 {d}\n失去 3 生命', long:'失去 3 點生命（無視格擋），造成 {d} 點傷害。', up:{dmg:12}},
   debt:   {n:'血債', c:1, k:'atk', r:1, fn:'debt', base:4, per:3, t:'傷害 4\n傷痕每層+3', long:'造成 4 點傷害，本場每層傷痕再 +3（現在 {d}）。傷痕：每次被打到掉血時 +1。', up:{base:6, per:4, t:'傷害 6\n傷痕每層+4', long:'造成 6 點傷害，本場每層傷痕再 +4（現在 {d}）。傷痕：每次被打到掉血時 +1。'}},
   fling:  {n:'擲金', c:1, k:'atk', r:1, fn:'fling', base:3, t:'傷害 3\n+貪婪÷4', long:'造成 3 點傷害，再加上貪婪值 ÷4（現在 {d}）。越貪越痛。', up:{base:6, t:'傷害 6\n+貪婪÷4', long:'造成 6 點傷害，再加上貪婪值 ÷4（現在 {d}）。越貪越痛。'}},
-  melt:   {n:'熔金', c:1, k:'atk', r:2, fn:'melt', base:18, exhaust:1, t:'燒最便宜財寶\n傷害 {d}', long:'燒掉背包裡最便宜的財寶（貪婪隨之下降），造成 {d} 點傷害。背包沒東西就沒傷害。本場消耗。', up:{base:26}},
+  melt:   {n:'熔金', c:1, k:'atk', r:2, fn:'melt', base:18, exhaust:1, t:'餵掉最便宜財寶\n傷害 {d}', long:'餵掉背包裡最便宜的財寶（貪婪隨之下降），造成 {d} 點傷害。背包沒東西就沒傷害。本場消耗。', up:{base:26}},
 
   /* —— 防禦 —— */
   wall:   {n:'鐵壁', c:2, k:'def', r:1, blk:14, t:'格擋 {b}', long:'獲得 {b} 點格擋。', up:{blk:20}},
   parry:  {n:'招架', c:1, k:'def', r:1, blk:4, draw:1, t:'格擋 {b}\n抽 1', long:'獲得 {b} 點格擋，抽 1 張。', up:{blk:7}},
   hold:   {n:'堅守', cls:'sword', c:1, k:'def', r:2, blk:4, keep:1, t:'格擋 {b}\n下回合不衰減', long:'獲得 {b} 點格擋。下回合開始時，格擋不會減半。', up:{blk:8}},
+
+  /* —— 劍士專屬（堆格擋、挨打反擊、把格擋變成傷害）。
+     counter：本回合每次被攻擊，對攻擊者造成這麼多傷害（下回合開始歸零）／spikes：同上，但整場戰鬥有效／
+     heavy：格擋 ≥ thr 時傷害再 +plus／allin：失去全部格擋，傷害＝格擋×mul／still：本場格擋不再衰減 —— */
+  stance: {n:'反擊架勢', cls:'sword', c:1, k:'skl', r:1, counter:4, t:'本回合被攻擊\n反擊 4', long:'本回合每次被攻擊（有格擋擋下也算），對攻擊者造成 4 點傷害。', up:{counter:6, t:'本回合被攻擊\n反擊 6', long:'本回合每次被攻擊（有格擋擋下也算），對攻擊者造成 6 點傷害。'}},
+  smash:  {n:'重斬', cls:'sword', c:2, k:'atk', r:1, dmg:12, fn:'heavy', thr:10, plus:6, t:'傷害 {d}\n格擋≥10 時 +6', long:'造成 {d} 點傷害；目前格擋至少 10 時，傷害再 +6。', up:{dmg:15, plus:8, t:'傷害 {d}\n格擋≥10 時 +8', long:'造成 {d} 點傷害；目前格擋至少 10 時，傷害再 +8。'}},
+  pierce: {n:'破甲', cls:'sword', c:1, k:'atk', r:1, dmg:5, vuln:2, t:'傷害 {d}\n易傷 2', long:'造成 {d} 點傷害，並給予 2 回合易傷（受到的傷害 +50%）。', up:{dmg:8, vuln:3, t:'傷害 {d}\n易傷 3', long:'造成 {d} 點傷害，並給予 3 回合易傷（受到的傷害 +50%）。'}},
+  edge:   {n:'盾刃', cls:'sword', c:1, k:'atk', r:1, dmg:5, blk:5, t:'傷害 {d}\n格擋 {b}', long:'造成 {d} 點傷害，獲得 {b} 點格擋。', up:{dmg:7, blk:7}},
+  cry:    {n:'吶喊', cls:'sword', c:0, k:'skl', r:1, str:1, draw:1, exhaust:1, t:'力量 +1・抽 1\n本場消耗', long:'本場戰鬥力量 +1，抽 1 張。使用後本場消耗。', up:{str:2, t:'力量 +2・抽 1\n本場消耗', long:'本場戰鬥力量 +2，抽 1 張。使用後本場消耗。'}},
+  spike:  {n:'釘刺盾', cls:'sword', c:1, k:'skl', r:2, spikes:2, exhaust:1, t:'本場被攻擊\n反擊 2・消耗', long:'本場戰鬥每次被攻擊（有格擋擋下也算），對攻擊者造成 2 點傷害，可疊加。使用後本場消耗。', up:{spikes:3, t:'本場被攻擊\n反擊 3・消耗', long:'本場戰鬥每次被攻擊（有格擋擋下也算），對攻擊者造成 3 點傷害，可疊加。使用後本場消耗。'}},
+  allin:  {n:'傾力一擊', cls:'sword', c:1, k:'atk', r:2, fn:'allin', mul:1.5, t:'失去全部格擋\n傷害＝格擋×1.5', long:'失去全部格擋，造成「格擋 ×1.5」的傷害（現在 {d}）。', up:{mul:2, t:'失去全部格擋\n傷害＝格擋×2', long:'失去全部格擋，造成「格擋 ×2」的傷害（現在 {d}）。'}},
+  still:  {n:'不動如山', cls:'sword', c:2, k:'skl', r:2, fn:'still', exhaust:1, t:'本場格擋\n不再衰減・消耗', long:'本場戰鬥，你的格擋不會在回合開始時衰減。使用後本場消耗。', up:{c:1}},
 
   /* —— 技巧 —— */
   breath: {n:'喘息', c:1, k:'skl', r:1, draw:2, t:'抽 2', long:'抽 2 張。', up:{c:0}},
@@ -108,7 +120,7 @@ const CARDS = {
   wither: {n:'枯萎', cls:'warlock', c:1, k:'atk', r:1, dmg:4, vuln:2, mk:1, t:'傷害 {d}\n易傷 2・咒印 1', long:'造成 {d} 點傷害，給予 2 回合易傷，目標 +1 咒印。', up:{dmg:6, vuln:3, t:'傷害 {d}\n易傷 3・咒印 1', long:'造成 {d} 點傷害，給予 3 回合易傷，目標 +1 咒印。'}},
   det:    {n:'引爆', cls:'warlock', c:1, k:'atk', r:2, fn:'det', per:3, t:'傷害＝咒印×3\n咒印清空', long:'造成「目標咒印層數 ×3」的傷害（現在 {d}），然後清除咒印。', up:{per:4, t:'傷害＝咒印×4\n咒印清空', long:'造成「目標咒印層數 ×4」的傷害（現在 {d}），然後清除咒印。'}},
   doom:   {n:'末日宣告', cls:'warlock', c:2, k:'atk', r:2, fn:'doom', base:10, per:2, t:'傷害 10\n咒印每層+2', long:'造成 10 點傷害，目標每層咒印再 +2（現在 {d}）。咒印不會消失。', up:{base:14, per:3, t:'傷害 14\n咒印每層+3', long:'造成 14 點傷害，目標每層咒印再 +3（現在 {d}）。咒印不會消失。'}},
-  sac:    {n:'獻祭', cls:'warlock', c:1, k:'skl', r:2, fn:'sac', exhaust:1, str:3, amk:3, t:'燒最貴的詛咒財寶\n力量+3・全體咒印 3', long:'燒掉背包裡最值錢的詛咒財寶（沒有就沒效果），力量 +3，所有敵人 +3 咒印。本場消耗。', up:{str:4, amk:4, t:'燒最貴的詛咒財寶\n力量+4・全體咒印 4', long:'燒掉背包裡最值錢的詛咒財寶（沒有就沒效果），力量 +4，所有敵人 +4 咒印。本場消耗。'}},
+  sac:    {n:'獻祭', cls:'warlock', c:1, k:'skl', r:2, fn:'sac', exhaust:1, str:3, amk:3, t:'餵掉最貴的詛咒財寶\n力量+3・全體咒印 3', long:'餵掉背包裡最值錢的詛咒財寶（沒有就沒效果），力量 +3，所有敵人 +3 咒印。本場消耗。', up:{str:4, amk:4, t:'餵掉最貴的詛咒財寶\n力量+4・全體咒印 4', long:'餵掉背包裡最值錢的詛咒財寶（沒有就沒效果），力量 +4，所有敵人 +4 咒印。本場消耗。'}},
   ritual: {n:'黑暗儀式', cls:'warlock', c:2, k:'skl', r:2, str:2, amk:3, exhaust:1, t:'力量 +2\n全體咒印 3・消耗', long:'力量 +2，所有敵人 +3 咒印。使用後本場消耗。', up:{str:3, amk:4, t:'力量 +3\n全體咒印 4・消耗', long:'力量 +3，所有敵人 +4 咒印。使用後本場消耗。'}},
 
   /* —— 成就解鎖的中立牌：ach＝達成該成就後才進獎勵牌池（S.unlocked 記錄）—— */
@@ -126,15 +138,25 @@ const STARTER_DECK = ['chop','chop','chop','chop','raise','raise','raise','raise
 
 /* 職業。need：meta.depth 要達到幾（打贏第 N 層首領後解鎖，劍士一開始就有）。hand：每回合抽牌數（預設 GAME.hand）。
    deck：起始牌組。how：開場說明用的機制重點。牌池＝沒標 cls 的中立牌＋本職牌 */
+/* 職業與貪婪／財寶的互動（每個職業一條被動，CLASSES.<職業>.greed 是畫面上的說明） */
+const SWORD_LOAD_BLK = 2;   // 劍士「負重」：開場每件身上財寶給的格擋
+const ROGUE_ITCH_MAX = 2;   // 盜賊「手癢」：第一回合多抽牌（＝貪婪階級索引）的上限
+const MAGE_RESO_MAX = 3;    // 法師「共鳴」：開場額外法力（＝貪婪階級索引）的上限
+const LOCK_FEED_STR = 1;    // 制魔師「飼主」：戰鬥中每餵掉一件財寶，本場力量 +（詛咒財寶加倍）
+const LOCK_FEED_HEAL = 3;   // 同上：回復生命（詛咒財寶加倍）
 const CLASSES = {
   sword:   {n:'劍士', hp:70, img:'ui/cls_sword.webp', need:0, deck:STARTER_DECK, line:'格擋只衰減一半，可以累積，慢慢堆出銅牆鐵壁再反擊。',
-            how:'格擋每回合只衰減一半，所以防禦牌可以累積；盾撞會把格擋砸成傷害。'},
+            how:'格擋每回合只衰減一半，所以防禦牌可以累積；盾撞會把格擋砸成傷害。',
+            greed:{n:'負重', d:`每場戰鬥開始，身上每有一件財寶，就多 ${SWORD_LOAD_BLK} 點格擋。`}},
   rogue:   {n:'盜賊', hp:60, img:'ui/cls_assassin.webp', need:1, hand:6, deck:['jab','jab','jab','jab','slip','slip','slip','coat','coat','quick'], line:'抽牌多、牌便宜。疊毒讓敵人自己流血，再用連擊收尾。',
-            how:'每回合抽 6 張。<b>毒</b>：掛在敵人身上，輪到牠行動時先受毒層數的傷害，然後毒 -1。<b>連擊</b>：本回合已出的牌數，追擊、終結一擊等牌依此加傷。格擋每回合清空。'},
+            how:'每回合抽 6 張。<b>毒</b>：掛在敵人身上，輪到牠行動時先受毒層數的傷害，然後毒 -1。<b>連擊</b>：本回合已出的牌數，追擊、終結一擊等牌依此加傷。格擋每回合清空。',
+            greed:{n:'手癢', d:`貪婪越高，每場戰鬥的第一回合越多抽牌（每個階級 1 張，最多 ${ROGUE_ITCH_MAX} 張）。`}},
   mage:    {n:'法師', hp:50, img:'ui/cls_white.webp', need:2, mana0:3, hand:6, deck:['spark','spark','spark','spark','ward','ward','ward','bolt','bolt','focus'], line:'血少，但回合結束沒用完的行動點會存成法力，蓄一回合、爆一回合。',
-            how:'<b>法力</b>：回合結束沒用完的行動點會存成法力（上限 5，跨回合保留）。<b>法術</b>牌打出時吃掉全部法力，每點法力讓效果更強。格擋每回合清空。'},
+            how:'<b>法力</b>：回合結束沒用完的行動點會存成法力（上限 5，跨回合保留）。<b>法術</b>牌打出時吃掉全部法力，每點法力讓效果更強。格擋每回合清空。',
+            greed:{n:'共鳴', d:`貪婪越高，每場戰鬥開始時的法力越多（每個階級 1 點，最多 ${MAGE_RESO_MAX} 點）。`}},
   warlock: {n:'制魔師', hp:65, img:'ui/cls_dark.webp', need:3, deck:['dark','dark','dark','charm','charm','charm','brand','brand','oath','hexall'], line:'前期慢，咒印和力量越疊越強；詛咒財寶是你的朋友。',
-            how:'<b>咒印</b>：掛在敵人身上，每層讓牠受到的每次傷害 +1，不會消失，部分牌可引爆。<b>力量</b>整場戰鬥疊加。身上每有一件詛咒財寶，開場給全體敵人 1 層咒印。格擋每回合清空。'},
+            how:'<b>咒印</b>：掛在敵人身上，每層讓牠受到的每次傷害 +1，不會消失，部分牌可引爆。<b>力量</b>整場戰鬥疊加。身上每有一件詛咒財寶，開場給全體敵人 1 層咒印。格擋每回合清空。',
+            greed:{n:'飼主', d:`戰鬥中每餵掉一件財寶，除了行動點，本場力量 +${LOCK_FEED_STR}、回復 ${LOCK_FEED_HEAL} 生命；餵的是詛咒財寶，兩者加倍。`}},
 };
 const CLASS_ORDER = ['sword', 'rogue', 'mage', 'warlock'];
 const MANA_MAX = 5;
@@ -220,9 +242,9 @@ const ELITES = ['miner','ratking'];
 
 /* 各區第二條規則（跟財寶、貪婪有關；core.js 的 rule2Of 與 enterRule2／winBattle／finishRun 實作）。數值都在這裡，方便調
    哥布林「尾隨的手」：一場非首領戰鬥打超過 GOB_STEAL_TURN 回合才贏，偷走一件財寶進贓物袋；打贏菁英或首領歸還
-   無光通道「提燈」：燈油 LAMP_START 格，每進一個節點 -1；0 時戰鬥開場帶 LAMP_DARK_VULN 層易傷、前方節點看不清；燒一件財寶添 LAMP_BURN 格
+   無光通道「提燈」：燈油 LAMP_START 格，每進一個節點 -1；0 時戰鬥開場帶 LAMP_DARK_VULN 層易傷、前方節點看不清；拿一件財寶添 LAMP_BURN 格
    舊都「過路費」：每進一個節點（第一個除外）收 round(貪婪 × TOLL_K)；一趟裡沒有手上金幣，所以累計起來，回營從賣價扣，最多扣 TOLL_MAX
-   熔獄「心臟收縮」：每進 HEART_EVERY 個節點收縮一次，吞掉身上最貴的一件（沒有就扣 HEART_HP 比例的最大生命，最少留 1）；燒一件財寶餵食可重置倒數 */
+   熔獄「心臟收縮」：每進 HEART_EVERY 個節點收縮一次，吞掉身上最貴的一件（沒有就扣 HEART_HP 比例的最大生命，最少留 1）；餵一件財寶可重置倒數 */
 const GOB_STEAL_TURN = 4;
 const LAMP_START = 5, LAMP_DARK_VULN = 2, LAMP_BURN = 3;
 const TOLL_K = 0.5, TOLL_MAX = 0.5;
@@ -243,7 +265,7 @@ const REGIONS = [
    elites:['priest','raider'], boss:'warlord',
    win:{title:'霸主倒下了', text:'霸主的寶座底下壓著一顆深淵晶，已經進了你的背包。其他的再挑一件。', out:'扛著聚落的贓物爬回地面'}},
   {n:'無光通道', realm:2, rule:{id:'heal', n:'窒息的黑暗', d:'所有回復量 -25%（營火也是）'},
-   rule2:{id:'lamp', n:'提燈', d:`提燈只有 ${LAMP_START} 格油，每走一步少一格。燒完以後，戰鬥一開場就帶易傷，前方的路也看不清。可以燒一件財寶，添 ${LAMP_BURN} 格`},
+   rule2:{id:'lamp', n:'提燈', d:`提燈只有 ${LAMP_START} 格油，每走一步少一格。燒完以後，戰鬥一開場就帶易傷，前方的路也看不清。可以拿一件財寶添 ${LAMP_BURN} 格`},
    enc:[[['leech'],['clot'],['teeth'],['flower']],
         [['leech','clot'],['eye'],['hound'],['necro'],['teeth','leech'],['flower','clot']],
         [['eye','leech'],['hound','clot'],['necro','flower'],['teeth','eye'],['hound','leech'],['clot','clot','leech']]],
@@ -272,7 +294,7 @@ const ENDING = {
 
 /* 財寶分三類，價值與效果反向——讓玩家在「帶錢」和「變強」之間取捨：
    gold 金銀：沒效果，賣價高、貪婪也高；relic 遺物：幾乎不值錢，效果強；curse 詛咒：非常值錢，但帶著有負面效果。
-   v 帶回去值多少金幣，g 帶在身上加多少貪婪，ef 是帶在身上時的效果（可疊加，燒掉或被偷就沒了）。
+   v 帶回去值多少金幣，g 帶在身上加多少貪婪，ef 是帶在身上時的效果（可疊加，餵掉或被偷就沒了）。
    各類內依 v 由低到高排列（抽財寶時依貪婪階級偏向後面）。
    icon 用內嵌向量圖（舊版 ui/coin.webp 其實是井，不能用）；cls:'clip' 裁掉圖檔的黑色方底。
    效果鍵：blk 開場格擋／str 力量／drawFirst 第一回合多抽／blkTurn 每回合格擋／apFirst 第一回合行動點／
@@ -431,7 +453,7 @@ const ACHIEVEMENTS = [
   {id:'curse3', n:'與詛咒同行', d:'帶著 3 件詛咒財寶活著回來',       reward:{card:'cursewall'},chk:(m, r) => !!r && r.ok && r.items.filter(id => treasure(id).fam === 'curse').length >= 3},
   {id:'gaze',   n:'直視深淵',   d:'貪婪達到「深淵注視」後活著回來', reward:{card:'gazebite'}, chk:(m, r) => !!r && r.ok && (r.maxGreed || 0) >= 65},
   {id:'noheal', n:'鐵骨',       d:'整趟不回任何血，打贏首領',       reward:{card:'ironwill'}, chk:(m, r) => !!r && r.ok && r.bossDown && r.healed === 0},
-  {id:'burn5',  n:'焚財',       d:'一趟燒掉 5 件財寶並活著回來',    reward:{card:'ashes'},    chk:(m, r) => !!r && r.ok && (r.burned || 0) >= 5},
+  {id:'burn5',  n:'餵飽',       d:'一趟餵掉 5 件財寶並活著回來',    reward:{card:'ashes'},    chk:(m, r) => !!r && r.ok && (r.burned || 0) >= 5},
   {id:'allcls', n:'四職皆勝',   d:'每個職業各打贏一次首領',         reward:{gear:'w8'},       chk:(m, r) => CLASS_ORDER.every(c => ((m.clsStats || {})[c] || {}).boss >= 1)},
   {id:'ending', n:'深淵終結',   d:'打贏最終首領深淵之心',           reward:{gear:'a8'},       chk:(m, r) => (m.cleared || 0) >= 1},
   {id:'nm5',    n:'噩夢五階',   d:'通關噩夢 5 階',                  reward:{gear:'t8'},       chk:(m, r) => (m.nmMax || 0) >= 5},
@@ -494,7 +516,7 @@ const QUESTS = {
   gold3:    {by:'buyer',    n:'好貨收購', d:'帶值錢的東西回來。',       need:0, gold:120, k:'fam', fam:'gold',  cnt:3},
   curse2:   {by:'buyer',    n:'邪門貨色', d:'詛咒越重，價錢越好。',     need:1, gold:200, k:'fam', fam:'curse', cnt:2},
   relic2:   {by:'smith',    n:'老東西',   d:'找些還能用的老東西。',     need:0, gold:120, k:'fam', fam:'relic', cnt:2},
-  noburn:   {by:'smith',    n:'別燒東西', d:'這趟別把東西往火裡丟。',   need:0, gold:150, k:'noburn'},
+  noburn:   {by:'smith',    n:'別餵東西', d:'這趟別拿財寶去餵。',   need:0, gold:150, k:'noburn'},
   elite2:   {by:'scholar',  n:'戰鬥紀錄', d:'記下難纏敵人的反應。',     need:0, gold:180, k:'elite', cnt:2},
   fewfight: {by:'scholar',  n:'深處測繪', d:'少打幾場，多往裡面走。',   need:1, gold:220, k:'fewfight'},
   greedout: {by:'survivor', n:'活著回來', d:'別為了東西把命丟了。',     need:0, gold:200, k:'greedout'},
@@ -556,7 +578,7 @@ const GEAR = {
   t2:{n:'老工匠懷錶', slot:'trinket', r:2, img:'eq/watch.webp',   fx:{drawFirst:2},        d:'第一回合多抽 2'},
   t3:{n:'守夜人提燈', slot:'trinket', r:3, img:'eq/lamp.webp',    fx:{bag:1, blk:6},       d:'背包 +1 格，每場開場格擋 +6'},
   t4:{n:'深淵之鈴',   slot:'trinket', r:4, img:'eq/bell.webp',    fx:{ap:1},               d:'每回合行動點 +1'},
-  t5:{n:'煉金戒',     slot:'trinket', r:1, img:'eq/ring.webp',    fx:{burnAp:1},           d:'燒財寶改換 2 行動點'},
+  t5:{n:'煉金戒',     slot:'trinket', r:1, img:'eq/ring.webp',    fx:{burnAp:1},           d:'餵食財寶改換 2 行動點'},
   t6:{n:'黑契護符',   slot:'trinket', r:2, img:'eq/pendant.webp', fx:{curseStr:1},         d:'身上每件詛咒財寶，力量 +1'},
   t7:{n:'守財奴印',   slot:'trinket', r:3, img:'eq/tome.webp',    fx:{hoard:3},            d:'身上每件金銀，開場格擋 +3'},
   /* 成就解鎖（ach：達成該成就後才會出現在鐵匠鋪與回程掉落） */

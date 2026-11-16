@@ -77,7 +77,7 @@ function enterRule2(S){
     }
   }
 }
-/* 在地圖上主動燒一件財寶（添油、餵食共用）：貪婪隨之下降，算一次「燒」（別燒東西的委託也會看到） */
+/* 在地圖上主動拿一件財寶（添油、餵食共用）：貪婪隨之下降，算一次「餵食」（別餵東西的委託也會看到） */
 function burnOnMap(S, idx){
   if(S.screen !== 'map' || !S.bag[idx]) return null;
   const id = removeTreasure(S, idx);
@@ -91,7 +91,7 @@ function lampRefuel(S, idx){
   const id = burnOnMap(S, idx);
   if(id === null) return false;
   S.lamp = (S.lamp | 0) + LAMP_BURN;
-  emit(S, {k: 'toast', t: `燒了${treasure(id).n}，燈油 +${LAMP_BURN}`});
+  emit(S, {k: 'toast', t: `拿${treasure(id).n}添了油，燈油 +${LAMP_BURN}`});
   return true;
 }
 function heartFeed(S, idx){
@@ -402,7 +402,7 @@ function startBattle(S, keys, kind, reward){
     enemies: keys.map(k => spawn(S, k)), target: 0,
     draw: shuffle(S, cards.map(c => ({id: c.id, up: c.up, uid: S.uid++}))), hand: [], disc: [], exh: [],
     ap: 0, block: 0, str: 0, weak: 0, vuln: lampDark(S) ? LAMP_DARK_VULN : 0, psn: 0, scars: 0, keep: 0, burned: 0, burn: 0, apLoss: 0,
-    mana: clsDef(S).mana0 || 0, played: 0,
+    mana: clsDef(S).mana0 || 0, played: 0, counter: 0, spikes: 0, still: 0,
   };
   S.battle = b;
   S.screen = 'battle';
@@ -426,9 +426,34 @@ function startBattle(S, keys, kind, reward){
     b.ap += 1;
     emit(S, {k: 'toast', t: '烈酒下肚，這一場行動點 +1'});
   }
-  drawCards(S, (S.load.drawFirst || 0) + c.drawFirst);
+  /* 職業與貪婪／財寶的互動被動 */
+  const gi = greedTierIndex(S.greed);
+  let itch = 0;
+  if(clsOf(S) === 'sword' && S.bag.length){
+    const n = S.bag.length * SWORD_LOAD_BLK;
+    b.block += n;
+    emit(S, {k: 'toast', t: `負重：格擋 +${n}`});
+  }
+  if(clsOf(S) === 'rogue' && gi > 0){
+    itch = Math.min(ROGUE_ITCH_MAX, gi);
+    emit(S, {k: 'toast', t: `手癢：多抽 ${itch} 張`});
+  }
+  if(clsOf(S) === 'mage' && gi > 0){
+    const n = Math.min(MAGE_RESO_MAX, gi);
+    gainMana(S, n);
+    emit(S, {k: 'toast', t: `共鳴：法力 +${n}`});
+  }
+  drawCards(S, (S.load.drawFirst || 0) + c.drawFirst + itch);
 }
-/* 身上財寶的效果加總：撿到就生效，燒掉或被偷就沒了 */
+/* 制魔師「飼主」：戰鬥中餵掉一件財寶（行動點、獻祭、熔金都算）的額外好處；詛咒財寶加倍 */
+function feedBonus(S, id){
+  if(clsOf(S) !== 'warlock' || !S.battle || S.screen !== 'battle') return;
+  const m = treasure(id).fam === 'curse' ? 2 : 1;
+  S.battle.str += LOCK_FEED_STR * m;
+  emit(S, {k: 'buff', t: `飼主：力量 +${LOCK_FEED_STR * m}`});
+  heal(S, LOCK_FEED_HEAL * m);
+}
+/* 身上財寶的效果加總：撿到就生效，餵掉或被偷就沒了 */
 function carry(S){
   const c = {blk: 0, str: 0, drawFirst: 0, blkTurn: 0, apFirst: 0, bleed: 0, drawLess: 0, goo: 0, hurtPlus: 0};
   S.bag.forEach(id => { const t = treasure(id); for(const k in c) c[k] += t[k] || 0; });
@@ -461,6 +486,7 @@ function startTurn(S){
   const b = S.battle;
   b.turn++;
   b.phase = 'player';
+  b.counter = 0;   // 反擊架勢只管一個回合
   b.ap = GAME.ap + (S.load.ap || 0) + (S.load.gamble && S.hp * 2 < S.maxHp ? 1 : 0);   // 賭徒背心：生命低於一半
   /* 燒掉行動點（噬光獸）：至少留 1 點。聚落：第一回合再少 1 */
   if(b.apLoss){ b.ap = Math.max(1, b.ap - b.apLoss); b.apLoss = 0; }
@@ -474,8 +500,8 @@ function startTurn(S){
   b.atkUsed = 0;
   b.played = 0;
   /* 劍士的職業規則：格擋只衰減一半，所以防禦可以累積；其他職業每回合清空 */
-  if(clsOf(S) === 'sword') b.block = (b.keep || S.load.noDecay) ? b.block : Math.floor(b.block / 2);
-  else b.block = S.load.noDecay ? b.block : 0;
+  if(clsOf(S) === 'sword') b.block = (b.keep || b.still || S.load.noDecay) ? b.block : Math.floor(b.block / 2);
+  else b.block = (S.load.noDecay || b.still) ? b.block : 0;
   b.keep = 0;
   b.block += (S.load.blkTurn || 0) + carry(S).blkTurn;
   if(b.psn > 0){
@@ -500,6 +526,8 @@ function baseDmg(S, def, t){
   if(def.fn === 'debt') return def.base + def.per * b.scars;
   if(def.fn === 'fling') return def.base + Math.floor(S.greed / 4);
   if(def.fn === 'melt') return S.bag.length ? def.base : 0;
+  if(def.fn === 'heavy') return def.dmg + (b.block >= def.thr ? def.plus : 0);
+  if(def.fn === 'allin') return Math.floor(b.block * def.mul);
   if(def.fn === 'pop') return t ? (t.psn || 0) * def.mul : 0;
   if(def.fn === 'det') return t ? (t.mk || 0) * def.per : 0;
   if(def.fn === 'doom') return def.base + def.per * (t ? t.mk || 0 : 0);
@@ -603,6 +631,12 @@ function hitPlayer(S, amt, srcUid, final){
     const e = b.enemies.find(x => x.uid === srcUid);
     if(e) hitEnemy(S, e, dmgOut(S, S.load.thorns));
   }
+  /* 劍士的反擊架勢（本回合）與釘刺盾（整場）：被攻擊就反彈，有格擋擋下也算 */
+  const refl = (b.counter || 0) + (b.spikes || 0);
+  if(refl > 0 && srcUid && S.screen === 'battle'){
+    const e = b.enemies.find(x => x.uid === srcUid);
+    if(e) hitEnemy(S, e, dmgOut(S, refl));
+  }
 }
 /* 不走格擋的失血（毒、搏命），不算傷痕 */
 function loseHp(S, amt, why){
@@ -637,7 +671,7 @@ function playable(S, i){
   const c = b.hand[i];
   return !!c && cardDef(c).c <= b.ap;
 }
-const DMG_FN = ['ram', 'debt', 'fling', 'pop', 'det', 'doom', 'curse', 'bagdmg'];
+const DMG_FN = ['ram', 'heavy', 'allin', 'debt', 'fling', 'pop', 'det', 'doom', 'curse', 'bagdmg'];
 /* 法師：法力上限 MANA_MAX，跨回合保留 */
 function gainMana(S, n){
   const b = S.battle, before = b.mana || 0;
@@ -660,10 +694,10 @@ function playCard(S, i){
   emit(S, {k: 'card', ct: d.k});
   if(d.selfHp){ loseHp(S, d.selfHp, 'self'); if(S.screen !== 'battle') return true; }
   if(d.fn === 'melt'){
-    /* 先算傷害（calcDmg 要看背包有沒有東西）再燒 */
+    /* 先算傷害（calcDmg 要看背包有沒有東西）再餵 */
     const dmg = calcDmg(S, d, t);
     const k = cheapestIdx(S);
-    if(k >= 0){ removeTreasure(S, k); S.stats.burned++; emit(S, {k: 'burn'}); hitEnemy(S, t, dmg); }
+    if(k >= 0){ const fid = removeTreasure(S, k); S.stats.burned++; emit(S, {k: 'burn'}); feedBonus(S, fid); hitEnemy(S, t, dmg); }
   }else if(d.all && (d.dmg || d.fn)){
     alive(b).forEach(e => { if(S.screen === 'battle') hitEnemy(S, e, calcDmg(S, d, e)); });
   }else if(d.dmg || DMG_FN.includes(d.fn)){
@@ -677,6 +711,10 @@ function playCard(S, i){
   }
   if(S.screen !== 'battle') return true;
   if(d.vuln && t.hp > 0) t.vuln += d.vuln;
+  if(d.fn === 'allin') b.block = 0;
+  if(d.fn === 'still') b.still = 1;
+  if(d.counter) b.counter = (b.counter || 0) + d.counter;
+  if(d.spikes) b.spikes = (b.spikes || 0) + d.spikes;
   if(d.fn === 'pop' || d.fn === 'det'){ if(d.fn === 'pop') t.psn = 0; else t.mk = 0; }
   if(d.psn && t.hp > 0){ t.psn += d.psn; emit(S, {k: 'epsn', uid: t.uid, t: `毒 +${d.psn}`}); }
   if(d.dpsn && t.hp > 0 && t.psn){ t.psn *= 2; emit(S, {k: 'epsn', uid: t.uid, t: `毒 ×2（${t.psn}）`}); }
@@ -684,7 +722,7 @@ function playCard(S, i){
   if(d.mk && t.hp > 0){ t.mk = (t.mk || 0) + d.mk; emit(S, {k: 'emk', uid: t.uid, t: `咒印 +${d.mk}`}); }
   if(d.fn === 'sac'){
     const k = famIdx(S, 'curse', true);
-    if(k >= 0){ removeTreasure(S, k); S.stats.burned++; emit(S, {k: 'burn'}); }
+    if(k >= 0){ const fid = removeTreasure(S, k); S.stats.burned++; emit(S, {k: 'burn'}); feedBonus(S, fid); }
     else { emit(S, {k: 'toast', t: '身上沒有詛咒財寶，獻祭沒有效果'}); }
     if(k < 0){ b.disc.push(c); b.played++; return true; }
   }
@@ -719,15 +757,16 @@ function heal(S, n, force, scaled){
   if(S.hp > before){ emit(S, {k: 'heal', amt: S.hp - before}); S.stats.healed = (S.stats.healed || 0) + (S.hp - before); }
 }
 const burnApGain = S => GAME.burnAp + (S.load.burnAp || 0);   // 煉金戒
-/* 燒財寶：每回合一次，換行動點，貪婪也跟著降——危急時的買命錢 */
+/* 餵食財寶：每回合一次，換行動點，貪婪也跟著降——危急時的買命錢 */
 function burnTreasure(S, idx){
   const b = S.battle;
   if(!b || b.phase !== 'player' || b.burned || !S.bag[idx]) return false;
-  removeTreasure(S, idx);
+  const fid = removeTreasure(S, idx);
   b.burned = 1;
   b.ap += burnApGain(S);
   S.stats.burned++;
   emit(S, {k: 'burn'});
+  feedBonus(S, fid);
   return true;
 }
 function endTurn(S){
@@ -1522,7 +1561,7 @@ function questLive(S, id){
   const fam = f => S.bag.filter(x => treasure(x).fam === f).length;
   switch(q.k){
     case 'fam': return `${FAM[q.fam].n} ${fam(q.fam)}/${q.cnt}`;
-    case 'noburn': return S.stats.burned ? '已經燒過了' : '還沒燒過';
+    case 'noburn': return S.stats.burned ? '已經餵過了' : '還沒餵過';
     case 'elite': return `菁英 ${qc.elites}/${q.cnt}`;
     case 'fewfight': return qc.bossFights != null ? `進首領房時打過 ${qc.bossFights} 場` : `已打 ${qc.fights} 場（上限 ${QUEST_FEWFIGHT_MAX}）`;
     case 'greedout': return qc.maxTier >= QUEST_HIGH_TIER ? '貪婪夠高了，活著撤離' : '貪婪還不夠高';
