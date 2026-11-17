@@ -33,14 +33,14 @@ const FORGE=[
 // 賞金委託：一次接一張。kind：kill（k＝敵人種類，省略＝任何敵人）｜pot｜chest（chest＝寶箱 id）；night＝只算夜晚；need＝解鎖條件（ST.flags 鍵）
 // reward：money 珠幣、item 物品 id（可帶 :數量）
 const BOUNTY=[
-  {id:'b_slime', title:'清理史萊姆',   kind:'kill',k:'slime', n:5, reward:{money:25}},
-  {id:'b_pot',   title:'陶罐收藏家',   kind:'pot',            n:8, reward:{item:'lucky_ring'}},
-  {id:'b_deep',  title:'林中的寶箱',   kind:'chest',chest:'deep_c2', n:1, reward:{money:30}},
-  {id:'b_goblin',title:'哥布林出沒',   kind:'kill',k:'goblin',n:4, reward:{money:35,item:'shard:2'}},
-  {id:'b_archer',title:'弓箭手的威脅', kind:'kill',k:'archer',n:4, reward:{money:45}, need:'bs:boss_forest'},
+  {id:'b_slime', title:'史萊姆清除令',   kind:'kill',k:'slime', n:5, reward:{money:25}},
+  {id:'b_pot',   title:'陶罐回收',   kind:'pot',            n:8, reward:{item:'lucky_ring'}},
+  {id:'b_deep',  title:'深林尋寶',   kind:'chest',chest:'deep_c2', n:1, reward:{money:30}},
+  {id:'b_goblin',title:'哥布林清剿',   kind:'kill',k:'goblin',n:4, reward:{money:35,item:'shard:2'}},
+  {id:'b_archer',title:'弓箭手清剿', kind:'kill',k:'archer',n:4, reward:{money:45}, need:'bs:boss_forest'},
   {id:'b_knight',title:'盾騎士討伐',   kind:'kill',k:'knight',n:3, reward:{money:40,item:'ore:3'}, need:'bs:boss_fire'},
-  {id:'b_lake',  title:'湖畔的寶箱',   kind:'chest',chest:'lake_c1', n:1, reward:{item:'piece'}, need:'bs:boss_fire'},
-  {id:'b_night', title:'夜巡',         kind:'kill',night:true,n:6, reward:{money:60,item:'shard:3'}, need:'bs:boss_water'}
+  {id:'b_lake',  title:'湖畔尋寶',   kind:'chest',chest:'lake_c1', n:1, reward:{item:'piece'}, need:'bs:boss_fire'},
+  {id:'b_night', title:'夜間巡查',         kind:'kill',night:true,n:6, reward:{money:60,item:'shard:3'}, need:'bs:boss_water'}
 ];
 const TRAIN_NEED=[3,1,2,2];   // 教學：斬擊 3 次、旋轉斬 1 次、翻滾 2 次、擋箭 2 次
 const TRAIN_PAY=20;           // 結業獎勵（珠幣）
@@ -293,8 +293,17 @@ const NPC_ACT={
   traveler:()=>say(TEXT.npc.traveler.map(l=>['營火旁的旅人',l])),
   villager:()=>say(TEXT.npc.villager.map(l=>['村民',l]))
 };
+/* 開場旁白：只有「重新開始／開始」的新遊戲，第一次進村莊時播放；旗標 ST.flags.introDone 存進存檔，「繼續」讀檔不播 */
+let INTRO_PENDING=false;
+const _vBegin=HOOKS.begin;
+HOOKS.begin=mode=>{const r=_vBegin(mode);INTRO_PENDING=mode!=='continue';return r};
+async function playIntro(){
+  while(!running||document.getElementById('fade').classList.contains('on'))await sleep(100);   // 等標題淡出、地圖畫出來
+  lock=true;await say(TEXT.intro);lock=false;
+}
 EVT.on('enter',id=>{
   vilInit();dayTag();
+  if(INTRO_PENDING&&id==='village'&&!ST.flags.introDone){INTRO_PENDING=false;ST.flags.introDone=1;save();playIntro()}
   if(id!=='village'){LESSON=null;CHAL=null;chalHud('');return}
   for(const n of C.npcs){const f=NPC_ACT[n.id];if(f){n.act=f;n.label=n.id==='bounty'?'查看':'對話'}}
   for(const p of INTER)if(p.k==='campfire'){p.label='休息';p.act=()=>campMenu(p)}

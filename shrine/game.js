@@ -88,19 +88,19 @@ const ITEMS={
 const EQUIP_SLOTS=['sword','shield','armor','acc'];
 const SLOT_NAME={sword:'劍',shield:'盾',armor:'衣',acc:'飾品'};
 const EQUIP={
-  wood_sword:  {name:'木劍',slot:'sword',atk:12,desc:'練習用的木劍。'},
-  iron_sword:  {name:'鐵劍',slot:'sword',atk:18,desc:'鐵匠打的鐵劍，斬擊 18。'},
-  flame_sword: {name:'炎刃',slot:'sword',atk:24,spinMul:1.9,desc:'斬擊 24，旋轉斬威力更強。'},
-  star_sword:  {name:'星輝劍',slot:'sword',atk:30,spinMul:1.6,chargeT:.38,desc:'斬擊 30，蓄力更快。'},
-  wood_shield: {name:'木盾',slot:'shield',guard:.5,desc:'擋得住正面的箭和飛彈，近戰傷害減半。'},
-  iron_shield: {name:'鐵盾',slot:'shield',guard:.25,shieldSpd:.6,desc:'近戰傷害只剩四分之一，舉盾也走得動。'},
-  prism_shield:{name:'折光盾',slot:'shield',guard:.25,shieldSpd:.6,reflect:true,desc:'擋下的箭和飛彈會反彈回去。'},
-  cloth:       {name:'旅人布衣',slot:'armor',def:0,desc:'普通的布衣。'},
-  scale_mail:  {name:'鱗甲',slot:'armor',def:.2,desc:'受到的傷害減少兩成。'},
-  ember_mail:  {name:'焰鱗鎧',slot:'armor',def:.35,fireproof:true,desc:'受到的傷害減少三成半，不怕火池。'},
-  wind_boots:  {name:'疾風靴',slot:'acc',spd:.15,rollCd:.6,desc:'走得更快，翻滾冷卻變短。'},
-  lucky_ring:  {name:'招財戒',slot:'acc',gold:1.5,desc:'敵人和陶罐掉的珠幣多五成。'},
-  sword_crest: {name:'劍士徽章',slot:'acc',atkAdd:4,boomAdd:2,desc:'斬擊 +4，迴力鏢 +2。'}
+  wood_sword:  {name:'木劍',slot:'sword',atk:12,desc:'練習用的木劍，適合初學者。'},
+  iron_sword:  {name:'鐵劍',slot:'sword',atk:18,desc:'鐵匠打造的鐵劍，斬擊 18。'},
+  flame_sword: {name:'炎刃',slot:'sword',atk:24,spinMul:1.9,desc:'斬擊 24，蓄力旋轉斬能發揮更強威力。'},
+  star_sword:  {name:'星輝劍',slot:'sword',atk:30,spinMul:1.6,chargeT:.38,desc:'斬擊 30，星輝凝於劍身，蓄力速度更快。'},
+  wood_shield: {name:'木盾',slot:'shield',guard:.5,desc:'能擋下正面的箭與飛彈，近戰傷害減半。'},
+  iron_shield: {name:'鐵盾',slot:'shield',guard:.25,shieldSpd:.6,desc:'能大幅抵禦近戰攻擊，受到的傷害只剩四分之一，舉盾時也能移動。'},
+  prism_shield:{name:'折光盾',slot:'shield',guard:.25,shieldSpd:.6,reflect:true,desc:'能將擋下的箭與飛彈反射回去。'},
+  cloth:       {name:'旅人布衣',slot:'armor',def:0,desc:'普通的旅人布衣，沒有特殊效果。'},
+  scale_mail:  {name:'鱗甲',slot:'armor',def:.2,desc:'以鱗片製成的護甲，受到的傷害減少兩成。'},
+  ember_mail:  {name:'焰鱗鎧',slot:'armor',def:.35,fireproof:true,desc:'帶有熔岩氣息的鎧甲，受到的傷害減少三成半，並且不怕火池。'},
+  wind_boots:  {name:'疾風靴',slot:'acc',spd:.15,rollCd:.6,desc:'輕便的靴子，移動更快，翻滾冷卻時間更短。'},
+  lucky_ring:  {name:'招財戒',slot:'acc',gold:1.5,desc:'據說能帶來好運的戒指，敵人與陶罐掉落的珠幣增加五成。'},
+  sword_crest: {name:'劍士徽章',slot:'acc',atkAdd:4,boomAdd:2,desc:'劍士的紀念徽章，斬擊 +4，迴力鏢 +2。'}
 };
 const EQ_START={sword:'wood_sword',shield:'wood_shield',armor:'cloth',acc:''};
 for(const id in EQUIP)ITEMS[id]={name:EQUIP[id].name,kind:'equip',slot:EQUIP[id].slot};

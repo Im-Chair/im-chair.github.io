@@ -78,7 +78,7 @@ const SHRINE_MAPS={
     bridges:[{a:[9.6,10.8],b:[12.6,11.6],w:1.3},{a:[7.2,21.2],b:[6.0,23.9],w:1.2}],
     props:[{k:'house',x:7.4,y:9.4},{k:'house',x:15.2,y:6.6,s:1.04},{k:'house',x:25.0,y:8.6,s:.96},{k:'house',x:24.8,y:19.6,s:1.0},
       {k:'campfire',x:14.4,y:17.0},{k:'tree1',x:19.8,y:18.4,s:1.15},{k:'tree2',x:4.8,y:12.2},{k:'rock',x:9.6,y:13.2,s:.8}],
-    signs:[{x:27.6,y:11.6,text:'東：古木林入口'},{x:23.4,y:4.4,text:'北：熔岩遺址（危險，別單獨前往）'},{x:8.8,y:22.4,text:'西南：過橋往深淵湖畔'}],
+    signs:[{x:27.6,y:11.6,text:'東：古木林入口'},{x:23.4,y:4.4,text:'北：熔岩遺址（危險，請勿獨自前往）'},{x:8.8,y:22.4,text:'西南：過橋可抵達深淵湖畔'}],
     pots:[{x:5.6,y:9.6},{x:9.3,y:9.8},{x:26.6,y:20.0}],
     scatter:[
       {where:'forest',kinds:{tree1:.55,tree2:.45},gap:1.2,scale:[.85,1.25]},
@@ -94,7 +94,7 @@ const SHRINE_MAPS={
       {id:'bounty',name:'賞金板',ch:'board',x:22.8,y:15.0,lines:['（告示板上還沒貼任何委託。）']},
       {id:'traveler',name:'營火旁的旅人',ch:'cloak',x:15.9,y:17.8,lines:['坐下來烤烤火吧，夜裡的林子可不好走。']},
       {id:'trainer',name:'劍術教官',ch:'guard',x:26.6,y:16.4,lines:['想學劍？先把腳步站穩再說。']},
-      {id:'villager',name:'村民',ch:'hana',x:5.8,y:12.0,lines:['（這位村民的台詞之後再寫。）']}
+      {id:'villager',name:'村民',ch:'hana',x:5.8,y:12.0,lines:['一大早去林邊摘果子，風裡全是焦土味，連鳥都不叫了。']}
     ],
     exits:[
       {x:30.6,y:11.0,w:2.6,h:3.4,dir:'e',to:'grove',tx:10.6,ty:31.0,face:'up'},
@@ -159,7 +159,7 @@ const SHRINE_MAPS={
       [[17.2,6.0,.7],[13.0,6.4,.7],[11.2,9.0,.6]]
     ],
     props:[{k:'giant',x:17.4,y:19.8}],
-    signs:[{x:19.8,y:4.4,text:'北：林之祭壇　東：神廟外庭'},{x:21.8,y:19.4,text:'千年巨木。樹皮上刻著看不懂的古字。'}],
+    signs:[{x:19.8,y:4.4,text:'北：林之祭壇　東：神廟外庭'},{x:21.8,y:19.4,text:'千年巨木。樹皮上刻著：「……五色之核，分鎮五方……裂隙若生，當以五核共縫，缺一則……」'}],
     chests:[{id:'deep_c1',x:5.8,y:18.4,loot:'boomerang'},{id:'deep_c2',x:25.0,y:31.6,loot:'gem'}],
     spawns:[{k:'goblin',x:10.4,y:19.6},{k:'slime',x:21.0,y:31.0},{k:'archer',x:12.6,y:7.4},{k:'knight',x:26.6,y:14.8},{k:'slime',x:22.0,y:18.6},{k:'goblin',x:15.6,y:29.6},{k:'archer',x:28.0,y:19.6}],
     scatter:[
@@ -213,7 +213,7 @@ const SHRINE_MAPS={
     ],
     bridges:[{a:[14.0,7.2],b:[17.6,5.0],w:1.4,style:'stone'},{a:[14.8,19.4],b:[18.2,19.5],w:1.3,style:'stone'}],
     props:[{k:'pillarb',x:26.0,y:4.8},{k:'pillar',x:30.4,y:6.4,s:.9},{k:'pillarb',x:4.6,y:7.4,s:.9}],
-    signs:[{x:12.2,y:22.6,text:'北：神廟外庭　西：焰之祭壇'}],
+    signs:[{x:12.2,y:22.6,text:'北：神廟外庭　西：焰之祭壇'},{x:11.6,y:17.4,text:'「……火與地交界之處，古人立誓……」後半截已被高溫熔毀。'}],
     chests:[{id:'ash_c1',x:21.4,y:20.4,loot:'gem'},{id:'ash_c2',x:35.0,y:20.2,loot:'wind_boots'}],
     pots:[{x:3.2,y:9.8},{x:5.8,y:10.4},{x:27.0,y:7.0}],
     spawns:[{k:'goblin',x:6.2,y:18.4},{k:'slime',x:13.4,y:13.4},{k:'archer',x:23.0,y:9.0},{k:'knight',x:33.4,y:18.0},{k:'goblin',x:21.6,y:22.4},{k:'archer',x:34.0,y:5.4}],
@@ -266,7 +266,7 @@ const SHRINE_MAPS={
     bridges:[{a:[19.0,6.4],b:[19.4,13.2],w:1.2,broken:true},{a:[31.0,15.8],b:[27.4,16.4],w:1.1}],
     hooks:[{x:28.6,y:16.2},{x:21.9,y:15.9},{x:19.4,y:16.6},{x:19.4,y:23.4}],
     props:[{k:'pillarb',x:20.4,y:15.0,s:1.1},{k:'rock',x:18.2,y:15.4,s:.8}],
-    signs:[{x:28.4,y:4.2,text:'西：海蝕洞（淵之祭壇）'}],
+    signs:[{x:28.4,y:4.2,text:'西：海蝕洞（淵之祭壇）'},{x:22.0,y:4.0,text:'「……水、火、木、光四核各有其主，唯第五枚隱於暗處，世人未嘗得見……」'}],
     chests:[{id:'lake_c1',x:21.0,y:16.2,loot:'gem'},{id:'lake_c2',x:34.4,y:24.6,loot:'bomb'}],
     spawns:[{k:'slime',x:10.4,y:27.0},{k:'slime',x:24.6,y:27.6},{k:'archer',x:34.6,y:14.2},{k:'goblin',x:11.4,y:4.4},{k:'knight',x:21.0,y:16.0}],
     scatter:[
@@ -292,7 +292,7 @@ const SHRINE_MAPS={
     floor:[{type:'area',pts:[[7,5.6],[14.2,5.4],[15.4,9.0],[13.8,12.6],[7.4,12.8],[5.8,9.0]]}],
     bridges:[{a:[21.2,11.2],b:[17.4,11.0],w:1.3,style:'stone'},{a:[9.4,17.4],b:[9.6,13.8],w:1.2,style:'stone'}],
     braziers:[{id:'w1',x:22.8,y:6.4},{id:'w2',x:22.8,y:16.0}],
-    locks:[{x:20.7,y:9.8,w:.8,h:2.8,need:'brazier2',text:'石柵擋住了橋。兩側的火盆是冷的——得找個火源點亮。'}],
+    locks:[{x:20.7,y:9.8,w:.8,h:2.8,need:'brazier2',text:'石柵擋住了橋。點亮兩側的火盆，才能通過。'}],
     cracks:[{id:'w_crack',x:25.3,y:5.9,dir:'e',chest:{id:'water_c2',loot:'gem'}}],
     altar:{id:'altar_water',x:10.6,y:5.6},
     boss:{id:'boss_water',x:10.6,y:9.2,arena:4.2},
@@ -317,8 +317,8 @@ const SHRINE_MAPS={
     props:[{k:'pillar',x:10.4,y:10.6},{k:'pillarb',x:9.8,y:14.4},{k:'pillar',x:10.4,y:18.4},
       {k:'pillar',x:19.6,y:10.6},{k:'pillar',x:20.2,y:14.4},{k:'pillarb',x:19.6,y:18.4},
       {k:'pillar',x:12.8,y:5.0,s:1.1},{k:'pillarb',x:17.2,y:5.0,s:1.1}],
-    signs:[{x:11.6,y:6.4,text:'神廟外庭。石碑上寫著：「三件聖物歸位，大門自開。」'}],
-    locks:[{x:13.2,y:1.6,w:3.8,h:1.0,need:'relic3',text:'大門緊閉。門上有三個凹槽，像在等什麼東西放回去。'}],
+    signs:[{x:11.6,y:6.4,text:'「三印既合，內殿乃開。光核乃鎮界之樞，非五人齊至，不得擅動。」'}],
+    locks:[{x:13.2,y:1.6,w:3.8,h:1.0,need:'relic3',text:'大門緊閉。三個凹槽的形狀，與聖物相似。'}],
     pots:[{x:8.4,y:22.6},{x:21.6,y:22.4},{x:7.8,y:8.8}],
     spawns:[{k:'knight',x:6.4,y:12.6},{k:'knight',x:24.0,y:12.6},{k:'archer',x:12.0,y:24.4}],
     scatter:[
@@ -342,8 +342,8 @@ const SHRINE_MAPS={
     braziers:[{id:'b1',x:4.8,y:20.2},{id:'b2',x:17.2,y:20.2},{id:'b3',x:4.8,y:25.2},{id:'b4',x:17.2,y:25.2}],
     blocks:[{x:7.6,y:22.2,tx:7.6,ty:20.2},{x:14.4,y:23.6,tx:14.4,ty:21.6}],
     blockReward:{id:'temple_c2',x:11.0,y:19.6,loot:'gem'},
-    locks:[{x:8.0,y:15.9,w:6.0,h:1.0,need:'brazier4',text:'石門緊閉。四座火盆都點亮，或許就會打開。'},
-      {x:8.6,y:28.4,w:4.8,h:1.0,need:'key',text:'門鎖著，需要小鑰匙。'}],
+    locks:[{x:8.0,y:15.9,w:6.0,h:1.0,need:'brazier4',text:'石門緊閉。四座火盆都點亮後，或許就能開啟。'},
+      {x:8.6,y:28.4,w:4.8,h:1.0,need:'key',text:'門鎖著。需要一把小鑰匙。'}],
     cracks:[{id:'t_crack',x:4.9,y:34.6,dir:'w',chest:{id:'temple_c3',loot:'gem'}}],
     boss:{id:'boss_temple',x:11.0,y:8.8,arena:4.6},
     chests:[{id:'temple_c1',x:16.0,y:34.8,loot:'key'}],

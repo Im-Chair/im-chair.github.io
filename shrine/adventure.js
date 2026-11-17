@@ -17,79 +17,88 @@
 
 /* ================= 文字（佔位，之後請人潤稿） ================= */
 const TEXT={
-  bossIntro:{boss_forest:'古樹的根鬚扭動起來……',boss_fire:'熔岩深處，巨像睜開了眼睛。',boss_water:'水面下有什麼巨大的東西在游動。',boss_temple:'星輪轉動，時序開始扭曲。'},
-  bossRage:{boss_forest:'巴爾幹的枝葉轉為血紅！',boss_fire:'伊格尼斯的核心燒得更亮了！',boss_water:'利維坦掀起了狂浪！',boss_temple:'克洛諾斯讓星輪加速了！'},
-  bossDown:'祭壇亮起來了。去看看吧。',
+  bossIntro:{boss_forest:'盤踞的古根破土而出，樹冠落下黑霧。',boss_fire:'熔岩翻湧，石縫間亮起兩道赤紅的眼眸。',boss_water:'潭水驟冷，龐大的黑影自水底緩緩浮現。',boss_temple:'星輪驟轉，殿內的燭火一齊熄滅。'},
+  bossRage:{boss_forest:'巴爾幹發出嘶吼，枯枝纏滿黑紫的瘴氣。',boss_fire:'伊格尼斯的胸口裂開，岩漿湧了出來。',boss_water:'利維坦翻身攪動深潭，巨浪撲面而來。',boss_temple:'星輪越轉越快，光芒刺得人睜不開眼。'},
+  bossDown:'祭壇恢復了平靜。去看看吧。',
   altar:{
-    altar_forest:['祭壇上浮現一顆翠綠的結晶。','獲得「林之聖物」。'],
-    altar_fire:['祭壇上的火焰凝成一顆赤紅的結晶。','獲得「焰之聖物」。'],
-    altar_water:['祭壇上的水珠聚成一顆湛藍的結晶。','獲得「淵之聖物」。']
+    altar_forest:['翠綠的光芒從祭壇中央浮起，凝成一枚結晶。','獲得「林之聖物」。'],
+    altar_fire:['祭壇上的火焰收攏起來，凝成一枚赤紅的結晶。','獲得「焰之聖物」。'],
+    altar_water:['散落水面的光點逐漸聚集，凝成一枚湛藍的結晶。','獲得「淵之聖物」。']
   },
   heart:'獲得「完整的心」，生命上限 +1，生命全滿。',
   tool:{
-    boomerang:'獲得「迴力鏢」！丟出去會飛回來，能打暈敵人、遠遠打破陶罐、順手撿回掉落物。',
-    bomb:'獲得「炸彈袋」！放下後會爆炸，能炸開有裂縫的牆。炸彈可以從陶罐和敵人身上補充。',
-    lantern:'獲得「提燈」！能點亮火盆，在暗處也看得更遠。',
-    hookshot:'獲得「勾爪」！對準木樁上的鐵環使用，就能把自己拉過水面或熔岩。'
+    boomerang:'獲得「迴力鏢」！投擲後會自行飛回，能擊暈敵人、遠距離打破陶罐，也能撿回掉落物。',
+    bomb:'獲得「炸彈袋」！放下炸彈後會引爆，可炸開有裂縫的牆。陶罐和敵人都可能掉落炸彈。',
+    lantern:'獲得「提燈」！能點燃火盆，也能照亮暗處，讓你看清前方。',
+    hookshot:'獲得「勾爪」！瞄準木樁上的鐵環使用，就能將自己拉過水面或熔岩。'
   },
-  toolHint:'按 I 或 V 使用道具，Q／E 或數字鍵切換。',
-  relicDoor:'三件聖物發出光芒，大門緩緩打開了。',
-  brazierDoor:'火盆全都亮了——石門打開了！',
-  keyDoor:'用掉一把小鑰匙，門打開了。',
-  crack:'牆壁炸開了！',
-  blocks:'石塊歸位，不知哪裡傳來喀啦一聲。',
-  needFire:'火盆是冷的。需要火源。',
+  toolHint:'按 I 或 V 使用道具，按 Q／E 或數字鍵切換。',
+  relicDoor:'三枚聖物同時發出光芒，神廟大門緩緩開啟。',
+  brazierDoor:'最後一座火盆亮了。石門深處傳來聲響。',
+  keyDoor:'小鑰匙轉動，門鎖應聲而開。',
+  crack:'碎石落下，牆壁被炸開了。',
+  blocks:'石塊歸位。深處傳來一聲沉重的機關聲。',
+  needFire:'火盆沒有反應。需要提燈才能點燃。',
   noBomb:'沒有炸彈了。打破陶罐或打倒敵人可以補充。',
+  /* 開場旁白：新遊戲第一次進村莊時逐句顯示（village.js） */
+  intro:[
+    '千年前，大地裂開了一道口子。',
+    '黑紫色的瘴氣從地縫滲出，無聲無息地漫過聖林。',
+    '溫馴的珠獸染上瘴氣，紅著眼四處狂奔。',
+    '村裡的老人說，神廟深處的光能鎮住裂痕。要進神廟，得先取得三座祭壇的信物。',
+    '可就連守著祭壇的巨獸，也已經被瘴氣吞沒了神智。',
+    '你握緊手裡的劍，轉身走進起霧的古木林。'
+  ],
   ending:[
-    ['','克洛諾斯倒下了，星輪的光芒一點一點散去。'],
-    ['','神廟深處傳來低沉的鐘聲，聖林的風重新流動起來。'],
-    ['','（結尾文字佔位，之後潤稿。）']
+    ['','星輪停轉，克洛諾斯無聲倒下。大殿裡只剩風聲。'],
+    ['','神廟深處傳來一聲低沉的鐘鳴，林間的瘴氣正緩緩退去。'],
+    ['','你停在光核前，手微微發抖，最後還是伸手把它拿走了。']
   ],
   /* ── 村莊（village.js 用；全部是佔位句，之後潤稿） ── */
   npc:{
-    chief:'你好，旅人。',
-    villager:['今天天氣不錯。','聽說林子裡的怪物變多了，小心點。'],
-    traveler:['坐下來烤烤火吧。','營火可以休息，也能等到黃昏或夜晚。夜裡的怪物比較兇，不過掉的東西也比較好。']
+    chief:'我這把年紀，別人的傳聞一概不記，只記自己親眼看過的。想問什麼就說吧。',
+    villager:['一大早去林邊摘果子，風裡全是焦土味，連鳥都不叫了。','平常蹭過來討果子吃的毛球，昨天竟然對我齜牙咧嘴……你進林子要小心喔。'],
+    traveler:['火還暖著，坐吧。是誰惹出來的，晚點再問——先救還活著的人。','在火邊歇一會兒能回復體力，也能等到黃昏或入夜。夜裡怪物兇得多，掉的好東西也多。']
   },
   chief:{
-    ask:['接下來該去哪？','村子裡有什麼？','沒事了'],
-    about:['旅商賣藥和炸彈，也收材料。','鐵匠能用珠幣和材料打造裝備。','賞金板上有委託，完成可以領珠幣。','教官會教你用劍，營火可以休息、切換時段。'],
+    ask:['接下來該往哪裡走？','村子裡有哪些設施？','暫時沒事。'],
+    about:['旅商賣藥和炸彈，也會收購你帶回來的材料。','鐵匠能用珠幣和材料打造裝備，手藝還不錯。','賞金板上有不少委託，完成後記得回來領珠幣。','教官能教你劍術。營火可以休息，也能改變時段。'],
     goal:{
-      grove:'先往東邊的古木林看看吧。',
-      altarForest:'林之祭壇在古木林深處的北邊。',
-      claimForest:'祭壇亮了，回去拿聖物吧。',
-      fire:'北邊是熔岩遺址，焰之祭壇在遺址西邊。勾爪能拉你越過熔岩。',
-      claimFire:'焰之祭壇亮了，回去拿聖物吧。',
-      water:'西南過橋是深淵湖畔，淵之祭壇在海蝕洞裡。洞裡的火盆要用提燈點亮。',
-      claimWater:'淵之祭壇亮了，回去拿聖物吧。',
-      temple:'三件聖物都到手了。東邊古木林深處通往神廟外庭，大門會為聖物打開。',
-      done:'謝謝你，聖林恢復平靜了。'
+      grove:'先往東邊的古木林看看。最近那裡不太對勁。',
+      altarForest:'古木林深處有座林之祭壇。往北走就能找到。',
+      claimForest:'巴爾幹已經安靜下來了。別忘了取得祭壇上的聖物。',
+      fire:'北邊是熔岩遺址，焰之祭壇在西側。記得用勾爪越過熔岩。',
+      claimFire:'焰之祭壇已經恢復平靜。去取得上面的聖物吧。',
+      water:'西南過橋是深淵湖畔，淵之祭壇在海蝕洞裡。裡面的火盆得用提燈點亮。',
+      claimWater:'湖底的動靜總算停了。記得去取得淵之祭壇的聖物。',
+      temple:'三件聖物都拿到了。往東走進入古木林深處，就能找到神廟外庭。',
+      done:'林子的黑霧散了。你走進神廟後發生了什麼，我沒親眼見著。村子保住了，這就夠了。'
     }
   },
-  shop:{hi:'要買點什麼嗎？',ask:['買東西','賣材料','離開'],bought:'買了 ',sold:'賣掉 ',poor:'珠幣不夠。',full:'帶不下了。',out:'賣完了。',needBomb:'要先有炸彈袋。'},
-  smith:{hi:'要打造什麼？材料和珠幣要先備齊。',ask:['打造裝備','離開'],made:'打造完成：',lack:'材料或珠幣不夠。'},
-  bounty:{done:'委託完成！回村子的賞金板領賞。',take:'接下委託：',claim:'領到賞金：',busy:'一次只能接一張委託。',already:'這個寶箱你已經找到了，委託直接完成。',quit:'放棄了委託。'},
-  camp:{ask:'要在營火旁休息嗎？（生命全滿、存檔）',opts:['休息到白天','休息到黃昏','休息到夜晚','離開'],rested:'休息好了。現在是'},
+  shop:{hi:'好貨不等人。藥水、炸彈隨你挑，包裡的材料我也收，價錢好談。',ask:['買東西','賣掉材料','先不用了'],bought:'買了 ',sold:'賣掉 ',poor:'這點珠幣不夠喔。先去林子裡轉轉再來吧。',full:'你這包袱塞得比我的貨箱還滿，先清出點空位吧。',out:'這批貨全讓你掃光了，等下回補貨再來吧。',needBomb:'得先有炸彈袋，才能買炸彈。'},
+  smith:{hi:'……要打傢伙？材料跟珠幣放桌上。',ask:['打造裝備','先不用了'],made:'打造完成：',lack:'材料不夠，珠幣也差一點。湊齊了再來。'},
+  bounty:{done:'委託完成了！回村子的賞金板領取獎勵吧。',take:'接下委託：',claim:'領到賞金：',busy:'別太貪心，手上這張辦妥了再接下一張。',already:'這個寶箱你早就開過了。這張直接算完成。',quit:'委託已放棄。'},
+  camp:{ask:'要在營火旁休息嗎？生命會恢復，進度也會儲存。',opts:['休息到白天','休息到黃昏','休息到夜晚','先不用'],rested:'休息好了。現在是'},
   trainer:{
-    hi:'想學劍嗎？',
-    ask:['上課','木樁挑戰','離開'],
+    hi:'想學劍？先讓我看看你的底子。',
+    ask:['開始上課','木樁挑戰','改天再來'],
     lesson:[
       ['第一課：斬擊。按 J 或 Z（手機按「攻擊」）揮三次劍。','斬擊'],
-      ['第二課：旋轉斬。按住攻擊鍵蓄力，放開時轉一圈。','旋轉斬'],
+      ['第二課：旋轉斬。按住攻擊鍵蓄力，放開就能轉身揮斬。','旋轉斬'],
       ['第三課：翻滾。按 K 或 X（手機按「翻滾」）翻滾兩次，翻滾時不會受傷。','翻滾'],
       ['第四課：舉盾。按住 L 或 C（手機按「舉盾」）面向我，擋下兩支練習箭。','舉盾']
     ],
-    pass:'做得好！',
-    graduate:'四課都學會了。來試試木樁挑戰吧。',
-    needLesson:'先把四堂課上完再來。',
-    stakeRule:'三十秒內打倒越多木樁越好。打倒十二根以上有獎品。',
-    stakeEnd:'時間到！打倒了 ',
-    reward:'表現不錯，這個徽章送你。',
+    pass:'下盤穩了點，總算像個拿劍的樣子。繼續。',
+    graduate:'四招都摸熟了。哪天有人能跟珠獸並肩，而不是拿劍對著牠們——我倒想看看。去試試木樁吧。',
+    needLesson:'基本招式還沒學全就想打木樁？先把課上完。',
+    stakeRule:'三十秒內盡量打倒木樁。十二根以上，我就送你一份獎品。',
+    stakeEnd:'時間到！你打倒了 ',
+    reward:'身手夠俐落。這枚徽章拿去，別丟我的臉。',
     best:'最佳紀錄：'
   },
-  bag:{empty:'（還沒有）'},
-  endTitle:'聖林的光回來了',
-  endLines:['三件聖物回到神廟，扭曲的時序恢復平靜。','（佔位文字）感謝遊玩這個製作中的版本。','存檔保留為「已通關」，可以繼續探索。']
+  bag:{empty:'這裡還沒有東西。'},
+  endTitle:'守界英雄錄',
+  endLines:['少年擊敗了失控的守護者，帶走了神廟深處的光核。','守界盟史冊記為：初代珠師艾瑟爾平息災厄、封印珠核，世人尊他為守界英雄。','——後來進過內殿的人說，地磚上連一道劍痕都沒有。']
 };
 
 /* ================= 數值表 ================= */
@@ -384,7 +393,7 @@ function makeBoss(b){
     phase:1,mi:0,mv:'',mt:0,ms:0,immune:true,alpha:1,seen:{},fastT:0,dizzy:0,surf:0,arena:b.arena||4.4};
   e.tick=bossTick;e.draw=drawBoss;
   e.hitAcc=0;e.onHit=()=>{e.hitAcc++;return true};   // 連續挨打計數：到 counterN 就震開（不讓玩家一直貼著砍）
-  e.onBoomerang=()=>{if(e.mv==='dive'&&e.ms===3){e.mt=Math.min(e.mt,.2);e.dizzy=1.2;toast('迴力鏢打中了！利維坦暈頭轉向。')}};
+  e.onBoomerang=()=>{if(e.mv==='dive'&&e.ms===3){e.mt=Math.min(e.mt,.2);e.dizzy=1.2;toast('迴力鏢擊中了利維坦！牠暫時動不了了。')}};
   return e;
 }
 function arenaClamp(e,x,y){const dx=x-FIGHT.cx,dy=y-FIGHT.cy,d=Math.hypot(dx,dy),R=FIGHT.R-e.r*.7;if(d>R){x=FIGHT.cx+dx/d*R;y=FIGHT.cy+dy/d*R}return [x,y]}
@@ -528,7 +537,7 @@ const MOVES={
     return false}},
   // 最終二階：變速——星輪加速（招式間隔變短、走得更快），同時在玩家腳下張開遲緩區
   shift:{tick(e){
-    if(e.ms===0&&e.mt>=.6){e.ms=1;e.fastT=5;hz({k:'zone',x:P.x,y:P.y,r:1.8,warn:.9,act:2.6,style:'slow'});ASFX.zap();toast('星輪加速了！')}
+    if(e.ms===0&&e.mt>=.6){e.ms=1;e.fastT=5;hz({k:'zone',x:P.x,y:P.y,r:1.8,warn:.9,act:2.6,style:'slow'});ASFX.zap();toast('星輪轉得更快了！')}
     return e.mt>1}}
 };
 
@@ -617,7 +626,7 @@ async function ending(){
   if(!PS.dead)await say(TEXT.ending);
   lock=true;await fade(true);
   document.getElementById('endTitle').textContent=TEXT.endTitle;
-  const ln=document.getElementById('endLines');ln.innerHTML='';TEXT.endLines.forEach(t=>{const d=document.createElement('div');d.textContent=t;ln.append(d)});
+  const ln=document.getElementById('endLines');ln.innerHTML='';TEXT.endLines.forEach((t,i)=>{const d=document.createElement('div');d.textContent=t;if(i===TEXT.endLines.length-1)d.className='note';ln.append(d)});
   const st=document.getElementById('endStats');st.innerHTML='';
   [['遊玩時間',fmtTime(ST.time)],['倒下次數',ST.deaths+' 次'],['命珠碎片',`${ST.gotPieces} / ${totalGems()}`],['寶箱',`${Object.keys(ST.chests).length} / ${totalChests()}`]].forEach(([a,b])=>{const s1=document.createElement('span');s1.textContent=a;const s2=document.createElement('b');s2.textContent=b;st.append(s1,s2)});
   document.getElementById('sMap').classList.remove('on');document.getElementById('sEnd').classList.add('on');

@@ -88,6 +88,7 @@ body.touch #itemBtn:not(.on),body.touch #cycBtn:not(.on){display:none}
 #sEnd{background:radial-gradient(circle at 50% 35%,#2a2a4a,#0b1022 62%,#070a14)}
 #sEnd h2{font-size:30px;letter-spacing:.3em;margin:0 0 6px;color:#ffe9a8;text-shadow:0 0 18px #ffd84a88}
 #sEnd .lines{color:#bfcaf5;font-size:14px;line-height:1.8;max-width:420px}
+#sEnd .lines .note{margin-top:16px;font-style:italic;color:#7f8ab5;font-size:13px}   /* 最後一句：筆跡不同的批註 */
 #endStats{display:grid;grid-template-columns:auto auto;gap:6px 18px;font-size:15px;margin:10px 0 18px;text-align:left}
 #endStats span:nth-child(odd){color:#8a95c0}
 #endStats b{font-variant-numeric:tabular-nums}
@@ -151,7 +152,7 @@ body.touch #itemBtn:not(.on),body.touch #cycBtn:not(.on){display:none}
 </style>
 <script>
 /* 版號：改了 maps.js 或這個檔就 +1，破除瀏覽器快取 */
-const SHRINE_VER='17';
+const SHRINE_VER='18';
 document.write('<script src="maps.js?v='+SHRINE_VER+'"><\/script>');
 </script>
 </head>
@@ -159,7 +160,7 @@ document.write('<script src="maps.js?v='+SHRINE_VER+'"><\/script>');
 <div id="app">
   <section id="sTitle" class="screen center on">
     <div class="logo" id="logo"></div>
-    <div class="sub">聖林・三座祭壇與失落的神廟</div>
+    <div class="sub">一段被史冊記下的英雄傳說</div>
     <button class="pri" id="btnCont" style="display:none">繼續</button>
     <button class="pri" id="btnStart">開始</button>
     <div class="ver" id="verTag">v1.0</div>
