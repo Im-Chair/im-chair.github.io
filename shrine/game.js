@@ -139,7 +139,7 @@ const FACE_V={down:[0,1],up:[0,-1],left:[-1,0],right:[1,0]};
    size＝整格畫多大（單位），cx＝身體中心在格內的 x（像素） */
 const MON_CELL=64;
 ART_SRC.mon='art/mon.webp';ART_SRC.goblin='art/goblin.webp';ART_SRC.archer='art/archer.webp';
-const MON_DRAW=[{size:1.3,cx:27},{size:1.3,cx:27},{size:1.35,cx:28},{size:1.35,cx:35},{size:1.3,cx:35},{size:1.4,cx:30},{size:1.35,cx:33},{size:1.55,cx:32}];
+const MON_DRAW=[{size:1.3,cx:27},{size:1.3,cx:27},{size:1.35,cx:28},{size:1.35,cx:35},{size:1.15,cx:35},{size:1.4,cx:30},{size:1.5,cx:33},{size:1.55,cx:32}];
 const SKIN={   // 敵人種類 → 外觀（數字＝mon.webp 的種類欄；字串＝單張圖），可依主題換
   slime:{'':0,_coast:1,_abyss:1,_marsh:4,_ember:6,_sky:0},
   knight:{'':7},
@@ -147,6 +147,11 @@ const SKIN={   // 敵人種類 → 外觀（數字＝mon.webp 的種類欄；字
   archer:{'':'archer'}
 };
 const SOLO_DRAW={goblin:{size:1.25,cx:58,cw:128},archer:{size:1.25,cx:58,cw:128}};
+// 選配新美術 art/m-<id>.webp（index.json 有才用）：512×512＝2×2 格，左上待機、右上移動、左下攻擊、右下受傷，角色朝右。
+// key＝上面 SKIN 的值（數字或字串）；顯示大小沿用 MON_DRAW／SOLO_DRAW 的 size
+const MON_ART={0:'slime',1:'slime-water',4:'slime-mush',6:'slime-ember',7:'knight',goblin:'goblin',archer:'archer'};
+const POT_DEBRIS=[];   // 打破的陶罐殘骸（有 p-pot-broken 才會有）：{map,x,y,s,t}
+const DEBRIS_HOLD=2.5,DEBRIS_FADE=1.5;   // 殘骸停留、淡出的秒數
 
 /* ================= 狀態 ================= */
 // tools：拿到的副道具（照取得順序）、tool：目前選的、bombs：炸彈數、relics：聖物 id、flags：機關／首領／祭壇狀態（adventure.js）、
@@ -599,6 +604,7 @@ function dropTick(o,dt){
 function breakPot(p){
   dropMats(MAT_DROP.pot,p.x,p.y-.1);
   p.gone=true;if(p.col)p.col.off=true;SFX.pot();shards(p.x,p.y);EVT.emit('pot',p);
+  if(SART.has('p-pot-broken'))POT_DEBRIS.push({map:CURID,x:p.x,y:p.y,s:p.s||1,t:GT});
   if(wantBombs()&&Math.random()<DROP.bombPot)spawnDrop('bomb',DROP.bombV,p.x,p.y-.1);
   else if(Math.random()<DROP.potChance){if(Math.random()<DROP.potCoin)spawnDrop('coin',Math.max(1,Math.round(rand(DROP.potCoinV[0],DROP.potCoinV[1])*eqStat('gold'))),p.x,p.y-.1);else spawnDrop('heart',1,p.x,p.y-.1)}
 }
@@ -671,14 +677,33 @@ function whiteOf(k){   // 閃白用的白色剪影（Safari 不支援 ctx.filter
   const c=mk(im.width,im.height),g=c.getContext('2d');g.drawImage(im,0,0);g.globalCompositeOperation='source-in';g.fillStyle='#fff';g.fillRect(0,0,c.width,c.height);return WHITE[k]=c;
 }
 HOOKS.actors=(list,c,now)=>{
+  for(let i=POT_DEBRIS.length-1;i>=0;i--)if(GT-POT_DEBRIS[i].t>DEBRIS_HOLD+DEBRIS_FADE)POT_DEBRIS.splice(i,1);
+  for(const o of POT_DEBRIS)if(o.map===CURID)list.push({sy:o.y-.3,draw:()=>{
+    c.save();c.globalAlpha=clamp((DEBRIS_HOLD+DEBRIS_FADE-(GT-o.t))/DEBRIS_FADE,0,1);drawArtFit(c,'p-pot-broken',o.x,o.y+.05,.95*o.s,.6*o.s);c.restore()}});
   for(const o of DROPS)list.push({sy:o.y,draw:()=>drawDrop(c,o,now)});
   for(const e of ENEMIES)list.push({sy:e.y,draw:()=>drawEnemy(c,e,now)});
   for(const s of SHOTS)list.push({sy:s.y+.3,draw:()=>drawShot(c,s)});
 };
+const COIN_TINT={};
+function coinSprite(v){   // 珠幣圖依面額疊色：小額維持原色，中額偏藍、大額偏紅
+  const im=sImg('i-coin');if(!im)return null;
+  const t=v>=20?2:v>=5?1:0;if(!t)return im;
+  const h=COIN_TINT[t];if(h&&h.im===im)return h.c;
+  const cv=mk(im.width,im.height),g=cv.getContext('2d');g.drawImage(im,0,0);g.globalCompositeOperation='source-atop';g.globalAlpha=.5;g.fillStyle=COIN_COL(t===2?20:5)[0];g.fillRect(0,0,cv.width,cv.height);
+  COIN_TINT[t]={im,c:cv};return cv;
+}
+function dropArt(c,o,y){   // 掉落物的選配圖；回傳是否由圖負責（在清單裡但還沒載好也算，先不畫）
+  const aid=o.k==='coin'?'i-coin':o.k==='mat'?ICON_OF[o.v]:o.k==='bomb'?'i-bomb':'i-heart';
+  if(!aid||!SART.has(aid))return false;
+  const im=o.k==='coin'?coinSprite(o.v):sImg(aid);if(!im)return true;
+  const sz=o.k==='coin'?(o.v>=5?.5:.42):.46,sc=sz/Math.max(im.width,im.height),w=im.width*sc,h=im.height*sc;
+  c.drawImage(im,o.x-w/2,y-h/2-.02,w,h);return true;
+}
 function drawDrop(c,o,now){
   if(o.t>DROP.life-DROP.blink&&Math.floor(now/90)%2)return;
   const y=o.y-o.z-.18-Math.sin(now/260+o.x)*.03*(o.z?0:1);
   drawShadow(c,o.x,o.y,.32,.12);
+  if(dropArt(c,o,y)){if(o.k==='bomb'){c.fillStyle='#fff';c.font='bold .16px sans-serif';c.textAlign='center';c.fillText('×'+o.v,o.x,y+.26)}return}
   if(o.k==='coin'){const [a,b]=COIN_COL(o.v),s=o.v>=5?.17:.13;   // 珠幣：發亮的小圓珠
     const g=c.createRadialGradient(o.x-s*.3,y-s*.3,0,o.x,y,s);g.addColorStop(0,'#fff');g.addColorStop(.35,a);g.addColorStop(1,b);c.fillStyle=g;c.beginPath();c.arc(o.x,y,s,0,7);c.fill();
     c.strokeStyle='rgba(0,0,0,.35)';c.lineWidth=.025;c.stroke()}
@@ -692,6 +717,7 @@ function drawShot(c,s){
   const a=Math.atan2(s.vy,s.vx),z=.45+(s.z||0),al=s.stuck?Math.min(1,s.stuck/.3):s.dead?Math.min(1,s.dead/.3):1;
   if(!s.dead&&!s.stuck)drawShadow(c,s.x,s.y,.3,.08);
   c.save();c.globalAlpha=al;c.translate(s.x,s.y-z);c.rotate(s.dead?a+GT*20:a);
+  if(SART.has('i-arrow')){const ai=sImg('i-arrow');if(ai){const w=.75,h=w*ai.height/ai.width;c.drawImage(ai,-.4,-h/2,w,h)}c.restore();return}   // 選配箭圖：水平、箭頭朝右，依飛行方向旋轉
   c.strokeStyle='#6b4423';c.lineWidth=.05;c.beginPath();c.moveTo(-.32,0);c.lineTo(.22,0);c.stroke();
   c.fillStyle='#d8d8e0';c.beginPath();c.moveTo(.32,0);c.lineTo(.18,-.06);c.lineTo(.18,.06);c.closePath();c.fill();
   c.fillStyle='#e8e0c8';c.beginPath();c.moveTo(-.32,0);c.lineTo(-.4,-.07);c.lineTo(-.24,0);c.lineTo(-.4,.07);c.closePath();c.fill();
@@ -710,9 +736,12 @@ function drawEnemy(c,e,now){
   if(e.k==='slime'&&e.st==='wind'){const p=1-e.t/D.windT;sx=1+.18*p;sy=1-.2*p}
   if(e.st==='wind'&&e.k!=='slime'){c.translate(Math.sin(now/22)*.03,0)}
   const y=e.y-e.z,flip=e.fx>.15;
-  const sk=e.skin,isMon=typeof sk==='number',key=isMon?'mon':sk,im=ART[key];
-  if(!im&&!artFail[key])needArt(key);
-  if(im){
+  const sk=e.skin,isMon=typeof sk==='number',key=isMon?'mon':sk,ma=MON_ART[sk],mid=ma&&SART.has('m-'+ma)?'m-'+ma:null;
+  const im=mid?null:ART[key];
+  if(mid)drawMonArt(c,e,mid,isMon?MON_DRAW[sk].size:SOLO_DRAW[sk].size,sx,sy,y,al);
+  else if(!im&&!artFail[key])needArt(key);
+  if(mid){}
+  else if(im){
     let cw,size,cx,sxp,syp;
     if(isMon){const md=MON_DRAW[sk];cw=MON_CELL;size=md.size;cx=md.cx;sxp=(sk*3+Math.floor(e.anim*(e.moving?8:4))%3)*cw;syp=enemyRow(e)*cw}
     else{const sd=SOLO_DRAW[sk];cw=sd.cw;size=sd.size;cx=sd.cx;sxp=0;syp=0}
@@ -723,8 +752,19 @@ function drawEnemy(c,e,now){
     if(e.flash>0){const wi=whiteOf(key);if(wi){c.globalAlpha=al*Math.min(1,e.flash/.08)*.85;c.drawImage(wi,sxp,syp,cw,cw,-ox,-h,w,h)}}
     c.restore();
   }else drawEnemyFallback(c,e,y,sx,sy);
-  if(e.k==='archer'&&!e.dead)drawBow(c,e,y);
+  if(e.k==='archer'&&!e.dead&&!mid)drawBow(c,e,y);   // 新圖裡弓已經畫好
   if(e.hp<e.max&&!e.dead){const bw=.7,by=y-(e.k==='knight'?1.35:e.k==='slime'?.95:1.25);c.fillStyle='#17221d';c.fillRect(e.x-bw/2,by,bw,.08);c.fillStyle='#e05a4a';c.fillRect(e.x-bw/2,by,bw*e.hp/e.max,.08)}
+  c.restore();
+}
+function drawMonArt(c,e,mid,size,sx,sy,y,al){
+  const mi=sImg(mid);if(!mi)return;   // 還在載入：先不畫
+  const r=enemyRow(e),cell=r>=3?3:r===2?2:Math.floor(e.anim*(e.moving?7:2.5))%2;   // 待機／移動在第 0、1 格切換
+  const cw=mi.width/2,ch=mi.height/2,w=size*sx,h=size*sy;
+  if(e.fx<-.15)e._fl=1;else if(e.fx>.15)e._fl=0;   // 新圖朝右，朝左才翻；幾乎垂直時維持上次的方向
+  c.save();c.translate(e.x,y);if(e._fl)c.scale(-1,1);
+  if(e.dead)c.rotate((1-al)*1.25);   // 倒地：用受傷格，邊淡出邊傾倒
+  c.drawImage(mi,(cell%2)*cw,(cell>>1)*ch,cw,ch,-w/2,-h,w,h);
+  if(e.flash>0&&!e.dead){const wi=whiteOf(sKey(mid));if(wi){c.globalAlpha=al*Math.min(1,e.flash/.08)*.85;c.drawImage(wi,(cell%2)*cw,(cell>>1)*ch,cw,ch,-w/2,-h,w,h)}}
   c.restore();
 }
 function drawBow(c,e,y){

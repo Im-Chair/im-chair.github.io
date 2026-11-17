@@ -133,6 +133,8 @@ body.touch #itemBtn:not(.on),body.touch #cycBtn:not(.on){display:none}
 .prow.on{border-color:#ffd84a;box-shadow:inset 0 0 0 1px #ffd84a55}
 .prow .pi{flex:1;min-width:0}
 .prow .pn{font-weight:700;font-size:15px}
+.pic{width:28px;height:28px;object-fit:contain;vertical-align:middle;margin-right:6px}
+.pchip .pic{width:20px;height:20px;margin-right:4px}
 .prow .pd{font-size:12px;color:#aab4dd;line-height:1.45;margin-top:2px;overflow-wrap:anywhere;white-space:pre-line}
 .prow button{flex:none;padding:6px 12px;font-size:13px;background:#2b3a67;border:1px solid #6f86d688;border-radius:10px;min-width:64px}
 .prow button:disabled{opacity:.4}
@@ -149,7 +151,7 @@ body.touch #itemBtn:not(.on),body.touch #cycBtn:not(.on){display:none}
 </style>
 <script>
 /* 版號：改了 maps.js 或這個檔就 +1，破除瀏覽器快取 */
-const SHRINE_VER='12';
+const SHRINE_VER='15';
 document.write('<script src="maps.js?v='+SHRINE_VER+'"><\/script>');
 </script>
 </head>
@@ -230,6 +232,32 @@ const HERO_CW=204,HERO_CH=154,HERO_BODY=150;
 // NPC 用珠界角色圖（4 格：正面、背面、左、右）；'board' 是程式畫的告示板
 const CH={zhou:{cw:94,h:1.212},xiaodou:{cw:115,h:1.05},adu:{cw:99,h:1.25},moen:{cw:89,h:1.3},guard:{cw:114,h:1.566},cloak:{cw:116,h:1.364},hana:{cw:114,h:1.212}};
 for(const k in CH){CH[k].art='ch_'+k;CH[k].ch=202;ART_SRC['ch_'+k]=`${PK}ch-${k}.webp`}
+/* ===== 選配美術（art/index.json 清單）：清單裡有的 id 才會發圖片請求，有圖用圖、沒圖維持程式畫法 =====
+   id 前綴：m-怪物（2×2 四格）n-NPC p-場景物件 i-道具／掉落 e-裝備；成品由 tools/process_art.py 產生。
+   清單啟動時抓一次；抓不到或格式不對就當空的，不影響開場 */
+const SART=new Set();
+const SART_READY=fetch(`art/index.json?v=${SHRINE_VER}`).then(r=>r.ok?r.json():[]).then(l=>{if(Array.isArray(l))l.forEach(k=>{if(typeof k==='string')SART.add(k)})}).catch(()=>{});
+function sKey(k){const key='s_'+k;if(!ART_SRC[key])ART_SRC[key]=`art/${k}.webp?v=${SHRINE_VER}`;return key}
+function sImg(k){   // 選配圖：不在清單 → null；在清單但還沒載好 → 觸發載入並回 null
+  if(!SART.has(k))return null;const key=sKey(k);
+  if(ART[key])return ART[key];
+  if(!artFail[key])needArt(key);
+  return null;
+}
+// 物品 id → 圖 id（背包、商店、鐵匠列表的小圖；裝備一律是 e-<id>）
+const ICON_OF={coin:'i-coin',heart:'i-heart',key:'i-key',bomb:'i-bomb',bombs:'i-bomb',boomerang:'i-boomerang',lantern:'i-lantern',hookshot:'i-hookshot',
+  gem:'i-piece',piece:'i-piece',relic_forest:'i-relic-forest',relic_fire:'i-relic-fire',relic_water:'i-relic-water',shard:'i-shard',ore:'i-ore',
+  core_forest:'i-core-forest',core_fire:'i-core-fire',core_water:'i-core-water',potion:'i-potion',heart_full:'i-heart-full'};
+function iconImg(id){   // 列表用的 <img>；沒圖回 null（呼叫端就不加）
+  const a=ICON_OF[id]||'e-'+id;if(!SART.has(a))return null;
+  const im=new Image();im.className='pic';im.alt='';im.src=`art/${a}.webp?v=${SHRINE_VER}`;return im;
+}
+// 在 (x,yb) 以底部中心貼圖，裝進 bw×bh（單位）的框內、保持比例；回傳 {w,h} 或 null（沒圖）
+function drawArtFit(c,k,x,yb,bw,bh){
+  const im=sImg(k);if(!im)return null;
+  const sc=Math.min(bw/im.width,bh/im.height),w=im.width*sc,h=im.height*sc;
+  c.drawImage(im,x-w/2,yb-h,w,h);return {w,h};
+}
 // 地磚圖集 map-tiles<主題>.webp：128px 一格，[欄,列,(圖集字尾)]；沒寫字尾＝用這個主題的圖集
 const THEME_SLOTS={
   '':     {grass:[[0,0],[1,0],[1,3],[0,0],[1,0],[2,3]],light:[[2,0]],flower:[[2,1]],dgrass:[[3,3]],dirt:[[0,1]],shallow:[[0,2]],deep:[[1,2]],forest:[[3,0]],floor:[[3,1]],wall:[[3,2]]},
@@ -328,7 +356,7 @@ function needArt(k){
   return artLoad[k]||(artLoad[k]=new Promise(r=>{
     if(!ART_SRC[k]){artFail[k]=1;return r(false)}
     const im=new Image();
-    im.onload=()=>{ART[k]=im;delete artFail[k];if(k.startsWith('tiles')&&texNeeds().includes(k)){buildTextures();GEN++}for(const s in SPR)SPR[s]=null;r(true)};
+    im.onload=()=>{ART[k]=im;delete artFail[k];if(k.startsWith('tiles')&&texNeeds().includes(k)){buildTextures();GEN++}for(const s in SPR)SPR[s]=null;if(k.startsWith('s_i-')&&typeof advKey!=='undefined')advKey='';r(true)};
     im.onerror=()=>{artFail[k]=1;setTimeout(()=>{delete artLoad[k]},8000);r(false)};   // 抓失敗：先用預設版，幾秒後允許重抓
     im.src=ART_SRC[k];
   }));
@@ -769,7 +797,8 @@ async function useExit(e){
 function mapArt(id){   // 這張地圖要用的圖（主題版＋預設版當備援）
   const th=MAPS[id].theme||'',ks=new Set(['hero','tiles','tiles_ember','tiles'+th]);
   ['tree1','tree2','rock','bush','sign','house'].forEach(k=>{ks.add(k+th)});
-  (MAPS[id].npcs||[]).forEach(n=>{if(CH[n.ch])ks.add(CH[n.ch].art)});
+  (MAPS[id].npcs||[]).forEach(n=>{if(SART.has('n-'+n.id))ks.add(sKey('n-'+n.id));else if(CH[n.ch])ks.add(CH[n.ch].art)});
+  for(const a of SART)if(/^[pim]-/.test(a))ks.add(sKey(a));   // 場景物件、道具、怪物圖一次備齊（e- 裝備圖只在列表用 <img>）
   HOOKS.art(id).forEach(k=>ks.add(k));
   return [...ks].map(needArt);
 }
@@ -891,10 +920,37 @@ function flame(c,x,y,s,now,seed){   // 搖曳的火焰
   const g=c.createRadialGradient(x,y-.2*s,0,x,y-.2*s,.5*s*f);g.addColorStop(0,'rgba(255,240,170,.95)');g.addColorStop(.45,'rgba(255,150,40,.85)');g.addColorStop(1,'rgba(255,60,0,0)');
   c.fillStyle=g;c.beginPath();c.moveTo(x-.24*s,y);c.quadraticCurveTo(x-.3*s,y-.45*s*f,x+.04*s*Math.sin(t*7),y-.75*s*f);c.quadraticCurveTo(x+.3*s,y-.45*s*f,x+.24*s,y);c.closePath();c.fill();
 }
+// 場景物件的選配圖：種類 → 圖 id（函式依狀態挑）與顯示框 [寬,高]（單位，底部中心貼在原本的落點）
+const P_ART={chest:p=>p.open?'p-chest-open':'p-chest',pot:()=>'p-pot',brazier:()=>'p-brazier',block:()=>'p-block',altar:()=>'p-altar',
+  pillar:()=>'p-pillar',pillarb:()=>'p-pillar-broken',campfire:()=>'p-campfire',hook:()=>'p-hook'};
+const P_BOX={chest:[1.2,1.05],pot:[.85,.95],brazier:[.9,1.3],block:[1.05,1.2],altar:[2.2,2.2],pillar:[1.0,2.6],pillarb:[1.0,1.3],campfire:[1.5,1.2],hook:[.7,1.1]};
+function drawPropArt(c,p,now){
+  const f=P_ART[p.k];if(!f)return false;
+  let id=f(p);const s=p.s||1,bx=P_BOX[p.k];
+  if(p.k==='brazier'&&p.lit&&SART.has('p-brazier-lit'))id='p-brazier-lit';
+  if(!SART.has(id))return false;   // 這個狀態沒圖：整個物件維持程式畫法，避免新舊混搭
+  const k2=p.k==='pillar'||p.k==='pillarb'?s:Math.min(s,1.2),r=drawArtFit(c,id,p.x,p.y,bx[0]*k2,bx[1]*k2);
+  if(!r)return true;   // 有圖但還在載入：先不畫，載好就會出現
+  if(p.k==='brazier'&&p.lit&&id==='p-brazier')flame(c,p.x,p.y-r.h*.88,.9,now,p.x*3);   // 沒有「點燃」圖時，疊現行的火焰
+  if(p.k==='altar'){   // 元素色光疊在寶石上（寶石約在圖的上方三分之一處）
+    const col=ALTAR_COL[p.id]||pal().ac,gy=p.y-r.h*.76,t=now/1000;
+    const g=c.createRadialGradient(p.x,gy,0,p.x,gy,.6);g.addColorStop(0,'#fff');g.addColorStop(.35,col);g.addColorStop(1,'rgba(0,0,0,0)');
+    c.save();c.globalCompositeOperation='lighter';c.globalAlpha=.55+.25*Math.sin(t*2.2);c.fillStyle=g;c.beginPath();c.arc(p.x,gy,.6,0,7);c.fill();c.restore();
+  }
+  return true;
+}
+function drawGateArt(c,l){   // 直向鎖門：用 p-gate 沿著長度排開；回傳是否畫了
+  if(!SART.has('p-gate'))return false;
+  const im=sImg('p-gate');if(!im)return true;
+  const gw=Math.max(1.3,l.w+.6),gh=gw*im.height/im.width,n=Math.max(1,Math.round(l.h/(gh*.6))),x=l.x+l.w/2;
+  for(let k=0;k<n;k++){const yb=l.y+l.h*(k+1)/n+.15;c.drawImage(im,x-gw/2,yb-gh,gw,gh)}
+  return true;
+}
 function drawProp(c,p,now){
   const im=sprite(p.k);
   if(im){const w=p.w,h=w*im.height/im.width;
     if(p.flip){c.save();c.translate(p.x,0);c.scale(-1,1);c.drawImage(im,-w/2,p.y-h,w,h);c.restore()}else c.drawImage(im,p.x-w/2,p.y-h,w,h);return}
+  if(drawPropArt(c,p,now))return;
   const s=p.s,x=p.x,y=p.y,pl=pal();
   switch(p.k){
     case 'tree1':case 'giant':c.fillStyle='#5a3b22';c.fillRect(x-.12*p.w/1.9,y-.7*p.w/1.9,.24*p.w/1.9,.7*p.w/1.9);c.fillStyle='#2f6b2a';c.beginPath();c.arc(x,y-1.25*p.w/1.9,.82*p.w/1.9,0,7);c.fill();c.fillStyle='#4f9a3a';c.beginPath();c.arc(x-.2*p.w/1.9,y-1.45*p.w/1.9,.5*p.w/1.9,0,7);c.fill();break;
@@ -945,6 +1001,11 @@ function drawProp(c,p,now){
       c.globalAlpha=.75+.25*Math.sin(t*2.2);c.fillStyle=g;c.beginPath();c.arc(x,y-1.48,.55,0,7);c.fill();c.globalAlpha=1;break}
     case 'lock':{   // 鎖住的門：兩側石柱＋門板＋需求記號（開了只剩石柱；直的門畫成石柵）
       const l=p.lock,x0=l.x,x1=l.x+l.w,yb=l.y+l.h,n=l.need==='relic3'?3:/^brazier(\d+)$/.test(l.need)?+RegExp.$1:1;
+      if(l.h>l.w&&!l.open&&drawGateArt(c,l)){   // 有 p-gate：換成圖，標記照舊疊上去
+        const mk2=l.need==='relic3'?3:/^brazier(\d+)$/.test(l.need)?+RegExp.$1:1;
+        for(let k=0;k<mk2;k++){const cy=l.y+l.h*(k+1)/(mk2+1)-.7;c.fillStyle='rgba(10,10,20,.7)';c.beginPath();c.arc(x0+l.w/2,cy,.13,0,7);c.fill();c.strokeStyle=pl.ac;c.lineWidth=.04;c.stroke()}
+        break;
+      }
       if(l.h>l.w){   // 直向：上下兩根石柱、中間一排石柵
         c.fillStyle=pl.sd;c.fillRect(x0,l.y-1.2,l.w,1.3);c.fillRect(x0,yb-1.2,l.w,1.3);
         c.fillStyle=pl.st;c.fillRect(x0+.05,l.y-1.3,l.w-.1,.18);c.fillRect(x0+.05,yb-1.3,l.w-.1,.18);
@@ -968,6 +1029,7 @@ function drawProp(c,p,now){
 }
 function drawBoard(c,n){   // 賞金板（NPC 佔位）
   const x=n.x,y=n.y;
+  if(drawArtFit(c,'p-board',x,y+.05,1.6,1.7))return;
   c.fillStyle='#5a3b22';c.fillRect(x-.55,y-1.3,.1,1.3);c.fillRect(x+.45,y-1.3,.1,1.3);
   c.fillStyle='#8d6038';rr(c,x-.7,y-1.45,1.4,.85,.06);c.fill();
   c.fillStyle='#efe2c0';c.fillRect(x-.5,y-1.32,.42,.5);c.fillRect(x+.02,y-1.28,.44,.36);
@@ -981,10 +1043,13 @@ function drawHero(c){
   c.drawImage(im,fr*HERO_CW,row*HERO_CH,HERO_CW,HERO_CH,fx-w/2,fy-h,w,h);
 }
 function bubble(c,bx,by){c.fillStyle='#fffffff0';c.beginPath();c.ellipse(bx,by,.32,.2,0,0,7);c.fill();c.beginPath();c.moveTo(bx-.06,by+.16);c.lineTo(bx+.06,by+.16);c.lineTo(bx,by+.28);c.fill();c.fillStyle='#3b55d6';for(const k of [-1,0,1]){c.beginPath();c.arc(bx+k*.11,by,.035,0,7);c.fill()}}
+const NPC_H={chief:1.35,smith:1.35,merchant:1.35,traveler:1.4,trainer:1.5,villager:1.3};   // 選配 NPC 圖的身高（單位）
 function drawNpc(c,n,now){
-  const d=CH[n.ch],im=d&&ART[d.art];let h=1.2;
+  const d=CH[n.ch],na=n.ch!=='board'&&sImg('n-'+n.id),im=d&&!na&&ART[d.art];let h=1.2;
   drawShadow(c,n.x,n.y+.08,n.ch==='board'?1.2:.6,.22);
   if(n.ch==='board'){drawBoard(c,n);h=1.5}
+  else if(na){h=NPC_H[n.id]||1.3;c.drawImage(na,n.x-h*na.width/na.height/2,n.y+.1-h,h*na.width/na.height,h)}
+  else if(SART.has('n-'+n.id)){c.fillStyle='#5a7dff';c.beginPath();c.arc(n.x,n.y-.4,.3,0,7);c.fill()}   // 圖載入中：先放個點，不要閃現借來的舊圖
   else if(!im){if(d)needArt(d.art);c.fillStyle='#5a7dff';c.beginPath();c.arc(n.x,n.y-.4,.3,0,7);c.fill();c.fillStyle='#f0c9a0';c.beginPath();c.arc(n.x,n.y-.9,.22,0,7);c.fill()}
   else{h=d.h*NPC_K;const w=h*d.cw/d.ch;c.drawImage(im,n.face*d.cw,0,d.cw,d.ch,n.x-w/2,n.y+.1-h,w,h)}
   if(n===nearTalk&&!dlgOpen)bubble(c,n.x,n.y-h-.18+Math.sin(now/300)*.04);
@@ -1292,6 +1357,7 @@ async function start(mode){   // mode：'new'｜'continue'（標題按鈕由 gam
   const s=HOOKS.begin(mode==='continue'?'continue':'new')||{},id=MAPS[s.map]?s.map:'village';
   C=compileMap(id);
   resize();
+  await Promise.race([SART_READY,sleep(2500)]);   // 選配美術清單：等不到就當沒有，之後抓到了也會自動啟用
   await artGate(mapArt(id),6000);   // 網路不通就逾時放行，畫面用程式畫的替代
   go(id,s.x,s.y,s.face);
   running=true;last=performance.now();render(last);requestAnimationFrame(loop);

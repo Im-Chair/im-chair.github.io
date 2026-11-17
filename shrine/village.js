@@ -55,7 +55,9 @@ const metNeed=need=>!need||(ITEMS[need]&&ITEMS[need].kind==='tool'?ST.tools.incl
 const NEED_TXT=need=>need==='bomb'?'要有炸彈袋':need==='bs:boss_forest'?'打倒林之首領後':need==='bs:boss_fire'?'打倒焰之首領後':need==='bs:boss_water'?'打倒淵之首領後':'';
 function el(tag,cls,txt){const e=document.createElement(tag);if(cls)e.className=cls;if(txt!=null)e.textContent=txt;return e}
 function row(body,name,desc,btn,onClick,opt={}){
-  const r=el('div','prow'+(opt.on?' on':''));const i=el('div','pi');i.append(el('div','pn',name));if(desc)i.append(el('div','pd',desc));r.append(i);
+  const r=el('div','prow'+(opt.on?' on':''));const i=el('div','pi'),pn=el('div','pn',name);
+  if(opt.icon){const ic=iconImg(opt.icon);if(ic)pn.prepend(ic)}   // 有選配小圖才加（opt.icon＝物品 id）
+  i.append(pn);if(desc)i.append(el('div','pd',desc));r.append(i);
   if(btn!=null){const b=el('button',null,btn);b.disabled=!!opt.off;b.onclick=onClick;r.append(b)}
   body.append(r);return r;
 }
@@ -78,24 +80,24 @@ function openBag(){
         const own=ST.bag.equip.filter(id=>EQUIP[id]&&EQUIP[id].slot===s);
         if(!own.length)body.append(el('div','pd',TEXT.bag.empty));
         for(const id of own){const on=ST.eq[s]===id;
-          row(body,EQUIP[id].name,EQUIP[id].desc,on?(s==='acc'?'卸下':'裝備中'):'裝備',()=>{equip(id);SFX.drop();save();redraw()},{on,off:on&&s!=='acc'})}
+          row(body,EQUIP[id].name,EQUIP[id].desc,on?(s==='acc'?'卸下':'裝備中'):'裝備',()=>{equip(id);SFX.drop();save();redraw()},{on,off:on&&s!=='acc',icon:id})}
       }
     }else if(tab==='item'){
       body.append(el('div','psec','生命'));
       const g=el('div','pgrid');body.append(g);
-      const chip=(n,v,dim)=>{const c=el('div','pchip'+(dim?' dim':''),n);c.append(el('b',null,v));g.append(c)};
-      chip('心',`${ST.hearts}`);chip('命珠碎片',`${ST.pieces} / ${PL.piecesPerHeart}`);chip('累計碎片',`${ST.gotPieces} / ${totalGems()}`);chip('回復藥',`${ST.bag.potion} / ${POTION_MAX}`);chip('小鑰匙',`${ST.keys}`);
+      const chip=(n,v,dim,ic)=>{const c=el('div','pchip'+(dim?' dim':''),n);const im=ic&&iconImg(ic);if(im)c.prepend(im);c.append(el('b',null,v));g.append(c)};
+      chip('心',`${ST.hearts}`,0,'heart');chip('命珠碎片',`${ST.pieces} / ${PL.piecesPerHeart}`,0,'piece');chip('累計碎片',`${ST.gotPieces} / ${totalGems()}`,0,'piece');chip('回復藥',`${ST.bag.potion} / ${POTION_MAX}`,0,'potion');chip('小鑰匙',`${ST.keys}`,0,'key');
       body.append(el('div','psec','副道具'));
       if(!ST.tools.length)body.append(el('div','pd',TEXT.bag.empty));
-      for(const id of TOOL_ORDER)if(ST.tools.includes(id))row(body,TOOLS[id].name+(id==='bomb'?`（${ST.bombs} / ${BOMB_MAX}）`:''),(TEXT.tool[id]||'').replace(/^獲得「[^」]+」！/,''),ST.tool===id?'使用中':'選用',()=>{ST.tool=id;advHud(true);redraw()},{on:ST.tool===id,off:ST.tool===id});
+      for(const id of TOOL_ORDER)if(ST.tools.includes(id))row(body,TOOLS[id].name+(id==='bomb'?`（${ST.bombs} / ${BOMB_MAX}）`:''),(TEXT.tool[id]||'').replace(/^獲得「[^」]+」！/,''),ST.tool===id?'使用中':'選用',()=>{ST.tool=id;advHud(true);redraw()},{on:ST.tool===id,off:ST.tool===id,icon:id});
       body.append(el('div','psec','聖物'));
       const g2=el('div','pgrid');body.append(g2);
-      for(const r of ['relic_forest','relic_fire','relic_water']){const c=el('div','pchip'+(ST.relics.includes(r)?'':' dim'),ITEMS[r].name);c.append(el('b',null,ST.relics.includes(r)?'✓':'—'));g2.append(c)}
+      for(const r of ['relic_forest','relic_fire','relic_water']){const c=el('div','pchip'+(ST.relics.includes(r)?'':' dim'),ITEMS[r].name);const im=iconImg(r);if(im)c.prepend(im);c.append(el('b',null,ST.relics.includes(r)?'✓':'—'));g2.append(c)}
     }else{
       const ids=Object.keys(MATS);
       body.append(el('div','psec','材料（鍛造用）'));
       const g=el('div','pgrid');body.append(g);
-      for(const id of ids){const n=ST.mats[id]|0;const c=el('div','pchip'+(n?'':' dim'),MATS[id].name);c.append(el('b',null,n));g.append(c)}
+      for(const id of ids){const n=ST.mats[id]|0;const c=el('div','pchip'+(n?'':' dim'),MATS[id].name);const im=iconImg(id);if(im)c.prepend(im);c.append(el('b',null,n));g.append(c)}
       body.append(el('div','psec','時段'),el('div','pd',`現在是${dayNow().name}。在村子的營火可以切換。`));
     }
   }});
@@ -121,10 +123,10 @@ function openShop(tab){
     if(t==='buy')for(const s of SHOP){
       const it=ITEMS[s.id],n=s.n||1,left=V().stock[s.id],owned=it.kind==='equip'&&ST.bag.equip.includes(s.id),ok=metNeed(s.need);
       const desc=(it.kind==='equip'?EQUIP[s.id].desc:s.id==='potion'?`生命歸零時自動喝下、回滿。身上 ${ST.bag.potion}/${POTION_MAX}`:s.id==='bombs'?`身上 ${ST.bombs}/${BOMB_MAX}`:'')+(ok?'':`（${NEED_TXT(s.need)}）`)+(owned?'':`　剩 ${left}`);
-      row(body,`${nameOf(s.id)}${n>1?' ×'+n:''}　${s.price} ${MONEY}`,desc,owned?'已擁有':'買',()=>{shopBuy(s);redraw()},{off:owned||!ok||left<=0||ST.money<s.price})}
+      row(body,`${nameOf(s.id)}${n>1?' ×'+n:''}　${s.price} ${MONEY}`,desc,owned?'已擁有':'買',()=>{shopBuy(s);redraw()},{off:owned||!ok||left<=0||ST.money<s.price,icon:s.id})}
     else{let any=false;
       for(const id in SELL){const n=ST.mats[id]|0;if(!n)continue;any=true;
-        const r=row(body,`${MATS[id].name} ×${n}`,`一個 ${SELL[id]} ${MONEY}`,'賣 1',()=>{shopSell(id,1);redraw()});
+        const r=row(body,`${MATS[id].name} ×${n}`,`一個 ${SELL[id]} ${MONEY}`,'賣 1',()=>{shopSell(id,1);redraw()},{icon:id});
         if(n>1){const b=el('button',null,'全賣');b.onclick=()=>{shopSell(id,ST.mats[id]|0);redraw()};r.append(b)}}
       if(!any)body.append(el('div','pd','沒有可以賣的材料。（首領的核心留著鍛造用）'));}
   }});
@@ -146,7 +148,7 @@ function openForge(){
     for(const f of FORGE){
       const done=ST.bag.equip.includes(f.id),hasFrom=ST.bag.equip.includes(f.from);
       const need=Object.entries(f.mats).map(([k,n])=>`${MATS[k].name} ${ST.mats[k]|0}/${n}`).join('、');
-      row(body,`${EQUIP[f.id].name}　${f.money} ${MONEY}`,`${EQUIP[f.id].desc}\n升級自：${EQUIP[f.from].name}${hasFrom||done?'':'（還沒有）'}\n材料：${need}`,done?'已擁有':'打造',()=>{forge(f.id);redraw()},{off:done||!recipeOK(f)});
+      row(body,`${EQUIP[f.id].name}　${f.money} ${MONEY}`,`${EQUIP[f.id].desc}\n升級自：${EQUIP[f.from].name}${hasFrom||done?'':'（還沒有）'}\n材料：${need}`,done?'已擁有':'打造',()=>{forge(f.id);redraw()},{off:done||!recipeOK(f),icon:f.id});
     }
   }});
 }
@@ -233,6 +235,7 @@ function makeStake(){const [x,y]=stakeSpot();
 function drawStake(c,e){
   const al=e.dead?clamp(e.dieT/.35,0,1):1;if(al<=0)return;c.save();c.globalAlpha=al;drawShadow(c,e.x,e.y+.02,.6,.2);
   const tilt=e.dead?(1-al)*1.2:0;c.translate(e.x,e.y);c.rotate(tilt);
+  if(drawArtFit(c,'p-stake',0,0,.8,1.25)){c.restore();return}   // 有 p-stake 圖：用圖（倒下的傾斜與淡出沿用）
   c.fillStyle='#7a5530';c.fillRect(-.09,-.95,.18,.95);c.fillStyle='#a8784a';c.fillRect(-.26,-.8,.52,.16);
   c.fillStyle='#d8b07a';c.beginPath();c.arc(0,-1.02,.17,0,7);c.fill();c.strokeStyle='#5a3b1e';c.lineWidth=.03;c.stroke();
   c.strokeStyle='#c83a2a';c.lineWidth=.035;c.beginPath();c.arc(0,-1.02,.08,0,7);c.stroke();c.restore();

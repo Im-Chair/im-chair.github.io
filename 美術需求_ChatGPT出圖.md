@@ -46,6 +46,7 @@
 | 12 | `drift-*` 6 張 | 1024×1024 透明 | 內嵌進 `drift-ark/index.html`（Claude 處理） | 漂流方舟合成物品（見第 12 節） | ★★ |
 | 13 | `sf-*`（80 張） | 見第 13 節 | `sky-frontier/art/` | 天穹拓荒的方塊、怪物、人物、背景 | ★★ |
 | 14 | `pokemo-btn`、`pokemo-btn-pri` | 1536×1024 | `pokemo/art/ui-btn*.webp` | 珠界主畫面的按鍵框 | ★★ |
+| 16 | `m-*`、`n-*`、`sheet-props`／`sheet-items`／`sheet-equip` | 見第 16 節 | `shrine/art/`（腳本另產生 `index.json`） | 聖林神廟的怪物、NPC、場景物件、道具、裝備 | ★★ |
 
 **投報率最高的是 1–6**：首頁是每次打開都會看到的畫面，而且 emoji 在不同手機上長得不一樣，換掉之後整個遊戲集才像同一個系列。
 
@@ -553,6 +554,21 @@
 - [ ] 九格方向、光源一致，跟舊版裝備圖放在一起不突兀
 
 ---
+
+## 16　聖林神廟（shrine）・怪物、NPC、小物件圖表（編號沿用總表 16；prompt 由 Claude 代理在 ChatGPT 對話中給）
+
+原圖放 `output/imagegen/shrine/`（PNG，透明背景最好；單色底也行，腳本會從邊緣洪水填充去背並內縮 1px）。執行 `python tools/process_art.py`（可加 `--shrine-src 資料夾`），成品輸出到 `shrine/art/` 並產生 `shrine/art/index.json`；遊戲只對清單內的圖發請求，沒圖維持現行畫法，可以一張一張補。
+
+| 原圖檔名 | 內容 | 輸出 |
+|---|---|---|
+| `m-<id>.png`（約 1024×1024） | 怪物，2×2 四格：左上待機、右上移動、左下攻擊、右下受傷；角色朝右、3/4 俯視。id：`slime`、`slime-water`、`slime-mush`、`slime-ember`、`knight`、`goblin`、`archer` | `m-<id>.webp`（512×512，每格 256，四格同一縮放、腳底對齊、置中） |
+| `n-<id>.png` | NPC 單一正面站姿全身。id：`chief`、`smith`、`merchant`、`traveler`、`trainer`、`villager` | `n-<id>.webp`（高 256） |
+| `sheet-props.png`（約 1024×1024） | 4×4 共 16 格，由左到右、由上到下：`p-chest`、`p-chest-open`、`p-pot`、`p-pot-broken`、`p-brazier`、`p-brazier-lit`、`p-block`、`p-plate`、`p-altar`（中性灰白寶石）、`p-pillar`、`p-pillar-broken`、`p-campfire`、`p-board`、`p-hook`、`p-stake`、`p-gate` | 各自 `p-*.webp`（長邊 192） |
+| `sheet-items.png` | 同上 16 格：`i-coin`、`i-heart`、`i-key`、`i-bomb`、`i-boomerang`、`i-lantern`、`i-hookshot`、`i-piece`、`i-relic-forest`、`i-relic-fire`、`i-relic-water`、`i-shard`、`i-ore`、`i-core-forest`、`i-core-fire`、`i-core-water` | 各自 `i-*.webp`（長邊 128） |
+| `sheet-equip.png` | 同上 16 格：`e-wood_sword`、`e-iron_sword`、`e-flame_sword`、`e-star_sword`、`e-wood_shield`、`e-iron_shield`、`e-prism_shield`、`e-cloth`、`e-scale_mail`、`e-ember_mail`、`e-wind_boots`、`e-lucky_ring`、`e-sword_crest`、`i-potion`、`i-arrow`、`i-heart-full` | `e-*.webp`（長邊 192）、`i-*.webp`（128） |
+
+- 圖表格線不用很準：腳本先去背，找出各個不透明連通塊（很近的碎塊合併），依中心落在 4×4 的哪一格指派；某格找不到會印警告並略過。
+- 單張補圖：`p-chest.png`、`i-coin.png`、`e-iron_sword.png` 這種單檔存在時，優先於圖表切出來的。
 
 ## 待出圖總表（2026-11-07 盤點）
 

@@ -732,6 +732,13 @@ function drawTfx(c,t,now){
 // 道具圖示（世界與 HUD 共用）：以 (0,0) 為中心、s＝大約的直徑
 function toolShape(c,id,s,alt){
   c.save();c.scale(s,s);
+  const ia=ICON_OF[id];
+  if(ia&&SART.has(ia)){   // 選配圖 i-<道具>：等比縮進 s×s 的框；還在載入就先不畫
+    const im=sImg(ia);
+    if(im){const k=1/Math.max(im.width,im.height),w=im.width*k,h=im.height*k;c.drawImage(im,-w/2,-h/2,w,h);
+      if(alt){c.globalCompositeOperation='lighter';c.globalAlpha=.55;const g=c.createRadialGradient(0,0,0,0,0,.4);g.addColorStop(0,'#ff6040');g.addColorStop(1,'rgba(255,60,30,0)');c.fillStyle=g;c.beginPath();c.arc(0,0,.4,0,7);c.fill()}}
+    c.restore();return;
+  }
   switch(id){
     case 'boomerang':c.fillStyle='#c8803a';c.strokeStyle='#5a3010';c.lineWidth=.06;c.beginPath();c.moveTo(-.45,-.12);c.quadraticCurveTo(0,-.55,.45,-.12);c.lineTo(.4,.05);c.quadraticCurveTo(0,-.28,-.4,.05);c.closePath();c.fill();c.stroke();
       c.fillStyle='#ffe08a';c.fillRect(-.05,-.38,.1,.1);break;
@@ -788,7 +795,9 @@ function advHud(force){
     document.getElementById('toolN').textContent=ST.tool==='bomb'?'×'+ST.bombs:(ST.tools.length>1?'':'');
     drawIconOn(document.getElementById('toolCv'),ST.tool)}
   const rl=document.getElementById('relics');if(rl){rl.classList.toggle('on',ST.relics.length>0);const cols={relic_forest:'#8cff8c',relic_fire:'#ffa040',relic_water:'#7aa8ff'};
-    [...rl.children].forEach((el,i)=>{const id=['relic_forest','relic_fire','relic_water'][i];el.style.background=ST.relics.includes(id)?cols[id]:'#333a50';el.style.boxShadow=ST.relics.includes(id)?`0 0 6px ${cols[id]}`:''})}
+    [...rl.children].forEach((el,i)=>{const id=['relic_forest','relic_fire','relic_water'][i],own=ST.relics.includes(id),ra=ICON_OF[id];
+      if(own&&SART.has(ra)){el.style.background=`url(art/${ra}.webp?v=${SHRINE_VER}) center/contain no-repeat`;el.style.clipPath='none';el.style.width=el.style.height='18px';el.style.boxShadow=''}   // 有 i-relic-* 圖：換成圖示
+      else{el.style.clipPath='';el.style.width=el.style.height='';el.style.background=own?cols[id]:'#333a50';el.style.boxShadow=own?`0 0 6px ${cols[id]}`:''}})}
   const ib=document.getElementById('itemBtn'),cb=document.getElementById('cycBtn');
   if(ib){ib.classList.toggle('on',ST.tools.length>0);drawIconOn(document.getElementById('itemCv'),ST.tool);document.getElementById('itemN').textContent=ST.tool==='bomb'?ST.bombs:''}
   if(cb)cb.classList.toggle('on',ST.tools.length>1);
