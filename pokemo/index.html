@@ -171,7 +171,7 @@ body.btn-art #sTitle button::before,body.btn-art #sTitle button::after{display:n
     <button class="pri" id="btnCont" style="display:none">繼續遊戲</button>
     <button class="pri" id="btnNew">新遊戲</button>
     <button id="btnImp">匯入存檔碼</button>
-    <div class="ver">原型 v1.21 ・ 110 種怪物 ・ 前九章可玩</div>
+    <div class="ver">原型 v1.22 ・ 110 種怪物 ・ 前九章可玩</div>
   </div>
 
   <div id="sMap" class="screen">
@@ -1384,11 +1384,18 @@ function getBlock(bx,by,canBuild){   // 取快取塊；沒有且還有額度就�
 let camXg=0,camYg=0;
 // 高草：取圖格中央 1/FEATHER_SCALE（與羽化地面的格內部同一段貼圖，蓋層才能與底圖無縫）
 function tgTile(c,x,y){const w=(128-2*TILE_INSET)/FEATHER_SCALE,o=TILE_INSET+((128-2*TILE_INSET)-w)/2;c.drawImage(ART[artKey('tiles')],3*128+o,o,w,w,x,y,TS+1,TS+1)}
+// 蓋層只畫在地面實際畫了高草的範圍：用與地面同一個高草形狀場（含平滑、雜訊、世界變形）當遮罩，取樣點對齊分塊遮罩的格點（每格 SHAPE_S 點），外緣與地面高草一致；
+// 腳下一小片的高草不透明度（平均）當整層透明度，進出草叢邊緣是漸變、不會閃。遭遇判定仍照邏輯格，這裡只管外觀。
+const CG_ACT=[1,0,1,0],CGF=new Float32Array(4);let cgBuf=null,cgMask=null;
+function cgShape(sd,x,y){   // 畫面世界座標一點：地面上看得到的高草不透明度（高草層 × 陸地）
+  shapeField(sd,x,y,CGF,CG_ACT);const pg=SHAPE_L.tg,pw=SHAPE_L.water;
+  return sstep(pg.t-pg.e,pg.t+pg.e,CGF[2])*(1-sstep(pw.t-pw.e,pw.t+pw.e,CGF[0]));
+}
 function coverGrass(c,px,py){
   if(!ART[artKey('tiles')])return;
-  const q=toLogic((px+camXg)/TS,(py+camYg-2)/TS,[0,0]);   // 腳下的邏輯格
-  if(tileAt(Math.floor(q[0]),Math.floor(q[1]))!==T.TG)return;
-  const x0=px-TS*.62,x1=px+TS*.62,st=TS*.11,bot=py+TS*.07;
+  const sd=shapeData(),fx=(px+camXg)/TS,fy=(py+camYg-2)/TS,mf=(2*cgShape(sd,fx,fy)+cgShape(sd,fx-.28,fy)+cgShape(sd,fx+.28,fy)+cgShape(sd,fx,fy-.14)+cgShape(sd,fx,fy+.14))/6;   // 腳下一小片的平均：進出草叢邊緣時整層透明度約在半格內漸變
+  if(mf<.02)return;
+  const x0=px-TS*.62,x1=px+TS*.62,st=TS*.11,bot=py+TS*.07,top=py-TS;
   const pts=[[x0,bot]];
   for(let x=Math.floor((x0+camXg)/st)*st-camXg;x<=x1+st;x+=st){
     const k=Math.floor(Math.round((x+camXg)/st));
@@ -1396,11 +1403,27 @@ function coverGrass(c,px,py){
     pts.push([x,py-TS*(.42+.3*h1)]);pts.push([x+st*.5,py-TS*(.30+.12*h2)]);
   }
   pts.push([x1,bot]);
-  c.save();c.beginPath();pts.forEach((p,i)=>i?c.lineTo(p[0],p[1]):c.moveTo(p[0],p[1]));c.closePath();c.clip();
-  c.translate(-camXg,-camYg);c.scale(1/mdpr,1/mdpr);c.fillStyle=c.createPattern(shapeTex().tg,'repeat');   // 與地面同一張世界空間高草紋理
-  c.fillRect((x0+camXg)*mdpr-2,(py-TS+camYg)*mdpr,(x1-x0)*mdpr+4,TS*1.3*mdpr);
-  c.restore();
-  c.strokeStyle='rgba(8,48,20,.4)';c.lineWidth=1.5;c.beginPath();pts.slice(1,-1).forEach((p,i)=>i?c.lineTo(p[0],p[1]):c.moveTo(p[0],p[1]));c.stroke();
+  // 暫存畫布：座標與主畫布相同（CSS 像素），只是原點移到蓋層左上
+  const bx0=Math.floor(x0-st-2),by0=Math.floor(top-2),bw=Math.ceil((x1+st+2-bx0)*mdpr)+2,bh=Math.ceil((bot+2-by0)*mdpr)+2;
+  if(!cgBuf){cgBuf=document.createElement('canvas')}
+  if(cgBuf.width<bw||cgBuf.height<bh){cgBuf.width=Math.max(bw,cgBuf.width);cgBuf.height=Math.max(bh,cgBuf.height)}
+  const g=cgBuf.getContext('2d');g.setTransform(1,0,0,1,0,0);g.globalCompositeOperation='source-over';g.globalAlpha=1;g.clearRect(0,0,bw,bh);
+  g.setTransform(mdpr,0,0,mdpr,-bx0*mdpr,-by0*mdpr);
+  g.save();g.beginPath();pts.forEach((p,i)=>i?g.lineTo(p[0],p[1]):g.moveTo(p[0],p[1]));g.closePath();g.clip();
+  g.translate(-camXg,-camYg);g.scale(1/mdpr,1/mdpr);g.fillStyle=g.createPattern(shapeTex().tg,'repeat');   // 與地面同一張世界空間高草紋理、同相位
+  g.fillRect((x0+camXg)*mdpr-2,(top+camYg)*mdpr,(x1-x0)*mdpr+4,TS*1.3*mdpr);
+  g.restore();
+  g.strokeStyle='rgba(8,48,20,.4)';g.lineWidth=1.5;g.beginPath();pts.slice(1,-1).forEach((p,i)=>i?g.lineTo(p[0],p[1]):g.moveTo(p[0],p[1]));g.stroke();
+  // 遮罩：在分塊遮罩的同一組格點上取樣高草形狀，雙線性放大後挖掉形狀外的部分
+  const S=SHAPE_S,i0=Math.floor((bx0+camXg)/TS*S)-1,j0=Math.floor((by0+camYg)/TS*S)-1,n=Math.ceil(TS*1.5/TS*S)+4,m=Math.ceil(TS*1.2/TS*S)+4;   // 取樣格數固定（約 1.5×1.2 格見方），遮罩畫布不必一直重建
+  if(!cgMask||cgMask.width!==n||cgMask.height!==m){cgMask=document.createElement('canvas');cgMask.width=n;cgMask.height=m;cgMask.img=cgMask.getContext('2d').createImageData(n,m);cgMask.img.data.fill(255)}
+  const d=cgMask.img.data;
+  for(let j=0;j<m;j++)for(let i=0;i<n;i++){const v=cgShape(sd,(i0+i)/S,(j0+j)/S);d[(j*n+i)*4+3]=255*v}
+  cgMask.getContext('2d').putImageData(cgMask.img,0,0);
+  const sc=TS/S;g.globalCompositeOperation='destination-in';g.imageSmoothingEnabled=true;
+  g.drawImage(cgMask,0,0,n,m,i0*sc-camXg-sc/2,j0*sc-camYg-sc/2,n*sc,m*sc);   // 樣本 i 對齊世界座標 i/SHAPE_S 格（與分塊遮罩同法）
+  g.globalCompositeOperation='source-over';
+  c.save();c.setTransform(1,0,0,1,0,0);c.globalAlpha=Math.min(1,mf*1.15);c.drawImage(cgBuf,0,0,bw,bh,Math.round(bx0*mdpr),Math.round(by0*mdpr),bw,bh);c.restore();
 }
 function propOff(tx,ty){   // 樹石灌木的格內偏移 [dx,dy,縮放]（固定種子）：朝可走格那側幾乎不偏也不放大，免得看起來擋路
   const r=i=>hash(tx*13+i*7+5,ty*17+i*11+3)/49.5-1;
@@ -1467,9 +1490,10 @@ function drawMap(now,full){   // full：不限制本幀新建幾塊地面快取�
     for(const [bx,by,e] of list)if(e.wt)blit(e.wt,bx,by);
     c.globalAlpha=1;
     c.setTransform(mdpr,0,0,mdpr,0,0);
-    for(const [bx,by] of miss){   // 還沒建好的塊：這一幀先用逐格硬邊頂著
-      for(let ty=Math.max(y0,by*BLOCK);ty<=Math.min(y1,by*BLOCK+BLOCK-1);ty++)for(let tx=Math.max(x0,bx*BLOCK);tx<=Math.min(x1,bx*BLOCK+BLOCK-1);tx++)
-        drawTile(c,map[ty][tx],Math.floor(tx*TS-camX),Math.floor(ty*TS-camY),tx,ty,now);
+    if(miss.length){   // 還沒建好的塊：這一幀先鋪世界空間的無縫地面紋理頂著（不畫逐格方塊，免得閃出方格）
+      const gt=shapeTex().ground;c.save();c.setTransform(1,0,0,1,-Math.round(camX*mdpr),-Math.round(camY*mdpr));c.fillStyle=c.createPattern(gt,'repeat');
+      for(const [bx,by] of miss)c.fillRect(Math.round(bx*BLOCK*TS*mdpr),Math.round(by*BLOCK*TS*mdpr),Math.ceil(BLOCK*TS*mdpr)+1,Math.ceil(BLOCK*TS*mdpr)+1);
+      c.restore();
     }
     c.setTransform(1,0,0,1,0,0);
     for(const [bx,by,e] of list)blit(e.cv,bx,by);
