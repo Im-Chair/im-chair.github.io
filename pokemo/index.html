@@ -171,7 +171,7 @@ body.btn-art #sTitle button::before,body.btn-art #sTitle button::after{display:n
     <button class="pri" id="btnCont" style="display:none">繼續遊戲</button>
     <button class="pri" id="btnNew">新遊戲</button>
     <button id="btnImp">匯入存檔碼</button>
-    <div class="ver">原型 v1.19 ・ 110 種怪物 ・ 前九章可玩</div>
+    <div class="ver">原型 v1.20 ・ 110 種怪物 ・ 前九章可玩</div>
   </div>
 
   <div id="sMap" class="screen">
@@ -481,21 +481,40 @@ const hash=(x,y)=>(((x*73856093)^(y*19349663))>>>0)%100;
 const ENC_RATE=0.11;      // 高草每走 1 格的遇怪機率（地圖可用 encRate 覆寫）
 const WARP_GRACE=3;       // 換地圖／戰鬥後，前幾格高草不遇怪
 let MW=28,MH=36,map=[],CUR=null,CURID='',NPCS=[];
-/* ===== 地面繪製參數（地面分塊快取＋羽化過渡；調觀感改這裡） ===== */
+/* ===== 地面繪製參數（地面分塊快取；調觀感改這裡） =====
+   地形交界用「形狀」畫：把水／樹林／高草／路的格子各當成 0、1 的指示場，高斯平滑＋座標擾動＋雜訊後取等值線，
+   轉角變圓、直邊帶低頻擺動、路有寬窄與碎邊。碰撞、遭遇、事件仍是逐格判定，這裡只改畫面。 */
 const BLOCK=8,BLOCK_MAX=24,BLOCK_BUILD=2;   // 每塊 8×8 格；快取上限（只淘汰本幀沒用到的）；每幀最多新建幾塊
 const FEATHER_SCALE=1.7;      // 羽化圖格的放大倍率（相對一格）
 const FEATHER_CORE=.56;       // 圖格中心起、完全不透明的半徑（格）；須 > .5 + FEATHER_JITTER 才不會露縫
 const FEATHER_JITTER=.05;     // 每格位置的雜湊偏移（格），打散規律感；高草不偏移
 const FEATHER_BANDS=[[.2,.28,.24,.18],[.27,.18,.2,.29],[.16,.24,.29,.22],[.25,.29,.17,.21],[.22,.17,.27,.26],[.29,.23,.19,.16]];   // 遮罩變體：[左,右,上,下] 漸淡寬度（格，≤.29）。越寬越糊
 const TILE_INSET=3;           // 圖集取樣內縮（像素），避免吃到相鄰圖格
-const SHORE_A=.5,SHORE_OFF=.1,SHORE_RGB='8,36,56';   // 岸線暈影：不透明度、往水側偏移（格）、顏色
-const FEATHER_EDGE_WATER=[-.32,-.18,-.04,.1,.2,.3],FEATHER_EDGE_LAND=[-.08,-.04,0,.05,.1,.15];   // 朝低優先地形那側的邊緣位置偏移（格；負＝內縮）：貼水可大、貼低階陸地要小
 const SOFT_CORE=[.12,.2,.28,.16,.24,.3],SOFT_JITTER=.12;   // 軟變體（地圖 groundSoft）的不透明半徑與位置偏移：越小越像散落的斑
-const FT_MAX=240;           // 羽化圖格快取上限（張）
-const TREE_SHADE_A=.38,TREE_SHADE_FADE=.3;          // 樹格底色的深綠不透明度、朝非樹格那側的漸淡寬度（格）
+const GROUND_SOFT_DEF=[[0,1],[3,3]];   // 地圖沒指定 groundSoft 時，這些反差大的地面格（路面、雜色格）改成散斑疊上，不再是一格一格的方塊
+const FLOWER_JITTER=.16;      // 花叢圖格的位置偏移（格）
+const FT_MAX=120;             // 羽化圖格快取上限（張）
+const SHAPE_S=8;              // 形狀遮罩的取樣密度（每格幾個樣本）；以雙線性放大當 alpha，越大越細、建塊越慢
+const SHAPE_KEEP_R=.29,SHAPE_KEEP_K=.15;   // 可走格保護半徑（格，圓角方形＝角色站位範圍）與壓低量（場值）
+const SHAPE_WARP=.22,SHAPE_WARP_F=.33;   // 座標擾動幅度（格）與頻率（每格）：直邊的低頻左右擺動
+// 各層：s 平滑半徑（格，越大轉角越圓）、t 門檻（< .5 ＝ 比格子外擴）、e 邊緣柔和半寬（場值）、lo／lf 寬窄起伏幅度與頻率、hi／hf 碎邊幅度與頻率、
+//   b＝1 時雜訊只往外推（不可走的水、樹林寧可畫大也不內縮）。注意：s 與 t 太大會讓夾在水、樹之間的一格可走地被畫成水／樹林
+const SHAPE_L={
+  water:{s:.6,t:.5,e:.06,lo:.14,lf:.4,hi:.025,hf:1.7,b:1},
+  tree:{s:.5,t:.42,e:.09,lo:.12,lf:.5,hi:.03,hf:1.8,b:1},
+  tg:{s:.5,t:.5,e:.055,lo:.12,lf:.55,hi:.07,hf:2.3,b:0},
+  path:{s:.5,t:.5,e:.05,lo:.14,lf:.35,hi:.08,hf:2.6,b:0}};
+const SHORE_RGB='8,36,56',SHORE_A=.45,SHORE_W=.1;   // 岸線暗邊（水側）：顏色、不透明度、寬度（場值）
+const WET_A=.18,WET_W=.2;     // 岸上濕邊（陸側淡暗帶）：不透明度、寬度（場值）
+const SHALLOW_A=.3,SHALLOW_MIX=.45;   // 淺水帶：不透明度、顏色＝水色往白混合的比例
+const PATH_HALO_A=.2,PATH_HALO_RGB='60,48,20';   // 路兩旁踩禿的暗邊
+const TREE_SHADE_A=.38;       // 樹林底下的深綠不透明度
+const PATH_FREE_ROT=['tiles','tiles_coast','tiles_ember'];   // 路面紋理可隨機旋轉的圖集（土、沙、灰）；其餘是木棧道、石板等人造鋪面，照格子排
+const TEX_CELLS=4,TEX_STAMP=1.5;   // 路、水的無縫紋理：邊長（格）、印章大小（格）；印章隨機旋轉，避免看出重複的斜紋
+const PROP_JIT=.16,PROP_JIT_IN=.24,PROP_JIT_Y=.1,PROP_SCALE=[.86,1.1];   // 樹石灌木的格內偏移（格；四周都不可走時用 _IN）與大小變化
 const snapPx=v=>Math.round(v*mdpr)/mdpr;            // 對齊裝置像素
-let blkCache=new Map(),ftCache=new Map(),maskCv=new Map(),blkFrame=0;
-function tileCacheClear(){blkCache.clear();ftCache.clear();maskCv.clear()}
+let blkCache=new Map(),ftCache=new Map(),maskCv=new Map(),blkFrame=0,TEXC=null;
+function tileCacheClear(){blkCache.clear();ftCache.clear();maskCv.clear();TEXC=null}
 function parseRows(rows,w,h){
   return Array.from({length:h},(_,y)=>Array.from({length:w},(_,x)=>{const c=(rows[y]||'')[x];return c in TCH?TCH[c]:T.G}));
 }
@@ -1014,19 +1033,18 @@ function drawTile(c,t,x,y,tx,ty,now){
 }
 
 /* ===== 地面分塊快取：每 BLOCK×BLOCK 格畫成離屏圖（陸地一張；有水的塊再加「水底圖」「水閃動圖」兩張） =====
-   每格用「放大＋四周漸淡」的圖格依優先序（水 < 路 < 草 < 高草）疊畫，格線與地形交界都變成漸變。
-   朝低優先地形的那一側，漸淡的位置與寬度依雜湊變化，交界線就不會是直的；貼水那側另疊一圈偏向水面的深色暈影當濕潤邊。 */
-const NO_EDGE=[0,0,0,0];
-function getMask(codes,v,soft){   // 遮罩：中央不透明，四邊各自漸淡到 0（兩軸 alpha 相乘）；codes＝四邊（左右上下）朝向：0 一般 1 低階陸地 2 水
-  const key=soft?'s'+v:codes.join('')+v,hit=maskCv.get(key);if(hit)return hit;
+   陸地圖的疊法：草地羽化圖格鋪滿 → 路（暗邊＋無縫土紋理，形狀遮罩）→ 高草（圖格，形狀遮罩）→ 樹林暗底 → 挖掉水 → 淺水帶、岸線暗邊、岸上濕邊 → 碼頭。
+   形狀遮罩在低解析度（每格 SHAPE_S 個樣本）算好再雙線性放大當 alpha：邊緣柔和、不沿格線，相鄰塊共用邊界樣本所以沒有接縫。 */
+function getMask(v,soft){   // 羽化遮罩：中央不透明、四邊漸淡（兩軸 alpha 相乘）；soft＝不透明區小、像散落的斑
+  const key=(soft?'s':'n')+v,hit=maskCv.get(key);if(hit)return hit;
   const N=96,H=FEATHER_SCALE/2,p=u=>Math.max(0,Math.min(1,(u+H)/FEATHER_SCALE));
-  const sp=s=>{   // 這一邊的 [不透明半徑, 漸淡寬度]
-    if(soft){const c=SOFT_CORE[(v+s)%6];return [c,H-c]}
-    const cd=codes[s];if(!cd)return [FEATHER_CORE,FEATHER_BANDS[v][s]];
-    const c=.5+(cd===2?FEATHER_EDGE_WATER:FEATHER_EDGE_LAND)[(v+s*2)%6];
-    return [c,Math.max(.08,Math.min(cd===2?.42:.35,H-c))];
-  };
+  const sp=s=>{if(soft){const c=SOFT_CORE[(v+s)%6];return [c,H-c]}return [FEATHER_CORE,FEATHER_BANDS[v][s]]};   // 這一邊的 [不透明半徑, 漸淡寬度]
   const m=document.createElement('canvas');m.width=m.height=N;const g=m.getContext('2d');
+  if(soft){   // 散斑：圓形漸淡（不透明半徑依變體），不會看出方塊
+    const c=SOFT_CORE[v%6],gr=g.createRadialGradient(N/2,N/2,0,N/2,N/2,N/2);
+    gr.addColorStop(0,'#fff');gr.addColorStop(c/H,'#fff');gr.addColorStop(Math.min(1,c/H+(1-c/H)*.5),'rgba(255,255,255,.45)');gr.addColorStop(1,'rgba(255,255,255,0)');
+    g.fillStyle=gr;g.fillRect(0,0,N,N);maskCv.set(key,m);return m;
+  }
   const axis=(a,b,x1,y1)=>{
     const gr=g.createLinearGradient(0,0,x1,y1);
     const ramp=(s0,s1,up)=>{for(let k=0;k<=4;k++){const s=k/4,e=s*s*(3-2*s);gr.addColorStop(s0+(s1-s0)*s,`rgba(255,255,255,${up?e:1-e})`)}};
@@ -1037,81 +1055,173 @@ function getMask(codes,v,soft){   // 遮罩：中央不透明，四邊各自漸�
   g.fillStyle=axis(sp(2),sp(3),0,N);g.fillRect(0,0,N,N);
   maskCv.set(key,m);return m;
 }
-function featherTile(im,k,col,row,codes,v,soft,tint){   // 羽化圖格（同圖格＋同遮罩只做一次；tint＝岸線暈影用的深色版）
-  const mk=soft?'s'+v:codes.join('')+v,key=k+'|'+col+','+row+'|'+mk+(tint?'|t':''),hit=ftCache.get(key);if(hit)return hit;
+function featherTile(im,k,col,row,v,soft){   // 羽化圖格（同圖格＋同遮罩只做一次）
+  const key=k+'|'+col+','+row+'|'+(soft?'s':'n')+v,hit=ftCache.get(key);if(hit)return hit;
   if(ftCache.size>FT_MAX)ftCache.clear();   // 變體組合太多時整批重來，避免記憶體無限長
   const D=Math.round(FEATHER_SCALE*TS*mdpr),cv=document.createElement('canvas');cv.width=cv.height=D;
   const g=cv.getContext('2d'),s=128-2*TILE_INSET;
-  if(tint){g.drawImage(featherTile(im,k,col,row,codes,v,soft),0,0);g.globalCompositeOperation='source-in';g.fillStyle=`rgb(${SHORE_RGB})`;g.fillRect(0,0,D,D)}
-  else{g.drawImage(im,col*128+TILE_INSET,row*128+TILE_INSET,s,s,0,0,D,D);g.globalCompositeOperation='destination-in';g.drawImage(getMask(codes,v,soft),0,0,D,D)}
+  g.drawImage(im,col*128+TILE_INSET,row*128+TILE_INSET,s,s,0,0,D,D);g.globalCompositeOperation='destination-in';g.drawImage(getMask(v,soft),0,0,D,D);
   ftCache.set(key,cv);return cv;
 }
-const rankOf=t=>t===T.WATER||t===T.DOCK?0:t===T.PATH||t===T.GATE||t===T.SIGN?1:t===T.TG?3:2;
-// 地面種類：[優先序, 圖集欄, 圖集列]；水、碼頭回傳 null（水另成兩張水圖、碼頭最後硬邊畫）
-function groundOf(t,tx,ty){
-  if(t===T.WATER||t===T.DOCK)return null;
-  const h=hash(tx,ty);
-  if(t===T.PATH||t===T.GATE||t===T.SIGN)return [1,0,1];
-  if(t===T.TG)return [3,3,0];
-  if(t===T.FLOWER)return [2,2,h%2?3:1];
-  const gv=CUR.ground||GROUND_DEF,g=gv[h%gv.length];return [2,g[0],g[1]];
+/* --- 形狀場：高斯平滑的格子指示場＋座標擾動＋雜訊（種子＝地圖代號，每次進圖都一樣） --- */
+const sstep=(a,b,v)=>{const t=v<=a?0:v>=b?1:(v-a)/(b-a);return t*t*(3-2*t)};
+const PHI_T=(()=>{const a=new Float32Array(2049),erf=x=>{const s=x<0?-1:1;x=Math.abs(x);const t=1/(1+.3275911*x);return s*(1-((((1.061405429*t-1.453152027)*t+1.421413741)*t-.284496736)*t+.254829592)*t*Math.exp(-x*x))};
+  for(let i=0;i<=2048;i++)a[i]=.5*(1+erf((i/256-4)/Math.SQRT2));return a})();
+const phi=u=>{const i=(u+4)*256;return i<=0?0:i>=2048?1:PHI_T[i|0]};   // 標準常態累積分布（查表）
+function strHash(s){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return h>>>0}
+function rng(seed){let a=seed>>>0;return()=>{a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function vnoise(seed){   // 二維值雜訊，回傳 f(x,y) ∈ -1~1
+  const h=(i,j)=>{let v=Math.imul(i,374761393)+Math.imul(j,668265263)+Math.imul(seed,982451653)|0;v=Math.imul(v^v>>>13,1274126177);v^=v>>>16;return (v>>>0)/2147483648-1};
+  return (x,y)=>{const i=Math.floor(x),j=Math.floor(y),fx=x-i,fy=y-j,sx=fx*fx*(3-2*fx),sy=fy*fy*(3-2*fy),a=h(i,j),b=h(i+1,j),c=h(i,j+1),d=h(i+1,j+1);return a+(b-a)*sx+(c-a)*sy+(a-b-c+d)*sx*sy};
 }
+const SHAPE_KEYS=['water','tree','tg','path'];
+let SHP=null;
+function shapeData(){   // 這張地圖的指示場與雜訊（map 換成新陣列就重算）
+  if(SHP&&SHP.map===map)return SHP;
+  const n=MW*MH,ind=SHAPE_KEYS.map(()=>new Uint8Array(n)),seed=strHash('shape-'+CURID);
+  for(let y=0;y<MH;y++)for(let x=0;x<MW;x++){
+    const t=map[y][x],i=y*MW+x;
+    ind[0][i]=t===T.WATER||t===T.DOCK?1:0;ind[1][i]=t===T.TREE?1:0;ind[2][i]=t===T.TG?1:0;
+    ind[3][i]=pathLike(t)||(t===T.DOOR&&pathLike(tileAt(x,y+1)))?1:0;   // 門口下方接著路，路就延伸進門
+  }
+  const walk=new Uint8Array(n);for(let y=0;y<MH;y++)for(let x=0;x<MW;x++){const t=map[y][x];walk[y*MW+x]=!SOLID.has(t)&&t!==T.DOCK?1:0}
+  const nz=k=>vnoise(seed+k*7919);
+  return SHP={map,ind,walk,wx:nz(1),wy:nz(2),lo:SHAPE_KEYS.map((_,i)=>nz(10+i)),hi:SHAPE_KEYS.map((_,i)=>nz(20+i))};
+}
+const SHG=new Float64Array(5),SHH=new Float64Array(5),SHC=new Int32Array(5),SHR=new Int32Array(5);
+function shapeField(sd,x,y,out,act){   // 在 (x,y)（格）算各層場值；act[i] 為假的層不算
+  const xw=x+SHAPE_WARP*sd.wx(x*SHAPE_WARP_F,y*SHAPE_WARP_F),yw=y+SHAPE_WARP*sd.wy(x*SHAPE_WARP_F+31.7,y*SHAPE_WARP_F+17.3);
+  const x0=Math.floor(xw),y0=Math.floor(yw);
+  for(let k=0;k<5;k++){const u=x0-2+k,v=y0-2+k;SHC[k]=u<0?0:u>=MW?MW-1:u;SHR[k]=(v<0?0:v>=MH?MH-1:v)*MW}   // 地圖外沿用邊緣格
+  for(let L=0;L<4;L++){
+    if(act&&!act[L])continue;
+    const I=sd.ind[L],p=SHAPE_L[SHAPE_KEYS[L]],is=1/p.s;
+    let pa=phi((x0-2-xw)*is),pb=phi((y0-2-yw)*is);   // 每格權重＝高斯在該格範圍的積分（5×5 格）
+    for(let k=0;k<5;k++){const qa=phi((x0-1+k-xw)*is),qb=phi((y0-1+k-yw)*is);SHG[k]=qa-pa;SHH[k]=qb-pb;pa=qa;pb=qb}
+    let f=0;
+    for(let j=0;j<5;j++){const w=SHH[j];if(w<1e-4)continue;const r=SHR[j];f+=w*(SHG[0]*I[r+SHC[0]]+SHG[1]*I[r+SHC[1]]+SHG[2]*I[r+SHC[2]]+SHG[3]*I[r+SHC[3]]+SHG[4]*I[r+SHC[4]])}
+    const n1=sd.lo[L](x*p.lf,y*p.lf),n2=sd.hi[L](x*p.hf,y*p.hf);
+    out[L]=f+(p.b?p.lo*(n1+1)*.5+p.hi*(n2+1)*.5:p.lo*n1+p.hi*n2);
+    if(p.b&&out[L]>p.t-SHAPE_KEEP_K){   // 可走格保護：可走格中心 SHAPE_KEEP_R 內不會被畫成水／樹林（夾在中間的一格窄地）
+      const cx=Math.floor(x),cy=Math.floor(y);
+      if(cx>=0&&cy>=0&&cx<MW&&cy<MH&&sd.walk[cy*MW+cx]){const ux=x-cx-.5,uy=y-cy-.5,d=Math.sqrt(Math.sqrt(ux*ux*ux*ux+uy*uy*uy*uy))/SHAPE_KEEP_R;if(d<1)out[L]=Math.min(out[L],p.t-SHAPE_KEEP_K*(1-d))}
+    }
+  }
+}
+function shapeAt(x,y){   // 某一點各層畫出來的不透明度（0~1）；驗證與除錯用
+  const f=new Float32Array(4);shapeField(shapeData(),x,y,f,null);const o={};
+  SHAPE_KEYS.forEach((k,i)=>{const p=SHAPE_L[k];o[k]=sstep(p.t-p.e,p.t+p.e,f[i])});return o;
+}
+const SHP_BUF={};
+function shpBuf(name,n){   // 低解析度遮罩畫布（每種一張，建塊時重複使用）
+  let b=SHP_BUF[name];
+  if(!b||b.n!==n){const cv=document.createElement('canvas');cv.width=cv.height=n;const g=cv.getContext('2d'),img=g.createImageData(n,n);img.data.fill(255);b=SHP_BUF[name]={cv,g,img,n}}
+  return b;
+}
+function shapeMasks(bx,by){   // 這一塊的各種遮罩：低解析度畫布、true（整塊都有）或 null（整塊都沒有）
+  const sd=shapeData(),S=SHAPE_S,n=BLOCK*S+1,ox=bx*BLOCK,oy=by*BLOCK;
+  const st=sd.ind.map(I=>{let any=0,all=1;   // 本塊含外圈 2 格：0 全無、1 部分、2 全有
+    for(let y=oy-2;y<=oy+BLOCK+1;y++){const r=(y<0?0:y>=MH?MH-1:y)*MW;for(let x=ox-2;x<=ox+BLOCK+1;x++){const v=I[r+(x<0?0:x>=MW?MW-1:x)];any|=v;all&=v}}
+    return any?(all?2:1):0});
+  const act=st.map(s=>s===1),R={st},A={};
+  const want=(name,on)=>{if(!on)return;const b=shpBuf(name,n);A[name]=b.img.data;R[name]=b.cv};
+  want('land',act[0]);want('rim',act[0]);want('shallow',act[0]);want('wet',act[0]);want('tree',act[1]);want('tg',act[2]);want('path',act[3]);want('halo',act[3]);
+  if(act.some(Boolean)){
+    const f=new Float32Array(4),pw=SHAPE_L.water,pt=SHAPE_L.tree,pg=SHAPE_L.tg,pp=SHAPE_L.path;
+    for(let j=0;j<n;j++)for(let i=0;i<n;i++){
+      shapeField(sd,ox+i/S,oy+j/S,f,act);const q=(j*n+i)*4+3;
+      if(act[0]){const v=f[0],t=pw.t,e=pw.e,w=sstep(t-e,t+e,v);
+        A.land[q]=255-255*w;A.rim[q]=255*w*(1-sstep(t+e,t+e+SHORE_W,v));A.shallow[q]=255*w*(1-sstep(t+e,.95,v));A.wet[q]=255*(1-w)*sstep(t-e-WET_W,t-e,v)}
+      if(act[1])A.tree[q]=255*sstep(pt.t-pt.e,pt.t+pt.e,f[1]);
+      if(act[2])A.tg[q]=255*sstep(pg.t-pg.e,pg.t+pg.e,f[2]);
+      if(act[3]){const v=f[3];A.path[q]=255*sstep(pp.t-pp.e,pp.t+pp.e,v);A.halo[q]=255*sstep(pp.t-.34,pp.t-pp.e,v)}
+    }
+    for(const name in A){const b=SHP_BUF[name];b.g.putImageData(b.img,0,0)}
+  }
+  if(!act[0]){R.land=st[0]===2?null:true;R.rim=R.shallow=R.wet=null}
+  if(!act[1])R.tree=st[1]===2?true:null;
+  if(!act[2])R.tg=st[2]===2?true:null;
+  if(!act[3])R.path=R.halo=st[3]===2?true:null;
+  return R;
+}
+/* --- 路、水的無縫紋理：圖集格羽化成圓印章，隨機位置／旋轉印滿一張可平鋪的圖（打散圖格重複的直紋、斜紋） --- */
+function avgCol(im,col,row){
+  try{const cv=document.createElement('canvas');cv.width=cv.height=1;const g=cv.getContext('2d',{willReadFrequently:true});g.drawImage(im,col*128+TILE_INSET,row*128+TILE_INSET,128-2*TILE_INSET,128-2*TILE_INSET,0,0,1,1);const d=g.getImageData(0,0,1,1).data;return [d[0],d[1],d[2]]}catch(e){return [120,140,160]}
+}
+function mkTex(im,col,row,seed,rot){
+  const N=Math.round(TEX_CELLS*TS*mdpr),cv=document.createElement('canvas');cv.width=cv.height=N;const g=cv.getContext('2d');
+  g.fillStyle=`rgb(${avgCol(im,col,row)})`;g.fillRect(0,0,N,N);
+  const sz=Math.round(TEX_STAMP*TS*mdpr),st=document.createElement('canvas');st.width=st.height=sz;const sg=st.getContext('2d');
+  sg.drawImage(im,col*128+TILE_INSET,row*128+TILE_INSET,128-2*TILE_INSET,128-2*TILE_INSET,0,0,sz,sz);
+  const gr=sg.createRadialGradient(sz/2,sz/2,0,sz/2,sz/2,sz/2);gr.addColorStop(0,'#fff');gr.addColorStop(.5,'#fff');gr.addColorStop(1,'rgba(255,255,255,0)');
+  sg.globalCompositeOperation='destination-in';sg.fillStyle=gr;sg.fillRect(0,0,sz,sz);
+  const R=rng(seed),m=Math.ceil(TEX_CELLS/(TEX_STAMP*.48)),G=N/m,list=[];
+  if(!rot){const C=N/TEX_CELLS;for(let y=0;y<TEX_CELLS;y++)for(let x=0;x<TEX_CELLS;x++)g.drawImage(im,col*128,row*128,128,128,x*C,y*C,C,C);return cv}   // 人造鋪面（木棧道、石板）：照格子平鋪、不旋轉
+  for(let y=0;y<m;y++)for(let x=0;x<m;x++)list.push([(x+.5+(R()-.5)*.9)*G,(y+.5+(R()-.5)*.9)*G,rot(R),.9+R()*.25,R()]);
+  list.sort((a,b)=>a[4]-b[4]);   // 打亂疊放順序，避免看出方向
+  for(const [x,y,a,s] of list)for(const dx of [-N,0,N])for(const dy of [-N,0,N]){
+    const px=x+dx,py=y+dy;if(px<-sz||py<-sz||px>N+sz||py>N+sz)continue;
+    g.save();g.translate(px,py);g.rotate(a);g.scale(s,s);g.drawImage(st,-sz/2,-sz/2);g.restore();
+  }
+  return cv;
+}
+function shapeTex(){
+  const k=artKey('tiles'),im=ART[k],key=k+'|'+TS+'|'+mdpr+'|'+CURID;
+  if(TEXC&&TEXC.key===key)return TEXC;
+  const wv=CUR.water||WATER_DEF,s=strHash(key),wr=R=>(R()<.5?0:Math.PI)+(R()-.5)*.6,pr=R=>R()*Math.PI*2,wa=avgCol(im,wv[1][0],wv[1][1]);
+  return TEXC={key,path:mkTex(im,0,1,s+1,PATH_FREE_ROT.includes(k)?pr:null),wb:mkTex(im,wv[0][0],wv[0][1],s+2,wr),wt:mkTex(im,wv[1][0],wv[1][1],s+3,wr),
+    light:wa.map(v=>Math.round(v+(255-v)*SHALLOW_MIX)).join(',')};
+}
+let shpTmp=null;
 function buildBlock(bx,by){
   const k=artKey('tiles'),im=ART[k],W=Math.ceil(BLOCK*TS*mdpr)+1;
   const mkCv=()=>{const cv=document.createElement('canvas');cv.width=cv.height=W;const c=cv.getContext('2d');c.scale(mdpr,mdpr);return [cv,c]};
   const [cv,c]=mkCv();
-  const ox=bx*BLOCK,oy=by*BLOCK,cells=[],DIRS=[[-1,0],[1,0],[0,-1],[0,1]];
-  for(let ty=Math.max(0,oy-1);ty<=Math.min(MH-1,oy+BLOCK);ty++)for(let tx=Math.max(0,ox-1);tx<=Math.min(MW-1,ox+BLOCK);tx++){   // 多算周圍一圈，塊邊界才不會變接縫
-    const t=map[ty][tx],g=groundOf(t,tx,ty),e={tx,ty,t,x:(tx-ox)*TS,y:(ty-oy)*TS,g,codes:NO_EDGE,v:hash(tx*7+3,ty*11+5)%FEATHER_BANDS.length,edge:0,water:0,wx:0,wy:0};
-    if(g){   // 四邊朝向：鄰格優先序比自己低 → 1（低階陸地）或 2（水／碼頭）
-      e.codes=DIRS.map(([dx,dy])=>{const nx=tx+dx,ny=ty+dy;if(nx<0||ny<0||nx>=MW||ny>=MH)return 0;const nr=rankOf(map[ny][nx]);if(nr>=g[0])return 0;e.edge=1;if(nr===0){e.water=1;e.wx+=dx;e.wy+=dy}return nr===0?2:1});
-    }
-    cells.push(e);
-  }
+  const ox=bx*BLOCK,oy=by*BLOCK,cells=[],M=shapeMasks(bx,by),tex=shapeTex();
+  for(let ty=Math.max(0,oy-1);ty<=Math.min(MH-1,oy+BLOCK);ty++)for(let tx=Math.max(0,ox-1);tx<=Math.min(MW-1,ox+BLOCK);tx++)   // 多算周圍一圈，塊邊界才不會變接縫
+    cells.push({tx,ty,t:map[ty][tx],x:(tx-ox)*TS,y:(ty-oy)*TS,h:hash(tx,ty),v:hash(tx*7+3,ty*11+5)%FEATHER_BANDS.length});
   const jit=(e,i)=>(i?hash(e.tx*5,e.ty+17):hash(e.tx+11,e.ty*3)-0)/49.5-1;   // -1~1，同一格永遠相同
   const put=(ctx,ft,e,jx,jy)=>{const D=ft.width/mdpr;ctx.drawImage(ft,snapPx(e.x+TS/2-D/2+jx*TS),snapPx(e.y+TS/2-D/2+jy*TS),D,D)};
-  // 0) 岸線暈影：貼水的陸地格，先在底下鋪一份同形狀的深色版，往水那側偏一點 → 水陸交界多一圈跟著不規則邊緣走的濕邊
-  c.globalAlpha=SHORE_A;
-  for(const e of cells)if(e.water){
-    const f=featherTile(im,k,e.g[1],e.g[2],e.codes,e.v,false,true),n=Math.hypot(e.wx,e.wy)||1;
-    put(c,f,e,e.wx/n*SHORE_OFF,e.wy/n*SHORE_OFF);
+  const oxd=ox*TS*mdpr,oyd=oy*TS*mdpr;
+  const fillTex=(g,t)=>{const N=t.width;g.fillStyle=g.createPattern(t,'repeat');g.setTransform(1,0,0,1,-(oxd%N),-(oyd%N));g.fillRect(0,0,W+N,W+N);g.setTransform(1,0,0,1,0,0)};
+  if(M.land!==null){
+    // 1) 草地：每格都鋪（路、水、樹格底下也鋪），之後由各層形狀蓋上或挖掉；草地的「軟變體」先墊一格普通草再以寬羽化疊上
+    const gv=CUR.ground||GROUND_DEF,soft=CUR.groundSoft||GROUND_SOFT_DEF,base=CUR.groundBase||gv[0],isSoft=g=>soft.some(s=>s[0]===g[0]&&s[1]===g[1]);
+    for(const e of cells){const g=gv[e.h%gv.length],gc=isSoft(g)?base:g;put(c,featherTile(im,k,gc[0],gc[1],e.v,false),e,jit(e,0)*FEATHER_JITTER,jit(e,1)*FEATHER_JITTER)}
+    for(const e of cells){const g=gv[e.h%gv.length];if(isSoft(g))put(c,featherTile(im,k,g[0],g[1],e.v,true),e,jit(e,0)*SOFT_JITTER,jit(e,1)*SOFT_JITTER)}
+    for(const e of cells)if(e.t===T.FLOWER){const inner=[[-1,0],[1,0],[0,-1],[0,1]].every(([dx,dy])=>tileAt(e.tx+dx,e.ty+dy)===T.FLOWER);put(c,featherTile(im,k,2,e.h%2?3:1,e.v,!inner),e,jit(e,1)*FLOWER_JITTER,jit(e,0)*FLOWER_JITTER)}   // 花叢外緣用散斑遮罩，邊界不成直線
+    // 圖層工具：暫存畫布填色／紋理／圖格 → 乘上形狀遮罩 → 疊到陸地圖
+    if(!shpTmp||shpTmp.width!==W){shpTmp=document.createElement('canvas');shpTmp.width=shpTmp.height=W}
+    const tc=shpTmp.getContext('2d'),sc=TS*mdpr/SHAPE_S,n=BLOCK*SHAPE_S+1;
+    const mask=(g,m)=>{g.save();g.setTransform(1,0,0,1,0,0);g.globalCompositeOperation='destination-in';g.drawImage(m,0,0,n,n,-sc/2,-sc/2,n*sc,n*sc);g.restore()};   // 樣本 i 對齊塊內 i/SHAPE_S 格
+    const layer=(m,fill,a)=>{
+      if(!m)return;
+      tc.setTransform(1,0,0,1,0,0);tc.globalCompositeOperation='source-over';tc.globalAlpha=1;tc.clearRect(0,0,W,W);
+      fill();if(m!==true)mask(tc,m);
+      c.save();c.setTransform(1,0,0,1,0,0);c.globalAlpha=a;c.drawImage(shpTmp,0,0);c.restore();
+    };
+    const col=rgb=>()=>{tc.fillStyle=`rgb(${rgb})`;tc.fillRect(0,0,W,W)};
+    // 2) 路：兩旁踩禿的暗邊 → 土路紋理
+    layer(M.halo,col(PATH_HALO_RGB),PATH_HALO_A);
+    layer(M.path,()=>fillTex(tc,tex.path),1);
+    // 3) 高草：與立體高草蓋層同一段貼圖、不偏移（角色腳下才無縫）；高草格與其鄰格都鋪，遮罩外擴處才不會透
+    const tgNear=e=>{for(let y=e.ty-1;y<=e.ty+1;y++)for(let x=e.tx-1;x<=e.tx+1;x++)if(tileAt(x,y)===T.TG)return true;return false};
+    layer(M.tg,()=>{tc.setTransform(mdpr,0,0,mdpr,0,0);for(const e of cells)if(tgNear(e))put(tc,featherTile(im,k,3,0,e.v,false),e,0,0);tc.setTransform(1,0,0,1,0,0)},1);
+    // 4) 樹林暗底
+    layer(M.tree,col('8,48,22'),TREE_SHADE_A);
+    // 5) 水：挖掉陸地 → 淺水帶、岸線暗邊（水側）、濕邊（陸側）
+    if(M.land!==true)mask(c,M.land);
+    layer(M.shallow,col(tex.light),SHALLOW_A);
+    layer(M.rim,col(SHORE_RGB),SHORE_A);
+    layer(M.wet,col(SHORE_RGB),WET_A);
   }
-  c.globalAlpha=1;
-  // 1) 依優先序由低到高疊羽化圖格；草地的「軟變體」（反差大，如帶沙斑）先墊一格普通草再以寬羽化疊上
-  const isSoft=e=>e.g[0]===2&&CUR.groundSoft&&CUR.groundSoft.some(s=>s[0]===e.g[1]&&s[1]===e.g[2]);
-  for(let r=1;r<=3;r++){
-    for(const e of cells){
-      if(!e.g||e.g[0]!==r)continue;
-      const soft=r===2&&isSoft(e),gc=soft?CUR.groundBase||[1,0]:[e.g[1],e.g[2]];
-      const j=(r===3||e.edge)?0:FEATHER_JITTER;
-      put(c,featherTile(im,k,gc[0],gc[1],e.codes,e.v,false),e,jit(e,0)*j,jit(e,1)*j);
-    }
-    if(r===2)for(const e of cells){
-      if(!e.g||e.g[0]!==2||e.edge||!isSoft(e))continue;
-      put(c,featherTile(im,k,e.g[1],e.g[2],NO_EDGE,e.v,true),e,jit(e,0)*SOFT_JITTER,jit(e,1)*SOFT_JITTER);
-    }
-  }
-  // 2) 樹格底色：朝非樹格的那側漸淡，避免林緣出現硬邊
-  const A=TREE_SHADE_A,m=TS*TREE_SHADE_FADE,col=a=>`rgba(8,48,22,${a})`;
-  for(const e of cells){
-    if(e.t!==T.TREE)continue;
-    const [l,r,u,d]=DIRS.map(([dx,dy])=>tileAt(e.tx+dx,e.ty+dy)!==T.TREE),xa=snapPx(e.x+(l?m:0)),xb=snapPx(e.x+TS-(r?m:0)),ya=snapPx(e.y+(u?m:0)),yb=snapPx(e.y+TS-(d?m:0));
-    c.fillStyle=col(A);c.fillRect(xa,ya,xb-xa,yb-ya);
-    const strip=(on,gx0,gy0,gx1,gy1,rx,ry,rw,rh)=>{if(!on)return;const g=c.createLinearGradient(gx0,gy0,gx1,gy1);g.addColorStop(0,col(0));g.addColorStop(1,col(A));c.fillStyle=g;c.fillRect(rx,ry,rw,rh)};
-    strip(l,e.x,0,xa,0,e.x,ya,xa-e.x,yb-ya);strip(r,e.x+TS,0,xb,0,xb,ya,e.x+TS-xb,yb-ya);
-    strip(u,0,e.y,0,ya,xa,e.y,xb-xa,ya-e.y);strip(d,0,e.y+TS,0,yb,xa,yb,xb-xa,e.y+TS-yb);
-  }
-  // 3) 碼頭：人造木板，硬邊，蓋在最上面
+  // 6) 碼頭：人造木板，硬邊，蓋在最上面
   for(const e of cells)if(e.t===T.DOCK)c.drawImage(im,DOCK_SLOT[0]*128,DOCK_SLOT[1]*128,128,128,e.x,e.y,TS+1,TS+1);
-  // 4) 水底圖＋水閃動圖：水（與碼頭底下）同樣用羽化圖格，陸地的漸淡邊疊上去時才看得到水
+  // 7) 水底圖＋水閃動圖：整塊鋪無縫水紋理，陸地圖挖掉的地方才看得到
   const out={cv,wb:null,wt:null,t:0};
-  if(cells.some(e=>!e.g)){
-    const [wb,wc]=mkCv(),[wt,wtc]=mkCv(),wv=CUR.water||WATER_DEF;
-    for(const e of cells)if(!e.g){
-      const jx=jit(e,0)*FEATHER_JITTER,jy=jit(e,1)*FEATHER_JITTER;
-      put(wc,featherTile(im,k,wv[0][0],wv[0][1],NO_EDGE,e.v,false),e,jx,jy);
-      put(wtc,featherTile(im,k,wv[1][0],wv[1][1],NO_EDGE,e.v,false),e,jx,jy);
-    }
+  if(M.st[0]){
+    const [wb,wc]=mkCv(),[wt,wtc]=mkCv();
+    wc.setTransform(1,0,0,1,0,0);wtc.setTransform(1,0,0,1,0,0);fillTex(wc,tex.wb);fillTex(wtc,tex.wt);
     out.wb=wb;out.wt=wt;
   }
   return out;
@@ -1144,9 +1254,18 @@ function coverGrass(c,px,py){
   c.restore();
   c.strokeStyle='rgba(8,48,20,.4)';c.lineWidth=1.5;c.beginPath();pts.slice(1,-1).forEach((p,i)=>i?c.lineTo(p[0],p[1]):c.moveTo(p[0],p[1]));c.stroke();
 }
-function drawArt(c,key,cx,bottom,camX,camY){
+function propOff(tx,ty){   // 樹石灌木的格內偏移 [dx,dy,縮放]（固定種子）：朝可走格那側幾乎不偏也不放大，免得看起來擋路
+  const r=i=>hash(tx*13+i*7+5,ty*17+i*11+3)/49.5-1;
+  const L=solidAt(tx-1,ty),Rt=solidAt(tx+1,ty),D=solidAt(tx,ty+1),inner=L&&Rt&&D&&solidAt(tx,ty-1);
+  let dx=r(0)*(inner?PROP_JIT_IN:PROP_JIT),dy=r(1)*PROP_JIT_Y*(inner?1.5:1),s=PROP_SCALE[0]+(PROP_SCALE[1]-PROP_SCALE[0])*(r(2)+1)/2;
+  if(dx<0&&!L||dx>0&&!Rt)dx*=.2;
+  if(dy>0&&!D)dy*=.2;
+  if(s>1&&!(L&&Rt))s=1;
+  return [dx,dy,s];
+}
+function drawArt(c,key,cx,bottom,camX,camY,sc){
   const im=ART[artKey(key)];if(!im){needArt(artKey(key));return}
-  const w=(ARTW[artKey(key)]||ARTW[key])*TS,h=w*im.height/im.width;
+  const w=(ARTW[artKey(key)]||ARTW[key])*TS*(sc||1),h=w*im.height/im.width;
   c.drawImage(im,Math.round(cx*TS-camX-w/2),Math.round(bottom*TS-camY-h),Math.round(w),Math.round(h));
 }
 /* ===== 角色圖（ChatGPT 生成；每張 4 格：正面/背面/左/右） ===== */
@@ -1213,9 +1332,10 @@ function drawMap(now,full){   // full：不限制本幀新建幾塊地面快取�
     // 立體物件：往上/兩側多掃一些格，避免高大的圖在畫面邊緣被切掉
     for(let ty=Math.max(0,y0);ty<=Math.min(MH-1,y1+4);ty++)for(let tx=Math.max(0,x0-2);tx<=Math.min(MW-1,x1+2);tx++){
       const t=map[ty][tx],cx=tx+.5;
-      if(t===T.TREE)ents.push({y:ty+.9,f:()=>drawArt(c,hash(tx*5,ty*3)<55?'tree1':'tree2',cx,ty+1,camX,camY)});
-      else if(t===T.BUSH)ents.push({y:ty+.9,f:()=>drawArt(c,'bush',cx,ty+1,camX,camY)});
-      else if(t===T.ROCK)ents.push({y:ty+.9,f:()=>drawArt(c,'rock',cx,ty+1,camX,camY)});
+      if(t===T.TREE||t===T.BUSH||t===T.ROCK){   // 樹石灌木：格內固定偏移與大小變化（排序鍵不變，遮擋關係同原本）
+        const [dx,dy,s]=propOff(tx,ty),k=t===T.TREE?(hash(tx*5,ty*3)<55?'tree1':'tree2'):t===T.BUSH?'bush':'rock';
+        ents.push({y:ty+.9,f:()=>drawArt(c,k,cx+dx,ty+1+dy,camX,camY,s)});
+      }
       else if(t===T.FOUNT)ents.push({y:ty+.95,f:()=>drawArt(c,'fountain',cx,ty+1.08,camX,camY)});
       else if(CUR.props&&CUR.props[tx+','+ty]){const k=CUR.props[tx+','+ty];ents.push({y:ty+.95,f:()=>drawArt(c,k,cx,ty+1,camX,camY)})}
       else if(t===T.SIGN)ents.push({y:ty+1,f:()=>drawArt(c,'sign',cx,ty+1,camX,camY)});
