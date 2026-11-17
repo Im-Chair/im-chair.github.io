@@ -214,7 +214,7 @@ const SHRINE_MAPS={
     bridges:[{a:[14.0,7.2],b:[17.6,5.0],w:1.4,style:'stone'},{a:[14.8,19.4],b:[18.2,19.5],w:1.3,style:'stone'}],
     props:[{k:'pillarb',x:26.0,y:4.8},{k:'pillar',x:30.4,y:6.4,s:.9},{k:'pillarb',x:4.6,y:7.4,s:.9}],
     signs:[{x:12.2,y:22.6,text:'北：神廟外庭　西：焰之祭壇'}],
-    chests:[{id:'ash_c1',x:21.4,y:20.4,loot:'gem'},{id:'ash_c2',x:35.0,y:20.2,loot:'potion'}],
+    chests:[{id:'ash_c1',x:21.4,y:20.4,loot:'gem'},{id:'ash_c2',x:35.0,y:20.2,loot:'wind_boots'}],
     pots:[{x:3.2,y:9.8},{x:5.8,y:10.4},{x:27.0,y:7.0}],
     spawns:[{k:'goblin',x:6.2,y:18.4},{k:'slime',x:13.4,y:13.4},{k:'archer',x:23.0,y:9.0},{k:'knight',x:33.4,y:18.0},{k:'goblin',x:21.6,y:22.4},{k:'archer',x:34.0,y:5.4}],
     scatter:[

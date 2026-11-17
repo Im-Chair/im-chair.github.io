@@ -1,4 +1,4 @@
-const CACHE = 'arcade-v82';
+const CACHE = 'arcade-v83';
 // 珠界的圖獨立一個快取、不跟 CACHE 改版：改版時不必重抓，也不用每次打開都等網路
 const ART_CACHE = 'arcade-pokemo-art';
 // RPG 敵人圖示：檔名＝ENEMIES／首領／域限精英的 key。v385 起 50 隻全數有圖，已無 SVG 回落。
@@ -64,7 +64,7 @@ const ASSETS = [
   '/outpost/', '/deep-miner/', '/neon-danmaku/',   // v59：晨昏線前哨、深掘礦工、霓虹彈幕（皆單檔）
   '/sky-frontier/',         // v63：天穹拓荒（單檔）
   // v45：小遊戲美術（可一張一張補；檔案還不存在時只會略過）。產出流程見 美術需求_ChatGPT出圖.md
-  ...['sudoku','minesweeper','bulls-cows','solitaire','rpg','tower-orbs','drift-ark','tetris','pokemo','outpost','deep-miner','neon-danmaku','sky-frontier'].map(k => `/icons/${k}.webp`),
+  ...['sudoku','minesweeper','bulls-cows','solitaire','rpg','tower-orbs','drift-ark','tetris','pokemo','outpost','deep-miner','neon-danmaku','sky-frontier','shrine'].map(k => `/icons/${k}.webp`),
   '/solitaire/back.webp', '/solitaire/felt.webp', '/minesweeper/flag.webp', '/minesweeper/mine.webp',
   // RPG：預先快取核心檔，讓「裝了 App 但還沒連網進過 RPG」的使用者也能離線開啟。
   // 這裡存的是「不帶 ?v= 版號」的基底網址，靠下方 fetch fallback 的 ignoreSearch 對應到實際帶版號的請求。
@@ -80,6 +80,10 @@ const ASSETS = [
   '/rpg-next/', '/rpg-next/index.html', '/rpg-next/style.css', '/rpg-next/data.js', '/rpg-next/story.js', '/rpg-next/core.js', '/rpg-next/ui.js',
   ...['warlord','brood','heart2'].map(k => `/rpg-next/art/boss_${k}.webp`),
   ...['smith','buyer','scholar','survivor'].map(k => `/rpg-next/art/npc-${k}.webp`),
+  // v83：珠界：聖林神廟（maps → 引擎 index.html → game → adventure → village，js 帶 ?v=SHRINE_VER，靠 ignoreSearch 對應）。
+  // 地圖素材、NPC 角色圖、按鈕框借用 /pokemo/art/，已在 POKEMO_ART（珠界美術快取）裡
+  '/shrine/', '/shrine/index.html', '/shrine/maps.js', '/shrine/game.js', '/shrine/adventure.js', '/shrine/village.js',
+  ...['hero','mon','goblin','archer','boss_forest','boss_fire','boss_water','boss_time'].map(k => `/shrine/art/${k}.webp`),
 ];
 
 // 安裝只抓首頁必要檔案、馬上啟用。其餘交給 fillCaches，安裝時全抓會塞滿網路，遊戲的圖要排在幾百個請求後面

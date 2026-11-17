@@ -33,3 +33,4 @@ rpg-next/_fuzz.js
 *.xlsx
 .claude/task-router/map.json
 .claude/task-router/map.md
+shrine/_bossbot.js

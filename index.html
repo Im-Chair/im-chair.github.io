@@ -268,6 +268,11 @@
       <div class="card-name">天穹拓荒</div>
       <div class="card-meta">沙盒</div>
     </a>
+    <a class="game-card" href="./shrine/" data-game="shrine" data-icon="icons/shrine.webp">
+      <div class="card-icon">🗡️</div>
+      <div class="card-name">聖林神廟</div>
+      <div class="card-meta">動作冒險</div>
+    </a>
   </div>
 
   <footer class="footer"><span id="game-count"></span> 個遊戲 · 玩了 <span id="play-count">0</span> 次</footer>
@@ -323,6 +328,7 @@
       if (st.won) return '🏆 已討伐墜星';
       return st.best?.era ? `${['拓荒','開墾','商業','工業','天穹','星辰'][st.best.era]}時代` : '';
     },
+    'shrine': st => st.story?.wins ? `🏆 ${fmt(st.story.best?.time ?? 0)} · 倒下 ${st.story.best?.deaths ?? 0} 次` : '',
   };
   // 每日挑戰（各遊戲寫入 arcade-<遊戲>-daily：{ last: { date, won }, streak, lastWin }）
   const ymd = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');

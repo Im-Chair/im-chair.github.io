@@ -45,6 +45,49 @@ const TEXT={
     ['','神廟深處傳來低沉的鐘聲，聖林的風重新流動起來。'],
     ['','（結尾文字佔位，之後潤稿。）']
   ],
+  /* ── 村莊（village.js 用；全部是佔位句，之後潤稿） ── */
+  npc:{
+    chief:'你好，旅人。',
+    villager:['今天天氣不錯。','聽說林子裡的怪物變多了，小心點。'],
+    traveler:['坐下來烤烤火吧。','營火可以休息，也能等到黃昏或夜晚。夜裡的怪物比較兇，不過掉的東西也比較好。']
+  },
+  chief:{
+    ask:['接下來該去哪？','村子裡有什麼？','沒事了'],
+    about:['旅商賣藥和炸彈，也收材料。','鐵匠能用珠幣和材料打造裝備。','賞金板上有委託，完成可以領珠幣。','教官會教你用劍，營火可以休息、切換時段。'],
+    goal:{
+      grove:'先往東邊的古木林看看吧。',
+      altarForest:'林之祭壇在古木林深處的北邊。',
+      claimForest:'祭壇亮了，回去拿聖物吧。',
+      fire:'北邊是熔岩遺址，焰之祭壇在遺址西邊。勾爪能拉你越過熔岩。',
+      claimFire:'焰之祭壇亮了，回去拿聖物吧。',
+      water:'西南過橋是深淵湖畔，淵之祭壇在海蝕洞裡。洞裡的火盆要用提燈點亮。',
+      claimWater:'淵之祭壇亮了，回去拿聖物吧。',
+      temple:'三件聖物都到手了。東邊古木林深處通往神廟外庭，大門會為聖物打開。',
+      done:'謝謝你，聖林恢復平靜了。'
+    }
+  },
+  shop:{hi:'要買點什麼嗎？',ask:['買東西','賣材料','離開'],bought:'買了 ',sold:'賣掉 ',poor:'珠幣不夠。',full:'帶不下了。',out:'賣完了。',needBomb:'要先有炸彈袋。'},
+  smith:{hi:'要打造什麼？材料和珠幣要先備齊。',ask:['打造裝備','離開'],made:'打造完成：',lack:'材料或珠幣不夠。'},
+  bounty:{done:'委託完成！回村子的賞金板領賞。',take:'接下委託：',claim:'領到賞金：',busy:'一次只能接一張委託。',already:'這個寶箱你已經找到了，委託直接完成。',quit:'放棄了委託。'},
+  camp:{ask:'要在營火旁休息嗎？（生命全滿、存檔）',opts:['休息到白天','休息到黃昏','休息到夜晚','離開'],rested:'休息好了。現在是'},
+  trainer:{
+    hi:'想學劍嗎？',
+    ask:['上課','木樁挑戰','離開'],
+    lesson:[
+      ['第一課：斬擊。按 J 或 Z（手機按「攻擊」）揮三次劍。','斬擊'],
+      ['第二課：旋轉斬。按住攻擊鍵蓄力，放開時轉一圈。','旋轉斬'],
+      ['第三課：翻滾。按 K 或 X（手機按「翻滾」）翻滾兩次，翻滾時不會受傷。','翻滾'],
+      ['第四課：舉盾。按住 L 或 C（手機按「舉盾」）面向我，擋下兩支練習箭。','舉盾']
+    ],
+    pass:'做得好！',
+    graduate:'四課都學會了。來試試木樁挑戰吧。',
+    needLesson:'先把四堂課上完再來。',
+    stakeRule:'三十秒內打倒越多木樁越好。打倒十二根以上有獎品。',
+    stakeEnd:'時間到！打倒了 ',
+    reward:'表現不錯，這個徽章送你。',
+    best:'最佳紀錄：'
+  },
+  bag:{empty:'（還沒有）'},
   endTitle:'聖林的光回來了',
   endLines:['三件聖物回到神廟，扭曲的時序恢復平靜。','（佔位文字）感謝遊玩這個製作中的版本。','存檔保留為「已通關」，可以繼續探索。']
 };
@@ -63,19 +106,27 @@ const ALTAR_REWARD={
   altar_fire:  {relic:'relic_fire',tool:'lantern',boss:'boss_fire'},
   altar_water: {relic:'relic_water',boss:'boss_water'}
 };
-/* 首領（舊原型：巴爾幹 260hp/atk3、利維坦 320/4、伊格尼斯 380/5、克洛諾斯 460/5；舊原型武器較強，這裡依木劍 12、旋轉斬 18 下修）
+/* 首領（舊原型：巴爾幹 260hp/atk3、利維坦 320/4、伊格尼斯 380/5、克洛諾斯 460/5）
+   v1.0 依模擬機器人（shrine/_bossbot.js，開發用、不部署）重新平衡：目標是「當時應有的心數＋裝備、只會翻滾走位」約一半到六成勝率。
+   預期配備：林 5 心木劍｜焰 6 心鐵劍｜淵 8 心炎刃＋鱗甲｜神廟 10 心星輝劍＋焰鱗鎧＋劍士徽章
+   counterN 連續挨打幾下就「震開」[一階, 二階]｜counterR 震開半徑｜counterWarn 震開預兆秒數｜core 掉落的鍛造核心
    hp 血量｜atk 招式傷害（半顆心）｜touch 碰撞傷害｜r 碰撞半徑｜size 圖高（單位）｜spd 走路速度
    moves1／moves2 第一／第二階段的招式輪替（照順序循環，每種都會出現）｜cd 招式間隔 [一階, 二階]｜warn 預兆時間倍率 [一階, 二階] */
 const BOSS_DEF={
-  boss_forest:{name:'巴爾幹',title:'寄生古樹精',art:'boss_forest',hp:200,atk:2,touch:2,r:.85,size:3.6,spd:.55,gold:[25,35],aura:'#8cff8c',
-    moves1:['vines','roots','summon','roots','vines'],moves2:['vines','spores','roots','summon','spores','roots'],cd:[1.5,1.05],warn:[1,.85]},
-  boss_fire:{name:'伊格尼斯',title:'熔核巨像',art:'boss_fire',hp:260,atk:2,touch:2,r:.95,size:3.6,spd:.8,gold:[30,40],aura:'#ffa040',
-    moves1:['lava','cross','slam'],moves2:['lava','charge','cross','slam','charge'],cd:[1.45,1.0],warn:[1,.85]},
-  boss_water:{name:'利維坦',title:'深淵巨蟒',art:'boss_water',hp:240,atk:2,touch:2,r:.85,size:3.5,spd:1.2,gold:[30,40],aura:'#7aa8ff',flip:true,
-    moves1:['dive','pillars','spit'],moves2:['dive','chain','spit','pillars','dive','chain'],cd:[1.35,.95],warn:[1,.85]},
-  boss_temple:{name:'克洛諾斯',title:'星輪魔導士',art:'boss_temple_img',hp:360,atk:2,big:3,touch:2,r:.7,size:3.3,spd:1.3,gold:[50,60],aura:'#ffd86a',
-    moves1:['orbs','vines','lava','blink','pillars'],moves2:['shift','orbs','chain','blink','lava','vines','pillars'],cd:[1.35,.85],warn:[1,.85]}
+  boss_forest:{name:'巴爾幹',title:'寄生古樹精',art:'boss_forest',hp:800,atk:2,touch:2,r:.85,size:3.6,spd:.55,gold:[25,35],aura:'#8cff8c',
+    moves1:['vines','roots','summon','roots','vines'],moves2:['vines','spores','roots','summon','spores','roots'],cd:[1.5,1.05],warn:[1,.85],
+    counterN:[8,7],counterR:2.2,counterWarn:.6,counterStyle:'root',core:'core_forest'},
+  boss_fire:{name:'伊格尼斯',title:'熔核巨像',art:'boss_fire',hp:1550,atk:2,touch:2,r:.95,size:3.6,spd:.8,gold:[30,40],aura:'#ffa040',
+    moves1:['lava','cross','slam'],moves2:['lava','charge','cross','slam','charge'],cd:[1.45,1.0],warn:[1,.85],
+    counterN:[8,7],counterR:2.3,counterWarn:.5,core:'core_fire'},
+  boss_water:{name:'利維坦',title:'深淵巨蟒',art:'boss_water',hp:1750,atk:3,touch:2,r:.85,size:3.5,spd:1.2,gold:[30,40],aura:'#7aa8ff',flip:true,
+    moves1:['dive','pillars','spit'],moves2:['dive','chain','spit','pillars','dive','chain'],cd:[1.35,.95],warn:[1,.85],
+    counterN:[8,7],counterR:2.2,counterWarn:.5,counterStyle:'water',core:'core_water'},
+  boss_temple:{name:'克洛諾斯',title:'星輪魔導士',art:'boss_temple_img',hp:2600,atk:4,big:3,touch:2,r:.7,size:3.3,spd:1.3,gold:[50,60],aura:'#ffd86a',
+    moves1:['orbs','vines','lava','blink','pillars'],moves2:['shift','orbs','chain','blink','lava','vines','pillars'],cd:[1.35,.85],warn:[1,.85],
+    counterN:[8,7],counterR:2.2,counterWarn:.45,counterStyle:'star'}
 };
+const BOSS_HIT_DECAY=1.2;   // 首領「連續挨打」計數每秒消退幾下（停手一陣子就不會被震開）
 ART_SRC.boss_forest='art/boss_forest.webp';ART_SRC.boss_fire='art/boss_fire.webp';ART_SRC.boss_water='art/boss_water.webp';ART_SRC.boss_temple_img='art/boss_time.webp';
 const BOSS_ARENA_IN=.7;   // 走進場地半徑內多深才觸發
 const HZ_COL={vine:'#7cff5a',root:'#c89a5a',spore:'#c6ff7a',lava:'#ff7a2a',fire:'#ffa040',slam:'#ffcf6a',water:'#6ac8ff',bite:'#9fd0ff',star:'#ffe27a',slow:'#c8a0ff',arrow:'#ffb070'};
@@ -261,8 +312,8 @@ function tfxTick(t,dt){
     if(!t.ret){const n=Math.max(1,Math.ceil(Math.hypot(t.vx,t.vy)*dt/.1));for(let i=0;i<n;i++){t.x+=t.vx*dt/n;t.y+=t.vy*dt/n;if(blockedAt(t.x,t.y)){t.ret=true;ASFX.clank();sparks(t.x,t.y,'#fff',4,2,.5);break}}if(t.t>=T.out)t.ret=true}
     else{const dx=P.x-t.x,dy=P.y-t.y,d=Math.hypot(dx,dy);if(d<.45||t.t>4){for(const o of t.carry){o.x=P.x;o.y=P.y;o.t=Math.max(o.t,.3)}return false}const s=Math.min(d,T.back*dt);t.x+=dx/d*s;t.y+=dy/d*s}
     for(const e of ENEMIES){if(e.dead||t.hit.has(e)||Math.hypot(e.x-t.x,e.y-t.y)>e.r+T.r)continue;t.hit.add(e);t.ret=true;
-      if(e.boss){if(!e.immune){if(e.onBoomerang)e.onBoomerang();damageEnemy(e,T.bossDmg,t.x,t.y)}else ASFX.clank()}
-      else{damageEnemy(e,T.dmg,t.x,t.y);if(!e.dead){e.stun=T.stun;e.kbt=0}}}
+      if(e.boss){if(!e.immune){if(e.onBoomerang)e.onBoomerang();damageEnemy(e,T.bossDmg+eqStat('boomAdd'),t.x,t.y)}else ASFX.clank()}
+      else{damageEnemy(e,T.dmg+eqStat('boomAdd'),t.x,t.y);if(!e.dead){e.stun=T.stun;e.kbt=0}}}
     for(const p of INTER)if(p.k==='pot'&&!p.gone&&Math.hypot(p.x-t.x,p.y-.2-t.y)<.45)breakPot(p);
     for(const o of DROPS)if(!t.carry.includes(o)&&Math.hypot(o.x-t.x,o.y-t.y)<.55){t.carry.push(o);t.ret=true}
     for(const o of t.carry){o.x=t.x;o.y=t.y;o.z=0;o.vz=0;o.vx=o.vy=0;o.t=Math.min(o.t,DROP.life-4)}
@@ -332,6 +383,7 @@ function makeBoss(b){
     fa:Math.PI/2,fx:0,fy:1,mode:'boss',st:'sleep',t:0,cd:1,anim:Math.random()*3,flash:0,blockT:0,kbx:0,kby:0,kbt:0,z:0,dead:false,dieT:0,dieMax:1.8,
     phase:1,mi:0,mv:'',mt:0,ms:0,immune:true,alpha:1,seen:{},fastT:0,dizzy:0,surf:0,arena:b.arena||4.4};
   e.tick=bossTick;e.draw=drawBoss;
+  e.hitAcc=0;e.onHit=()=>{e.hitAcc++;return true};   // 連續挨打計數：到 counterN 就震開（不讓玩家一直貼著砍）
   e.onBoomerang=()=>{if(e.mv==='dive'&&e.ms===3){e.mt=Math.min(e.mt,.2);e.dizzy=1.2;toast('迴力鏢打中了！利維坦暈頭轉向。')}};
   return e;
 }
@@ -378,7 +430,9 @@ function bossTick(e,dt){
     else if(D.id==='boss_fire'&&d>1.8)bossMove(e,dx/d*e.spd*dt*sp,dy/d*e.spd*dt*sp);
     else if(D.id==='boss_water'){const a=e.anim*.7;bossMove(e,Math.cos(a)*e.spd*dt,Math.sin(a*1.3)*e.spd*.6*dt)}
     else if(D.id==='boss_temple'){const want=d<2.6?-1:d>3.6?1:0;bossMove(e,(dx/d*want-dy/d*.5)*e.spd*sp*dt,(dy/d*want+dx/d*.5)*e.spd*sp*dt)}
-    if(e.cd<=0){const list=e.phase===1?D.moves1:D.moves2;e.mv=list[e.mi%list.length];e.mi++;e.mt=0;e.ms=0;e.st='move';e.seen[e.mv]=(e.seen[e.mv]||0)+1;if(e.phase===2)e.seen['p2:'+e.mv]=1;MOVES[e.mv].start&&MOVES[e.mv].start(e)}
+    if(e.hitAcc>0)e.hitAcc=Math.max(0,e.hitAcc-dt*BOSS_HIT_DECAY);
+    if(D.counterN&&e.hitAcc>=D.counterN[e.phase-1]){e.hitAcc=0;e.mv='quake';e.mt=0;e.ms=0;e.st='move';e.seen.quake=(e.seen.quake||0)+1}
+    else if(e.cd<=0){const list=e.phase===1?D.moves1:D.moves2;e.mv=list[e.mi%list.length];e.mi++;e.mt=0;e.ms=0;e.st='move';e.seen[e.mv]=(e.seen[e.mv]||0)+1;if(e.phase===2)e.seen['p2:'+e.mv]=1;MOVES[e.mv].start&&MOVES[e.mv].start(e)}
   }else if(e.st==='move'){
     e.mt+=dt*sp;
     if(MOVES[e.mv].tick(e,dt*sp,dx/d,dy/d,d)){e.st='idle';e.mv='';e.cd=D.cd[e.phase-1];e.immune=false;e.alpha=1}
@@ -390,6 +444,12 @@ function minions(){return ENEMIES.filter(x=>x.minion&&!x.dead)}
 
 /* ===== 招式：start(e) 開始；tick(e,dt,ux,uy,d) 回傳 true＝結束 ===== */
 const MOVES={
+  // 共通：震開——被連續砍到 counterN 下後，身邊一圈爆開（預兆短，貼太緊會吃到）
+  quake:{tick(e){
+    const wt=e.D.counterWarn*W(e);
+    if(e.ms===0){e.ms=1;hz({k:'circle',x:e.x,y:e.y,r:e.D.counterR,warn:wt,act:.25,dmg:e.atk,style:e.D.counterStyle||'slam',follow:e});ASFX.warn()}
+    if(e.ms===1&&e.mt>=wt){e.ms=2;ASFX.boom()}
+    return e.mt>wt+.55}},
   // 林：藤蔓突刺——朝玩家扇形冒出幾條藤蔓（地上先出現虛線警示）
   vines:{tick(e,dt,ux,uy){
     if(e.ms===0&&e.mt>=.35){e.ms=1;const n=e.phase===1?3:5,base=Math.atan2(uy,ux),st=e.D.id==='boss_temple'?'star':'vine';
@@ -489,14 +549,14 @@ function hazTick(h,dt){
     case 'shot':{
       h.x+=h.vx*dt;h.y+=h.vy*dt;h.life-=dt;
       if(h.life<=0||(!walkAt(C,h.x,h.y)&&!wetAt(C,h.x,h.y)))return false;
-      if(inR(h.x,h.y,h.r)){const r=hurtPlayer(h.dmg,h.x-h.vx*.2,h.y-h.vy*.2,{arrow:!!h.block});if(r==='block'){sparks(h.x,h.y,HZ_COL[h.style],6,2,.5);return false}if(r)return false}
+      if(inR(h.x,h.y,h.r)){const r=hurtPlayer(h.dmg,h.x-h.vx*.2,h.y-h.vy*.2,{arrow:!!h.block});if(r==='reflect'){reflectShot(h.x,h.y,h.vx,h.vy);return false}if(r==='block'){sparks(h.x,h.y,HZ_COL[h.style],6,2,.5);return false}if(r)return false}
       return true}
     case 'lob':
       if(h.t>=h.T){if(inR(h.x,h.y,h.r))hurtPlayer(h.dmg,h.x,h.y,{unblock:true});ASFX.burst();sparks(h.x,h.y-.2,'#ff9a3a',12,3.5,.5);
         if(walkAt(C,h.x,h.y))hz({k:'puddle',x:h.x,y:h.y,r:.7,life:2.4,dmg:1,tick:0});return false}
       return true;
     case 'puddle':
-      h.life-=dt;h.tick-=dt;if(h.tick<=0&&inR(h.x,h.y,h.r*.85)){h.tick=.7;hurtPlayer(h.dmg,h.x,h.y,{unblock:true,kb:.3})}
+      h.life-=dt;h.tick-=dt;if(h.tick<=0&&inR(h.x,h.y,h.r*.85)){h.tick=.7;hurtPlayer(h.dmg,h.x,h.y,{unblock:true,kb:.3,fire:true})}
       return h.life>0;
     case 'zone':
       if(h.t>=h.warn&&h.t<h.warn+h.act&&inR(h.x,h.y,h.r))SLOW=.25;
@@ -510,6 +570,8 @@ EVT.on('kill',e=>{
   if(e.minion&&FIGHT)return;
   if(!e.boss)return;
   const D=e.D;ST.flags['bs:'+D.id]=1;HAZ=[];SLOW=0;
+  if(D.core){giveItem(D.core,BOSS_CORE_N);setTimeout(()=>toast(`獲得 ${MATS[D.core].name} ×${BOSS_CORE_N}（鍛造材料）`),3600)}
+  EVT.emit('boss',D.id);
   for(const m of minions())killEnemy(m);
   if(FIGHT)FIGHT.over=true;
   ASFX.fanfare();
@@ -736,7 +798,7 @@ function advHud(force){
 addEventListener('keydown',e=>{
   if(!running||e.repeat||e.ctrlKey||e.metaKey||e.altKey)return;
   const k=e.key.length===1?e.key.toLowerCase():'';
-  if(dlgOpen||worldOpen||lock)return;
+  if(dlgOpen||worldOpen||lock||panelOpen)return;
   if(k==='i'||k==='v'){e.preventDefault();useTool()}
   else if(k==='q'){e.preventDefault();cycleTool(-1)}
   else if(k==='e'){e.preventDefault();cycleTool(1)}
