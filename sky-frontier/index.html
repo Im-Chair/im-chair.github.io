@@ -54,7 +54,7 @@ button { font: inherit; color: var(--ink); cursor: pointer; touch-action: manipu
 /* 頂列 */
 .top { display: flex; align-items: center; gap: 8px; }
 .icon {
-  flex: none; width: 38px; height: 38px; display: grid; place-items: center;
+  flex: none; width: 40px; height: 40px; display: grid; place-items: center;
   background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
   font-size: 18px; text-decoration: none; color: var(--ink); padding: 0;
 }
@@ -249,7 +249,7 @@ dialog::backdrop { background: rgba(0, 0, 0, .62); }
 .row .rt { flex: 1; min-width: 0; font-size: 13.5px; line-height: 1.4; }
 .row .rt small { display: block; color: var(--muted); font-size: 11.5px; }
 .row .rp { font-family: var(--font-px); color: var(--gold); font-size: 13px; white-space: nowrap; }
-.link { background: none; border: none; color: #8fc3ff; padding: 6px 0; font-size: 13px; }
+.link { background: none; border: none; color: #8fc3ff; padding: 6px 0; font-size: 13px; min-height: 40px; min-width: 44px; }
 .jlist .row .rt { font-size: 13px; }
 .kv { display: grid; grid-template-columns: auto 1fr; gap: 3px 14px; font-size: 13.5px; }
 .kv span:nth-child(odd) { color: var(--muted); }
@@ -1571,7 +1571,7 @@ var Miner = (function () {
     W: W, START_X: START_X, CAMP_Y: CAMP_Y, MAIN_END: MAIN_END, M_PER_CELL: M_PER_CELL,
     LAYERS: LAYERS, ORES: ORES, ORE_IDS: ORE_IDS, UP: UP, ITEMS: ITEMS, NAMES: NAMES, PAGE_ROWS: PAGE_ROWS,
     ERAS: ERAS, GEAR: GEAR, WINGS: WINGS, DAILY_CAP: DAILY_CAP, SELL_RATE: SELL_RATE, BM_RATE: BM_RATE,
-    SAT_K: SAT_K, DONATE_K: DONATE_K, SPEC_CAP: SPEC_CAP, SPEC_PER_DAY: SPEC_PER_DAY, SPEC_MULT: SPEC_MULT,
+    SAT_K: SAT_K, SAT_DECAY: SAT_DECAY, DONATE_K: DONATE_K, SPEC_CAP: SPEC_CAP, SPEC_PER_DAY: SPEC_PER_DAY, SPEC_MULT: SPEC_MULT,
     TAX_FROM_ERA: TAX_FROM_ERA, HONOR_FROM_ERA: HONOR_FROM_ERA, HONOR_SLOTS: HONOR_SLOTS, DAY_SPENT: DAY_SPENT,
     MUSEUM_FIRST: MUSEUM_FIRST, REASON: REASON,
     newState: newState, normalize: normalize, migrateV1: migrateV1, tileAt: tileAt, act: act, specials: specials,
@@ -2520,14 +2520,18 @@ var Miner = (function () {
       var q1 = M.quote(S, o, 1, rate), qa = M.quote(S, o, n, rate);
       var g1 = Math.floor(q1.gross), ga = Math.floor(qa.gross);
       var n1 = g1 - M.taxFor(S, g1), na = ga - M.taxFor(S, ga);
+      // 明天的行情：累積量每天 ×SAT_DECAY（小於 0.5 就清掉），與核心 newDay 同一規則
+      var a0 = (S.sat[o] || 0) * M.SAT_DECAY;
+      var tom = a0 < 0.5 ? 1 : Math.exp(-a0 / (M.SAT_K * M.ORES[o].v));
+      var low = q1.n && n1 <= 0;
       html += '<div class="sellrow"><div class="nm"><span class="o-' + o + '" style="color:var(--oc)">' + M.ORES[o].g + '</span> ' + M.ORES[o].name + ' ×' + n +
-        '<small>單價 ' + (unit >= 10 ? Math.round(unit) : unit.toFixed(1)) + ' 希爾 · 行情 ' + Math.round(sat * 100) + '%</small>' + bar(sat) + '</div>' +
-        '<div class="bt"><button type="button" data-act="sell" data-arg="' + shop + ':' + o + ':1"' + (q1.n ? '' : ' disabled') + '>賣 1<br>+' + n1 + '</button>' +
-        (n > 1 ? '<button type="button" data-act="sell" data-arg="' + shop + ':' + o + ':' + n + '"' + (qa.n ? '' : ' disabled') + '>' + (qa.n < n ? '賣 ' + qa.n : '全賣') + '<br>+' + na + '</button>' : '') +
+        '<small>單價 ' + (unit >= 10 ? Math.round(unit) : unit.toFixed(1)) + ' 希爾 · 行情 ' + Math.round(sat * 100) + '%（明天約 ' + Math.round(tom * 100) + '%）' + (low ? ' · 行情太低，明天會回升' : '') + '</small>' + bar(sat) + '</div>' +
+        '<div class="bt"><button type="button" data-act="sell" data-arg="' + shop + ':' + o + ':1"' + (q1.n && n1 > 0 ? '' : ' disabled') + '>賣 1<br>+' + n1 + '</button>' +
+        (n > 1 ? '<button type="button" data-act="sell" data-arg="' + shop + ':' + o + ':' + n + '"' + (qa.n && na > 0 ? '' : ' disabled') + '>' + (qa.n < n ? '賣 ' + qa.n : '全賣') + '<br>+' + na + '</button>' : '') +
         '</div></div>';
     });
     var all = M.quoteAll(S, rate);
-    html += rowHtml('💰', '全部賣出（' + all.n + ' 個）', '全價 ' + all.full + '，行情壓掉 ' + Math.max(0, all.full - all.gross) + (all.tax ? '，稅 ' + all.tax : '') + (all.capped ? '；額度不夠，賣不完的留著' : ''), '+' + all.net, 'sellAll', shop, !all.n);
+    html += rowHtml('💰', '全部賣出（' + all.n + ' 個）', '全價 ' + all.full + '，行情壓掉 ' + Math.max(0, all.full - all.gross) + (all.tax ? '，稅 ' + all.tax : '') + (all.capped ? '；額度不夠，賣不完的留著' : ''), '+' + all.net, 'sellAll', shop, !all.n || all.net <= 0);
     return html;
   }
   function eraReqHtml() {
@@ -2548,7 +2552,9 @@ var Miner = (function () {
       if (E) html += '<h3>往 ' + E.icon + ' ' + E.name + '</h3>' + eraReqHtml();
       else html += '<p>灰燈鎮已經走到最後一個時代了。</p>';
     }
+    var cpFull = !!(S.tut.era && (!E || M.cpLeft(S) <= 0));
     html += '<h3>捐礦換文明點數</h3>';
+    if (S.tut.era && E) html += '<p style="font-size:12.5px;color:var(--muted)">捐礦換文明點數與礦種；捐希爾是另一項條件。</p>';
     if (S.tut.era && E && M.cpLeft(S) <= 0) html += '<p style="color:var(--warn);font-size:12.5px">這個時代的文明點數已經夠了，多捐不會留到下個時代' + (E.kinds && M.donKinds(S) < E.kinds ? '；不過沒捐過的礦種，捐滿 ' + M.DONATE_MIN + ' 顆還是算一種' : '') + '。</p>';
     var keys = Object.keys(S.bag);
     if (!keys.length) html += '<p style="color:var(--muted)">背包是空的。</p>';
@@ -2560,10 +2566,10 @@ var Miner = (function () {
       total += ca;
       html += '<div class="sellrow"><div class="nm"><span class="o-' + o + '" style="color:var(--oc)">' + M.ORES[o].g + '</span> ' + M.ORES[o].name + ' ×' + n +
         '<small>兌換率 ' + Math.round(r * 100) + '%' + kindNote(o) + '</small>' + bar(r) + '</div>' +
-        '<div class="bt"><button type="button" data-act="donate" data-arg="' + o + ':1">捐 1<br>+' + Math.round(c1) + '</button>' +
-        (n > 1 ? '<button type="button" data-act="donate" data-arg="' + o + ':' + n + '">全捐<br>+' + Math.round(ca) + '</button>' : '') + '</div></div>';
+        '<div class="bt"><button type="button" data-act="donate" data-arg="' + o + ':1">捐 1<br>' + (cpFull ? '點數已滿' : '+' + Math.round(c1)) + '</button>' +
+        (n > 1 ? '<button type="button" data-act="donate" data-arg="' + o + ':' + n + '">全捐<br>' + (cpFull ? '點數已滿' : '+' + Math.round(ca)) + '</button>' : '') + '</div></div>';
     });
-    if (keys.length > 1) html += rowHtml('📦', '全部捐獻', M.bagCount(S) + ' 個礦石', '+' + Math.round(total) + ' 點', 'donateAll');
+    if (keys.length > 1) html += rowHtml('📦', '全部捐獻', M.bagCount(S) + ' 個礦石', cpFull ? '點數已滿' : '+' + Math.round(total) + ' 點', 'donateAll');
     if (S.tut.era && E) {
       var left = M.cielLeft(S);
       html += '<h3>捐希爾（還需要 ' + left + '）</h3>';
