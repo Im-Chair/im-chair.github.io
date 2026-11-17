@@ -34,14 +34,30 @@ body.btn-art #sTitle button::before,body.btn-art #sTitle button::after{display:n
 #cv{position:absolute;inset:0;width:100%;height:100%;display:block}
 #hud{position:absolute;top:calc(8px + env(safe-area-inset-top));left:8px;right:8px;display:flex;justify-content:space-between;align-items:flex-start;pointer-events:none}
 #hud button{pointer-events:auto;padding:6px 14px;background:#0009;border:1px solid #fff4;border-radius:20px;font-size:14px}
-#hudName{background:#0009;padding:6px 12px;border-radius:20px;font-size:14px}
+#hudName{background:#0009;padding:4px 12px;border-radius:20px;font-size:13px}
+#hudL{display:flex;flex-direction:column;align-items:flex-start;gap:5px}
+#hpCv{display:block;filter:drop-shadow(0 1px 2px #000a)}
+#purse{display:flex;align-items:center;gap:6px;background:#0009;padding:4px 12px;border-radius:20px;font-size:14px;font-weight:700}
+#purse b{min-width:1.5em;font-variant-numeric:tabular-nums}
+.gem{display:inline-block;width:11px;height:11px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#fff,#b8ffcc 35%,#2fbf6a);box-shadow:0 0 4px #7dffb0aa}
+.keyic{display:inline-block;width:14px;height:8px;position:relative;margin-left:6px}
+.keyic::before{content:"";position:absolute;left:0;top:0;width:6px;height:6px;border:2px solid #ffd84a;border-radius:50%}
+.keyic::after{content:"";position:absolute;left:8px;top:3px;width:7px;height:2px;background:#ffd84a;box-shadow:4px 2px 0 -0px #ffd84a}
+#hudPiece{font-size:12px;color:#ffb8c8;background:#0009;padding:2px 10px;border-radius:12px}
+/* 觸控按鈕（右下，圓形；搖桿在左下，不重疊） */
+.tbtn{position:absolute;border-radius:50%;padding:0;font-weight:700;display:none;background:#141c3acc;border:2px solid #6f86d6;color:#eef1ff;font-size:15px}
+.tbtn.down{filter:brightness(1.4);transform:scale(.95)}
+body.touch .tbtn{display:block}
+#atkBtn{right:18px;bottom:calc(34px + env(safe-area-inset-bottom));width:84px;height:84px;background:#3a1c1ccc;border-color:#e08a6a;font-size:17px}
+#rollBtn{right:116px;bottom:calc(24px + env(safe-area-inset-bottom));width:62px;height:62px}
+#shdBtn{right:28px;bottom:calc(134px + env(safe-area-inset-bottom));width:62px;height:62px;background:#2a2414cc;border-color:#c9a35a}
 #hudR{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
 #dbg{display:none;background:#000b;padding:4px 8px;border-radius:8px;font:11px/1.4 monospace;white-space:pre;color:#bfe}
 body.debug #dbg{display:block}
 #joy{position:absolute;left:22px;bottom:calc(30px + env(safe-area-inset-bottom));width:130px;height:130px;border-radius:50%;background:#ffffff18;border:2px solid #ffffff44;display:none}
 #knob{position:absolute;left:41px;top:41px;width:48px;height:48px;border-radius:50%;background:#ffffffaa;box-shadow:0 2px 8px #0008;pointer-events:none}
 body.touch #joy{display:block}
-#actBtn{position:absolute;right:24px;bottom:calc(52px + env(safe-area-inset-bottom));width:84px;height:84px;border-radius:50%;padding:0;background:#141c3acc;border:2px solid #6f86d6;font-weight:700;display:none}
+#actBtn{position:absolute;right:112px;bottom:calc(112px + env(safe-area-inset-bottom));width:62px;height:62px;border-radius:50%;padding:0;background:#1c3a2acc;border:2px solid #6fd69a;font-weight:700;font-size:15px;display:none}
 body.touch #actBtn.on{display:block}
 #hint{position:absolute;left:50%;bottom:calc(28px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#000a;padding:6px 14px;border-radius:20px;font-size:13px;color:#dfe6ff;opacity:0;transition:opacity .2s;pointer-events:none;white-space:nowrap}
 #hint.on{opacity:1}
@@ -70,7 +86,7 @@ body.touch #hint{display:none}
 </style>
 <script>
 /* 版號：改了 maps.js 或這個檔就 +1，破除瀏覽器快取 */
-const SHRINE_VER='4';
+const SHRINE_VER='5';
 document.write('<script src="maps.js?v='+SHRINE_VER+'"><\/script>');
 </script>
 </head>
@@ -78,15 +94,19 @@ document.write('<script src="maps.js?v='+SHRINE_VER+'"><\/script>');
 <div id="app">
   <section id="sTitle" class="screen center on">
     <div class="logo" id="logo"></div>
-    <div class="sub">地圖系統樣板</div>
+    <div class="sub">製作中・戰鬥測試版</div>
+    <button class="pri" id="btnCont" style="display:none">繼續</button>
     <button class="pri" id="btnStart">開始</button>
-    <div class="ver">鍵盤 WASD／方向鍵移動，空白鍵對話，M 看地圖</div>
+    <div class="ver">移動：WASD／方向鍵　攻擊：J 或 Z（按住蓄力，放開旋轉斬）<br>翻滾：K 或 X　舉盾：L 或 C　互動：空白鍵　地圖：M<br>手機：左下搖桿移動，右下按鈕攻擊／翻滾／舉盾</div>
   </section>
   <section id="sMap" class="screen">
     <canvas id="cv"></canvas>
-    <div id="hud"><div id="hudName"></div><div id="hudR"><button id="mapBtn">地圖</button><div id="dbg"></div></div></div>
+    <div id="hud"><div id="hudL"><canvas id="hpCv"></canvas><div id="purse"><span class="gem"></span><b id="hudMoney">0</b><span id="hudKeyWrap" style="display:none"><span class="keyic"></span> <b id="hudKeys">0</b></span></div><div id="hudPiece" style="display:none"></div><div id="hudName"></div></div><div id="hudR"><button id="mapBtn">地圖</button><div id="dbg"></div></div></div>
     <div id="joy"><div id="knob"></div></div>
     <button id="actBtn">對話</button>
+    <button class="tbtn" id="atkBtn">攻擊</button>
+    <button class="tbtn" id="rollBtn">翻滾</button>
+    <button class="tbtn" id="shdBtn">舉盾</button>
     <div id="hint">空白鍵：對話</div>
     <div id="toast"></div>
     <div id="dlg"><div id="dlgBox"><div id="dlgName"></div><div id="dlgText"></div><div id="dlgNext">▼</div></div></div>
@@ -570,10 +590,24 @@ function clearBlocks(){blk.forEach(e=>{if(pool.length<4)pool.push(e.cv)});blk.cl
 const P={x:0,y:0,face:'down',moving:false,anim:0,exitLock:false};
 let lock=false,dlgOpen=false,worldOpen=false,forceFull=false,camDX=0,camDY=0,nearTalk=null,nearLock=null;
 const keys={};const joy={x:0,y:0};
+/* ===== 掛鉤：戰鬥等遊戲規則在 game.js，這裡只留預設（沒載入 game.js 時就是單純的地圖漫遊） ===== */
+const HOOKS={
+  begin:mode=>null,        // 開始遊戲：mode＝'new'｜'continue'，回傳 {map,x,y,face}
+  enter:id=>{},            // 換到某張地圖之後
+  art:id=>[],              // 這張地圖額外要先載的圖（ART_SRC 的 key）
+  player:dt=>1,            // 每幀移動前：回傳輸入移動的速度倍率（0＝這幀不能用輸入移動）
+  faceLock:()=>false,      // true＝移動時不改面向（舉盾、蓄力、攻擊中）
+  update:dt=>{},           // 每幀（移動、出口判定之後）
+  near:best=>null,         // 比 best 更近的可互動物件（要有 act()、label）
+  actors:(list,c,now)=>{}, // 加入要依 y 排序繪製的角色 {sy,draw}
+  drawHero:null,           // 取代英雄繪製
+  fx:(c,S,now)=>{}         // 最上層特效（世界座標）
+};
 
 /* ================= 碰撞 ================= */
 function colsNear(x,y){const a=C.cols.get(Math.floor(x/2)+','+Math.floor(y/2));return a||[]}
 function colHit(col,x,y,r){
+  if(col.off)return false;   // 已打破的陶罐等
   if(col.r!=null)return Math.hypot(x-col.x,y-col.y)<r+col.r;
   const qx=clamp(x,col.x0,col.x1),qy=clamp(y,col.y0,col.y1);return Math.hypot(x-qx,y-qy)<r;
 }
@@ -634,6 +668,7 @@ function go(id,x,y,face){
   PROGRESS.visit(id);
   $('#hudName').textContent=C.M.name;
   forceFull=true;
+  HOOKS.enter(id);
   return true;
 }
 const inRect=(e,x,y)=>x>=e.x&&x<=e.x+e.w&&y>=e.y&&y<=e.y+e.h;
@@ -649,6 +684,7 @@ function mapArt(id){   // 這張地圖要用的圖（主題版＋預設版當備
   const th=MAPS[id].theme||'',ks=new Set(['hero','tiles','tiles_ember','tiles'+th]);
   ['tree1','tree2','rock','bush','sign','house'].forEach(k=>{ks.add(k+th)});
   (MAPS[id].npcs||[]).forEach(n=>{if(CH[n.ch])ks.add(CH[n.ch].art)});
+  HOOKS.art(id).forEach(k=>ks.add(k));
   return [...ks].map(needArt);
 }
 async function artGate(need,ms){
@@ -681,6 +717,7 @@ function say(lines){
 function talk(){
   if(!nearTalk||dlgOpen||lock||worldOpen)return;
   const t=nearTalk;Object.keys(keys).forEach(k=>keys[k]=false);
+  if(t.act){t.act();return}   // 寶箱、營火等（game.js）
   if(t.text)say([t.text]);else say(t.lines.map(l=>[t.name,l]));
 }
 let toastT=null;
@@ -692,11 +729,15 @@ function update(dt){
   let ix=(keys.ArrowRight||keys.d?1:0)-(keys.ArrowLeft||keys.a?1:0),iy=(keys.ArrowDown||keys.s?1:0)-(keys.ArrowUp||keys.w?1:0);
   ix+=joy.x;iy+=joy.y;
   const m=Math.hypot(ix,iy);if(m>1){ix/=m;iy/=m}
-  if(m>.15){
-    moveBy(ix*SPEED*dt,iy*SPEED*dt);P.moving=true;P.anim+=dt;
+  const sm=HOOKS.player(dt);   // 攻擊、翻滾、舉盾、擊退時由 game.js 決定能不能走、走多快
+  if(lock)return;
+  if(m>.15&&sm>0){
+    moveBy(ix*SPEED*sm*dt,iy*SPEED*sm*dt);P.moving=true;P.anim+=dt*Math.max(.5,sm);
     const ax=Math.abs(ix),ay=Math.abs(iy);
+    if(!HOOKS.faceLock()){
     if(ax>ay*1.15)P.face=ix<0?'left':'right';else if(ay>ax*1.15)P.face=iy<0?'up':'down';
     else{const h=ix<0?'left':'right',v=iy<0?'up':'down';if(P.face!==h&&P.face!==v)P.face=ax>=ay?h:v}
+    }
   }else P.moving=false;
   // 出口
   const inside=C.exits.find(e=>inRect(e,P.x,P.y));
@@ -706,10 +747,14 @@ function update(dt){
   for(const n of C.npcs){const d=Math.hypot(n.x-P.x,n.y-P.y);if(d<best){best=d;nearTalk=n}
     n.face=d<3?(Math.abs(P.x-n.x)>Math.abs(P.y-n.y)?(P.x<n.x?2:3):(P.y<n.y?1:0)):0}
   for(const s of C.signs){const d=Math.hypot(s.x-P.x,s.y-.2-P.y);if(d<best){best=d;nearTalk=s}}
+  const ex=HOOKS.near(best);if(ex)nearTalk=ex;
+  const lab=nearTalk&&nearTalk.label||'對話';
+  if($('#actBtn').textContent!==lab){$('#actBtn').textContent=lab;$('#hint').textContent='空白鍵：'+lab}
   $('#actBtn').classList.toggle('on',!!nearTalk);$('#hint').classList.toggle('on',!!nearTalk);
   // 鎖住的門：靠近就提示
   nearLock=C.locks.find(l=>rectDist(l,P.x,P.y)<LOCK_DIST)||null;
   if(nearLock)toast(nearLock.text||LOCK_TEXT[nearLock.need]||'門鎖著。');
+  HOOKS.update(dt);
 }
 
 /* ================= 繪製：物件 ================= */
@@ -752,6 +797,11 @@ function drawProp(c,p,now){
       flame(c,x,y-.12,1,now,x);break;
     case 'chest':
       c.strokeStyle='#1a0e06';c.lineWidth=.06;
+      if(p.open){   // 已開：蓋子掀到後面、箱內暗
+        c.fillStyle='#b0703c';rr(c,x-.4,y-.98,.8,.3,.08);c.fill();c.stroke();
+        c.fillStyle='#7a4822';rr(c,x-.4,y-.62,.8,.55,.06);c.fill();c.stroke();c.fillStyle='#2a1508';c.fillRect(x-.33,y-.66,.66,.14);
+        c.fillStyle=pl.ac;c.fillRect(x-.4,y-.47,.8,.06);break;
+      }
       c.fillStyle='#7a4822';rr(c,x-.4,y-.62,.8,.55,.06);c.fill();c.stroke();c.fillStyle='#b0703c';rr(c,x-.4,y-.72,.8,.28,.08);c.fill();c.stroke();
       c.fillStyle=pl.ac;c.fillRect(x-.4,y-.47,.8,.06);c.fillRect(x-.27,y-.72,.07,.65);c.fillRect(x+.2,y-.72,.07,.65);c.fillRect(x-.06,y-.5,.12,.14);break;
     case 'pot':{
@@ -830,7 +880,7 @@ function drawArena(c,b,now){   // 首領場地：地上淡淡的符文圈
 /* ================= 繪製：主畫面 ================= */
 let LCV=null,LCTX=null;
 function render(now){
-  if(!C)return;
+  if(!C||!cw||!ch)return;   // 畫面還沒有尺寸（隱藏的分頁）
   const t0=performance.now();
   const S=U*dpr,c=ctx;frameNo++;stat.frameBuilt=0;
   const vw=cw/S,vh=ch/S;
@@ -872,9 +922,10 @@ function render(now){
   C.bridges.forEach(b=>drawBridge(c,b));
   if(C.M.boss&&bbHit([C.M.boss.x-6,C.M.boss.y-6,C.M.boss.x+6,C.M.boss.y+6],view))drawArena(c,C.M.boss,now);
   // 物件與角色：依 y 排序（人走到樹後會被樹冠遮住）
-  const vis=C.props.filter(p=>p.x+p.w>vx0&&p.x-p.w<vx1&&p.y>vy0-.5&&p.y-p.h<vy1);
+  const vis=C.props.filter(p=>!p.gone&&p.x+p.w>vx0&&p.x-p.w<vx1&&p.y>vy0-.5&&p.y-p.h<vy1);
   for(const p of vis){const sh=SHADOW_OF[p.k];if(sh)drawShadow(c,p.x,p.y+sh[2]*p.s,p.w*sh[0],p.w*sh[1])}
-  const actors=[{sy:P.y+.12,draw:()=>drawHero(c)},...C.npcs.map(n=>({sy:n.y+.1,draw:()=>drawNpc(c,n,now)}))].sort((a,b)=>a.sy-b.sy);
+  const actors=[{sy:P.y+.12,draw:()=>(HOOKS.drawHero||drawHero)(c)},...C.npcs.map(n=>({sy:n.y+.1,draw:()=>drawNpc(c,n,now)}))];
+  HOOKS.actors(actors,c,now);actors.sort((a,b)=>a.sy-b.sy);
   let ai=0;
   const hy=P.y+.12,hx0=P.x-.3,hx1=P.x+.3,hy0=hy-HERO_H*.85;
   for(const p of vis){
@@ -888,6 +939,7 @@ function render(now){
   // 光與暗：室內整體壓暗、光源挖亮；所有地圖的光源都疊一層加色光暈
   drawLights(c,S,now,vx0,vy0);
   if(C.M.tint){c.setTransform(1,0,0,1,0,0);c.fillStyle=C.M.tint;c.fillRect(0,0,cw,ch)}
+  c.setTransform(S,0,0,S,-camDX,-camDY);HOOKS.fx(c,S,now);c.globalAlpha=1;
   if(DEBUG&&document.body.classList.contains('debug'))drawDebug(c,S);
   stat.renderMs=performance.now()-t0;
 }
@@ -1067,21 +1119,22 @@ $('#worldClose').addEventListener('click',()=>openWorld(false));
 addEventListener('resize',()=>{if(running)resize()});
 
 /* ================= 開始 ================= */
-async function start(){
-  const btn=$('#btnStart');btn.disabled=true;
+async function start(mode){   // mode：'new'｜'continue'（標題按鈕由 game.js 接；沒有 game.js 時直接開始）
+  if(running)return;
+  const btns=[...document.querySelectorAll('#sTitle button')];btns.forEach(b=>b.disabled=true);
   const el=$('#fade');el.classList.add('on');await sleep(300);
   $('#sTitle').classList.remove('on');$('#sMap').classList.add('on');
   ctx=$('#cv').getContext('2d');
-  C=compileMap('village');
+  const s=HOOKS.begin(mode==='continue'?'continue':'new')||{},id=MAPS[s.map]?s.map:'village';
+  C=compileMap(id);
   resize();
-  await artGate(mapArt('village'),6000);   // 網路不通就逾時放行，畫面用程式畫的替代
-  go('village');
+  await artGate(mapArt(id),6000);   // 網路不通就逾時放行，畫面用程式畫的替代
+  go(id,s.x,s.y,s.face);
   running=true;last=performance.now();render(last);requestAnimationFrame(loop);
-  await sleep(30);el.classList.remove('on');btn.disabled=false;
+  await sleep(30);el.classList.remove('on');btns.forEach(b=>b.disabled=false);
 }
 document.title=GAME_TITLE;
 {const [a,b]=GAME_TITLE.split('：');$('#logo').innerHTML='';$('#logo').append(a||GAME_TITLE);if(b){const s=document.createElement('small');s.textContent=b;$('#logo').append(s)}}
-$('#btnStart').addEventListener('click',start);
 Promise.all(['ui-btn','ui-btn-pri'].map(k=>new Promise((ok,no)=>{const im=new Image();im.onload=ok;im.onerror=no;im.src=`${PK}${k}.webp`}))).then(()=>document.body.classList.add('btn-art'),()=>{});
 if(DEBUG){
   document.body.classList.add('debug');
@@ -1090,8 +1143,11 @@ if(DEBUG){
     keys,joy,tick:dt=>{update(dt);render(performance.now());return [CURID,P.x,P.y]},
     /* zoom：看全圖用，暫時改解析度讓視野變大 */
     zoom:z=>{dpr=z;tmpReset();buildTextures();for(const k in SPR)SPR[k]=null;clearBlocks();GEN++;forceFull=true;render(performance.now())},
-    move:(dx,dy)=>{moveBy(dx,dy);return [P.x,P.y]},free:(x,y)=>circleFree(x,y,PLAYER_R)};
+    move:(dx,dy)=>{moveBy(dx,dy);return [P.x,P.y]},free:(x,y)=>circleFree(x,y,PLAYER_R),
+    walk:(x,y)=>walkAt(C,x,y),render:()=>render(performance.now()),update:dt=>update(dt)};
 }
 </script>
+<script>document.write('<script src="game.js?v='+SHRINE_VER+'"><\/script>');</script>
+<script>if(!window.SHRINE_GAME)$('#btnStart').addEventListener('click',()=>start('new'));   // game.js 沒載到時的備援</script>
 </body>
 </html>
