@@ -185,7 +185,7 @@ button { font: inherit; color: var(--ink); cursor: pointer; touch-action: manipu
 .log .page { color: #ffe9a8; }
 
 /* 下一步 */
-.next { background: #1f2b1d; border: 1px solid #3f5a3a; border-radius: 9px; padding: 4px 9px; font-size: 12.5px; color: #cfe8c4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+.next { background: #1f2b1d; border: 1px solid #3f5a3a; border-radius: 9px; padding: 4px 9px; font-size: 12.5px; color: #cfe8c4; line-height: 1.35; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; cursor: pointer; }
 .next b { color: var(--good); margin-right: 4px; }
 
 /* 背包列 / 小鎮列 */
@@ -472,6 +472,9 @@ var Miner = (function () {
   var DONATE_K = 10;
   // 每天 D × 0.98（規格書 0.98 → 0.98，同）
   var DONATE_DECAY = 0.98;
+  // 「捐過的礦種」：同一種礦累計捐滿 DONATE_MIN 顆才算一種（時代條件 kinds 用；計數不隨天數衰減）
+  //   用來堵「只挖一種高價礦、一路捐到底」的捷徑：一種礦最多換 DONATE_K × V 點，但時代還要求種類數
+  var DONATE_MIN = 3;
   // 黑市每日投機品（規格書 02 §4）：同時 2 種、各 3 天、交錯更換、收購價 3V、每種每天 10 個、獨立每日上限、不受飽和影響
   var SPEC_SLOTS = 2, SPEC_DAYS = 3, SPEC_MULT = 3, SPEC_PER_DAY = 10;
   // 投機品獨立每日上限（規格書 5000 → 3000：配合本作收入規模）
@@ -512,19 +515,19 @@ var Miner = (function () {
     heat:     { name: '隔熱護具', icon: '🧯', era: 2, price: 3000, desc: '岩漿燙傷 15 → 5、落石砸傷 10 → 5' },
     scope:    { name: '礦脈探測器', icon: '📡', era: 3, price: 7000, desc: '燈光外兩格內的礦石會微微發亮' }
   };
-  // 時代（規格書 00 §4、03 §1.1）。四類條件全部達成才晉升：文明點數、捐獻希爾、
+  // 時代（規格書 00 §4、03 §1.1）。條件全部達成才晉升：文明點數、捐獻希爾、捐過的礦種（本作新增，堵單一礦捷徑）、
   // 「階級」→ 本作沒有懸賞與冒險者階級，改看日記頁數；「世界里程碑」→ 到達某一層／找到爺爺的營地
   // 規格書單機門檻（文明點數／希爾）：3000／1500、15000／15000、60000／150000、225000／750000
   // → 這裡如下：照本作每天能帶回的礦量重算，比例沿用「越後面越陡」
   var ERAS = [
     { id: 'PIONEER', name: '拓荒時代', icon: '🪓' },
-    { id: 'SETTLEMENT', name: '開墾時代', icon: '🚩', cp: 100, ciel: 40,
+    { id: 'SETTLEMENT', name: '開墾時代', icon: '🚩', cp: 100, ciel: 40, kinds: 3,
       opens: ['天穹工匠開店：防毒面罩、防水長靴', '博物館開館：每種礦第一次收藏領獎金'] },
-    { id: 'COMMERCE', name: '商業時代', icon: '🏮', cp: 1600, ciel: 600, pages: 3, depth: 31,
+    { id: 'COMMERCE', name: '商業時代', icon: '🏮', cp: 1300, ciel: 400, kinds: 5, pages: 3, depth: 31,
       opens: ['工匠新貨：黑市契約（五成收購＋投機品）、隔熱護具', '開始課交易稅（當日賣越多稅率越高）', '財富持有稅：存款太多每 7 天扣一點'] },
-    { id: 'AETHER', name: '天穹時代', icon: '🎈', cp: 6000, ciel: 2500, pages: 5, depth: 76,
+    { id: 'AETHER', name: '天穹時代', icon: '🎈', cp: 5000, ciel: 2000, kinds: 8, pages: 5, depth: 76,
       opens: ['工匠新貨：礦脈探測器', '博物館榮譽展位：把名字刻在牆上'] },
-    { id: 'STAR', name: '星辰時代', icon: '⭐', cp: 16000, ciel: 8000, pages: 7, camp: true,
+    { id: 'STAR', name: '星辰時代', icon: '⭐', cp: 16000, ciel: 6000, kinds: 11, pages: 7, camp: true,
       opens: ['所有升級開放到最高級', '灰燈鎮的拓荒告一段落——裂谷底下還有路'] }
   ];
   function upCap(S, id) { return Math.min(UP[id].lv.length - 1, S.era + 1); }
@@ -710,6 +713,7 @@ var Miner = (function () {
       era: 0, eraCp: 0, eraCiel: 0,              // 本時代累積的文明點數與捐獻希爾（晉升後歸零）
       sat: {},       // 收購飽和：礦種 -> 近期回收量 A（V）
       don: {},       // 捐獻遞減：礦種 -> 累計捐獻價值 D（V）
+      donN: {},      // 捐過的個數：礦種 -> 累計顆數（不衰減，算「捐過的礦種」用）
       today: { sold: 0, spec: {}, specSold: 0 },  // 今天的回收稅前額、投機品個數與收入
       gear: {},      // 天穹工匠買的裝備 id -> true
       museum: {},    // 已收藏的礦種 -> 收藏那天
@@ -746,7 +750,9 @@ var Miner = (function () {
     for (var it in ITEMS) S.items[it] = Math.max(0, Math.min(ITEMS[it].max, S.items[it] | 0));
     S.bag = numMap(S.bag, ORES);
     for (var b in S.bag) S.bag[b] = Math.floor(S.bag[b]);
-    S.sat = numMap(S.sat, ORES); S.don = numMap(S.don, ORES);
+    // 第二版早期存檔沒有 donN：用目前的捐獻量 D ÷ V 估回顆數（D 有衰減，只會估少不會估多）
+    if (!S.donN || typeof S.donN !== 'object') { S.donN = {}; for (var dk in (S.don || {})) if (ORES[dk]) S.donN[dk] = Math.round((+S.don[dk] || 0) / ORES[dk].v); }
+    S.sat = numMap(S.sat, ORES); S.don = numMap(S.don, ORES); S.donN = numMap(S.donN, ORES);
     S.museum = numMap(S.museum, ORES);
     ['mod', 'hp', 'wob', 'gas', 'gear', 'wings', 'tut'].forEach(function (g) { if (!S[g] || typeof S[g] !== 'object' || Array.isArray(S[g])) S[g] = {}; });
     if (!S.today || typeof S.today !== 'object') S.today = d.today;
@@ -1023,9 +1029,11 @@ var Miner = (function () {
     return T * (Math.exp(-D / T) - Math.exp(-(D + x) / T));
   }
   function eraNeed(S) { return ERAS[S.era + 1] || null; }
+  // 捐滿 DONATE_MIN 顆的礦種數
+  function donKinds(S) { var n = 0; for (var o in S.donN) if (ORES[o] && S.donN[o] >= DONATE_MIN) n++; return n; }
   function cpLeft(S) { var E = eraNeed(S); return E ? Math.max(0, E.cp - S.eraCp) : 0; }
   function cielLeft(S) { var E = eraNeed(S); return E ? Math.max(0, E.ciel - S.eraCiel) : 0; }
-  // 下一個時代的四類條件：[{ k, label, have, need, ok }]
+  // 下一個時代的各項條件：[{ k, label, have, need, ok }]
   function eraReqs(S) {
     var E = eraNeed(S);
     if (!E) return [];
@@ -1033,6 +1041,7 @@ var Miner = (function () {
       { k: 'cp', label: '文明點數', have: Math.floor(S.eraCp), need: E.cp },
       { k: 'ciel', label: '捐獻希爾', have: S.eraCiel, need: E.ciel }
     ];
+    if (E.kinds) r.push({ k: 'kinds', label: '捐過的礦種（每種滿 ' + DONATE_MIN + ' 顆）', have: Math.min(E.kinds, donKinds(S)), need: E.kinds });
     if (E.pages) r.push({ k: 'pages', label: '日記殘頁', have: Math.min(E.pages, S.pages.filter(function (p) { return p < 7; }).length), need: E.pages });
     if (E.depth) r.push({ k: 'depth', label: '到過' + LAYERS[layerIndex(E.depth)].name + '（' + E.depth * M_PER_CELL + ' m）', have: Math.min(E.depth, S.maxY) * M_PER_CELL, need: E.depth * M_PER_CELL });
     if (E.camp) r.push({ k: 'camp', label: '找到爺爺的營地', have: S.camp ? 1 : 0, need: 1 });
@@ -1071,10 +1080,12 @@ var Miner = (function () {
     if (!E) return S.camp ? '星辰時代。裂谷底下還有更深的地方' : '去找爺爺的營地';
     var miss = eraReqs(S).filter(function (q) { return !q.ok; });
     if (!miss.length) return S.y > 0 ? '條件都齊了，回鎮上就能進入' + E.name : '條件都齊了';
-    var m = miss[0];
+    // 礦種不夠時先提示礦種（點數多半也是卡在這裡）
+    var m = miss.filter(function (q) { return q.k === 'kinds'; })[0] || miss[0];
     var pre = '往' + E.name + '：';
     if (m.k === 'cp') return pre + '還差 ' + (m.need - m.have) + ' 文明點數——捐不同種類的礦最划算';
     if (m.k === 'ciel') return pre + '到集資箱捐 ' + (m.need - m.have) + ' 希爾';
+    if (m.k === 'kinds') return pre + '再捐 ' + (m.need - m.have) + ' 種沒捐過的礦（每種 ' + DONATE_MIN + ' 顆）';
     if (m.k === 'pages') return pre + '再找 ' + (m.need - m.have) + ' 張日記殘頁（📖 看大概位置）';
     if (m.k === 'depth') return pre + '往下挖到 ' + m.need + ' 公尺';
     if (m.k === 'camp') return pre + '找到爺爺在最深處的營地';
@@ -1507,6 +1518,7 @@ var Miner = (function () {
       var k = cmd.all ? S.bag[o] : Math.min(cmd.n || 1, S.bag[o]);
       var got = cpQuote(S, o, k);
       S.don[o] = (S.don[o] || 0) + k * ORES[o].v;
+      S.donN[o] = (S.donN[o] || 0) + k;
       S.bag[o] -= k; if (!S.bag[o]) delete S.bag[o];
       cp += got; n += k;
     });
@@ -1558,7 +1570,7 @@ var Miner = (function () {
     isPassable: isPassable, power: power, bagCap: bagCap, bagCount: bagCount, bagValue: bagValue,
     maxEnergy: maxEnergy, lightRadius: lightRadius, stage: stage, hash: hash, resetTransient: resetTransient,
     upCap: upCap, satOf: satOf, unitPrice: unitPrice, capOf: capOf, capLeft: capLeft, quote: quote, quoteAll: quoteAll,
-    taxFor: taxFor, specList: specList, specQuote: specQuote, donateRate: donateRate, cpQuote: cpQuote,
+    taxFor: taxFor, specList: specList, specQuote: specQuote, donateRate: donateRate, cpQuote: cpQuote, donKinds: donKinds, DONATE_MIN: DONATE_MIN,
     eraReqs: eraReqs, cpLeft: cpLeft, cielLeft: cielLeft, guide: guide, honorPrice: honorPrice, tiredEnough: tiredEnough,
     // 測試入口用（?debug=1 的 window.__sf 與 _sim.js）
     debugEarn: function (S, n) { earn(S, n, 'debug'); },
@@ -1841,7 +1853,7 @@ var Miner = (function () {
   function helpEcon() {
     var t = S.tut, h = '';
     if (t.sat) h += '<p><b>行情與額度</b><br>同一種礦賣越多，單價越低（看行情條：綠是好價、紅是賣不動）；近期賣掉的量每過一天少兩成，行情慢慢回來。每天的回收收入有上限，時代越後面越高。</p>';
-    if (t.donate) h += '<p><b>捐獻</b><br>賣不動的礦可以放進拓荒團的集資箱，換文明點數。同一種捐越多，兌換率越低；每過一天恢復一點點。種類越多越划算。</p>';
+    if (t.donate) h += '<p><b>捐獻</b><br>賣不動的礦可以放進拓荒團的集資箱，換文明點數。同一種捐越多，兌換率越低；每過一天恢復一點點。種類越多越划算，時代條件也要求捐過一定<b>種數</b>的礦（每種滿 ' + M.DONATE_MIN + ' 顆才算）。</p>';
     if (t.era) h += '<p><b>時代</b><br>文明點數、捐獻希爾，加上日記頁數與到過的深度都達成，鎮子就進入下一個時代：升級上限提高、回收額度變大、開新的店。每個時代的點數與捐款分開算。</p>';
     if (S.era >= M.TAX_FROM_ERA) h += '<p><b>交易稅與持有稅</b><br>商業時代起，賣東西要課交易稅：當天賣得越多，超過的部分稅率越高（5%／8%／15%）。存款太多，每 7 天會扣一點財富持有稅。</p>';
     return h;
@@ -1864,7 +1876,7 @@ var Miner = (function () {
     }],
     era: ['時代', function () {
       var E = M.ERAS[S.era + 1];
-      return '<p>文明點數、捐獻的希爾，再加上該去的地方都到過，灰燈鎮就會進入下一個時代。</p>' +
+      return '<p>文明點數、捐獻的希爾、捐過夠多<b>種</b>礦（每種至少 ' + M.DONATE_MIN + ' 顆），再加上該去的地方都到過，灰燈鎮就會進入下一個時代。</p>' +
         '<p>新時代會開放更高級的升級、更高的回收額度，還有新的店。現在是<b>' + M.ERAS[S.era].name + '</b>，十字鎬、背包、礦燈、體力最多升到 Lv.' + (S.era + 2) + '。</p>' +
         (E ? '<p>下一個是 ' + E.icon + ' <b>' + E.name + '</b>，條件在集資箱裡看得到。</p>' : '');
     }]
@@ -2514,6 +2526,11 @@ var Miner = (function () {
       return '<div class="req' + (q.ok ? ' ok' : '') + '">' + (q.ok ? '✓ ' : '') + q.label + '：' + q.have + ' ／ ' + q.need + bar(q.have / q.need) + '</div>';
     }).join('');
   }
+  // 捐獻列的小註：這種礦還差幾顆才算「捐過的礦種」
+  function kindNote(o) {
+    var d = S.donN[o] || 0;
+    return d >= M.DONATE_MIN ? ' · 已算一種' : ' · 再捐 ' + (M.DONATE_MIN - d) + ' 顆算一種';
+  }
   function officeHtml() {
     var html = '';
     var E = M.ERAS[S.era + 1];
@@ -2523,7 +2540,7 @@ var Miner = (function () {
       else html += '<p>灰燈鎮已經走到最後一個時代了。</p>';
     }
     html += '<h3>捐礦換文明點數</h3>';
-    if (S.tut.era && E && M.cpLeft(S) <= 0) html += '<p style="color:var(--warn);font-size:12.5px">這個時代的文明點數已經夠了，多捐不會留到下個時代。</p>';
+    if (S.tut.era && E && M.cpLeft(S) <= 0) html += '<p style="color:var(--warn);font-size:12.5px">這個時代的文明點數已經夠了，多捐不會留到下個時代' + (E.kinds && M.donKinds(S) < E.kinds ? '；不過沒捐過的礦種，捐滿 ' + M.DONATE_MIN + ' 顆還是算一種' : '') + '。</p>';
     var keys = Object.keys(S.bag);
     if (!keys.length) html += '<p style="color:var(--muted)">背包是空的。</p>';
     keys.sort(function (a, b) { return M.donateRate(S, b) * M.ORES[b].v - M.donateRate(S, a) * M.ORES[a].v; });
@@ -2533,7 +2550,7 @@ var Miner = (function () {
       var c1 = M.cpQuote(S, o, 1), ca = M.cpQuote(S, o, n);
       total += ca;
       html += '<div class="sellrow"><div class="nm"><span class="o-' + o + '" style="color:var(--oc)">' + M.ORES[o].g + '</span> ' + M.ORES[o].name + ' ×' + n +
-        '<small>兌換率 ' + Math.round(r * 100) + '%（同一種捐越多越低）</small>' + bar(r) + '</div>' +
+        '<small>兌換率 ' + Math.round(r * 100) + '%' + kindNote(o) + '</small>' + bar(r) + '</div>' +
         '<div class="bt"><button type="button" data-act="donate" data-arg="' + o + ':1">捐 1<br>+' + Math.round(c1) + '</button>' +
         (n > 1 ? '<button type="button" data-act="donate" data-arg="' + o + ':' + n + '">全捐<br>+' + Math.round(ca) + '</button>' : '') + '</div></div>';
     });
