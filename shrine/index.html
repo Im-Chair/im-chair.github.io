@@ -20,8 +20,8 @@ button:active{filter:brightness(1.25)}
 .logo{font-size:56px;font-weight:900;letter-spacing:8px;text-shadow:0 0 24px #7aa0ff}
 .logo small{display:block;font-size:22px;letter-spacing:10px;margin-top:4px;color:#ffd84a}
 .sub{font-size:13px;color:#8a95c0;letter-spacing:4px;margin:6px 0 22px}
-#sTitle button{position:relative;width:min(248px,72vw);height:54px;padding:0 28px;font-weight:700;letter-spacing:.18em;color:#d9dcf0;text-shadow:0 1px 3px #000;border:1px solid #a98a4e;border-radius:6px;background:linear-gradient(#222b57e6,#10163ae6);box-shadow:inset 0 0 0 2px #0a0e27,inset 0 0 0 3px #a98a4e44,0 4px 12px #0009}
-#sTitle button.pri{color:#fff6d8;border-color:#f0cd7a;background:linear-gradient(#5273ec,#2c3fa8 55%,#222f88);box-shadow:inset 0 0 0 2px #141c4e,inset 0 0 0 3px #f0cd7a66,0 0 16px #5a7dff66,0 4px 12px #0009}
+#sTitle button,#sEnd button{position:relative;width:min(248px,72vw);height:54px;padding:0 28px;font-weight:700;letter-spacing:.18em;color:#d9dcf0;text-shadow:0 1px 3px #000;border:1px solid #a98a4e;border-radius:6px;background:linear-gradient(#222b57e6,#10163ae6);box-shadow:inset 0 0 0 2px #0a0e27,inset 0 0 0 3px #a98a4e44,0 4px 12px #0009}
+#sTitle button.pri,#sEnd button.pri{color:#fff6d8;border-color:#f0cd7a;background:linear-gradient(#5273ec,#2c3fa8 55%,#222f88);box-shadow:inset 0 0 0 2px #141c4e,inset 0 0 0 3px #f0cd7a66,0 0 16px #5a7dff66,0 4px 12px #0009}
 #sTitle button::before,#sTitle button::after{content:"";position:absolute;top:50%;width:8px;height:8px;background:linear-gradient(135deg,#ffe9a8,#b98d3e);box-shadow:0 0 0 1px #0a0e27;transform:translateY(-50%) rotate(45deg)}
 #sTitle button::before{left:11px}#sTitle button::after{right:11px}
 body.btn-art #sTitle button,body.btn-art #sTitle button.pri{height:62px;border:0;box-shadow:none;background:url(../pokemo/art/ui-btn.webp) center/100% 100% no-repeat}
@@ -64,6 +64,33 @@ body.touch #actBtn.on{display:block}
 body.touch #hint{display:none}
 #toast{position:absolute;left:50%;top:calc(64px + env(safe-area-inset-top));transform:translateX(-50%);max-width:calc(100% - 32px);background:#000c;padding:8px 16px;border-radius:14px;font-size:14px;line-height:1.5;text-align:center;opacity:0;transition:opacity .25s;pointer-events:none}
 #toast.on{opacity:1}
+/* 副道具欄（左上，錢包下方）、聖物、首領血條、道具鈕、結尾畫面 */
+#toolBox{display:none;align-items:center;gap:6px;background:#0009;padding:3px 10px 3px 4px;border-radius:20px;font-size:13px;pointer-events:auto;cursor:pointer}
+#toolBox.on{display:flex}
+#toolCv{width:26px;height:26px;display:block}
+#toolBox small{color:#8a95c0;font-size:11px}
+#relics{display:none;gap:4px;background:#0009;padding:4px 9px;border-radius:14px}
+#relics.on{display:flex}
+#relics i{display:block;width:10px;height:14px;clip-path:polygon(50% 0,100% 40%,50% 100%,0 40%);background:#333a50}
+#bossBar{position:absolute;left:50%;top:calc(10px + env(safe-area-inset-top));transform:translateX(-50%);width:min(440px,46vw);display:none;text-align:center;pointer-events:none;z-index:5}
+#bossBar.on{display:block}
+#bossName{font-size:14px;font-weight:700;letter-spacing:.12em;text-shadow:0 1px 3px #000,0 0 8px #000}
+#bossName small{display:block;font-size:11px;color:#c9b98a;letter-spacing:.2em;font-weight:400}
+#bossHp{margin-top:4px;height:10px;border:1px solid #f0cd7a;border-radius:6px;background:#1a0a10cc;overflow:hidden;box-shadow:0 0 8px #000a}
+#bossHp b{display:block;height:100%;width:100%;background:linear-gradient(#ff7a6a,#c8283a);transition:width .15s}
+#bossBar.p2 #bossHp b{background:linear-gradient(#ffb04a,#e0402a)}
+@media (max-width:640px){#bossBar{top:calc(184px + env(safe-area-inset-top));width:calc(100% - 32px)}}   /* 手機：放在左上 HUD（心、錢包、道具、聖物）下面，不重疊 */
+#itemBtn{right:112px;bottom:calc(184px + env(safe-area-inset-bottom));width:58px;height:58px;background:#1c2a3acc;border-color:#7ac0e0}
+#itemBtn canvas{width:34px;height:34px;display:block;margin:auto;pointer-events:none}
+#itemBtn b{position:absolute;right:-2px;bottom:-2px;font-size:11px;background:#000c;border-radius:8px;padding:0 4px}
+#cycBtn{right:176px;bottom:calc(196px + env(safe-area-inset-bottom));width:36px;height:36px;font-size:13px;background:#141c3acc}
+body.touch #itemBtn:not(.on),body.touch #cycBtn:not(.on){display:none}
+#sEnd{background:radial-gradient(circle at 50% 35%,#2a2a4a,#0b1022 62%,#070a14)}
+#sEnd h2{font-size:30px;letter-spacing:.3em;margin:0 0 6px;color:#ffe9a8;text-shadow:0 0 18px #ffd84a88}
+#sEnd .lines{color:#bfcaf5;font-size:14px;line-height:1.8;max-width:420px}
+#endStats{display:grid;grid-template-columns:auto auto;gap:6px 18px;font-size:15px;margin:10px 0 18px;text-align:left}
+#endStats span:nth-child(odd){color:#8a95c0}
+#endStats b{font-variant-numeric:tabular-nums}
 
 /* 對話框（照珠界 #dlgBox） */
 #dlg{position:absolute;left:0;right:0;bottom:0;display:none;padding:12px 12px calc(16px + env(safe-area-inset-bottom));z-index:20;background:linear-gradient(transparent,#000a 25%)}
@@ -86,7 +113,7 @@ body.touch #hint{display:none}
 </style>
 <script>
 /* 版號：改了 maps.js 或這個檔就 +1，破除瀏覽器快取 */
-const SHRINE_VER='5';
+const SHRINE_VER='6';
 document.write('<script src="maps.js?v='+SHRINE_VER+'"><\/script>');
 </script>
 </head>
@@ -97,16 +124,25 @@ document.write('<script src="maps.js?v='+SHRINE_VER+'"><\/script>');
     <div class="sub">製作中・戰鬥測試版</div>
     <button class="pri" id="btnCont" style="display:none">繼續</button>
     <button class="pri" id="btnStart">開始</button>
-    <div class="ver">移動：WASD／方向鍵　攻擊：J 或 Z（按住蓄力，放開旋轉斬）<br>翻滾：K 或 X　舉盾：L 或 C　互動：空白鍵　地圖：M<br>手機：左下搖桿移動，右下按鈕攻擊／翻滾／舉盾</div>
+    <div class="ver">移動：WASD／方向鍵　攻擊：J 或 Z（按住蓄力，放開旋轉斬）<br>翻滾：K 或 X　舉盾：L 或 C　互動：空白鍵　地圖：M<br>道具：I 或 V 使用，Q／E 或數字鍵 1～4 切換<br>手機：左下搖桿移動，右下按鈕攻擊／翻滾／舉盾／道具（長按道具鈕切換）</div>
+  </section>
+  <section id="sEnd" class="screen center">
+    <h2 id="endTitle"></h2>
+    <div class="lines" id="endLines"></div>
+    <div id="endStats"></div>
+    <button class="pri" id="btnEnd">回到標題</button>
   </section>
   <section id="sMap" class="screen">
     <canvas id="cv"></canvas>
-    <div id="hud"><div id="hudL"><canvas id="hpCv"></canvas><div id="purse"><span class="gem"></span><b id="hudMoney">0</b><span id="hudKeyWrap" style="display:none"><span class="keyic"></span> <b id="hudKeys">0</b></span></div><div id="hudPiece" style="display:none"></div><div id="hudName"></div></div><div id="hudR"><button id="mapBtn">地圖</button><div id="dbg"></div></div></div>
+    <div id="hud"><div id="hudL"><canvas id="hpCv"></canvas><div id="purse"><span class="gem"></span><b id="hudMoney">0</b><span id="hudKeyWrap" style="display:none"><span class="keyic"></span> <b id="hudKeys">0</b></span></div><div id="hudPiece" style="display:none"></div><div id="toolBox"><canvas id="toolCv" width="52" height="52"></canvas><span id="toolName"></span><b id="toolN"></b></div><div id="relics"><i></i><i></i><i></i></div><div id="hudName"></div></div><div id="hudR"><button id="mapBtn">地圖</button><div id="dbg"></div></div></div>
     <div id="joy"><div id="knob"></div></div>
     <button id="actBtn">對話</button>
     <button class="tbtn" id="atkBtn">攻擊</button>
     <button class="tbtn" id="rollBtn">翻滾</button>
     <button class="tbtn" id="shdBtn">舉盾</button>
+    <button class="tbtn" id="itemBtn"><canvas id="itemCv" width="68" height="68"></canvas><b id="itemN"></b></button>
+    <button class="tbtn" id="cycBtn">換</button>
+    <div id="bossBar"><div id="bossName"></div><div id="bossHp"><b></b></div></div>
     <div id="hint">空白鍵：對話</div>
     <div id="toast"></div>
     <div id="dlg"><div id="dlgBox"><div id="dlgName"></div><div id="dlgText"></div><div id="dlgNext">▼</div></div></div>
@@ -176,7 +212,7 @@ const PAL={'':{st:'#bdb6a6',sd:'#857d6e',ac:'#e9c873'},_coast:{st:'#cfc6b0',sd:'
   _marsh:{st:'#909c86',sd:'#5e6a56',ac:'#b8f08a'},_sky:{st:'#efebe0',sd:'#bdb5a2',ac:'#ffd86a'},_abyss:{st:'#5e5876',sd:'#36304a',ac:'#9fb6ff'}};
 const NODE_COL={'':'#4f9a3a',_coast:'#d6be78',_ember:'#c4502a',_marsh:'#4f7a4a',_sky:'#e6e2d0',_abyss:'#6a52c8'};
 const ALTAR_COL={altar_forest:'#8cff8c',altar_fire:'#ffa040',altar_water:'#7aa8ff'};
-const LOCK_TEXT={relic3:'大門緊閉。門上有三個凹槽。',key:'門鎖著，需要鑰匙。',brazier4:'石門紋風不動。'};
+const LOCK_TEXT={relic3:'大門緊閉。門上有三個凹槽。',key:'門鎖著，需要小鑰匙。',brazier4:'石門紋風不動。',brazier2:'石柵擋住了橋。兩側的火盆是冷的。'};
 const BG='#0c1a0f';
 
 /* ===== 進度（去過哪些地圖）：先放記憶體，下一階段接存檔時用 toJSON／load ===== */
@@ -358,7 +394,8 @@ function compileMap(id){
   const raster=draw=>{g.setTransform(1,0,0,1,0,0);g.fillStyle='#000';g.fillRect(0,0,mw,mh);g.setTransform(MASK_RES,0,0,MASK_RES,0,0);draw();const d=g.getImageData(0,0,mw,mh).data,a=new Uint8Array(mw*mh);for(let i=0;i<a.length;i++)a[i]=d[i*4]>127?1:0;return a};
   const fills=(list,col)=>{g.fillStyle=col;list.forEach(w=>fillPoly(g,w.poly))};
   c.mw=mw;c.mh=mh;
-  c.walk=raster(()=>{g.fillStyle='#fff';fillPoly(g,c.outline);fills(c.floor,'#fff');fills(c.water,'#000');fills(c.lava,'#000');fills(c.islands,'#fff');fills(c.forest,'#000');g.fillStyle='#fff';c.bridges.forEach(b=>fillPoly(g,b.deck))});
+  c.bridges.forEach((b,i)=>{b.broken=!!(M.bridges[i]&&M.bridges[i].broken)});   // 斷橋：只畫兩端殘樁、橋面不可走（要用勾爪過去）
+  c.walk=raster(()=>{g.fillStyle='#fff';fillPoly(g,c.outline);fills(c.floor,'#fff');fills(c.water,'#000');fills(c.lava,'#000');fills(c.islands,'#fff');fills(c.forest,'#000');g.fillStyle='#fff';c.bridges.forEach(b=>!b.broken&&fillPoly(g,b.deck))});
   c.wet=raster(()=>{fills(c.water,'#fff');fills(c.lava,'#fff');fills(c.islands,'#000');g.fillStyle='#000';c.bridges.forEach(b=>fillPoly(g,b.poly))});
   c.exits=(M.exits||[]).map(e=>({...e}));
   c.locks=(M.locks||[]).map(l=>({...l}));
@@ -408,9 +445,10 @@ function makeProp(k,x,y,s,flip){
   else if(k==='brazier'){p.col={x,y:y-.2,r:.3};p.w=.8;p.h=1.2}
   else if(k==='block'){p.col={x,y:y-.45,r:.45};p.w=1;p.h=1.2}
   else if(k==='altar'){p.col={x,y:y-.45,r:.8};p.w=2;p.h=1.8}
+  else if(k==='hook'){p.w=.6;p.h=1.1}   // 勾爪樁：不擋路（矮木樁＋鐵環）
   return p;
 }
-const PROP_RAD={house:2.0,tree1:.7,tree2:.6,giant:2.4,rock:.5,bush:.5,sign:.5,pillar:.7,pillarb:.7,campfire:1.2,chest:.9,pot:.6,brazier:.8,block:1.0,altar:2.2,lock:1.2};
+const PROP_RAD={house:2.0,tree1:.7,tree2:.6,giant:2.4,rock:.5,bush:.5,sign:.5,pillar:.7,pillarb:.7,campfire:1.2,chest:.9,pot:.6,brazier:.8,block:1.0,altar:2.2,lock:1.2,hook:.9};
 function buildProps(c,seed){
   const M=c.M,props=[],grid=new Map(),G=2;
   const key=(x,y)=>Math.floor(x/G)+','+Math.floor(y/G);
@@ -425,6 +463,8 @@ function buildProps(c,seed){
   (M.braziers||[]).forEach(o=>add('brazier',o.x,o.y,1,false,{id:o.id,lit:!!o.lit}));
   (M.blocks||[]).forEach(o=>add('block',o.x,o.y,1,false));
   if(M.altar)add('altar',M.altar.x,M.altar.y,1,false,{id:M.altar.id});
+  (M.hooks||[]).forEach((o,i)=>add('hook',o.x,o.y,1,false,{hid:i}));
+  (M.cracks||[]).forEach(o=>occupy(o.x,o.y,1.6));   // 裂牆前不散佈石頭灌木
   c.locks.forEach(l=>{const pr={k:'lock',x:l.x+l.w/2,y:l.y+l.h,s:1,w:l.w+.6,h:2.4,sy:l.y+l.h,col:{x0:l.x,y0:l.y,x1:l.x+l.w,y1:l.y+l.h},lock:l};props.push(pr);occupy(pr.x,pr.y-.5,Math.max(l.w,l.h)/2+.8)});
   // NPC、出生點、首領場地、出入口落點附近留空
   const keep=[[...M.spawn,1.1],...c.npcs.map(n=>[n.x,n.y,1.1]),...Object.values(MAPS).flatMap(m=>(m.exits||[]).filter(e=>e.to===c.id).map(e=>[e.tx,e.ty,1.2]))];
@@ -601,7 +641,11 @@ const HOOKS={
   near:best=>null,         // 比 best 更近的可互動物件（要有 act()、label）
   actors:(list,c,now)=>{}, // 加入要依 y 排序繪製的角色 {sy,draw}
   drawHero:null,           // 取代英雄繪製
-  fx:(c,S,now)=>{}         // 最上層特效（世界座標）
+  fx:(c,S,now)=>{},        // 最上層特效（世界座標）
+  ground:(c,now)=>{},      // 地面層（物件之下：警示圈、壓板、裂牆）
+  blocked:(x,y,r)=>false,  // 額外的不可通行判定（首領戰結界）
+  light:()=>3.4,           // 室內玩家自身的照明半徑
+  camera:()=>null          // 鏡頭焦點覆寫 {x,y}（機關開啟、首領登場時看過去）
 };
 
 /* ================= 碰撞 ================= */
@@ -613,6 +657,7 @@ function colHit(col,x,y,r){
 }
 function circleFree(x,y,r){
   if(!walkAt(C,x,y))return false;
+  if(HOOKS.blocked(x,y,r))return false;   // 首領戰的結界等
   for(const [a,b] of RING16)if(!walkAt(C,x+a*r,y+b*r))return false;
   for(const [a,b] of RING8)if(!walkAt(C,x+a*r*.55,y+b*r*.55))return false;
   const seen=new Set();
@@ -752,7 +797,7 @@ function update(dt){
   if($('#actBtn').textContent!==lab){$('#actBtn').textContent=lab;$('#hint').textContent='空白鍵：'+lab}
   $('#actBtn').classList.toggle('on',!!nearTalk);$('#hint').classList.toggle('on',!!nearTalk);
   // 鎖住的門：靠近就提示
-  nearLock=C.locks.find(l=>rectDist(l,P.x,P.y)<LOCK_DIST)||null;
+  nearLock=C.locks.find(l=>!l.open&&rectDist(l,P.x,P.y)<LOCK_DIST)||null;
   if(nearLock)toast(nearLock.text||LOCK_TEXT[nearLock.need]||'門鎖著。');
   HOOKS.update(dt);
 }
@@ -822,14 +867,27 @@ function drawProp(c,p,now){
       c.fillStyle=pl.sd;c.fillRect(x-.2,y-1.25,.4,.48);
       const g=c.createRadialGradient(x,y-1.48,0,x,y-1.48,.55);g.addColorStop(0,'#fff');g.addColorStop(.35,col);g.addColorStop(1,'rgba(0,0,0,0)');
       c.globalAlpha=.75+.25*Math.sin(t*2.2);c.fillStyle=g;c.beginPath();c.arc(x,y-1.48,.55,0,7);c.fill();c.globalAlpha=1;break}
-    case 'lock':{   // 鎖住的門：兩側石柱＋門板＋需求記號
-      const l=p.lock,x0=l.x,x1=l.x+l.w,yb=l.y+l.h;
+    case 'lock':{   // 鎖住的門：兩側石柱＋門板＋需求記號（開了只剩石柱；直的門畫成石柵）
+      const l=p.lock,x0=l.x,x1=l.x+l.w,yb=l.y+l.h,n=l.need==='relic3'?3:/^brazier(\d+)$/.test(l.need)?+RegExp.$1:1;
+      if(l.h>l.w){   // 直向：上下兩根石柱、中間一排石柵
+        c.fillStyle=pl.sd;c.fillRect(x0,l.y-1.2,l.w,1.3);c.fillRect(x0,yb-1.2,l.w,1.3);
+        c.fillStyle=pl.st;c.fillRect(x0+.05,l.y-1.3,l.w-.1,.18);c.fillRect(x0+.05,yb-1.3,l.w-.1,.18);
+        if(!l.open){const m=Math.max(2,Math.round(l.h/.36));for(let k=1;k<m;k++){const yy=l.y+l.h*k/m;c.fillStyle=pl.sd;c.fillRect(x0+l.w*.25,yy-1.1,l.w*.5,1.1);c.fillStyle=pl.st;c.fillRect(x0+l.w*.3,yy-1.1,l.w*.18,1.05)}
+          for(let k=0;k<n;k++){const cy=l.y+l.h*(k+1)/(n+1)-.7;c.fillStyle='rgba(10,10,20,.7)';c.beginPath();c.arc(x0+l.w/2,cy,.13,0,7);c.fill();c.strokeStyle=pl.ac;c.lineWidth=.04;c.stroke()}}
+        break;
+      }
       c.fillStyle=pl.sd;c.fillRect(x0-.3,yb-2.4,.5,2.4);c.fillRect(x1-.2,yb-2.4,.5,2.4);
+      if(l.open){c.fillStyle=pl.st;c.fillRect(x0-.32,yb-2.5,.54,.16);c.fillRect(x1-.22,yb-2.5,.54,.16);break}
       const g=c.createLinearGradient(0,yb-2.2,0,yb);g.addColorStop(0,pl.st);g.addColorStop(1,pl.sd);c.fillStyle=g;c.fillRect(x0+.15,yb-2.1,l.w-.3,2.1);
       c.strokeStyle='rgba(0,0,0,.3)';c.lineWidth=.04;c.beginPath();c.moveTo((x0+x1)/2,yb-2.1);c.lineTo((x0+x1)/2,yb);c.stroke();
-      const n=l.need==='relic3'?3:l.need==='brazier4'?4:1;
-      for(let k=0;k<n;k++){const cx=x0+l.w*(k+1)/(n+1);c.fillStyle='rgba(10,10,20,.6)';c.beginPath();c.arc(cx,yb-1.3,.15,0,7);c.fill();c.strokeStyle=pl.ac;c.lineWidth=.04;c.stroke()}
+      if(l.need==='key'){const cx=(x0+x1)/2;c.fillStyle='#2a2216';rr(c,cx-.2,yb-1.5,.4,.46,.06);c.fill();c.fillStyle=pl.ac;c.beginPath();c.arc(cx,yb-1.33,.07,0,7);c.fill();c.fillRect(cx-.025,yb-1.3,.05,.16);break}
+      for(let k=0;k<n;k++){const cx=x0+l.w*(k+1)/(n+1),on=l.fill&&k<l.fill;c.fillStyle=on?pl.ac:'rgba(10,10,20,.6)';c.beginPath();c.arc(cx,yb-1.3,.15,0,7);c.fill();c.strokeStyle=pl.ac;c.lineWidth=.04;c.stroke()}
       break}
+    case 'hook':{   // 勾爪樁：矮木樁＋頂上的鐵環
+      c.fillStyle='#5a3b22';rr(c,x-.13,y-.75,.26,.75,.05);c.fill();c.fillStyle='#7a5530';c.fillRect(x-.13,y-.75,.08,.72);
+      c.fillStyle='#3b2616';c.beginPath();c.ellipse(x,y-.75,.13,.05,0,0,7);c.fill();
+      c.strokeStyle='#c9cbd6';c.lineWidth=.06;c.beginPath();c.arc(x,y-.95,.16,0,7);c.stroke();
+      c.strokeStyle='rgba(255,255,255,.5)';c.lineWidth=.025;c.beginPath();c.arc(x,y-.95,.16,-2.4,-1.2);c.stroke();break}
   }
 }
 function drawBoard(c,n){   // 賞金板（NPC 佔位）
@@ -858,6 +916,12 @@ function drawNpc(c,n,now){
 function drawBridge(c,b){
   c.save();c.translate(b.cx,b.cy);c.rotate(b.ang);
   const L=b.len,w=b.w,stone=b.style==='stone',pl=pal();
+  if(b.broken){   // 斷橋：兩端各剩一小截殘樁
+    for(const sg of [-1,1]){const xo=sg*L/2,xi=xo-sg*.6;c.fillStyle='rgba(0,0,0,.35)';c.fillRect(Math.min(xo,xi)+.05,-w/2+.16,.6,w);
+      c.fillStyle=stone?pl.st:'#8d6038';c.beginPath();c.moveTo(xo,-w/2);c.lineTo(xi,-w/2);for(let k=1;k<6;k++)c.lineTo(xi+sg*(k%2?.14:-.04),-w/2+w*k/6);c.lineTo(xi,w/2);c.lineTo(xo,w/2);c.closePath();c.fill();
+      c.strokeStyle='rgba(0,0,0,.35)';c.lineWidth=.03;c.stroke()}
+    c.restore();return;
+  }
   c.fillStyle='rgba(0,18,34,.35)';c.fillRect(-L/2+.05,-w/2+.16,L,w);              // 影子
   c.fillStyle=stone?pl.st:'#8d6038';c.fillRect(-L/2,-w/2,L,w);
   const R=rng(hashStr(CURID+b.cx)),step=stone?.42:.25;
@@ -884,7 +948,8 @@ function render(now){
   const t0=performance.now();
   const S=U*dpr,c=ctx;frameNo++;stat.frameBuilt=0;
   const vw=cw/S,vh=ch/S;
-  const camX=C.w>vw?clamp(P.x-vw/2,0,C.w-vw):(C.w-vw)/2,camY=C.h>vh?clamp(P.y-vh/2,0,C.h-vh):(C.h-vh)/2;
+  const cf=HOOKS.camera()||P;
+  const camX=C.w>vw?clamp(cf.x-vw/2,0,C.w-vw):(C.w-vw)/2,camY=C.h>vh?clamp(cf.y-vh/2,0,C.h-vh):(C.h-vh)/2;
   camDX=Math.round(camX*S);camDY=Math.round(camY*S);
   c.setTransform(1,0,0,1,0,0);c.globalAlpha=1;c.globalCompositeOperation='source-over';c.fillStyle=BG;c.fillRect(0,0,cw,ch);
   // 地面區塊：只貼離屏圖
@@ -921,21 +986,23 @@ function render(now){
   }
   C.bridges.forEach(b=>drawBridge(c,b));
   if(C.M.boss&&bbHit([C.M.boss.x-6,C.M.boss.y-6,C.M.boss.x+6,C.M.boss.y+6],view))drawArena(c,C.M.boss,now);
+  HOOKS.ground(c,now);
   // 物件與角色：依 y 排序（人走到樹後會被樹冠遮住）
   const vis=C.props.filter(p=>!p.gone&&p.x+p.w>vx0&&p.x-p.w<vx1&&p.y>vy0-.5&&p.y-p.h<vy1);
   for(const p of vis){const sh=SHADOW_OF[p.k];if(sh)drawShadow(c,p.x,p.y+sh[2]*p.s,p.w*sh[0],p.w*sh[1])}
   const actors=[{sy:P.y+.12,draw:()=>(HOOKS.drawHero||drawHero)(c)},...C.npcs.map(n=>({sy:n.y+.1,draw:()=>drawNpc(c,n,now)}))];
   HOOKS.actors(actors,c,now);actors.sort((a,b)=>a.sy-b.sy);
-  let ai=0;
-  const hy=P.y+.12,hx0=P.x-.3,hx1=P.x+.3,hy0=hy-HERO_H*.85;
+  let ai=0,ghost=false;
+  const hy=P.y+.12,hx0=P.x-.34,hx1=P.x+.34,hy0=hy-HERO_H*.9;
   for(const p of vis){
     while(ai<actors.length&&actors[ai].sy<p.sy)actors[ai++].draw();
-    // 英雄被樹冠／屋子整個擋住時，擋住的那個物件半透明（仍維持前後關係）
-    if(p.sy>hy&&(p.k==='tree1'||p.k==='tree2'||p.k==='giant'||p.k==='house'||p.k==='pillar')&&hx1>p.x-p.w*.38&&hx0<p.x+p.w*.38&&hy0<p.y-.3&&hy>p.y-p.h*.92){c.globalAlpha=.55;drawProp(c,p,now);c.globalAlpha=1}
+    // 英雄被樹冠／屋子擋住時，擋住的那個物件明顯半透明，最後再補一層英雄剪影（看得出人在哪）
+    if(p.sy>hy&&(p.k==='tree1'||p.k==='tree2'||p.k==='giant'||p.k==='house'||p.k==='pillar')&&hx1>p.x-p.w*.42&&hx0<p.x+p.w*.42&&hy0<p.y-.25&&hy>p.y-p.h*.95){c.globalAlpha=.32;drawProp(c,p,now);c.globalAlpha=1;ghost=true}
     else drawProp(c,p,now);
     if(p===nearTalk&&!dlgOpen)bubble(c,p.x,p.y-1.25+Math.sin(now/300)*.04);
   }
   while(ai<actors.length)actors[ai++].draw();
+  if(ghost&&!(typeof PS!=='undefined'&&PS.dead)){c.save();c.globalAlpha=.35;(HOOKS.drawHero||drawHero)(c);c.restore()}
   // 光與暗：室內整體壓暗、光源挖亮；所有地圖的光源都疊一層加色光暈
   drawLights(c,S,now,vx0,vy0);
   if(C.M.tint){c.setTransform(1,0,0,1,0,0);c.fillStyle=C.M.tint;c.fillRect(0,0,cw,ch)}
@@ -958,7 +1025,7 @@ function drawLights(c,S,now,vx0,vy0){
     g.fillStyle=`rgba(4,6,16,${C.M.dark!=null?C.M.dark:.55})`;g.fillRect(0,0,lw,lh);
     g.globalCompositeOperation='destination-out';
     const hole=(x,y,r,a)=>{const sx=(x-vx0)*k,sy=(y-vy0)*k,sr=r*k;const gr=g.createRadialGradient(sx,sy,0,sx,sy,sr);gr.addColorStop(0,`rgba(0,0,0,${a})`);gr.addColorStop(.55,`rgba(0,0,0,${a*.6})`);gr.addColorStop(1,'rgba(0,0,0,0)');g.fillStyle=gr;g.fillRect(sx-sr,sy-sr,sr*2,sr*2)};
-    L.forEach((l,i)=>hole(l.x,l.y,fl(l,i),.95));hole(P.x,P.y-.4,3.4,.8);
+    L.forEach((l,i)=>hole(l.x,l.y,fl(l,i),.95));hole(P.x,P.y-.4,HOOKS.light(),.8);
     c.setTransform(1,0,0,1,0,0);c.drawImage(LCV,0,0,cw,ch);
   }
   c.setTransform(S,0,0,S,-camDX,-camDY);c.save();c.globalCompositeOperation='lighter';
@@ -1049,21 +1116,36 @@ function audit(){
     const c=compileMap(id);C=c;const r={problems:[],locked:[]};
     const pts=[{what:'出生點',x:c.M.spawn[0],y:c.M.spawn[1]},...(arrivals[id]||[]).map(a=>({what:'從'+a.from+'來的落點',x:a.x,y:a.y}))];
     for(const p of pts){if(!circleFree(p.x,p.y,PLAYER_R))r.problems.push(p.what+'不在可走區或卡在碰撞體');if(c.exits.some(e=>inRect(e,p.x,p.y)))r.problems.push(p.what+'在出口矩形內')}
-    // 洪水填充（以玩家圓能站的格子為準）
-    const mw=c.mw,mh=c.mh,ok=new Int8Array(mw*mh).fill(-1),seen=new Uint8Array(mw*mh),q=[];
-    const can=i=>{if(ok[i]<0)ok[i]=circleFree((i%mw+.5)/MASK_RES,(Math.floor(i/mw)+.5)/MASK_RES,PLAYER_R)?1:0;return ok[i]===1};
-    const s0=cellOf(c,c.M.spawn[0],c.M.spawn[1]);if(s0>=0&&can(s0)){seen[s0]=1;q.push(s0)}
-    while(q.length){const i=q.pop(),x=i%mw,y=(i-x)/mw;for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){const nx=x+dx,ny=y+dy;if(nx<0||ny<0||nx>=mw||ny>=mh)continue;const j=ny*mw+nx;if(!seen[j]&&can(j)){seen[j]=1;q.push(j)}}}
-    const reach=(x,y,rad)=>{const R=Math.ceil(rad*MASK_RES);const cx=Math.floor(x*MASK_RES),cy=Math.floor(y*MASK_RES);for(let j=-R;j<=R;j++)for(let i=-R;i<=R;i++){const nx=cx+i,ny=cy+j;if(nx<0||ny<0||nx>=mw||ny>=mh)continue;if(Math.hypot(i,j)/MASK_RES>rad)continue;if(seen[ny*mw+nx])return true}return false};
-    const reachRect=e=>{for(let y=Math.max(0,Math.floor(e.y*MASK_RES));y<Math.min(mh,Math.ceil((e.y+e.h)*MASK_RES));y++)for(let x=Math.max(0,Math.floor(e.x*MASK_RES));x<Math.min(mw,Math.ceil((e.x+e.w)*MASK_RES));x++)if(seen[y*mw+x])return true;return false};
-    for(const p of pts)if(!reach(p.x,p.y,.2))r.problems.push(p.what+'和出生點不相連');
-    c.exits.forEach(e=>{const lockedBy=c.locks.find(l=>rectDist(l,e.x+e.w/2,e.y+e.h/2)<3);if(!reachRect(e)){if(lockedBy)r.locked.push('往 '+e.to+' 的出口（'+lockedBy.need+'）');else r.problems.push('往 '+e.to+' 的出口到不了')}});
+    // 洪水填充（以玩家圓能站的格子為準）。第一次：鎖都關著、不用勾爪；第二次：鎖全開＋勾爪樁互連（到得了＝只是被機關擋住）
+    const mw=c.mw,mh=c.mh,q=[],lockCols=c.props.filter(p=>p.k==='lock').map(p=>p.col),hooks=c.props.filter(p=>p.k==='hook');
+    const flood=(open)=>{
+      const keepOff=lockCols.map(l=>l.off);if(open)lockCols.forEach(l=>l.off=true);
+      const ok=new Int8Array(mw*mh).fill(-1),seen=new Uint8Array(mw*mh);
+      const can=i=>{if(ok[i]<0)ok[i]=circleFree((i%mw+.5)/MASK_RES,(Math.floor(i/mw)+.5)/MASK_RES,PLAYER_R)?1:0;return ok[i]===1};
+      const seed=(x,y,rad)=>{const R=Math.ceil(rad*MASK_RES),cx=Math.floor(x*MASK_RES),cy=Math.floor(y*MASK_RES);for(let j=-R;j<=R;j++)for(let i=-R;i<=R;i++){const nx=cx+i,ny=cy+j;if(nx<0||ny<0||nx>=mw||ny>=mh||Math.hypot(i,j)/MASK_RES>rad)continue;const k=ny*mw+nx;if(!seen[k]&&can(k)){seen[k]=1;q.push(k)}}};
+      seed(c.M.spawn[0],c.M.spawn[1],.01);
+      const done=new Set();
+      for(let pass=0;pass<8;pass++){
+        while(q.length){const i=q.pop(),x=i%mw,y=(i-x)/mw;for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){const nx=x+dx,ny=y+dy;if(nx<0||ny<0||nx>=mw||ny>=mh)continue;const j=ny*mw+nx;if(!seen[j]&&can(j)){seen[j]=1;q.push(j)}}}
+        if(!open)break;let more=false;
+        for(const a of hooks){if(done.has(a)||!reachIn(seen,a.x,a.y,1.6))continue;done.add(a);
+          for(const b of hooks)if(b!==a&&(Math.abs(a.x-b.x)<.6||Math.abs(a.y-b.y)<.6)&&Math.hypot(a.x-b.x,a.y-b.y)<=8.2){seed(b.x,b.y,1.3);more=true}}
+        if(!more)break;
+      }
+      lockCols.forEach((l,i)=>l.off=keepOff[i]);return seen;
+    };
+    const reachIn=(seen,x,y,rad)=>{const R=Math.ceil(rad*MASK_RES);const cx=Math.floor(x*MASK_RES),cy=Math.floor(y*MASK_RES);for(let j=-R;j<=R;j++)for(let i=-R;i<=R;i++){const nx=cx+i,ny=cy+j;if(nx<0||ny<0||nx>=mw||ny>=mh)continue;if(Math.hypot(i,j)/MASK_RES>rad)continue;if(seen[ny*mw+nx])return true}return false};
+    const seen=flood(false),seen2=flood(true);
+    const reach=(x,y,rad)=>reachIn(seen,x,y,rad),reach2=(x,y,rad)=>reachIn(seen2,x,y,rad);
+    const rectIn=(sn,e)=>{for(let y=Math.max(0,Math.floor(e.y*MASK_RES));y<Math.min(mh,Math.ceil((e.y+e.h)*MASK_RES));y++)for(let x=Math.max(0,Math.floor(e.x*MASK_RES));x<Math.min(mw,Math.ceil((e.x+e.w)*MASK_RES));x++)if(sn[y*mw+x])return true;return false};
+    for(const p of pts)if(!reach(p.x,p.y,.2)){if(reach2(p.x,p.y,.2))r.locked.push(p.what+'（機關後）');else r.problems.push(p.what+'和出生點不相連')}
+    c.exits.forEach(e=>{if(rectIn(seen,e))return;if(rectIn(seen2,e))r.locked.push('往 '+e.to+' 的出口（機關後）');else r.problems.push('往 '+e.to+' 的出口到不了')});
     const targets=[...(c.M.chests||[]).map(o=>['寶箱 '+o.id,o.x,o.y-.25,.36]),...c.npcs.map(n=>['NPC '+n.name,n.x,n.y,.3]),...c.signs.map(s=>['告示牌',s.x,s.y,.2]),
       ...(c.M.altar?[['祭壇',c.M.altar.x,c.M.altar.y-.45,.8]]:[]),...(c.M.boss?[['首領點',c.M.boss.x,c.M.boss.y,0]]:[]),...(c.M.braziers||[]).map(b=>['火盆 '+b.id,b.x,b.y-.2,.3]),
-      ...(c.M.blocks||[]).map(b=>['石塊',b.x,b.y-.45,.45]),...(c.M.spawns||[]).map(s=>['出生點 '+s.k,s.x,s.y,0])];
+      ...(c.M.blocks||[]).map(b=>['石塊',b.x,b.y-.45,.45]),...(c.M.spawns||[]).map(s=>['出生點 '+s.k,s.x,s.y,0]),...(c.M.hooks||[]).map((h,i)=>['勾爪樁 '+i,h.x,h.y,.2]),
+      ...(c.M.cracks||[]).map(k=>['裂牆 '+k.id,k.x,k.y,.3])];
     for(const [what,x,y,rad] of targets)if(!reach(x,y,rad+PLAYER_R+.4)){
-      const behindLock=c.locks.length&&(c.M.boss&&what==='首領點'||y<Math.min(...c.locks.map(l=>l.y)));
-      (behindLock?r.locked:r.problems).push(what+' 到不了');
+      if(reach2(x,y,rad+PLAYER_R+.4))r.locked.push(what+'（機關後）');else r.problems.push(what+' 到不了');
     }
     // 出口成對：對面地圖有回來的出口、而且回來的落點就在這個出口附近
     c.exits.forEach(e=>{const B=MAPS[e.to];if(!B){r.problems.push('出口指向不存在的地圖 '+e.to);return}
@@ -1147,7 +1229,7 @@ if(DEBUG){
     walk:(x,y)=>walkAt(C,x,y),render:()=>render(performance.now()),update:dt=>update(dt)};
 }
 </script>
-<script>document.write('<script src="game.js?v='+SHRINE_VER+'"><\/script>');</script>
+<script>document.write('<script src="game.js?v='+SHRINE_VER+'"><\/script><script src="adventure.js?v='+SHRINE_VER+'"><\/script>');</script>
 <script>if(!window.SHRINE_GAME)$('#btnStart').addEventListener('click',()=>start('new'));   // game.js 沒載到時的備援</script>
 </body>
 </html>

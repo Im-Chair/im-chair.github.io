@@ -43,7 +43,15 @@
    blocks      可推石塊 {x,y}
    altar       祭壇 {id,x,y}
    boss        首領 {id,x,y,arena:半徑}（地上畫場地紋，首領本身只在 debug 標記）
-   locks       鎖住的門 {x,y,w,h,need,text?}：need 例 'relic3'、'key'、'brazier4'；現階段一律不可通行，靠近顯示提示
+   locks       鎖住的門 {x,y,w,h,need,text?}：碰撞體，條件達成後打開、可通行（狀態存檔，鍵 lk:<地圖>:<序號>）
+               need：'relic3'＝三件聖物（靠近自動開）｜'key'＝小鑰匙（靠近自動用掉一把）｜'brazierN'＝這張圖的火盆全亮（N＝火盆數，只用來畫記號）
+               w<h 的門畫成直向石柵（擋橋頭用）
+   blocks      可推石塊 {x,y,tx,ty}：只能沿 (x,y)→(tx,ty) 這條直線來回推、每次 1 單位（不會卡死）；全部推到 (tx,ty) 的壓板上＝解開
+   blockReward 石塊全部歸位後出現的寶箱 {id,x,y,loot}
+   hooks       勾爪樁 {x,y}：不擋路。面向勾爪樁（同一直線、側向誤差 .7 內、距離 1～8）使用勾爪會被拉過去，可越過水面／熔岩
+   cracks      裂牆 {id,x,y,dir,len?,w?,chest:{id,loot}}：(x,y) 在牆面上，dir＝往牆裡挖的方向 'n'|'s'|'e'|'w'。
+               炸彈在附近爆炸就炸開，挖出一個 len×w（預設 2.4×2）的小洞、裡面出現寶箱（只用在室內地圖，牆面才畫得自然）
+   bridges[].broken  斷橋：只剩兩端殘樁、橋面不可走（要用勾爪過去）
    exits       {x,y,w,h,dir:'n'|'s'|'e'|'w',to,tx,ty,face}：玩家中心走進矩形就換到 to 地圖的 (tx,ty)
                落點要在對面出口矩形外側（不會立刻又觸發回去）
    ================================================================ */
@@ -152,7 +160,7 @@ const SHRINE_MAPS={
     ],
     props:[{k:'giant',x:17.4,y:19.8}],
     signs:[{x:19.8,y:4.4,text:'北：林之祭壇　東：神廟外庭'},{x:21.8,y:19.4,text:'千年巨木。樹皮上刻著看不懂的古字。'}],
-    chests:[{id:'deep_c1',x:5.8,y:18.4,loot:'key'},{id:'deep_c2',x:25.0,y:31.6,loot:'gem'}],
+    chests:[{id:'deep_c1',x:5.8,y:18.4,loot:'boomerang'},{id:'deep_c2',x:25.0,y:31.6,loot:'gem'}],
     spawns:[{k:'goblin',x:10.4,y:19.6},{k:'slime',x:21.0,y:31.0},{k:'archer',x:12.6,y:7.4},{k:'knight',x:26.6,y:14.8},{k:'slime',x:22.0,y:18.6},{k:'goblin',x:15.6,y:29.6},{k:'archer',x:28.0,y:19.6}],
     scatter:[
       {where:'forest',kinds:{tree1:.4,tree2:.6},gap:1.1,scale:[.95,1.35]},
@@ -234,7 +242,9 @@ const SHRINE_MAPS={
       {type:'area',pts:[[12.6,8.4],[15.4,9.4],[16.4,12.2],[15.4,15.0],[12.6,16.0],[9.8,15.0],[8.8,12.2],[9.8,9.4]]},
       {type:'strip',pts:[[20.6,12.4,1.4],[24,12.4,1.4],[27.8,12.4,1.4]]}
     ],
-    bridges:[{a:[20.6,12.3],b:[16.8,12.3],w:1.4,style:'stone'}],
+    bridges:[{a:[20.6,12.3],b:[16.8,12.3],w:1.4,style:'stone',broken:true}],
+    hooks:[{x:21.4,y:11.0},{x:17.0,y:11.0}],
+    cracks:[{id:'f_crack',x:2.8,y:12.2,dir:'w',chest:{id:'fire_c1',loot:'gem'}}],
     altar:{id:'altar_fire',x:12.6,y:9.2},
     boss:{id:'boss_fire',x:12.6,y:12.6,arena:4.2},
     lights:[{x:12.6,y:8.6,r:5,color:'#ff9a40'},{x:12.6,y:4.2,r:4,color:'#ff5a10'},{x:12.6,y:20.2,r:4,color:'#ff5a10'},{x:4.6,y:12.2,r:4,color:'#ff5a10'},{x:22.8,y:12.4,r:3,color:'#ffb070'}],
@@ -253,10 +263,11 @@ const SHRINE_MAPS={
       [[31.8,-2.4,1.2],[31.8,2.6,1.2],[29.2,5.2,1.1],[24,5.0,1.1],[19.2,5.4,1.2],[14,5.0,1.0],[8.6,6.0,1.0],[4.6,9.6,1.0],[4.0,14.6,1.0],[4.0,18.8,1.0],[-2.4,19.8,1.0]],
       [[31.8,2.6,1.0],[33.4,7.6,1.0],[32.8,13.0,.95],[33.0,18.6,.95],[31.0,24.6,.9],[25.0,26.8,.9],[18.0,26.6,.85],[11.6,26.4,.8],[7.4,25.0,.8],[4.8,21.6,.8],[4.0,19.0,.9]]
     ],
-    bridges:[{a:[19.0,6.4],b:[19.4,13.2],w:1.2},{a:[31.0,15.8],b:[27.4,16.4],w:1.1}],
+    bridges:[{a:[19.0,6.4],b:[19.4,13.2],w:1.2,broken:true},{a:[31.0,15.8],b:[27.4,16.4],w:1.1}],
+    hooks:[{x:28.6,y:16.2},{x:21.9,y:15.9},{x:19.4,y:16.6},{x:19.4,y:23.4}],
     props:[{k:'pillarb',x:20.4,y:15.0,s:1.1},{k:'rock',x:18.2,y:15.4,s:.8}],
     signs:[{x:28.4,y:4.2,text:'西：海蝕洞（淵之祭壇）'}],
-    chests:[{id:'lake_c1',x:21.0,y:16.2,loot:'gem'},{id:'lake_c2',x:34.4,y:24.6,loot:'potion'}],
+    chests:[{id:'lake_c1',x:21.0,y:16.2,loot:'gem'},{id:'lake_c2',x:34.4,y:24.6,loot:'bomb'}],
     spawns:[{k:'slime',x:10.4,y:27.0},{k:'slime',x:24.6,y:27.6},{k:'archer',x:34.6,y:14.2},{k:'goblin',x:11.4,y:4.4},{k:'knight',x:21.0,y:16.0}],
     scatter:[
       {where:'forest',kinds:{tree1:.5,tree2:.5},gap:1.25,scale:[.85,1.2]},
@@ -280,6 +291,9 @@ const SHRINE_MAPS={
     ],
     floor:[{type:'area',pts:[[7,5.6],[14.2,5.4],[15.4,9.0],[13.8,12.6],[7.4,12.8],[5.8,9.0]]}],
     bridges:[{a:[21.2,11.2],b:[17.4,11.0],w:1.3,style:'stone'},{a:[9.4,17.4],b:[9.6,13.8],w:1.2,style:'stone'}],
+    braziers:[{id:'w1',x:22.8,y:6.4},{id:'w2',x:22.8,y:16.0}],
+    locks:[{x:20.7,y:9.8,w:.8,h:2.8,need:'brazier2',text:'石柵擋住了橋。兩側的火盆是冷的——得找個火源點亮。'}],
+    cracks:[{id:'w_crack',x:25.3,y:5.9,dir:'e',chest:{id:'water_c2',loot:'gem'}}],
     altar:{id:'altar_water',x:10.6,y:5.6},
     boss:{id:'boss_water',x:10.6,y:9.2,arena:4.2},
     chests:[{id:'water_c1',x:5.8,y:17.6,loot:'gem'}],
@@ -326,8 +340,11 @@ const SHRINE_MAPS={
     props:[{k:'pillar',x:7.2,y:33.2},{k:'pillar',x:14.8,y:33.2},{k:'pillarb',x:7.0,y:36.4},{k:'pillar',x:15.0,y:36.4},
       {k:'pillar',x:6.4,y:7.2},{k:'pillarb',x:15.6,y:7.2},{k:'pillar',x:5.6,y:12.0},{k:'pillar',x:16.4,y:12.0}],
     braziers:[{id:'b1',x:4.8,y:20.2},{id:'b2',x:17.2,y:20.2},{id:'b3',x:4.8,y:25.2},{id:'b4',x:17.2,y:25.2}],
-    blocks:[{x:7.6,y:22.2},{x:14.4,y:23.6}],
-    locks:[{x:8.0,y:15.9,w:6.0,h:1.0,need:'brazier4',text:'石門緊閉。四座火盆都點亮，或許就會打開。'}],
+    blocks:[{x:7.6,y:22.2,tx:7.6,ty:20.2},{x:14.4,y:23.6,tx:14.4,ty:21.6}],
+    blockReward:{id:'temple_c2',x:11.0,y:19.6,loot:'gem'},
+    locks:[{x:8.0,y:15.9,w:6.0,h:1.0,need:'brazier4',text:'石門緊閉。四座火盆都點亮，或許就會打開。'},
+      {x:8.6,y:28.4,w:4.8,h:1.0,need:'key',text:'門鎖著，需要小鑰匙。'}],
+    cracks:[{id:'t_crack',x:4.9,y:34.6,dir:'w',chest:{id:'temple_c3',loot:'gem'}}],
     boss:{id:'boss_temple',x:11.0,y:8.8,arena:4.6},
     chests:[{id:'temple_c1',x:16.0,y:34.8,loot:'key'}],
     pots:[{x:5.8,y:33.8},{x:6.0,y:35.2},{x:16.6,y:23.0}],

@@ -13,7 +13,8 @@
    實體     ENEMIES（敵人）、SHOTS（飛行物：箭）、DROPS（掉落物）、FX（特效粒子／弧光）
             每種實體都是純物件陣列＋各自的 tick／draw，下一階段的迴力鏢、炸彈、首領照同樣方式加清單
    事件     EVT.on(名稱, fn)：'kill'(敵人) 'pot'(陶罐) 'chest'(寶箱, 物品) 'hurt'(傷害) 'death' 'enter'(地圖 id)
-            —— 賞金、機關、首領等下一階段功能從這裡接
+            —— 道具、機關、首領、通關在 adventure.js（之後載入），從這些事件與實體欄位接：
+            敵人實體可帶 tick／draw（自帶 AI 與繪製）、immune（打不到）、onHit、boss、stun（暈眩秒數）、dieMax（倒地動畫秒數）
    ============================================================ */
 
 const MONEY='珠幣';
@@ -65,6 +66,17 @@ const ITEMS={
   piece: {name:'命珠碎片',kind:'piece'},
   potion:{name:'回復藥',kind:'potion'},      // 收進背包；生命歸零時自動喝下
   heart: {name:'心',kind:'heal'},
+  // 副道具（adventure.js 的 TOOLS 是數值與行為）：拿到就放進副道具欄
+  boomerang:{name:'迴力鏢',kind:'tool'},
+  bomb:     {name:'炸彈袋',kind:'tool'},     // 拿到時附 10 顆炸彈
+  bombs:    {name:'炸彈',kind:'ammo'},       // 掉落補充用（'bombs:3'）
+  lantern:  {name:'提燈',kind:'tool'},
+  hookshot: {name:'勾爪',kind:'tool'},
+  // 聖物與生命上限
+  relic_forest:{name:'林之聖物',kind:'relic'},
+  relic_fire:  {name:'焰之聖物',kind:'relic'},
+  relic_water: {name:'淵之聖物',kind:'relic'},
+  heart_full:  {name:'完整的心',kind:'container'},   // 生命上限 +1 並回滿
   iron_sword: {name:'鐵劍',kind:'equip',slot:'sword',atk:18},
   flame_sword:{name:'炎刃',kind:'equip',slot:'sword',atk:26},
   iron_shield:{name:'鐵盾',kind:'equip',slot:'shield',def:2},
@@ -72,7 +84,9 @@ const ITEMS={
   wind_boots: {name:'疾風靴',kind:'equip',slot:'boots',spd:.12}
 };
 // 掉落：陶罐 60% 掉東西（其中 70% 錢）；錢的顏色依面額
-const DROP={potChance:.6,potCoin:.7,potCoinV:[1,3],life:14,blink:3};
+const DROP={potChance:.6,potCoin:.7,potCoinV:[1,3],life:14,blink:3,
+  bombPot:.3,bombKill:.18,bombV:3};   // 有炸彈袋且沒滿時：陶罐／敵人改掉炸彈的機率、一次幾顆
+const BOMB_MAX=10;                     // 炸彈上限
 const COIN_COL=v=>v>=20?['#ff8a9a','#d23a52']:v>=5?['#9fd2ff','#2f7fd6']:['#b8ffcc','#2fbf6a'];
 const FACE_V={down:[0,1],up:[0,-1],left:[-1,0],right:[1,0]};
 
@@ -93,7 +107,10 @@ const SKIN={   // 敵人種類 → 外觀（數字＝mon.webp 的種類欄；字
 const SOLO_DRAW={goblin:{size:1.25,cx:58,cw:128},archer:{size:1.25,cx:58,cw:128}};
 
 /* ================= 狀態 ================= */
-const ST={hp:10,hearts:5,pieces:0,money:20,keys:0,bag:{potion:0,equip:[],misc:{}},chests:{},cp:null};
+// tools：拿到的副道具（照取得順序）、tool：目前選的、bombs：炸彈數、relics：聖物 id、flags：機關／首領／祭壇狀態（adventure.js）、
+// deaths：倒下次數、time：遊玩秒數、gotPieces：累計拿到的命珠碎片、cleared：已通關
+const ST_EXTRA=()=>({tools:[],tool:'',bombs:0,relics:[],flags:{},deaths:0,time:0,gotPieces:0,cleared:false});
+const ST={hp:10,hearts:5,pieces:0,money:20,keys:0,bag:{potion:0,equip:[],misc:{}},chests:{},cp:null,...ST_EXTRA()};
 const PS={act:'',t:0,inv:0,blink:false,kbx:0,kby:0,kbt:0,rollCd:0,rdx:0,rdy:0,charge:0,charged:false,shield:false,hit:new Set(),stop:0,flash:0,dead:false,deadT:0};
 const IN={atk:false,shd:false};
 let ENEMIES=[],SHOTS=[],DROPS=[],FX=[],INTER=[],EID=0,FROZEN=false,AI_OFF=false,GT=0;
@@ -130,6 +147,7 @@ const SFX=(()=>{
     hop:()=>tone(300,{dur:.1,vol:.03,slide:1.6}),
     rest:()=>[392,523,659].forEach((f,i)=>tone(f,{dur:.25,vol:.04,delay:i*.12})),
     death:()=>[392,330,262,196].forEach((f,i)=>tone(f,{dur:.2,vol:.06,delay:i*.14})),
+    tone,noise,   // adventure.js 用來合成道具、首領的音效
     get created(){return !!ac}
   };
 })();
@@ -137,21 +155,27 @@ const SFX=(()=>{
 /* ================= 存檔 ================= */
 function save(){
   if(!C||PS.dead)return false;
-  try{localStorage.setItem(SAVE_KEY,JSON.stringify({v:SAVE_V,map:CURID,x:+P.x.toFixed(2),y:+P.y.toFixed(2),face:P.face,
-    hp:ST.hp,hearts:ST.hearts,pieces:ST.pieces,money:ST.money,keys:ST.keys,bag:ST.bag,chests:ST.chests,cp:ST.cp,progress:PROGRESS.toJSON(),t:Date.now()}));return true}catch(e){return false}
+  // 首領戰中（或被勾爪拉著飛）存檔：位置改記這張圖的入口（存檔點），讀檔時不會直接卡在戰場裡
+  const pos=(typeof ADV!=='undefined'&&ADV.savePos&&ADV.savePos())||{map:CURID,x:P.x,y:P.y,face:P.face};
+  try{localStorage.setItem(SAVE_KEY,JSON.stringify({v:SAVE_V,map:pos.map,x:+pos.x.toFixed(2),y:+pos.y.toFixed(2),face:pos.face,
+    hp:ST.hp,hearts:ST.hearts,pieces:ST.pieces,money:ST.money,keys:ST.keys,bag:ST.bag,chests:ST.chests,cp:ST.cp,progress:PROGRESS.toJSON(),
+    tools:ST.tools,tool:ST.tool,bombs:ST.bombs,relics:ST.relics,flags:ST.flags,deaths:ST.deaths,time:Math.round(ST.time),gotPieces:ST.gotPieces,cleared:ST.cleared,t:Date.now()}));return true}catch(e){return false}
 }
 function loadSave(){try{const o=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');return o&&o.v===SAVE_V&&MAPS[o.map]?o:null}catch(e){return null}}
 function bumpPlays(){
   try{const s=JSON.parse(localStorage.getItem(STATS_KEY)||'null')||{};const m=s.story=s.story||{plays:0,wins:0,best:{}};m.plays=(m.plays|0)+1;m.wins=m.wins|0;m.best=m.best||{};localStorage.setItem(STATS_KEY,JSON.stringify(s))}catch(e){}
 }
 function resetState(){
-  Object.assign(ST,{hp:PL.hearts*2,hearts:PL.hearts,pieces:0,money:PL.startMoney,keys:0,bag:{potion:0,equip:[],misc:{}},chests:{},cp:null});
+  Object.assign(ST,{hp:PL.hearts*2,hearts:PL.hearts,pieces:0,money:PL.startMoney,keys:0,bag:{potion:0,equip:[],misc:{}},chests:{},cp:null},ST_EXTRA());
 }
 function applySave(o){
   resetState();
   ST.hearts=clamp(o.hearts|0||PL.hearts,1,PL.maxHearts);ST.hp=clamp(o.hp|0||ST.hearts*2,1,ST.hearts*2);
   ST.pieces=o.pieces|0;ST.money=Math.max(0,o.money|0);ST.keys=Math.max(0,o.keys|0);
   ST.bag=Object.assign({potion:0,equip:[],misc:{}},o.bag||{});ST.chests=o.chests||{};ST.cp=o.cp&&MAPS[o.cp.map]?o.cp:null;
+  ST.tools=Array.isArray(o.tools)?o.tools.filter(t=>ITEMS[t]&&ITEMS[t].kind==='tool'):[];ST.tool=ST.tools.includes(o.tool)?o.tool:(ST.tools[0]||'');
+  ST.bombs=Math.max(0,o.bombs|0);ST.relics=Array.isArray(o.relics)?o.relics.filter(r=>ITEMS[r]&&ITEMS[r].kind==='relic'):[];
+  ST.flags=o.flags&&typeof o.flags==='object'?o.flags:{};ST.deaths=o.deaths|0;ST.time=+o.time||0;ST.gotPieces=o.gotPieces|0;ST.cleared=!!o.cleared;
   PROGRESS.load(o.progress);
 }
 
@@ -170,8 +194,15 @@ function giveItem(id,n=1){   // 回傳顯示用的文字
     case 'key':ST.keys+=n;return it.name+(n>1?' ×'+n:'');
     case 'potion':ST.bag.potion+=n;return it.name+(n>1?' ×'+n:'');
     case 'heal':ST.hp=Math.min(maxHp(),ST.hp+2*n);return it.name;
+    case 'tool':{
+      const fresh=!ST.tools.includes(id);if(fresh)ST.tools.push(id);if(fresh||!ST.tool)ST.tool=id;
+      if(id==='bomb')ST.bombs=Math.max(ST.bombs,BOMB_MAX);
+      return it.name+(id==='bomb'?`（炸彈 ×${BOMB_MAX}）`:'')}
+    case 'ammo':ST.bombs=Math.min(BOMB_MAX,ST.bombs+n);return `${it.name} ×${n}`;
+    case 'relic':if(!ST.relics.includes(id))ST.relics.push(id);return it.name;
+    case 'container':ST.hearts=Math.min(PL.maxHearts,ST.hearts+n);ST.hp=maxHp();return `${it.name}——生命上限 +${n}！`;
     case 'piece':{
-      ST.pieces+=n;let up=0;while(ST.pieces>=PL.piecesPerHeart&&ST.hearts<PL.maxHearts){ST.pieces-=PL.piecesPerHeart;ST.hearts++;up++}
+      ST.pieces+=n;ST.gotPieces+=n;let up=0;while(ST.pieces>=PL.piecesPerHeart&&ST.hearts<PL.maxHearts){ST.pieces-=PL.piecesPerHeart;ST.hearts++;up++}
       if(up)ST.hp=maxHp();
       return up?`${it.name}——生命上限 +${up}！`:`${it.name}（${ST.pieces}/${PL.piecesPerHeart}）`}
     case 'equip':if(!ST.bag.equip.includes(id))ST.bag.equip.push(id);return it.name+'（已放進背包）';
@@ -258,8 +289,8 @@ function swingHits(spin){
 function knightGuards(e){const dx=P.x-e.x,dy=P.y-e.y,l=Math.hypot(dx,dy)||1;return (dx*e.fx+dy*e.fy)/l>Math.cos(ENEMY.knight.guardArc)}
 function hurtPlayer(dmg,sx,sy,o={}){
   if(PS.dead||PS.inv>0||ST.hp<=0)return false;
-  let kb=PL.hurtKb;
-  if(PS.shield){
+  let kb=PL.hurtKb*(o.kb!=null?o.kb:1);
+  if(PS.shield&&!o.unblock){   // unblock：地面爆炸、地刺等擋不住的傷害
     const [fx,fy]=faceVec(),dx=sx-P.x,dy=sy-P.y,l=Math.hypot(dx,dy)||1;
     if((dx*fx+dy*fy)/l>Math.cos(PL.shieldArc)){
       SFX.block();sparks(P.x+fx*.35,P.y+fy*.35,'#fff1c0',7,3,.5);PS.stop=Math.max(PS.stop,PL.blockStop);
@@ -279,7 +310,7 @@ function hurtPlayer(dmg,sx,sy,o={}){
 }
 async function die(){
   if(PS.dead)return;
-  PS.dead=true;PS.deadT=0;PS.act='';IN.atk=IN.shd=false;lock=true;SFX.death();EVT.emit('death');
+  PS.dead=true;PS.deadT=0;PS.act='';IN.atk=IN.shd=false;lock=true;ST.deaths++;SFX.death();EVT.emit('death');
   await sleep(900);await fade(true);
   const loss=Math.floor(ST.money*PL.deathLoss);ST.money-=loss;ST.hp=maxHp();
   const cp=ST.cp&&MAPS[ST.cp.map]?ST.cp:{map:'village',x:MAPS.village.spawn[0],y:MAPS.village.spawn[1],face:'down'};
@@ -338,7 +369,8 @@ function setFace(e,x,y){const l=Math.hypot(x,y);if(l<1e-6)return;e.fx=x/l;e.fy=y
 function turnToward(e,x,y,rate,dt){let d=Math.atan2(y,x)-e.fa;while(d>Math.PI)d-=Math.PI*2;while(d<-Math.PI)d+=Math.PI*2;e.fa+=clamp(d,-rate*dt,rate*dt);e.fx=Math.cos(e.fa);e.fy=Math.sin(e.fa)}
 function inCone(e,R,cosA){const dx=P.x-e.x,dy=P.y-e.y,d=Math.hypot(dx,dy);return d<R+PLAYER_R&&(d<.3||(dx*e.fx+dy*e.fy)/d>cosA)}
 function damageEnemy(e,dmg,sx,sy){
-  if(e.dead)return;
+  if(e.dead||e.immune)return;   // immune：首領潛入、瞬移中等
+  if(e.onHit&&e.onHit(dmg,sx,sy)===false)return;
   e.hp-=dmg;e.flash=.13;
   const dx=e.x-sx,dy=e.y-sy,l=Math.hypot(dx,dy)||1,kb=PL.kbEnemy/(e.D.mass||1);
   e.kbx=dx/l*kb;e.kby=dy/l*kb;e.kbt=PL.kbEnemyT;e.mode='chase';
@@ -350,16 +382,19 @@ function damageEnemy(e,dmg,sx,sy){
   else if(e.k==='archer'&&e.st==='aim'){e.st='move';e.cd=.8}
 }
 function killEnemy(e){
-  e.dead=true;e.dieT=.45;e.hp=0;e.z=0;SFX.kill();
+  e.dead=true;e.dieT=e.dieMax||.45;e.hp=0;e.z=0;e.stun=0;SFX.kill();
   const D=e.D,v=Math.max(1,Math.round(rand(D.gold[0],D.gold[1]+.99)*e.gold|0));
   spawnDrop('coin',v,e.x,e.y);
   if(Math.random()<D.heart)spawnDrop('heart',1,e.x,e.y);
+  else if(wantBombs()&&Math.random()<DROP.bombKill)spawnDrop('bomb',DROP.bombV,e.x,e.y);
   EVT.emit('kill',e);
 }
 function enemyTick(e,dt){
   if(e.dead){e.dieT-=dt;if(e.dieT<=0&&!e.puffed){e.puffed=1;puff(e.x,e.y)}return}
+  if(e.tick){e.tick(e,dt);return}   // 首領等自帶 AI 的實體
   const D=e.D;e.anim+=dt;if(e.flash>0)e.flash-=dt;if(e.blockT>0)e.blockT-=dt;if(e.cd>0)e.cd-=dt;e.moving=false;
   if(e.kbt>0){e.kbt-=dt;moveE(e,e.kbx*dt,e.kby*dt);return}
+  if(e.stun>0){e.stun-=dt;e.z=0;e.st='move';e.aim=0;return}   // 被迴力鏢／勾爪打暈
   const dx=P.x-e.x,dy=P.y-e.y,d=Math.hypot(dx,dy),hd=Math.hypot(e.x-e.hx,e.y-e.hy),ux=dx/(d||1),uy=dy/(d||1);
   const busy=e.st!=='move';
   if(e.mode!=='return'&&!busy&&(hd>D.leash||PS.dead||(e.mode==='chase'&&d>D.lose))){e.mode='return';e.st='move';e.z=0}
@@ -426,10 +461,10 @@ const AI={
   }
 };
 function separate(){   // 敵人互相推開、不跟玩家重疊（只推敵人）
-  for(let i=0;i<ENEMIES.length;i++){const a=ENEMIES[i];if(a.dead)continue;
+  for(let i=0;i<ENEMIES.length;i++){const a=ENEMIES[i];if(a.dead||a.boss)continue;   // 首領自己處理推擠（推玩家，不被推）
     const dx=a.x-P.x,dy=a.y-P.y,d=Math.hypot(dx,dy),m=a.r+PLAYER_R;
     if(d<m&&d>1e-4&&!PS.dead)moveE(a,dx/d*(m-d)*.6,dy/d*(m-d)*.6);
-    for(let j=i+1;j<ENEMIES.length;j++){const b=ENEMIES[j];if(b.dead)continue;const ex=b.x-a.x,ey=b.y-a.y,dd=Math.hypot(ex,ey),mm=a.r+b.r;
+    for(let j=i+1;j<ENEMIES.length;j++){const b=ENEMIES[j];if(b.dead||b.boss)continue;const ex=b.x-a.x,ey=b.y-a.y,dd=Math.hypot(ex,ey),mm=a.r+b.r;
       if(dd<mm&&dd>1e-4){const p=(mm-dd)*.5;moveE(a,-ex/dd*p,-ey/dd*p);moveE(b,ex/dd*p,ey/dd*p)}}
   }
 }
@@ -452,6 +487,7 @@ function shotTick(s,dt){
 }
 
 /* ================= 掉落物 ================= */
+const wantBombs=()=>ST.tools.includes('bomb')&&ST.bombs<BOMB_MAX;
 function spawnDrop(k,v,x,y){
   const a=Math.random()*Math.PI*2,s=rand(.6,1.4);
   DROPS.push({k,v,x,y,z:.2,vz:rand(3,4.2),vx:Math.cos(a)*s,vy:Math.sin(a)*s*.7,t:0});
@@ -461,8 +497,8 @@ function dropTick(o,dt){
   if(o.vz||o.z>0){o.z+=o.vz*dt;o.vz-=14*dt;if(o.z<=0){o.z=0;o.vz=Math.abs(o.vz)>1.2?-o.vz*.35:0;if(!o.vz)SFX.drop()}
     const nx=o.x+o.vx*dt,ny=o.y+o.vy*dt;if(walkAt(C,nx,ny)){o.x=nx;o.y=ny}else{o.vx=o.vy=0}o.vx*=.94;o.vy*=.94}
   if(o.t>.25&&o.z<.25&&!PS.dead&&Math.hypot(o.x-P.x,o.y-P.y)<PL.pickR){
-    if(o.k==='coin'){ST.money+=o.v;SFX.coin()}else{ST.hp=Math.min(maxHp(),ST.hp+2);SFX.heart()}
-    sparks(o.x,o.y,o.k==='coin'?COIN_COL(o.v)[0]:'#ff8aa8',5,2,.3);return false;
+    if(o.k==='coin'){ST.money+=o.v;SFX.coin()}else if(o.k==='bomb'){ST.bombs=Math.min(BOMB_MAX,ST.bombs+o.v);SFX.drop()}else{ST.hp=Math.min(maxHp(),ST.hp+2);SFX.heart()}
+    sparks(o.x,o.y,o.k==='coin'?COIN_COL(o.v)[0]:o.k==='bomb'?'#ffd28a':'#ff8aa8',5,2,.3);return false;
   }
   return o.t<DROP.life;
 }
@@ -470,7 +506,8 @@ function dropTick(o,dt){
 /* ================= 互動物：陶罐、寶箱、營火 ================= */
 function breakPot(p){
   p.gone=true;if(p.col)p.col.off=true;SFX.pot();shards(p.x,p.y);EVT.emit('pot',p);
-  if(Math.random()<DROP.potChance){if(Math.random()<DROP.potCoin)spawnDrop('coin',Math.round(rand(DROP.potCoinV[0],DROP.potCoinV[1])),p.x,p.y-.1);else spawnDrop('heart',1,p.x,p.y-.1)}
+  if(wantBombs()&&Math.random()<DROP.bombPot)spawnDrop('bomb',DROP.bombV,p.x,p.y-.1);
+  else if(Math.random()<DROP.potChance){if(Math.random()<DROP.potCoin)spawnDrop('coin',Math.round(rand(DROP.potCoinV[0],DROP.potCoinV[1])),p.x,p.y-.1);else spawnDrop('heart',1,p.x,p.y-.1)}
 }
 function openChest(p){
   if(p.open)return;
@@ -551,6 +588,8 @@ function drawDrop(c,o,now){
   if(o.k==='coin'){const [a,b]=COIN_COL(o.v),s=o.v>=5?.17:.13;   // 珠幣：發亮的小圓珠
     const g=c.createRadialGradient(o.x-s*.3,y-s*.3,0,o.x,y,s);g.addColorStop(0,'#fff');g.addColorStop(.35,a);g.addColorStop(1,b);c.fillStyle=g;c.beginPath();c.arc(o.x,y,s,0,7);c.fill();
     c.strokeStyle='rgba(0,0,0,.35)';c.lineWidth=.025;c.stroke()}
+  else if(o.k==='bomb'){c.fillStyle='#2a2d3a';c.beginPath();c.arc(o.x,y-.02,.15,0,7);c.fill();c.fillStyle='rgba(255,255,255,.35)';c.beginPath();c.arc(o.x-.05,y-.07,.04,0,7);c.fill();
+    c.strokeStyle='#c9a35a';c.lineWidth=.03;c.beginPath();c.moveTo(o.x+.08,y-.13);c.quadraticCurveTo(o.x+.16,y-.26,o.x+.2,y-.22);c.stroke();c.fillStyle='#fff';c.font='bold .16px sans-serif';c.textAlign='center';c.fillText('×'+o.v,o.x,y+.26)}
   else{c.fillStyle='#ff4a6a';heartPath(c,o.x,y-.16,.32);c.fill();c.strokeStyle='#7a1028';c.lineWidth=.03;c.stroke()}
 }
 function drawShot(c,s){
@@ -564,7 +603,9 @@ function drawShot(c,s){
 }
 function enemyRow(e){if(e.dead)return 4;if(e.flash>0||e.kbt>0)return 3;if(e.st==='wind'||e.st==='leap'||e.st==='strike'||e.st==='stab'||e.st==='aim')return 2;return e.moving?1:0}
 function drawEnemy(c,e,now){
+  if(e.draw){e.draw(c,e,now);return}   // 首領等自帶繪製
   const D=e.D,al=e.dead?clamp(e.dieT/.45,0,1):1;if(al<=0)return;
+  if(e.stun>0&&!e.dead){const sy=e.y-1.15;for(let k=0;k<3;k++){const a=GT*5+k*2.1;c.fillStyle='#ffe66a';c.beginPath();c.arc(e.x+Math.cos(a)*.3,sy+Math.sin(a)*.08,.06,0,7);c.fill()}}
   c.save();c.globalAlpha=al;
   drawShadow(c,e.x,e.y+.02,e.r*2.3*(1-e.z*.5),e.r*.8*(1-e.z*.5));
   // 盾騎士：地上淡淡標出正面（盾擋得住的方向）
@@ -721,7 +762,7 @@ if(window.__shrine)Object.defineProperties(window.__shrine,Object.getOwnProperty
   hurt:(n=2,sx,sy)=>hurtPlayer(n,sx!=null?sx:P.x+FACE_V[P.face][0],sy!=null?sy:P.y+FACE_V[P.face][1]),
   spawn:(k,x,y)=>{const e=makeEnemy(k,x!=null?x:P.x+2,y!=null?y:P.y);if(!e)return null;ENEMIES.push(e);return e.id},
   give:(id,n=1)=>{const r=giveItem(id,n);hud(true);return r},
-  killAll:()=>{let n=0;for(const e of ENEMIES)if(!e.dead){killEnemy(e);n++}return n},
+  killAll:(boss)=>{let n=0;for(const e of ENEMIES)if(!e.dead&&(!e.boss||boss)){killEnemy(e);n++}return n},   // 首領要傳 true 才一起殺
   act:(name,down=true)=>press(name,down),
   aiOff:on=>{AI_OFF=!!on},
   get combat(){return {hp:ST.hp,maxHp:maxHp(),hearts:ST.hearts,pieces:ST.pieces,money:ST.money,keys:ST.keys,bag:JSON.parse(JSON.stringify(ST.bag)),
