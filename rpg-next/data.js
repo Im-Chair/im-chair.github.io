@@ -16,7 +16,8 @@ const GAME = {
   restHeal: 0.3,   // 營火回復比例
   chestMimic: 0.35,// 寶箱「再翻一次」遇到寶箱怪的機率
   burnAp: 1,       // 餵一件財寶換到的行動點（每回合一次）
-  rageStr: 1,      // 熔獄規則：第 5 回合起，敵人每回合力量增加的量
+  rageTurn: 5,     // 熔獄規則：第幾回合熔爐沸騰（一場只有一次）
+  rageStr: 3,      // 熔獄規則：沸騰時所有敵人力量增加的量（一次，不再每回合疊）
 };
 
 /* 技能
@@ -167,8 +168,10 @@ const MANA_MAX = 5;
    B1 新增（全部由資料驅動，畫面會預告）：drain 攻擊打掉的生命轉成自己的血／vuln 讓你易傷／burn 燃燒（你每回合結束失去等量生命，之後 -1）／
                  ap 燒掉你下回合的行動點／astr·ablk·aheal 替友軍加力量·格擋·治療（沒有友軍就給自己；all:1 連自己一起）／boom 攻擊後自爆
    敵人欄位：revive 倒下後站起來一次／dodge 閃避率／half:{str,nm} 血量過半後力量大增／
-             form2:{n,art,pat,grow,heal} 血量過半換形態（招式重來、換名字換圖，grow 每回合結束力量成長，heal 換形態時回復的比例）
-   nm：招式名（沒有就只顯示數字） */
+             form2:{n,art,pat,str,heal} 血量過半換形態（招式重來、換名字換圖，str 換形態時一次加的力量，heal 換形態時回復的比例）
+   nm：招式名（沒有就只顯示數字）
+   台階原則：一場戰鬥裡敵人不會連續變強。招式裡的 str／astr（替自己或友軍加力量）每隻敵人一場只生效一次，
+   之後同一招只剩其他效果（全部效果都沒了就改用 alt，沒有 alt 就格擋 5）；core.js 的 intent 會把「已用過」的招式換掉，預告看得到 */
 const ENEMIES = {
   rat:    {n:'岩背豬',   hp:20, pat:[{a:5},{a:4,weak:1,nm:'撕咬'},{a:6}]},
   bat:    {n:'穴居蝠',   hp:14, pat:[{a:3,x:2},{a:4},{a:2,x:3}]},
@@ -206,7 +209,7 @@ const ENEMIES = {
   swarm:  {n:'群眼',     hp:50, elite:1, pat:[{a:2,x:3,str:1,nm:'注視'},{d:6},{a:2,x:4,str:1,nm:'無數的眼'}]},
   /* —— 舊都 —— */
   monk:   {n:'遊魂居民', hp:22, pat:[{a:5},{a:4,weak:1},{a:6}]},
-  choir:  {n:'廣場悲鳴者',hp:20, pat:[{astr:1,all:1,nm:'悲鳴'},{a:4},{a:5}]},
+  choir:  {n:'廣場悲鳴者',hp:20, pat:[{astr:1,all:1,nm:'悲鳴',alt:{weak:1,nm:'哀號'}},{a:4},{a:5}]},
   lantern:{n:'巡夜人',   hp:24, pat:[{a:4,burn:2,nm:'提燈'},{d:6},{a:6}]},
   knight: {n:'石衛',     hp:30, pat:[{d:10},{a:10,nm:'劈擊'},{d:8},{a:12,nm:'重劈'}]},
   zealot: {n:'殉城者',   hp:20, pat:[{a:4},{charge:1,nm:'祈禱'},{a:15,boom:1,nm:'殉城'}]},
@@ -229,10 +232,10 @@ const ENEMIES = {
   brood:  {n:'闇域吞光者', art:'@art/boss_brood.webp', hp:220, boss:1, pat:[{a:8,drain:1,nm:'啃噬'},{goo:2,nm:'吐出瘴氣'},{a:5,x:2},{d:8,goo:1,nm:'盤踞'},{charge:1,d:6,nm:'深吸一口氣'},{a:18,drain:1,nm:'吞光'}]},
   citylord:{n:'亡城之主', art:'feign', hp:220, boss:1, half:{str:3, nm:'亡城之主怒吼'}, pat:[{a:9},{d:10},{a:5,x:2},{charge:1,d:6,nm:'舉劍'},{a:20,nm:'處決'},{weak:1,d:8,nm:'亡城詔令'}]},
   heart:  {n:'深淵之心', art:'final', hp:170, boss:1, pat:[{a:9},{d:12},{a:5,burn:2,nm:'灼熱脈動'},{charge:1,d:6,nm:'蓄血'},{a:20,nm:'心搏'}],
-           form2:{n:'深淵之心（顯形）', art:'@art/boss_heart2.webp', heal:0.05, grow:1, pat:[{a:4,x:3,nm:'狂跳'},{a:5,x:3,weak:1},{a:3,x:5,nm:'亂搏'},{a:6,x:3,burn:1}]}},
+           form2:{n:'深淵之心（顯形）', art:'@art/boss_heart2.webp', heal:0.05, str:3, pat:[{a:4,x:3,nm:'狂跳'},{a:5,x:3,weak:1},{a:3,x:5,nm:'亂搏'},{a:6,x:3,burn:1}]}},
 };
 
-/* 每一段地圖會遇到的組合（越下面越硬） */
+/* 每一區的遭遇組合，分三組（越下面越硬）。core.js 的 encounter：淺層（DEEP_ROW 之前）從第 0、1 組抽，深層從第 1、2 組抽 */
 const ENCOUNTERS = [
   [['rat'],['bat','bat'],['spider'],['slime']],
   [['rat','bat'],['skel'],['thief'],['garg'],['spider','bat'],['slime','bat']],
@@ -250,7 +253,7 @@ const LAMP_START = 5, LAMP_DARK_VULN = 2, LAMP_BURN = 3;
 const TOLL_K = 0.5, TOLL_MAX = 0.5;
 const HEART_EVERY = 4, HEART_HP = 0.1;
 
-/* 五個區域：由 depth % 5 決定，深度 ≥5 時循環，難度繼續由 DEPTH_K 放大。
+/* 五個區域＝五個階（depth 0～4；打贏第五區之後的難度由噩夢階負責，不再循環加深）。敵人強度見下方 TIER_FOE／TIER_BOSS。
    realm：背景（rpg/ui/realmN.webp，地圖與戰鬥都換）。rule、rule2：區域規則與第二條規則（id 由 core.js 實作；淺穴沒有）。
    enc：三段遭遇（比照 ENCOUNTERS）。elites：菁英（字串或陣列，陣列＝帶護衛）。boss：首領 key。
    win：打贏首領的文字；final：最終首領，打贏看結局 */
@@ -278,7 +281,7 @@ const REGIONS = [
         [['knight','sister'],['choir','lantern','monk'],['zealot','monk'],['reliq','sister'],['knight','lantern'],['choir','zealot','sister']]],
    elites:['inquis','warden'], boss:'citylord',
    win:{title:'王座空了', text:'王座扶手上嵌著一顆深淵晶，已經進了你的背包。其他的再挑一件。', out:'穿過空蕩的城門爬回地面'}},
-  {n:'熔獄', realm:4, rule:{id:'rage', n:'沸騰的熔爐', d:'第 5 回合起，每回合所有敵人力量增加'},
+  {n:'熔獄', realm:4, rule:{id:'rage', n:'沸騰的熔爐', d:`每場戰鬥第 ${GAME.rageTurn} 回合熔爐沸騰一次，所有敵人力量 +${GAME.rageStr}`},
    rule2:{id:'heart', n:'心臟收縮', d:`腳下有東西在跳。每走 ${HEART_EVERY} 步跳一下，吞掉身上最貴的一件；身上空了，吞的是你的血。先餵它別的，這一下就算過了`},
    enc:[[['throm'],['worm'],['pulse'],['magma']],
         [['throm','pulse'],['valve'],['mist','worm'],['puppet'],['magma','pulse'],['worm','magma']],
@@ -321,20 +324,20 @@ const FAM = {
   curse: {n:'詛咒', c:'#d05252', d:'非常值錢，但帶著有負面效果'},
 };
 
-/* 貪婪階級：同時決定敵人多凶、財寶多好。回程裝備稀有度另受下潛深度限制（上限＝深度 + 1）；首領只吃一半的血量／傷害加成。
+/* 貪婪階級：玩家自己選的難度，同時決定敵人多凶、財寶多好、活著回去多拿幾份材料（MAT_GREED）。首領只吃一半的血量／傷害加成。
    bias 越小，抽財寶越偏向貴重（rand^bias）。
    start：開場格擋；traits：每隻敵人開場帶幾個詞綴 */
 const GREED_TIERS = [
-  {min:0,  n:'知足',    hp:1.00, dmg:1.00, bias:2.6, start:0, traits:0, desc:'敵人維持原樣。回程裝備：普通。'},
-  {min:12, n:'動心',    hp:1.10, dmg:1.10, bias:2.0, start:0, traits:0, desc:'敵人 +10%，財寶變好。回程裝備最高精良。'},
-  {min:28, n:'眼紅',    hp:1.20, dmg:1.20, bias:1.6, start:5, traits:0, desc:'敵人 +20%，開場帶 5 格擋。回程裝備最高稀有（要下潛第 2 層以後）。'},
-  {min:45, n:'貪得無厭',hp:1.30, dmg:1.30, bias:1.3, start:5, traits:1, desc:'敵人 +30%，每隻帶 1 個詞綴。回程裝備最高史詩（要下潛第 3 層以後）。'},
-  {min:65, n:'深淵注視',hp:1.45, dmg:1.40, bias:1.0, start:8, traits:2, desc:'敵人 +40% 以上，每隻帶 2 個詞綴。回程裝備最高傳說（要下潛第 4 層以後）。'},
+  {min:0,  n:'知足',    hp:1.00, dmg:1.00, bias:2.6, start:0, traits:0, desc:'敵人維持原樣。'},
+  {min:12, n:'動心',    hp:1.10, dmg:1.10, bias:2.0, start:0, traits:0, desc:'敵人 +10%，財寶變好。'},
+  {min:28, n:'眼紅',    hp:1.20, dmg:1.20, bias:1.6, start:5, traits:0, desc:'敵人 +20%，開場帶 5 格擋。活著回去多 1 份材料。'},
+  {min:45, n:'貪得無厭',hp:1.30, dmg:1.30, bias:1.3, start:5, traits:1, desc:'敵人 +30%，每隻帶 1 個詞綴。活著回去多 1 份材料。'},
+  {min:65, n:'深淵注視',hp:1.45, dmg:1.40, bias:1.0, start:8, traits:2, desc:'敵人 +40% 以上，每隻帶 2 個詞綴。活著回去多 2 份材料。'},
 ];
 const TRAITS = {
   thorn: {n:'帶刺', d:'每次被攻擊，反彈 2 點傷害'},
   tough: {n:'硬殼', d:'每回合開始獲得 4 格擋'},
-  frenzy:{n:'嗜血', d:'每回合力量 +1'},
+  frenzy:{n:'嗜血', d:'生命過半時力量 +3（一場一次）'},
 };
 
 /* 地圖節點 */
@@ -414,13 +417,13 @@ const EVENTS = {
 
 /* 異變：下潛前三選一（或不選），一趟一個規則，每個都同時有好處與代價。
    hp 敵人血量倍率／sell 全部財寶賣價倍率／sellFam 依類別再乘／step 每走一格貪婪多加／sight 地圖只看得到前方幾列／
-   gearUp 回程裝備高一階／rest 營火回復倍率／trait 每隻敵人多帶詞綴／loot 戰利品選項加成／bag 背包格數增減／
+   matUp 活著回去多幾份材料／rest 營火回復倍率／trait 每隻敵人多帶詞綴／loot 戰利品選項加成／bag 背包格數增減／
    draw 每回合多抽／cards 獎勵技能選項加成／upCards 獎勵技能全部已強化／noHeal 營火以外不回血／
    hpMul 最大生命倍率／dmgOut 你造成傷害倍率／dmgIn 你受到傷害倍率。條件門檻：生還過至少 1 次 */
 const MUTATIONS = {
   moon:   {n:'血月', good:'財寶賣價 +30%', bad:'敵人血量 +20%', hp:1.2, sell:1.3},
   flood:  {n:'急流', good:'財寶賣價 +35%', bad:'每走一格，貪婪多 +1', step:1, sell:1.35},
-  dark:   {n:'黑暗', good:'回程裝備高一階', bad:'地圖只看得到接下來 2 列的節點類型（撤離點與首領不受影響）', sight:2, gearUp:1},
+  dark:   {n:'黑暗', good:'活著回去多 1 份材料', bad:'地圖只看得到接下來 2 列的節點類型（撤離點與首領不受影響）', sight:2, matUp:1},
   famine: {n:'飢荒', good:'金銀與詛咒財寶賣價 +25%', bad:'營火回復減半', rest:0.5, sellFam:{gold:1.25, curse:1.25}},
   mirror: {n:'鏡像', good:'戰利品多一個選項；財寶賣價 +10%', bad:'每隻敵人（首領除外）多帶 1 個詞綴', trait:1, loot:1, sell:1.1},
   light:  {n:'輕裝', good:'每回合多抽 1 張', bad:'背包 -2 格', bag:-2, draw:1},
@@ -460,19 +463,27 @@ const ACHIEVEMENTS = [
   {id:'nm1',    n:'噩夢初啟',   d:'通關噩夢 1 階',                  reward:{gold:600},         chk:(m, r) => (m.nmMax || 0) >= 1},
   {id:'nm10',   n:'噩夢盡頭',   d:'通關噩夢 10 階',                 reward:{gold:5000},        chk:(m, r) => (m.nmMax || 0) >= 10},
   {id:'mut5',   n:'異變老手',   d:'帶著異變活著回來 5 次',          reward:{gold:800},         chk:(m, r) => (m.mutEsc || 0) >= 5},
-  {id:'legend', n:'傳說鍛造',   d:'在鐵匠鋪買下一件傳說裝備',       reward:{gold:1500},        chk:(m, r) => !!m.boughtLegend},
+  {id:'legend', n:'傳說鍛造',   d:'在鐵匠鋪打造一件五階裝備',       reward:{gold:1500},        chk:(m, r) => !!m.boughtLegend},
   {id:'boss1',  n:'石棺開啟',   d:'打贏第 1 層首領',                reward:{gold:200},         chk:(m, r) => (m.depth || 0) >= 1},
   {id:'depth5', n:'深入熔獄',   d:'打贏第 5 層首領',                reward:{gold:1000},        chk:(m, r) => (m.depth || 0) >= 5},
   {id:'runs20', n:'老練的潛行者',d:'累計下潛 20 次',                 reward:{gold:300},         chk:(m, r) => (m.runs || 0) >= 20},
 ];
 
-/* 深度：打贏首領解鎖下一層。敵人變強、財寶更值錢；新敵人與新規則在第 3 階段補上，目前先換區域與數值 */
+/* 深度：打贏首領解鎖下一層。一層＝一區＝一階 */
 const DEPTHS = ['淺穴', '哥布林聚落', '無光通道', '舊都', '熔獄'];
-const DEPTH_K = {hp: 0.8, dmg: 0.6, value: 0.25};
-/* 深度倍率＝1 + K × d^P（d＝深度，從 0 起算）。d=1（第 2 層）與舊公式一樣；P<1 讓深層漲幅變緩，P=1 就是舊的直線。
-   第 6 層之後循環時 d 繼續變大，倍率繼續往上長，只是比較慢。全部倍率走 depthMul 這一個函式 */
-const DEPTH_P = {hp: 0.55, dmg: 0.55, value: 1};
-const depthMul = (k, d) => d > 0 ? 1 + DEPTH_K[k] * Math.pow(d, DEPTH_P[k]) : 1;
+const DIVE_MAX = DEPTHS.length - 1;   // 能下潛的最深區（索引）；通關後的挑戰改由噩夢階提供
+/* —— 敵人強度：台階，不是斜坡 ——
+   每一區只有三段固定強度：淺層（第 0 ～ DEEP_ROW-1 列）、深層（DEEP_ROW 列起到首領前）、首領。
+   同一區、同一段、同一種敵人，數值完全一樣（再乘上玩家自己選的貪婪階級、異變、噩夢）。
+   淺層＝ENEMIES 基礎值 × TIER_FOE[區]；深層再 × SEG_DEEP；首領＝基礎值 × TIER_BOSS[區]（首領是牆，單獨校準）。
+   數值由 _sim.js 校準（見該檔的「首領牆」表）。 */
+const DEEP_ROW = 5;
+const TIER_FOE  = [{hp:1.00, dmg:1.00}, {hp:2.07, dmg:1.82}, {hp:2.75, dmg:2.34}, {hp:3.03, dmg:2.50}, {hp:3.80, dmg:3.06}];
+const SEG_DEEP  = {hp:1.30, dmg:1.25};
+const TIER_BOSS = [{hp:0.65, dmg:0.65}, {hp:1.24, dmg:1.10}, {hp:2.19, dmg:1.89}, {hp:2.33, dmg:1.99}, {hp:2.57, dmg:2.16}];
+/* 財寶賣價：每區一階（深層的財寶另外往貴的那頭偏一格，見 core.js 的 rollTreasure） */
+const TIER_VALUE = [1, 1.25, 1.5, 1.75, 2];
+const SEG_NAME = ['淺層', '深層', '首領'];
 
 /* —— 回到營地之後 —— */
 /* 素質：花金幣永久提升。第 lv 級（從 0 起算）的價格＝round(base × mult^lv) */
@@ -487,9 +498,9 @@ const STAT_UPS = {
    超過這個等級仍可購買，但價格乘 STAT_OVER_MULT（絕對上限是 STAT_UPS 的 max）。
    例外：大背包最高只有 3 級，6 格放不下「每層至少多開 1 級」，所以兩層共用一段 */
 const STAT_CAPS = {
-  hp:  [4, 8, 12, 16, 18, 20],
-  blk: [2, 4, 6, 8, 9, 10],
-  str: [1, 2, 4, 5, 7, 8],
+  hp:  [4, 8, 12, 16, 20, 20],
+  blk: [2, 4, 6, 8, 10, 10],
+  str: [1, 2, 3, 4, 5, 8],
   bag: [1, 1, 2, 2, 3, 3],
 };
 /* 超過正常上限的那幾級，價格乘這個倍數（打贏更深的首領、上限提高後恢復原價；已買的不退差價） */
@@ -543,46 +554,112 @@ const BOSS_HINT = {
   citylord:'血量剩一半時力量大增；舉劍後是處決',
   heart:   '脈動會燃燒你；蓄血之後是心搏',
 };
-/* 裝備：活著回來時依最終貪婪階級給一件（打贏首領再高一階），優先補沒有的部位；已有的會換成金幣。
-   也可以在營地鐵匠鋪用 buy 價直接買，能買的稀有度上限＝已解鎖深度 */
+/* —— 裝備：階 ——
+   裝備階＝區域序（一階＝淺穴 … 五階＝熔獄），r＝階 − 1。同一件裝備的數值固定，沒有隨機、不隨深度放大。
+   每階每部位有幾件打法不同、強度同級的選擇（GEAR_MAIN 是每階每部位的「基本款」：首領首殺的招牌與模擬機器人用的就是它）。
+   來源：①首次打倒該區首領，給一件該階招牌（SIG_SLOT 決定哪個部位，依職業）②鐵匠打造：金幣＋該區材料（CRAFT）。
+   能打造的最高階＝已解鎖的區（meta.depth）+ 1。不會再有「每趟回程送一件」。 */
 const RARITY = [
-  {n:'普通', c:'#b8bcc8', sell:15,  buy:300},
-  {n:'精良', c:'#6fbf8f', sell:40,  buy:800},
-  {n:'稀有', c:'#5a9bd4', sell:80,  buy:2000},
-  {n:'史詩', c:'#b98ae0', sell:160, buy:5000},
-  {n:'傳說', c:'#e0813f', sell:300, buy:12000},
+  {n:'一階', c:'#b8bcc8'},
+  {n:'二階', c:'#6fbf8f'},
+  {n:'三階', c:'#5a9bd4'},
+  {n:'四階', c:'#b98ae0'},
+  {n:'五階', c:'#e0813f'},
 ];
 const SLOTS = {weapon:'武器', armor:'護甲', trinket:'飾品'};
 const GEAR = {
-  /* 武器 */
-  w0:{n:'鏽蝕短劍',   slot:'weapon',  r:0, img:'eq/sword.webp',   fx:{str:1},              d:'力量 +1'},
-  w1:{n:'碎骨斧',     slot:'weapon',  r:1, img:'eq/axe.webp',     fx:{str:2},              d:'力量 +2'},
-  w2:{n:'放血匕首',   slot:'weapon',  r:2, img:'eq/dagger.webp',  fx:{firstAtk:6},         d:'每回合第一張攻擊牌傷害 +6'},
-  w3:{n:'處刑者重斧', slot:'weapon',  r:3, img:'eq/axe.webp',     fx:{str:4},              d:'力量 +4'},
-  w4:{n:'深淵之刃',   slot:'weapon',  r:4, img:'eq/sword.webp',   fx:{str:3, killHeal:6},  d:'力量 +3，擊殺回復 6 生命'},
-  w5:{n:'連擊短刃',   slot:'weapon',  r:1, img:'eq/dagger.webp',  fx:{thirdAtk:1},         d:'每回合第 3 張攻擊牌傷害翻倍'},
-  w6:{n:'貪婪之鉤',   slot:'weapon',  r:2, img:'eq/axe.webp',     fx:{greedDmg:2},         d:'傷害 +貪婪階級×2（動心 +2、眼紅 +4…）'},
-  w7:{n:'盾擊戰錘',   slot:'weapon',  r:3, img:'eq/staff.webp',   fx:{blkSlam:0.5},        d:'回合結束時，對目標造成目前格擋 ×0.5 的傷害'},
-  /* 護甲 */
-  a0:{n:'舊皮甲',     slot:'armor',   r:0, img:'eq/leather.webp', fx:{hp:8},               d:'最大生命 +8'},
-  a1:{n:'礦工鎖甲',   slot:'armor',   r:1, img:'eq/chain.webp',   fx:{blk:7},              d:'每場開場格擋 +7'},
-  a2:{n:'穴居鱗甲',   slot:'armor',   r:2, img:'eq/scale.webp',   fx:{blkTurn:3},          d:'每回合格擋 +3'},
-  a3:{n:'不退重板甲', slot:'armor',   r:3, img:'eq/plate.webp',   fx:{noDecay:1},          d:'格擋不再衰減'},
-  a4:{n:'深淵斗篷',   slot:'armor',   r:4, img:'eq/cloak.webp',   fx:{hp:15, blkTurn:4},   d:'最大生命 +15，每回合格擋 +4'},
-  a5:{n:'荊棘胸甲',   slot:'armor',   r:1, img:'eq/plate.webp',   fx:{thorns:3},           d:'被攻擊時反彈 3 傷害'},
-  a6:{n:'賭徒背心',   slot:'armor',   r:2, img:'eq/leather.webp', fx:{gamble:1},           d:'生命低於一半時，每回合行動點 +1'},
-  a7:{n:'血痕披風',   slot:'armor',   r:3, img:'eq/cloak.webp',   fx:{scarDmg:1},          d:'每層傷痕讓攻擊傷害 +1'},
-  /* 飾品 */
-  t0:{n:'銅戒',       slot:'trinket', r:0, img:'eq/ring.webp',    fx:{hp:4},               d:'最大生命 +4'},
-  t1:{n:'獵人護符',   slot:'trinket', r:1, img:'eq/pendant.webp', fx:{killHeal:3},         d:'擊殺回復 3 生命'},
-  t2:{n:'老工匠懷錶', slot:'trinket', r:2, img:'eq/watch.webp',   fx:{drawFirst:2},        d:'第一回合多抽 2'},
-  t3:{n:'守夜人提燈', slot:'trinket', r:3, img:'eq/lamp.webp',    fx:{bag:1, blk:6},       d:'背包 +1 格，每場開場格擋 +6'},
-  t4:{n:'深淵之鈴',   slot:'trinket', r:4, img:'eq/bell.webp',    fx:{ap:1},               d:'每回合行動點 +1'},
-  t5:{n:'煉金戒',     slot:'trinket', r:1, img:'eq/ring.webp',    fx:{burnAp:1},           d:'餵食財寶改換 2 行動點'},
-  t6:{n:'黑契護符',   slot:'trinket', r:2, img:'eq/pendant.webp', fx:{curseStr:1},         d:'身上每件詛咒財寶，力量 +1'},
-  t7:{n:'守財奴印',   slot:'trinket', r:3, img:'eq/tome.webp',    fx:{hoard:3},            d:'身上每件金銀，開場格擋 +3'},
-  /* 成就解鎖（ach：達成該成就後才會出現在鐵匠鋪與回程掉落） */
-  w8:{n:'迴響長劍',   slot:'weapon',  r:3, img:'eq/sword.webp',   fx:{echoHit:1}, ach:'allcls', d:'每回合第一張攻擊牌，會再追打一次 50% 傷害'},
-  a8:{n:'不死者殮衣', slot:'armor',   r:3, img:'eq/cloak.webp',   fx:{lastStand:1}, ach:'ending', d:'每場戰鬥一次，致命傷改為剩 1 生命並獲得 8 格擋'},
-  t8:{n:'貪婪天平',   slot:'trinket', r:3, img:'eq/watch.webp',   fx:{greedBlk:3}, ach:'nm5', d:'每回合開始，格擋 +貪婪階級×3'},
+  /* 每階的強度預算：同階同部位的幾件打法不同、總量相近；每升一階明顯一截（主要裝備的數值大約是上一階的 1.5～2 倍）。
+     說明文字 d 由 gearDesc 依 fx 自動產生，改數值不用改字 */
+  /* —— 一階（淺穴） —— */
+  w0:  {n:'鏽蝕短劍', slot:'weapon', r:0, img:'eq/sword.webp', fx:{str:2}},
+  w9:  {n:'骨柄獵刀', slot:'weapon', r:0, img:'eq/dagger.webp', fx:{firstAtk:6}},
+  a0:  {n:'舊皮甲', slot:'armor', r:0, img:'eq/leather.webp', fx:{hp:14}},
+  a9:  {n:'補丁皮盾', slot:'armor', r:0, img:'eq/chain.webp', fx:{blk:7}},
+  t0:  {n:'銅戒', slot:'trinket', r:0, img:'eq/ring.webp', fx:{hp:8, blk:3}},
+  t9:  {n:'舊燈芯', slot:'trinket', r:0, img:'eq/lamp.webp', fx:{hp:6, drawFirst:1}},
+  /* —— 二階（哥布林聚落） —— */
+  w1:  {n:'碎骨斧', slot:'weapon', r:1, img:'eq/axe.webp', fx:{str:4, firstAtk:2}},
+  w5:  {n:'連擊短刃', slot:'weapon', r:1, img:'eq/dagger.webp', fx:{str:3, thirdAtk:1}},
+  a1:  {n:'礦工鎖甲', slot:'armor', r:1, img:'eq/chain.webp', fx:{hp:18, blk:9}},
+  a5:  {n:'荊棘胸甲', slot:'armor', r:1, img:'eq/plate.webp', fx:{hp:16, thorns:4}},
+  t1:  {n:'獵人護符', slot:'trinket', r:1, img:'eq/pendant.webp', fx:{hp:13, blk:7, killHeal:3}},
+  t5:  {n:'煉金戒', slot:'trinket', r:1, img:'eq/ring.webp', fx:{hp:13, blk:5, burnAp:1}},
+  /* —— 三階（無光通道） —— */
+  w2:  {n:'放血匕首', slot:'weapon', r:2, img:'eq/dagger.webp', fx:{str:6, firstAtk:4}},
+  w6:  {n:'貪婪之鉤', slot:'weapon', r:2, img:'eq/axe.webp', fx:{str:5, greedDmg:2}},
+  a2:  {n:'穴居鱗甲', slot:'armor', r:2, img:'eq/scale.webp', fx:{hp:24, blk:13, blkTurn:2}},
+  a6:  {n:'賭徒背心', slot:'armor', r:2, img:'eq/leather.webp', fx:{hp:32, blk:4, gamble:1}},
+  t2:  {n:'老工匠懷錶', slot:'trinket', r:2, img:'eq/watch.webp', fx:{hp:20, blk:11, drawFirst:1}},
+  t6:  {n:'黑契護符', slot:'trinket', r:2, img:'eq/pendant.webp', fx:{hp:16, blk:8, curseStr:1}},
+  /* —— 四階（舊都） —— */
+  w3:  {n:'處刑者重斧', slot:'weapon', r:3, img:'eq/axe.webp', fx:{str:9, firstAtk:6}},
+  w7:  {n:'盾擊戰錘', slot:'weapon', r:3, img:'eq/staff.webp', fx:{str:7, blkSlam:0.5}},
+  a11: {n:'舊都衛士甲', slot:'armor', r:3, img:'eq/chain.webp', fx:{hp:32, blk:18, blkTurn:4}},
+  a3:  {n:'不退重板甲', slot:'armor', r:3, img:'eq/plate.webp', fx:{hp:24, blk:8, noDecay:1}},
+  a7:  {n:'血痕披風', slot:'armor', r:3, img:'eq/cloak.webp', fx:{hp:40, scarDmg:1}},
+  t3:  {n:'守夜人提燈', slot:'trinket', r:3, img:'eq/lamp.webp', fx:{hp:26, blk:16, drawFirst:1, bag:1}},
+  t7:  {n:'守財奴印', slot:'trinket', r:3, img:'eq/tome.webp', fx:{hp:24, blk:10, hoard:3}},
+  /* —— 五階（熔獄） —— */
+  w4:  {n:'深淵之刃', slot:'weapon', r:4, img:'eq/sword.webp', fx:{str:10, firstAtk:8, killHeal:3}},
+  w10: {n:'噬魂長鐮', slot:'weapon', r:4, img:'eq/staff.webp', fx:{str:8, firstAtk:16}},
+  a4:  {n:'深淵斗篷', slot:'armor', r:4, img:'eq/cloak.webp', fx:{hp:38, blk:22, blkTurn:6}},
+  a10: {n:'熔心胸鎧', slot:'armor', r:4, img:'eq/plate.webp', fx:{hp:28, blk:28, thorns:6}},
+  t4:  {n:'深淵之鈴', slot:'trinket', r:4, img:'eq/bell.webp', fx:{hp:26, blk:14, ap:1}},
+  t10: {n:'歸一指環', slot:'trinket', r:4, img:'eq/ring.webp', fx:{hp:36, str:3, drawFirst:1}},
+  /* —— 成就解鎖（ach：達成該成就後才能在鐵匠鋪打造），四階 —— */
+  w8:  {n:'迴響長劍', slot:'weapon', r:3, img:'eq/sword.webp', fx:{str:7, echoHit:1}, ach:'allcls'},
+  a8:  {n:'不死者殮衣', slot:'armor', r:3, img:'eq/cloak.webp', fx:{hp:28, blk:8, lastStand:1}, ach:'ending'},
+  t8:  {n:'貪婪天平', slot:'trinket', r:3, img:'eq/watch.webp', fx:{hp:22, blk:6, greedBlk:3}, ach:'nm5'},
 };
+/* 裝備效果的說明文字（畫面上顯示的 d）：依 fx 產生，數值永遠跟實際一致 */
+const GEAR_FX_TEXT = {
+  str: v => `力量 +${v}`, hp: v => `最大生命 +${v}`, blk: v => `每場開場格擋 +${v}`, blkTurn: v => `每回合格擋 +${v}`,
+  firstAtk: v => `每回合第一張攻擊牌傷害 +${v}`, thirdAtk: () => '每回合第 3 張攻擊牌傷害翻倍', killHeal: v => `擊殺回復 ${v} 生命`,
+  drawFirst: v => `第一回合多抽 ${v}`, ap: v => `每回合行動點 +${v}`, bag: v => `背包 +${v} 格`, thorns: v => `被攻擊時反彈 ${v} 傷害`,
+  burnAp: () => '餵食財寶改換 2 行動點', greedDmg: v => `傷害 +貪婪階級×${v}（動心 +${v}、眼紅 +${v * 2}…）`, gamble: () => '生命低於一半時每回合行動點 +1',
+  curseStr: v => `身上每件詛咒財寶力量 +${v}`, noDecay: () => '格擋不再衰減', scarDmg: v => `每層傷痕讓攻擊傷害 +${v}`,
+  hoard: v => `身上每件金銀開場格擋再 +${v}`, blkSlam: v => `回合結束時對目標造成目前格擋 ×${v} 的傷害`,
+  echoHit: () => '每回合第一張攻擊牌會再追打一次 50% 傷害', lastStand: () => '每場戰鬥一次，致命傷改為剩 1 生命並獲得 8 格擋',
+  greedBlk: v => `每回合開始格擋 +貪婪階級×${v}`,
+};
+const GEAR_FX_ORDER = ['str', 'firstAtk', 'thirdAtk', 'hp', 'blk', 'blkTurn', 'noDecay', 'thorns', 'drawFirst', 'ap', 'killHeal', 'bag'];
+const gearDesc = fx => Object.keys(fx).sort((a, b) => (GEAR_FX_ORDER.indexOf(a) + 1 || 99) - (GEAR_FX_ORDER.indexOf(b) + 1 || 99)).map(k => GEAR_FX_TEXT[k](fx[k])).join('，');
+for(const id in GEAR) GEAR[id].d = gearDesc(GEAR[id].fx);
+/* 每階每部位的基本款（索引＝階 − 1） */
+const GEAR_MAIN = [
+  {weapon:'w0', armor:'a0',  trinket:'t0'},
+  {weapon:'w1', armor:'a1',  trinket:'t1'},
+  {weapon:'w2', armor:'a2',  trinket:'t2'},
+  {weapon:'w3', armor:'a11', trinket:'t3'},
+  {weapon:'w4', armor:'a4',  trinket:'t4'},
+];
+/* 首領首殺的招牌：第 i 區首領給該職業 SIG_SLOT[職業][i] 部位的基本款（已經有了就給同階同部位的另一件，同階全有了改給材料） */
+const SIG_SLOT = {
+  sword:   ['armor',   'weapon',  'armor',   'weapon',  'armor'],
+  rogue:   ['weapon',  'trinket', 'weapon',  'trinket', 'weapon'],
+  mage:    ['trinket', 'armor',   'trinket', 'armor',   'trinket'],
+  warlock: ['weapon',  'armor',   'weapon',  'armor',   'weapon'],
+};
+/* 材料：每區一種，只能打造該階。來源：該區菁英（MAT_ELITE）、首領（MAT_BOSS）、深層一般戰鬥（MAT_DEEP_P 機率 1 份）、
+   活著回去依最終貪婪階級（MAT_GREED）。死在下面，這趟拿到的材料跟財寶一起留在下面 */
+const MATS = [
+  {n:'鏽鐵塊',    d:'淺穴的礦工留下的廢鐵'},
+  {n:'哥布林廢鐵', d:'聚落裡敲下來的破甲片'},
+  {n:'盲獸骨',    d:'無光通道裡磨得發亮的骨頭'},
+  {n:'舊都銀',    d:'舊都城牆上剝下來的銀飾'},
+  {n:'熔心石',    d:'熔獄裡還在發燙的石頭'},
+];
+const MAT_ELITE = 1, MAT_BOSS = 2, MAT_DEEP_P = 0.25;
+const MAT_GREED = [0, 0, 1, 1, 2];
+/* 鐵匠打造價格（索引＝階 − 1）：gold 金幣、mats 該區材料份數 */
+const CRAFT = [
+  {gold: 120,  mats: 2},
+  {gold: 300,  mats: 3},
+  {gold: 550,  mats: 3},
+  {gold: 900,  mats: 3},
+  {gold: 1400, mats: 3},
+];
+/* 首領門檻（營地「本區門檻」與首領房前提醒共用）：建議素質＝STAT_CAPS 該區那一格（體魄、架勢、臂力），
+   建議裝備＝本階 GATE_GEAR[區] 件以上。只是建議，不擋路 */
+const GATE_STATS = ['hp', 'blk', 'str'];
+const GATE_GEAR = [1, 2, 2, 2, 2];

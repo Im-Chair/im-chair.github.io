@@ -134,18 +134,20 @@ const hasAch = (S, id) => (S.unlocked || []).includes(id);   // 這一趟開局�
 const curseCount = S => S.bag.filter(id => treasure(id).fam === 'curse').length;
 
 /* —— 建立新的一趟 —— */
+/* 一趟的存檔格式版本：2＝台階改造（有 mats、敵人帶固定的 dm／seg）。1 的舊局由 migrateRun 升級或作廢 */
+const RUN_VER = 2;
 /* own：玩家已擁有的裝備 id 清單（回程補缺用；要可 JSON 化，所以直接存進 S）。
    mutation：這一趟的異變 id（MUTATIONS 的鍵）。own、mutation 舊呼叫不傳也行 */
 /* qx：委託板帶進來的設定 {quests:[接下的委託 id], markOn:這趟有沒有刻痕, meiStage:梅姐線這趟開放第幾段(0＝沒有)}，由 questStart 產生 */
 function newRun(seed, load, depth, own, mutation, cls, nm, unlocked, sup, qx){
   load = load || {};
-  depth = depth || 0;
+  depth = Math.max(0, Math.min(DIVE_MAX, depth | 0));   // 一區一階，通關後不再循環加深
   const mu = MUTATIONS[mutation] || {};
   cls = CLASSES[cls] ? cls : 'sword';
   nm = Math.max(0, Math.min(NIGHTMARES.length, nm | 0));
   const hp0 = Math.round((CLASSES[cls].hp + (load.hp || 0)) * (mu.hpMul || 1) * (nm >= 5 ? 0.9 : 1));
   const S = {
-    v: 1, rng: seed | 0, uid: 1, screen: 'map',
+    v: RUN_VER, rng: seed | 0, uid: 1, screen: 'map', mats: 0,   // mats：這趟拿到的該區材料份數（活著回去才入帳）
     cls, nm, unlocked: (unlocked || []).slice(), hp: hp0, maxHp: hp0, greed: 0, mutation: MUTATIONS[mutation] ? mutation : null, evSeen: [],
     load, depth, own: (own || []).slice(), bagCap: Math.max(2, GAME.bag + (load.bag || 0) + (mu.bag || 0)),
     deck: CLASSES[cls].deck.map(id => ({id, up: 0})),
@@ -247,7 +249,8 @@ function rollTreasure(S, boost, fam){
   fam = fam || rollFam(S);
   const pool = TREASURES.filter(t => t.fam === fam);
   const p = greedTier(S).bias;
-  const i = Math.min(pool.length - 1, Math.floor(Math.pow(rand(S), p) * pool.length) + (boost || 0));
+  /* 深層撿到的東西往貴的那頭偏一格：淺層與深層的報酬是兩個台階，要不要往下仍是貪婪的抉擇 */
+  const i = Math.min(pool.length - 1, Math.floor(Math.pow(rand(S), p) * pool.length) + (boost || 0) + segOf(S));
   /* 刻痕只出現在金銀類，而且這趟要有開（meta.depth ≥ MEI_MARK_NEED）；沒開的局不多抽這一次亂數，舊的亂數順序不變 */
   if(S.markOn && fam === 'gold' && rand(S) < MEI_MARK_P) return pool[i].id + '*';
   return pool[i].id;
@@ -276,8 +279,8 @@ function sellMul(S, id){
   const m = mutOf(S);
   return (m.sell || 1) * ((m.sellFam && m.sellFam[treasure(id).fam]) || 1) * (1 + NM_SELL * (S.nm || 0));   // 噩夢：每階賣價 +10%
 }
-/* 越深的財寶越值錢 */
-const treasureValue = (S, id) => Math.round(treasure(id).v * depthMul('value', S.depth || 0) * sellMul(S, id));
+/* 每一區一個價格台階（TIER_VALUE） */
+const treasureValue = (S, id) => Math.round(treasure(id).v * TIER_VALUE[tierIdx(S)] * sellMul(S, id));
 const bagValue = S => S.bag.reduce((s, id) => s + treasureValue(S, id), 0);
 function addTreasure(S, id){
   S.bag.push(id);
@@ -358,9 +361,19 @@ function enterNode(S, r, c){
   else if(n.t === 'vault'){ S.vault = {n: 1}; S.screen = 'vault'; }
   return true;
 }
+/* 淺層從第 0、1 組抽，深層從第 1、2 組抽（同一段內不再一列比一列硬） */
 function encounter(S, r){
-  const seg = r < 3 ? 0 : r < 6 ? 1 : 2;
-  return rpick(S, regionOf(S.depth || 0).enc[seg]).slice();
+  const enc = regionOf(S.depth || 0).enc;
+  return rpick(S, r < DEEP_ROW ? enc[0].concat(enc[1]) : enc[1].concat(enc[2])).slice();
+}
+/* —— 台階：現在在哪一段（0 淺層／1 深層），敵人強度與財寶都看這個 —— */
+const segOf = S => (S.at && S.at[0] >= DEEP_ROW) ? 1 : 0;
+const tierIdx = S => Math.max(0, Math.min(TIER_FOE.length - 1, regionIdx(S.depth)));
+/* 某種敵人在這一區、這一段的固定倍率（不含貪婪／異變／噩夢）。boss 一律用 TIER_BOSS */
+function tierMul(S, d, k){
+  const t = tierIdx(S);
+  if(d.boss) return TIER_BOSS[t][k];
+  return TIER_FOE[t][k] * (segOf(S) ? SEG_DEEP[k] : 1);
 }
 
 /* —— 寶箱：拿一件之後可以賭下一件 —— */
@@ -384,11 +397,13 @@ function chestAgain(S){
 /* —— 戰鬥 —— */
 /* 首領只吃一半的貪婪倍率（血量、傷害）；一般敵與菁英全吃 */
 const bossShare = (d, m) => d && d.boss ? 1 + (m - 1) / 2 : m;
+/* 敵人的數值在出生時就定案：hp 與傷害倍率 dm 都存在敵人身上，整場不再變（貪婪階級是玩家自己選的，打到一半貪婪變了，傷害照當下的階級算） */
 function spawn(S, key){
   const d = ENEMIES[key], T = greedTier(S);
-  const hp = Math.round(d.hp * bossShare(d, T.hp) * depthMul('hp', S.depth || 0) * (mutOf(S).hp || 1) * (nmOn(S, 1) ? 1.1 : 1) * (d.boss && nmOn(S, 4) ? 1.2 : 1));
+  const hp = Math.round(d.hp * bossShare(d, T.hp) * tierMul(S, d, 'hp') * (mutOf(S).hp || 1) * (nmOn(S, 1) ? 1.1 : 1) * (d.boss && nmOn(S, 4) ? 1.2 : 1));
   const e = {uid: S.uid++, key, n: d.n, hp, max: hp, block: d.boss ? Math.floor(T.start / 2) : T.start, step: 0, str: d.boss && nmOn(S, 10) ? 3 : 0, weak: 0, vuln: 0, psn: 0, mk: 0,
-             traits: [], revived: 0, loot: [], gone: 0, boss: !!d.boss, elite: !!d.elite};
+             traits: [], revived: 0, loot: [], gone: 0, boss: !!d.boss, elite: !!d.elite,
+             dm: tierMul(S, d, 'dmg'), seg: d.boss ? 2 : segOf(S), buffed: 0};
   const pool = shuffle(S, Object.keys(TRAITS));
   const nmTrait = d.boss ? 0 : d.elite ? (nmOn(S, 2) ? 1 : 0) : (nmOn(S, 6) ? 1 : 0);   // 噩夢 2：菁英；噩夢 6：一般敵
   e.traits = pool.slice(0, T.traits + (d.boss ? 0 : mutOf(S).trait || 0) + nmTrait);
@@ -491,10 +506,11 @@ function startTurn(S){
   /* 燒掉行動點（噬光獸）：至少留 1 點。聚落：第一回合再少 1 */
   if(b.apLoss){ b.ap = Math.max(1, b.ap - b.apLoss); b.apLoss = 0; }
   if(b.turn === 1 && ruleOf(S) === 'ap') b.ap = Math.max(1, b.ap - 1);
-  /* 熔獄：第 5 回合起，敵人力量每回合 +GAME.rageStr（放在回合開始，意圖的數字才看得到） */
-  if(b.turn >= 5 && ruleOf(S) === 'rage'){
-    alive(b).forEach(e => { e.str += GAME.rageStr; });
-    emit(S, {k: 'toast', t: `熔爐沸騰，敵人力量 +${GAME.rageStr}`});
+  /* 熔獄：第 rageTurn 回合熔爐沸騰一次，敵人力量 +rageStr（放在回合開始，意圖的數字才看得到）。一場只有一次 */
+  if(b.turn === GAME.rageTurn && ruleOf(S) === 'rage' && !b.raged){
+    b.raged = 1;
+    alive(b).forEach(e => { e.str += GAME.rageStr; emit(S, {k: 'ebuff', uid: e.uid, t: `沸騰！力量 +${GAME.rageStr}`}); });
+    emit(S, {k: 'toast', t: `熔爐沸騰了一次：敵人力量 +${GAME.rageStr}（這一場不會再沸騰）`});
   }
   b.burned = 0;
   b.atkUsed = 0;
@@ -593,6 +609,12 @@ function killEnemy(S, e){
 function checkPhase(S, e){
   const d = ENEMIES[e.key];
   if(e.hp <= 0 || e.hp > e.max / 2) return;
+  /* 嗜血詞綴：過半時力量 +3，一場一次（不再每回合疊） */
+  if(e.traits.includes('frenzy') && !e.frenzied){
+    e.frenzied = 1;
+    e.str += 3;
+    emit(S, {k: 'ebuff', uid: e.uid, t: '嗜血！力量 +3'});
+  }
   if(d.half && !e.half){
     e.half = 1;
     e.str += d.half.str;
@@ -605,7 +627,8 @@ function checkPhase(S, e){
     e.n = d.form2.n || e.n;
     const h = Math.round(e.max * (d.form2.heal || 0));
     e.hp = Math.min(e.max, e.hp + h);
-    emit(S, {k: 'form', uid: e.uid, t: `${e.n}！`});
+    if(d.form2.str) e.str += d.form2.str;   // 換形態時一次加力量（不再每回合成長）
+    emit(S, {k: 'form', uid: e.uid, t: `${e.n}！${d.form2.str ? `力量 +${d.form2.str}` : ''}`});
   }
 }
 /* 走格擋的傷害 */
@@ -814,13 +837,24 @@ function enemyStep(S){
   return true;
 }
 /* 看下一招（意圖）。數字含力量、虛弱、易傷，顯示多少就打多少 */
+/* 加力量的招式（str 給自己、astr 給友軍）每隻敵人一場只生效一次；用過之後同一招只剩其他效果，
+   什麼都不剩就換成 alt（沒有 alt 就格擋 5）。預告與實際行動都走這裡 */
+function spentMove(p){
+  const q = Object.assign({}, p);
+  delete q.str; delete q.astr; delete q.all; delete q.alt;
+  const left = Object.keys(q).some(k => k !== 'nm' && q[k]);
+  return left ? q : (p.alt || {d: 5, nm: p.nm});
+}
 function intent(S, e){
   const pat = edef(e).pat;
-  return pat[e.step % pat.length];
+  const p = pat[e.step % pat.length];
+  return e.buffed && (p.str || p.astr) ? spentMove(p) : p;
 }
+/* 敵人的傷害倍率：出生時定案的 e.dm（舊局沒有就照現在的段落補算） */
+const foeDm = (S, e) => Number.isFinite(e.dm) ? e.dm : tierMul(S, edef(e), 'dmg');
 function enemyHitValue(S, e, base){
   const b = S.battle;
-  let v = Math.round(base * bossShare(edef(e), greedTier(S).dmg) * depthMul('dmg', S.depth || 0) * (nmOn(S, 9) ? 1.15 : 1)) + e.str;
+  let v = Math.round(base * bossShare(edef(e), greedTier(S).dmg) * foeDm(S, e) * (nmOn(S, 9) ? 1.15 : 1)) + e.str;
   if(e.weak > 0) v *= 0.75;
   if(b.vuln > 0) v *= 1.5;
   return playerTakes(S, Math.floor(v));
@@ -828,7 +862,6 @@ function enemyHitValue(S, e, base){
 function enemyAct(S, e){
   const b = S.battle;
   if(e.traits.includes('tough')) e.block += 4;
-  if(e.traits.includes('frenzy')) e.str += 1;
   if(e.psn > 0){
     e.hp -= e.psn;
     emit(S, {k: 'hit', uid: e.uid, amt: e.psn, blocked: 0});
@@ -838,6 +871,7 @@ function enemyAct(S, e){
   }
   const p = intent(S, e);
   e.step++;
+  if(p.str || p.astr) e.buffed = 1;   // 加力量的招式只生效這一次
   e.charged = p.charge ? 1 : 0;   // 蓄力：這回合不攻擊，下一招（資料保證是攻擊）就是重擊
   emit(S, {k: 'act', uid: e.uid, nm: p.nm || ''});
   if(p.a){
@@ -907,9 +941,6 @@ function enemyAct(S, e){
     e.loot = [];
     return;
   }
-  /* 形態的每回合成長（放在行動之後，下一個意圖的數字才準） */
-  const g = edef(e).grow;
-  if(g && e.hp > 0) e.str += g;
 }
 function winBattle(S){
   const b = S.battle;
@@ -917,6 +948,9 @@ function winBattle(S){
   if(rule2Of(S) === 'steal') stealOnWin(S, b);
   if(S.qc && b.kind !== 'boss'){ S.qc.fights++; if(b.kind === 'elite') S.qc.elites++; }   // 委託計數：打贏的戰鬥（含事件與寶箱怪帶出來的菁英戰）
   const after = b.kind === 'boss' ? 'clear' : 'map';
+  /* 材料：菁英、首領一定掉；深層的一般戰鬥有機率掉 1 份（只在深層才抽亂數） */
+  const mat = b.kind === 'boss' ? MAT_BOSS : b.kind === 'elite' ? MAT_ELITE : (segOf(S) && rand(S) < MAT_DEEP_P ? 1 : 0);
+  if(mat) gainMat(S, mat);
   if(b.kind === 'boss'){
     /* 打贏首領要明顯比中途撤離划算：棺底的深淵晶直接入帳（滿了也塞得進去，算額外獎賞），再挑一件 */
     S.bag.push('gem');
@@ -931,8 +965,14 @@ function winBattle(S){
   }else{
     S.reward = {title: '有所領悟', text: '這場仗教了你一招。', loot: null, cards: rollCards(S, cardOptN(S), 0.15), up: mutOf(S).upCards ? 1 : 0, after};
   }
+  if(mat) S.reward.mat = mat;   // 獎勵畫面顯示「材料 +n」
   S.battle = null;
   S.screen = 'reward';
+}
+/* 這趟拿到的材料（不佔背包、不加貪婪；活著回去才入帳） */
+function gainMat(S, n){
+  S.mats = (S.mats | 0) + n;
+  emit(S, {k: 'toast', t: `拿到${MATS[tierIdx(S)].n} ×${n}（這趟共 ${S.mats}）`});
 }
 
 /* —— 獎勵 —— */
@@ -1234,8 +1274,9 @@ function closeEvent(S){ S.event = null; S.screen = 'map'; }
 function finishRun(S, ok, why){
   const items = S.bag.slice();
   const bossDown = ok && S.at && S.at[0] === GAME.rows - 1;
-  const rarity = runGearRarity(S, S.greed, bossDown);
-  const gear = ok ? rollGear(S, rarity) : null;
+  /* 不再每趟送裝備。活著回去：這趟撿到的材料＋依最終貪婪階級的材料（黑暗異變再多）；死了材料留在下面 */
+  const matGreed = ok ? exitMats(S, S.greed) : 0;
+  const mats = ok ? (S.mats | 0) + matGreed : 0;
   const ending = !!(bossDown && regionOf(S.depth || 0).final);
   /* 保命繩：死亡時仍帶回背包裡價值最高的一件（只一次），照撤離的方式結算那一件 */
   let saved = null;
@@ -1253,7 +1294,7 @@ function finishRun(S, ok, why){
   const fams = {gold: 0, relic: 0, curse: 0};
   back.forEach(id => { fams[treasure(id).fam]++; });
   S.result = {ok, why, ending, items: ok ? items : saved ? [saved] : [], lost: ok ? [] : items, value: gross - toll, toll, pouch: (S.pouch || []).slice(), rope: saved, greed: S.greed,
-              steps: S.stats.steps, kills: S.stats.kills, burned: S.stats.burned, gear, bossDown, depth: S.depth, mutation: S.mutation || null, cls: clsOf(S), nm: S.nm || 0,
+              steps: S.stats.steps, kills: S.stats.kills, burned: S.stats.burned, mats, matGreed, matLost: ok ? 0 : (S.mats | 0), tier: tierIdx(S), bossDown, depth: S.depth, mutation: S.mutation || null, cls: clsOf(S), nm: S.nm || 0,
               maxGreed: S.stats.maxGreed || 0, healed: S.stats.healed === undefined ? 1 : S.stats.healed,
               /* 委託結算要用的：接下的委託、整趟計數器、帶回各類財寶件數、帶回的刻痕件數、有沒有帶著帳本撤離、這趟梅姐線開放第幾段 */
               quests: (S.quests || []).slice(), qc: Object.assign({}, S.qc), fams, mark: ok ? items.filter(isMarked).length : 0, book: ok && S.book ? 1 : 0, meiStage: S.meiStage || 0,
@@ -1278,22 +1319,14 @@ function reactOf(S, back){
 const depthName = d => DEPTHS[d % DEPTHS.length] + (d >= DEPTHS.length ? ' ' + (Math.floor(d / DEPTHS.length) + 1) : '');
 
 /* —— 營地：永久成長。meta 是存在 localStorage 的帳號資料 —— */
-/* 貪婪階級換算的稀有度，上限＝下潛深度 + 1（第 1 層最多精良，depth 3 以後才可能傳說）。打贏首領再 +1 */
-function gearRarity(greed, bossDown, depth){
-  return Math.min(RARITY.length - 1, Math.min(greedTierIndex(greed), (depth || 0) + 1) + (bossDown ? 1 : 0));
-}
-/* 這一趟回程能拿的裝備稀有度（黑暗異變高一階）。撤離確認與結算都走這裡 */
-const runGearRarity = (S, greed, bossDown) => Math.min(RARITY.length - 1, gearRarity(greed, bossDown, S.depth || 0) + (mutOf(S).gearUp || 0));
-/* 貪婪本來能換到的稀有度有沒有被深度壓低？給 UI 提示用 */
-const gearDepthCapped = (S, greed) => greedTierIndex(greed) > (S.depth || 0) + 1;
-/* 同稀有度內：先給「該部位完全沒有裝備」的，其次給還沒擁有的，都有了才給重複（換金幣） */
-function rollGear(S, r){
-  const all = Object.keys(GEAR).filter(id => GEAR[id].r === r && (!GEAR[id].ach || hasAch(S, GEAR[id].ach)));
-  const own = S.own || [];
-  const slots = new Set(own.map(id => GEAR[id] && GEAR[id].slot));
-  const tiers = [all.filter(id => !slots.has(GEAR[id].slot)), all.filter(id => !own.includes(id)), all];
-  return rpick(S, tiers.find(t => t.length));
-}
+/* 活著回去時依貪婪階級多拿的材料（黑暗異變再多 matUp）。撤離確認與結算都走這裡 */
+const exitMats = (S, greed) => MAT_GREED[greedTierIndex(greed)] + (mutOf(S).matUp || 0);
+/* —— 裝備階 —— */
+const gearTier = id => GEAR[id].r + 1;                                   // 一階～五階
+const craftMaxTier = meta => Math.min(RARITY.length, (meta.depth || 0) + 1);   // 能打造的最高階＝已解鎖的區 + 1
+const matOf = (meta, ti) => ((meta.mats || {})[ti] | 0);                 // ti＝區索引（＝階 − 1）
+/* 某階某部位的候選（不含還沒解鎖的成就裝備） */
+const tierSlotGear = (meta, r, slot) => Object.keys(GEAR).filter(id => GEAR[id].r === r && GEAR[id].slot === slot && (!GEAR[id].ach || (meta.ach || {})[GEAR[id].ach]));
 function statCost(k, lv){ return Math.round(STAT_UPS[k].base * Math.pow(STAT_UPS[k].mult, lv)); }
 /* 這項素質目前可升到幾級：依已打贏首領的最深層數（meta.depth）查 STAT_CAPS，不超過 max */
 function statCap(meta, k){
@@ -1352,22 +1385,58 @@ function buySupplies(meta, ids, depth){
   uniq.forEach(id => { sel[id] = 1; });
   return sel;
 }
-/* 鐵匠鋪：能買的稀有度上限＝已解鎖深度。回傳 ok／owned／locked／poor */
-function gearBuyState(meta, id){
+/* 鐵匠打造：金幣＋該區材料。能打造的最高階＝已解鎖的區 + 1。回傳 ok／owned／ach／locked／poor（金幣不夠）／nomat（材料不夠） */
+function craftState(meta, id){
   const g = GEAR[id];
   if(meta.owned.includes(id)) return 'owned';
   if(g.ach && !(meta.ach || {})[g.ach]) return 'ach';   // 成就解鎖的裝備：還沒達成
-  if(g.r > Math.min(meta.depth || 0, RARITY.length - 1)) return 'locked';
-  return meta.gold < RARITY[g.r].buy ? 'poor' : 'ok';
+  if(gearTier(id) > craftMaxTier(meta)) return 'locked';
+  const c = CRAFT[g.r];
+  if(matOf(meta, g.r) < c.mats) return 'nomat';
+  return meta.gold < c.gold ? 'poor' : 'ok';
 }
-function buyGear(meta, id){
-  if(!GEAR[id] || gearBuyState(meta, id) !== 'ok') return false;
-  meta.gold -= RARITY[GEAR[id].r].buy;
+function craftGear(meta, id){
+  if(!GEAR[id] || craftState(meta, id) !== 'ok') return false;
+  const g = GEAR[id], c = CRAFT[g.r];
+  meta.gold -= c.gold;
+  meta.mats = meta.mats || {};
+  meta.mats[g.r] = matOf(meta, g.r) - c.mats;
   meta.owned.push(id);
-  if(GEAR[id].r >= RARITY.length - 1) meta.boughtLegend = 1;   // 「傳說鍛造」成就
-  if(!meta.equip[GEAR[id].slot]) meta.equip[GEAR[id].slot] = id;
+  if(g.r >= RARITY.length - 1) meta.boughtLegend = 1;   // 「傳說鍛造」成就
+  const cur = meta.equip[g.slot];
+  if(!cur || GEAR[cur].r < g.r) meta.equip[g.slot] = id;   // 該部位空著或比較低階，直接穿上
   checkAchievements(meta, null);
   return true;
+}
+/* 首領首殺的招牌：第 ti 區、職業 cls。回傳要給的裝備 id；同階全都有了回傳 null（改給材料） */
+function signatureOf(meta, ti, cls){
+  const slot = (SIG_SLOT[cls] || SIG_SLOT.sword)[ti] || 'weapon';
+  const main = GEAR_MAIN[ti][slot];
+  if(!meta.owned.includes(main)) return main;
+  const order = [slot, ...Object.keys(SLOTS).filter(s => s !== slot)];
+  for(const s of order){
+    const c = tierSlotGear(meta, ti, s).find(id => !meta.owned.includes(id));
+    if(c) return c;
+  }
+  return null;
+}
+/* —— 本區門檻：營地面板、首領房前提醒、模擬機器人共用 ——
+   回傳 {ti, stats:[{k,n,need,have,ok}], gear:{tier,need,have,ok,missing:[部位名]}, met, total, lacks:[還差什麼的短句]} */
+function bossGate(meta, ti){
+  ti = Math.max(0, Math.min(DIVE_MAX, ti | 0));
+  const L = meta.stats || {};
+  const stats = GATE_STATS.map(k => {
+    const need = Math.min(STAT_UPS[k].max, STAT_CAPS[k][Math.min(ti, STAT_CAPS[k].length - 1)]), have = L[k] || 0;
+    return {k, n: STAT_UPS[k].n, need, have, ok: have >= need};
+  });
+  const tier = ti + 1, eq = meta.equip || {};
+  const at = Object.keys(SLOTS).filter(s => eq[s] && GEAR[eq[s]] && gearTier(eq[s]) >= tier);
+  const missing = Object.keys(SLOTS).filter(s => !at.includes(s)).map(s => SLOTS[s]);
+  const gear = {tier, need: GATE_GEAR[ti], have: at.length, ok: at.length >= GATE_GEAR[ti], missing};
+  const lacks = stats.filter(s => !s.ok).map(s => `${s.n}再 ${s.need - s.have} 級`);
+  if(!gear.ok) lacks.push(`還差 ${gear.need - gear.have} 件${RARITY[ti].n}裝備（${missing.join('、')}還不是${RARITY[ti].n}）`);
+  const met = stats.filter(s => s.ok).length + (gear.ok ? 1 : 0);
+  return {ti, stats, gear, met, total: stats.length + 1, lacks};
 }
 /* 開新局時帶進去的已擁有清單（回程補缺用） */
 const ownedOf = meta => meta.owned.slice();
@@ -1422,26 +1491,105 @@ function bankRewards(meta, r){
   meta.bank += r.sold;
   meta.gold += r.sold;
   meta.best = Math.max(meta.best, r.sold);
-  if(r.bossDown && r.depth >= meta.depth){ meta.depth = r.depth + 1; r.newDepth = meta.depth; }
+  const ti = Number.isFinite(r.tier) ? r.tier : Math.min(DIVE_MAX, r.depth || 0);
+  meta.mats = meta.mats || {};
+  if(r.mats) meta.mats[ti] = matOf(meta, ti) + r.mats;
+  /* 首次打倒這一區的首領：給該階招牌（同階都有了改給材料），並記下「新一階解鎖」給結算畫面 */
+  meta.bossFirst = meta.bossFirst || {};
+  if(r.bossDown && !meta.bossFirst[ti]){
+    meta.bossFirst[ti] = 1;
+    const sig = signatureOf(meta, ti, r.cls || 'sword');
+    if(sig){
+      meta.owned.push(sig);
+      const cur = meta.equip[GEAR[sig].slot];
+      if(!cur || GEAR[cur].r < GEAR[sig].r){ meta.equip[GEAR[sig].slot] = sig; r.autoEquip = 1; }
+      r.sig = sig;
+    }else{
+      r.sigMats = CRAFT[ti].mats;
+      meta.mats[ti] = matOf(meta, ti) + r.sigMats;
+    }
+  }
+  if(r.bossDown && r.depth >= meta.depth){
+    const caps0 = GATE_STATS.map(k => statCap(meta, k)), craft0 = craftMaxTier(meta);
+    meta.depth = r.depth + 1; r.newDepth = meta.depth;
+    /* 新一階解鎖：可打造的階、素質上限（只列有提高的）、下一區 */
+    r.unlock = {craft: craftMaxTier(meta) > craft0 ? craftMaxTier(meta) : 0,
+                caps: GATE_STATS.map((k, i) => ({k, n: STAT_UPS[k].n, from: caps0[i], to: statCap(meta, k)})).filter(x => x.to > x.from),
+                region: meta.depth <= DIVE_MAX ? meta.depth : -1};
+  }
   if(r.ending){
     const lim0 = nmLimit(meta);
     meta.cleared = (meta.cleared || 0) + 1;   // 打贏深淵之心的次數
     meta.nmMax = Math.max(meta.nmMax || 0, r.nm || 0);   // 通關第 N 階，開放第 N+1 階
     if(nmLimit(meta) > lim0) r.newNm = nmLimit(meta);
   }
-  bankGear(meta, r);
   checkAchievements(meta, r);
 }
-function bankGear(meta, r){
-  if(!r.gear) return;
-  if(meta.owned.includes(r.gear)){
-    r.dupGold = RARITY[GEAR[r.gear].r].sell;
-    meta.gold += r.dupGold;
-  }else{
-    meta.owned.push(r.gear);
-    const slot = GEAR[r.gear].slot;
-    if(!meta.equip[slot]){ meta.equip[slot] = r.gear; r.autoEquip = 1; }
+
+/* —— 存檔遷移（台階改造）——
+   meta v5 → v6：①裝備 id 不變，稀有度直接變成階（r＋1）。②高於「能打造的最高階」的裝備降成同部位該階的基本款，
+   每降一階補 1 份該階材料（不能靠舊存檔直接跨過下一道牆）。③已通關的區：每個部位至少補到「最後通關那一區」的階（基本款），
+   遷移後打得了已通關的區。④素質、金幣、成就、故事進度原樣保留；首殺紀錄依已通關的區補上（不重發招牌）。
+   回傳遷移紀要 {down:[[舊,新]], fill:[id], mats:{區:份}}（給 UI 提示與測試用） */
+function migrateMetaV6(meta){
+  const note = {down: [], fill: [], mats: {}};
+  meta.owned = Array.isArray(meta.owned) ? meta.owned.filter(id => GEAR[id]) : [];
+  meta.equip = meta.equip || {};
+  meta.mats = meta.mats || {};
+  meta.bossFirst = meta.bossFirst || {};
+  const maxR = craftMaxTier(meta) - 1;
+  const owned = [];
+  const swap = {};
+  meta.owned.forEach(id => {
+    const g = GEAR[id];
+    let nid = id;
+    if(g.r > maxR){
+      nid = GEAR_MAIN[maxR][g.slot];
+      note.down.push([id, nid]);
+      note.mats[maxR] = (note.mats[maxR] || 0) + (g.r - maxR);
+    }
+    swap[id] = nid;
+    if(!owned.includes(nid)) owned.push(nid);
+  });
+  for(const k in note.mats) meta.mats[k] = matOf(meta, +k) + note.mats[k];
+  for(const s in meta.equip){ const id = meta.equip[s]; meta.equip[s] = GEAR[id] && swap[id] ? swap[id] : (GEAR[id] && owned.includes(id) ? id : undefined); if(!meta.equip[s]) delete meta.equip[s]; }
+  const cleared = Math.min(DIVE_MAX + 1, meta.depth || 0);
+  for(let i = 0; i < cleared; i++) meta.bossFirst[i] = 1;
+  if(cleared > 0){
+    const floorR = Math.min(maxR, cleared - 1);
+    Object.keys(SLOTS).forEach(s => {
+      const best = owned.filter(id => GEAR[id].slot === s).reduce((m, id) => Math.max(m, GEAR[id].r), -1);
+      if(best >= floorR) return;
+      const id = GEAR_MAIN[floorR][s];
+      if(!owned.includes(id)) owned.push(id);
+      note.fill.push(id);
+    });
   }
+  meta.owned = owned;
+  /* 每個部位穿上最高階的那件（原本穿著同階的就不動） */
+  Object.keys(SLOTS).forEach(s => {
+    const mine = owned.filter(id => GEAR[id].slot === s);
+    if(!mine.length) return;
+    const top = mine.reduce((m, id) => GEAR[id].r > GEAR[m].r ? id : m, mine[0]);
+    const cur = meta.equip[s];
+    if(!cur || GEAR[cur].r < GEAR[top].r) meta.equip[s] = top;
+  });
+  return note;
+}
+/* 一趟的存檔升級：v1（台階改造前）→ v2。下潛深度超過最後一區（舊的循環深度）沒辦法對應，安全作廢：
+   照身上財寶的賣價退金幣（新公式、不扣過路費）。回傳 {run: 升級後的局或 null, refund: 退還金幣} */
+function migrateRun(r){
+  if(!r || typeof r !== 'object') return {run: null, refund: 0};
+  if(r.v === RUN_VER) return {run: r, refund: 0};
+  if(r.v !== 1) return {run: null, refund: 0};
+  const bag = Array.isArray(r.bag) ? r.bag.filter(id => typeof id === 'string' && treasure(id)) : [];
+  if((r.depth || 0) > DIVE_MAX || r.screen === 'result'){
+    const probe = {depth: Math.min(DIVE_MAX, r.depth || 0), mutation: r.mutation, nm: r.nm || 0};
+    return {run: null, refund: bag.reduce((a, id) => a + treasureValue(probe, id), 0)};
+  }
+  r.v = RUN_VER;
+  r.mats = r.mats | 0;
+  return {run: r, refund: 0};
 }
 
 /* —— 故事進度（NPC 對話、各層進場劇情、見聞）。文本在 story.js；meta.talk / seenEnter / seenLore 都是 {鍵:1} —— */
@@ -1481,6 +1629,7 @@ function ensureRuleState(S){
   S.heart = Number.isFinite(S.heart) && S.heart >= 1 ? Math.min(S.heart, HEART_EVERY) : HEART_EVERY - (st % HEART_EVERY);
   S.toll = Number.isFinite(S.toll) ? Math.max(0, S.toll) : 0;
   S.bossBack = S.bossBack | 0;
+  S.mats = S.mats | 0;
   return S;
 }
 const questReward = (id, depth) => Math.round(QUESTS[id].gold * (1 + QUEST_DEPTH_K * Math.max(0, depth | 0)));

@@ -1,7 +1,7 @@
 'use strict';
 /* ============ ui.js — 畫面與演出。規則都在 core.js，這裡只讀狀態、呼叫動作、播 S.fx。 ============ */
 
-const RUN_KEY = 'abyss2-run', META_KEY = 'abyss2-meta', META_VER = 5;
+const RUN_KEY = 'abyss2-run', META_KEY = 'abyss2-meta', META_VER = 6;
 const $ = id => document.getElementById(id);
 const ic = (n, cls) => `<svg class="ic ${cls || ''}"><use href="#ic-${n}"/></svg>`;
 const art = p => `${ART}${p}?v=4`;
@@ -23,7 +23,7 @@ let questSel = [];       // 委託板：目前接下的委託 id（最多 QUEST_
 let dlg = null;          // 目前開著的對話：{o:{title,sub,paras,onEnd,after,extra}, n:已顯示段數}
 
 function loadMeta(){
-  const blank = () => ({v: META_VER, runs: 0, escapes: 0, best: 0, bank: 0, seenHelp: 0, depth: 0, cleared: 0, gold: 0, stats: {}, owned: [], equip: {}, cls: 'sword', seenCls: {}, ach: {}, clsStats: {}, seenFoe: {}, seenTre: {}, nmMax: 0, mutEsc: 0, boughtLegend: 0, talk: {}, seenEnter: {}, seenLore: {}, board: null, mei: {stage: 0, n: 0}, meiBonus: 0, meiSay: []});
+  const blank = () => ({v: META_VER, runs: 0, escapes: 0, best: 0, bank: 0, seenHelp: 0, depth: 0, cleared: 0, gold: 0, stats: {}, owned: [], equip: {}, cls: 'sword', seenCls: {}, ach: {}, clsStats: {}, seenFoe: {}, seenTre: {}, nmMax: 0, mutEsc: 0, boughtLegend: 0, talk: {}, seenEnter: {}, seenLore: {}, board: null, mei: {stage: 0, n: 0}, meiBonus: 0, meiSay: [], mats: {}, bossFirst: {}});
   try{
     const raw = localStorage.getItem(META_KEY);
     if(raw === null) return blank();
@@ -34,6 +34,8 @@ function loadMeta(){
       /* v3 → v4：素質等級曾受已通關層數限制，超出的退等並全額退金幣。只在從 v3 升上來時跑一次；
          v4 起超額等級可加價購買，v4 → v5 不可再 clamp，否則玩家加價買的等級會被退掉 */
       const refunded = m.v < 4 ? clampStats(mm) : 0;
+      /* v5 → v6：台階改造。裝備換成對應階的固定件、補已通關區的階；先原樣備份一份 */
+      if(m.v < 6){ try{ localStorage.setItem(META_KEY + '-v5bak', raw); }catch(e){} mm.migNote = migrateMetaV6(mm); }
       if(m.v !== META_VER || refunded){ mm.v = META_VER; try{ localStorage.setItem(META_KEY, JSON.stringify(mm)); }catch(e){} }
       if(!clsUnlocked(mm, mm.cls)) mm.cls = 'sword';   // 沒有的職業或還沒解鎖，退回劍士
       /* 成就補發：舊進度已滿足、而且能從 meta 回溯的（生還過、打贏首領、累計下潛…）。有新達成就存回去 */
@@ -59,8 +61,13 @@ function saveRun(){
 }
 function loadRun(){
   try{
-    const r = JSON.parse(localStorage.getItem(RUN_KEY) || 'null');
-    if(!r || r.v !== 1) return null;
+    const r0 = JSON.parse(localStorage.getItem(RUN_KEY) || 'null');
+    /* 舊格式（v1）：能升級就升級；不能（舊的循環深度）就作廢，照身上財寶賣價退金幣 */
+    const mg = migrateRun(r0), r = mg.run;
+    if(!r){
+      if(r0){ localStorage.removeItem(RUN_KEY); if(mg.refund > 0){ meta.gold += mg.refund; meta.runRefund = mg.refund; saveMeta(); } }
+      return null;
+    }
     /* 營地上線前的舊進度沒有這些欄位 */
     r.load = r.load || {};
     r.bagCap = r.bagCap || GAME.bag;
@@ -235,7 +242,7 @@ function gearIcon(id){
 function campHtml(){
   const L = loadoutFrom(meta);
   const saved = loadRun();
-  const maxD = meta.depth || 0;
+  const maxD = Math.min(DIVE_MAX, meta.depth || 0);
   const d = diveDepth === null ? maxD : Math.min(diveDepth, maxD);
   const nmLim = nmLimit(meta), nmSel = Math.min(diveNm, nmLim);
   const nmRow = nmLim > 0 ? `<div class="depth-pick nm-pick"><button class="chip" data-act="nmSet:${nmSel - 1}" ${nmSel <= 0 ? 'disabled' : ''}>較低</button>
@@ -246,7 +253,7 @@ function campHtml(){
     return `<button class="slot" data-act="gearSheet:${k}">
       ${g ? gearIcon(id) : '<span class="slot-empty">空</span>'}
       <span class="slot-t"><small>${SLOTS[k]}・持有 ${meta.owned.filter(id => GEAR[id].slot === k).length} / ${Object.keys(GEAR).filter(id => GEAR[id].slot === k).length}</small><b style="color:${g ? RARITY[g.r].c : 'var(--dim)'}">${g ? g.n : '還沒有裝備'}</b>
-      <small>${g ? g.d : '活著回來就會拿到'}</small></span></button>`;
+      <small>${g ? `${RARITY[g.r].n}・${g.d}` : '打倒首領或在鐵匠鋪打造'}</small></span></button>`;
   }).join('');
   const ups = Object.keys(STAT_UPS).map(k => {
     const u = STAT_UPS[k], lv = meta.stats[k] || 0, full = lv >= u.max, price = statPrice(meta, k), cap = statCap(meta, k), over = !full && lv >= cap;
@@ -254,14 +261,17 @@ function campHtml(){
       ${over ? `<div class="up-d" style="color:#e0813f">超出上限，價格 ×${STAT_OVER_MULT}；打贏第 ${statUnlockAt(k, lv)} 層首領後恢復原價</div>` : ''}</div>
       <button class="btn up-btn" data-act="buy:${k}" ${full || meta.gold < price ? 'disabled' : ''}>${full ? '已滿' : `${ic('gold')} ${price}`}</button></div>`;
   }).join('');
-  const smith = Object.keys(GEAR).filter(id => !meta.owned.includes(id) && (smithTab === 'all' || GEAR[id].slot === smithTab)).sort((a, b) => GEAR[a].r - GEAR[b].r).map(id => {
-    const g = GEAR[id], R = RARITY[g.r], st = gearBuyState(meta, id);
+  /* 鐵匠鋪：顯示能打造的階與下一階（下一階鎖著，讓玩家看得到牆後面有什麼） */
+  const smith = Object.keys(GEAR).filter(id => !meta.owned.includes(id) && (smithTab === 'all' || GEAR[id].slot === smithTab) && gearTier(id) <= craftMaxTier(meta) + 1).sort((a, b) => GEAR[a].r - GEAR[b].r).map(id => {
+    const g = GEAR[id], R = RARITY[g.r], st = craftState(meta, id), c = CRAFT[g.r], have = matOf(meta, g.r);
     return `<div class="up-row${st === 'locked' || st === 'ach' ? ' locked' : ''}">${gearIcon(id)}
-      <div class="up-t"><b style="color:${R.c}">${g.n}</b> <small>${SLOTS[g.slot]}・${R.n}</small><div class="up-d">${g.d}</div></div>
+      <div class="up-t"><b style="color:${R.c}">${g.n}</b> <small>${SLOTS[g.slot]}・${R.n}</small><div class="up-d">${g.d}</div>
+      ${st === 'ach' || st === 'locked' ? '' : `<div class="up-d" style="color:${have >= c.mats ? 'var(--gold)' : '#e0813f'}">${MATS[g.r].n} ${have}/${c.mats}・金幣 ${c.gold}</div>`}</div>
       ${st === 'ach' ? `<span class="lock-note">成就「${ACHIEVEMENTS.find(a => a.id === g.ach).n}」後開放</span>`
-      : st === 'locked' ? `<span class="lock-note">解鎖第 ${g.r + 1} 層後開放</span>`
-        : `<button class="btn up-btn" data-act="smith:${id}" ${st === 'ok' ? '' : 'disabled'}>${ic('gold')} ${R.buy}</button>`}</div>`;
+      : st === 'locked' ? `<span class="lock-note">打贏第 ${g.r} 層首領後開放</span>`
+        : `<button class="btn up-btn" data-act="smith:${id}" ${st === 'ok' ? '' : 'disabled'}>打造</button>`}</div>`;
   }).join('');
+  const matsRow = MATS.map((m, i) => i < craftMaxTier(meta) ? `<span>${m.n}（${RARITY[i].n}） <b>${matOf(meta, i)}</b></span>` : '').join('');
   return `<div class="camp-head" style="background-image:linear-gradient(180deg,rgba(8,6,5,.35),var(--bg)),url('${ART}camp3.webp')">
       <button class="chip camp-back" data-act="toTitle">標題</button>
       <div class="page-title">營地</div>
@@ -282,11 +292,13 @@ function campHtml(){
         <span>生命 <b>${CLASSES[meta.cls].hp + (L.hp || 0)}</b></span><span>力量 <b>${L.str || 0}</b></span>
         <span>開場格擋 <b>${L.blk || 0}</b></span><span>背包 <b>${GAME.bag + (L.bag || 0)}</b></span>
       </div>
+      ${gateHtml(diveD(), true)}
       <div class="sect">裝備（點一下更換）</div>
       <div class="col" style="gap:6px">${slots}</div>
       <div class="sect">素質（永久提升）</div>
       ${ups}
-      <div class="sect" id="smithSect">鐵匠鋪（金幣買裝備，稀有度上限＝解鎖到第幾層）</div>
+      <div class="sect" id="smithSect">鐵匠鋪（金幣＋該區材料打造；目前能打造到${RARITY[craftMaxTier(meta) - 1].n}）</div>
+      <div class="camp-power">${matsRow}</div>
       <div class="tabs">${[['all', '全部'], ...Object.entries(SLOTS)].map(([k, n]) => `<button class="chip${smithTab === k ? ' on' : ''}" data-act="smithTab:${k}">${n}</button>`).join('')}</div>
       ${smith || '<div class="sheet-p" style="color:var(--dim)">這一類全部都買齊了。</div>'}
     </div>
@@ -294,7 +306,7 @@ function campHtml(){
       ${saved ? `<button class="btn primary" data-act="resume">繼續這一趟<small>${saved.bag.length} 件財寶還在身上</small></button>
         <button class="btn danger" style="margin-top:6px;padding:8px" data-act="confirmNew">放棄這一趟</button>`
       : `${maxD > 0 ? `<div class="depth-pick"><button class="chip" data-act="depth:${d - 1}" ${d <= 0 ? 'disabled' : ''}>較淺</button>
-          <span>第 ${d + 1} 層・${depthName(d)}<small>敵人 +${Math.round((depthMul('hp', d) - 1) * 100)}%・財寶 +${Math.round((depthMul('value', d) - 1) * 100)}%${regionOf(d).rule ? `<br>規則：${regionOf(d).rule.n}（${regionOf(d).rule.d}）` : ''}${regionOf(d).rule2 ? `<br>規則：${regionOf(d).rule2.n}（${regionOf(d).rule2.d}）` : ''}</small></span>
+          <span>第 ${d + 1} 層・${depthName(d)}<small>${RARITY[Math.min(d, DIVE_MAX)].n}・財寶賣價 ×${TIER_VALUE[Math.min(d, DIVE_MAX)]}${regionOf(d).rule ? `<br>規則：${regionOf(d).rule.n}（${regionOf(d).rule.d}）` : ''}${regionOf(d).rule2 ? `<br>規則：${regionOf(d).rule2.n}（${regionOf(d).rule2.d}）` : ''}</small></span>
           <button class="chip" data-act="depth:${d + 1}" ${d >= maxD ? 'disabled' : ''}>較深</button></div>` : ''}
         ${nmRow}
         <button class="btn primary" data-act="newGame">下潛${meta.escapes >= 1 ? '<small>下潛前可以選一個異變</small>' : ''}</button>`}
@@ -351,12 +363,12 @@ function openGearSheet(slot){
     ${list.length ? list.map(id => { const g = GEAR[id], on = meta.equip[slot] === id;
       return `<div class="bag-line">${gearIcon(id)}<div><span style="color:${RARITY[g.r].c}">${g.n}</span> <span class="sub">${RARITY[g.r].n}</span><div class="sub">${g.d}</div></div>
         ${on ? '<span class="sub" style="margin-left:auto;flex:none">穿著中</span>' : `<button class="btn" data-act="equip:${id}">穿上</button>`}</div>`;
-    }).join('') : '<div class="sheet-p" style="color:var(--dim)">還沒有這類裝備。活著回來就會拿到一件，貪婪越高越好。</div>'}
+    }).join('') : '<div class="sheet-p" style="color:var(--dim)">還沒有這類裝備。首次打倒首領會給一件，或在鐵匠鋪用材料打造。</div>'}
     <button class="btn sticky-close" style="margin-top:10px" data-act="closeSheet">關閉</button>`);
 }
 
 /* —— 出發前補給：勾選、出發時才扣錢 —— */
-const diveD = () => { const maxD = meta.depth || 0; return diveDepth === null ? maxD : Math.min(diveDepth, maxD); };
+const diveD = () => { const maxD = Math.min(DIVE_MAX, meta.depth || 0); return diveDepth === null ? maxD : Math.min(diveDepth, maxD); };
 function openSupplySheet(){
   const d = diveD(), total = supplyTotal(supSel, d), left = meta.gold - total;
   openSheet(`<div class="sheet-t">出發前補給　<small style="font-size:12px;color:var(--dim);letter-spacing:0">只管這一趟，每種一個</small></div>
@@ -653,7 +665,8 @@ function rewardHtml(){
   if(!R.loot && !R.cards && R.again) body += `<div class="col" style="margin-top:14px">
     <button class="btn danger" data-act="chestAgain">再翻一次<small>${Math.round(GAME.chestMimic * 100)}% 機率是寶箱怪</small></button>
     <button class="btn primary" data-act="closeReward">見好就收</button></div>`;
-  return `${hud()}<div class="screen"><div class="page-title">${R.title}</div><div class="page-text">${R.text}</div>${body}</div>`;
+  const matLine = R.mat ? `<div class="page-text" style="color:var(--gold)">${MATS[tierIdx(S)].n} +${R.mat}（這趟共 ${S.mats | 0}，活著回去才算）</div>` : '';
+  return `${hud()}<div class="screen"><div class="page-title">${R.title}</div><div class="page-text">${R.text}</div>${matLine}${body}</div>`;
 }
 
 /* —— 營火 —— */
@@ -713,8 +726,9 @@ function resultHtml(){
     ${r.nm ? `<div class="mut-note nm-note">噩夢 ${r.nm} 階　財寶賣價 +${Math.round(NM_SELL * r.nm * 100)}%</div>` : ''}
     ${r.newNm ? `<div class="unlock">開放噩夢 ${r.newNm} 階</div>` : ''}
     ${(r.newAch || []).map(achHtml).join('')}
-    ${r.gear ? gearReward(r) : ''}
-    ${r.newDepth ? `<div class="unlock">解鎖第 ${r.newDepth + 1} 層・${depthName(r.newDepth)}</div>` : ''}
+    ${matResultHtml(r)}
+    ${r.sig || r.sigMats ? gearReward(r) : ''}
+    ${r.unlock ? unlockHtml(r) : ''}
     ${r.items.length ? `<div class="sect">${r.ok ? '賣掉的財寶' : '保命繩帶回的財寶'}</div><div class="bag-grid">${list(r.items)}</div>` : ''}
     ${r.lost.length ? `<div class="sect">永遠留在下面</div><div class="bag-grid">${list(r.lost, 1)}</div>` : ''}
     ${(r.pouch || []).length ? `<div class="sect">贓物袋裡的東西，沒拿回來</div><div class="bag-grid">${list(r.pouch, 1)}</div>` : ''}
@@ -724,18 +738,42 @@ function resultHtml(){
   </div>`;
 }
 function rewardText(rw){
-  return rw.card ? `新技能「${CARDS[rw.card].n}」加入獎勵牌池` : rw.gear ? `新裝備「${GEAR[rw.gear].n}」可在鐵匠鋪購買、回程掉落` : `${rw.gold} 金幣`;
+  return rw.card ? `新技能「${CARDS[rw.card].n}」加入獎勵牌池` : rw.gear ? `新裝備「${GEAR[rw.gear].n}」可在鐵匠鋪打造` : `${rw.gold} 金幣`;
 }
 function achHtml(id){
   const a = ACHIEVEMENTS.find(x => x.id === id);
   return `<div class="ach-get"><small>達成成就</small><b>${a.n}</b><div>${a.d}</div><small>獎勵：${rewardText(a.reward)}</small></div>`;
 }
+/* 首殺招牌（只有第一次打倒該區首領才有） */
 function gearReward(r){
-  const g = GEAR[r.gear], R = RARITY[g.r];
-  const note = r.dupGold ? `已經有了，換成 ${r.dupGold} 金幣` : r.autoEquip ? '已自動穿上' : '到營地可以換上';
-  return `<div class="gear-get" style="border-color:${R.c}">${gearIcon(r.gear)}
-    <div><small>依最終貪婪 ${r.greed}${r.bossDown ? '＋打贏首領' : ''} 獲得${r.greed >= 12 && greedTierIndex(r.greed) > (r.depth || 0) + 1 ? '（受下潛深度限制，往更深才有更好的）' : ''}</small>
-    <b style="color:${R.c}">${g.n}</b> <small>${R.n}</small><div>${g.d}</div><small>${note}</small></div></div>`;
+  if(!r.sig) return `<div class="gear-get"><div><small>首次打倒首領</small><b>這一階的裝備你都有了</b><div>改給 ${MATS[r.tier].n} ×${r.sigMats}</div></div></div>`;
+  const g = GEAR[r.sig], R = RARITY[g.r];
+  return `<div class="gear-get" style="border-color:${R.c}">${gearIcon(r.sig)}
+    <div><small>首次打倒首領・${R.n}招牌</small>
+    <b style="color:${R.c}">${g.n}</b> <small>${SLOTS[g.slot]}</small><div>${g.d}</div><small>${r.autoEquip ? '已自動穿上' : '到營地可以換上'}</small></div></div>`;
+}
+/* 結算的材料欄：不再每趟給裝備，改給材料 */
+function matResultHtml(r){
+  const m = MATS[r.tier || 0];
+  if(r.ok) return `<div class="mut-note">材料　<b>${m.n} ×${r.mats || 0}</b>${r.matGreed ? `（含貪婪「${GREED_TIERS[greedTierIndex(r.greed)].n}」多給 ${r.matGreed}）` : ''}<br><small>拿到鐵匠鋪打造${RARITY[r.tier || 0].n}裝備</small></div>`;
+  return r.matLost ? `<div class="mut-note">${m.n} ×${r.matLost} 跟著留在下面了</div>` : '';
+}
+/* 新一階解鎖的提示 */
+function unlockHtml(r){
+  const u = r.unlock, lines = [];
+  if(u.region >= 0) lines.push(`新區域：第 ${u.region + 1} 層・${DEPTHS[u.region]}（新敵人、新規則）`);
+  if(u.craft) lines.push(`鐵匠鋪可以打造${RARITY[u.craft - 1].n}裝備（材料：${MATS[u.craft - 1].n}）`);
+  if(u.caps.length) lines.push('素質上限提高：' + u.caps.map(c => `${c.n} ${c.from}→${c.to}`).join('、'));
+  return `<div class="unlock">新一階解鎖</div><div class="sheet-p" style="text-align:left">${lines.map(t => '・' + t).join('<br>')}</div>`;
+}
+/* 本區門檻：營地（camp＝true）與首領房前共用。只是建議，不擋路 */
+function gateHtml(ti, camp){
+  const g = bossGate(meta, ti), boss = ENEMIES[REGIONS[g.ti].boss].n, cleared = (meta.depth || 0) > g.ti;
+  const row = (ok, t, v) => `<div class="tier-line" style="grid-template-columns:22px 1fr auto"><span>${ok ? '✔' : '・'}</span><span>${t}</span><span>${v}</span></div>`;
+  return `<div class="sect">${camp ? '本區門檻' : '門檻'}・第 ${g.ti + 1} 層 ${boss}${cleared ? '（已打倒過）' : ''}</div>
+    <div class="gate">${g.stats.map(s => row(s.ok, `${s.n} 建議 ${s.need} 級`, `現在 ${s.have}`)).join('')}
+    ${row(g.gear.ok, `${RARITY[g.ti].n}裝備 建議 ${g.gear.need} 件以上`, `現在 ${g.gear.have}`)}
+    <div class="sheet-p" style="margin:6px 0 0">達標 ${g.met} / ${g.total}。${g.lacks.length ? '還差：' + g.lacks.join('、') + '。' : '準備好了。'}</div></div>`;
 }
 function bankResult(){
   if(!S.result || S.result.banked) return;
@@ -827,7 +865,7 @@ function openRestPick(mode){
 function openGreedInfo(){
   const ti = greedTierIndex(S.greed);
   openSheet(`<div class="sheet-t">貪婪 ${S.greed}</div>
-    <div class="sheet-p">每走一格 +${GAME.stepGreed}，撿到財寶再加。越貪，敵人越凶，但活著回去拿到的裝備也越好（稀有度最高＝下潛層數 + 1 階，打贏首領再高一階）。首領只吃一半的加成。把財寶餵掉或被偷，貪婪就會降回來。</div>
+    <div class="sheet-p">每走一格 +${GAME.stepGreed}，撿到財寶再加。越貪，敵人越凶、財寶越好；眼紅以上活著回去還多拿材料（打造裝備用）。首領只吃一半的加成。把財寶餵掉或被偷，貪婪就會降回來。</div>
     ${GREED_TIERS.map((t, i) => `<div class="tier-line${i === ti ? ' on' : ''}"><span>${t.min}+</span><span>${t.n}</span><span>${t.desc}</span></div>`).join('')}
     <button class="btn" style="margin-top:10px" data-act="closeSheet">關閉</button>`);
 }
@@ -835,11 +873,11 @@ function openHelp(){
   const cl = S ? clsOf(S) : (meta.cls || 'sword'), cd = CLASSES[cl];
   openSheet(`<div class="sheet-t">怎麼玩</div>
     <div class="sheet-p"><b>下潛：</b>在分岔地圖往下走，打倒首領或走到<span style="color:var(--green)">撤離點</span>才算帶回來；死了，身上財寶全沒。</div>
-    <div class="sheet-p"><b>財寶：</b><span style="color:var(--gold)">金銀</span>賣得貴；<span style="color:var(--green)">遺物</span>不值錢但帶著變強；<span style="color:var(--red)">詛咒</span>最值錢但有代價。拿越多<b>貪婪</b>越高，敵人更凶、回去的裝備更好。</div>
+    <div class="sheet-p"><b>財寶：</b><span style="color:var(--gold)">金銀</span>賣得貴；<span style="color:var(--green)">遺物</span>不值錢但帶著變強；<span style="color:var(--red)">詛咒</span>最值錢但有代價。拿越多<b>貪婪</b>越高，敵人更凶、財寶更好。</div>
     <div class="sheet-p"><b>戰鬥：</b>每回合 3 行動點、抽 ${cd.hand || GAME.hand} 張。敵人頭上是下一招。點敵人換目標，點技能使用，<b>長按看說明</b>。快撐不住可餵一件財寶換行動點。</div>
     <div class="sheet-p"><b>${cd.n}：</b>${cd.how}</div>
     <div class="sheet-p"><b>${cd.greed.n}：</b>${cd.greed.d}</div>
-    <div class="sheet-p"><b>回營地：</b>財寶換成金幣，永久提升素質、買裝備。生還一次後，下潛前可選一個異變（好處配代價）。</div>
+    <div class="sheet-p"><b>回營地：</b>財寶換成金幣，永久提升素質；帶回的材料拿去鐵匠鋪打造裝備。每一層的敵人強度固定（淺層、深層、首領三段），首領是一道牆，準備好了再挑戰。生還一次後，下潛前可選一個異變（好處配代價）。</div>
     <button class="btn primary" data-act="closeSheet">知道了</button>`);
 }
 
@@ -1080,7 +1118,7 @@ const ACT = {
       <div class="col"><button class="btn primary" data-act="records">回見聞</button><button class="btn" data-act="closeSheet">關閉</button></div>`);
   },
   confirmNew(){
-    openSheet(`<div class="sheet-t">放棄這一趟？</div><div class="sheet-p">身上的財寶會全部失去，也拿不到裝備。</div>
+    openSheet(`<div class="sheet-t">放棄這一趟？</div><div class="sheet-p">身上的財寶與這趟的材料會全部失去。</div>
       <div class="col"><button class="btn danger" data-act="abandon">放棄</button><button class="btn" data-act="closeSheet">算了</button></div>`);
   },
   abandon(){ localStorage.removeItem(RUN_KEY); closeSheet(); render(); },
@@ -1096,7 +1134,7 @@ const ACT = {
   toTitle(){ S = null; view = 'title'; closeSheet(); $('app').removeAttribute('style'); render(); },
   toCamp(){ S = null; view = 'camp'; diveDepth = null; closeSheet(); $('app').removeAttribute('style'); render(); playMeiSay(); },
   buy(k){ if(buyStat(meta, k)){ saveMeta(); SFX.clink(); renderKeep(); } },
-  smith(id){ if(buyGear(meta, id)){ saveMeta(); SFX.clink(); renderKeep(); } },
+  smith(id){ if(craftGear(meta, id)){ saveMeta(); SFX.clink(); renderKeep(); } },
   smithTab(k){ smithTab = k; renderKeep(); },
   setCls(id){
     if(!CLASSES[id]) return;
@@ -1142,14 +1180,14 @@ const ACT = {
       const T = greedTier(S), pc = m => Math.round((1 + (m - 1) / 2 - 1) * 100);
       openSheet(`<div class="sheet-t">${greedy ? '貪婪還沒放下' : bossName(S)}</div>
         ${REGION_STORY[enterRegion(S.depth)].boss.map(t => `<p class="story-p">${t}</p>`).join('')}
+        ${gateHtml(S.depth || 0, false)}
         ${greedy ? `<div class="sheet-p">目前貪婪「${T.n}」：${bossName(S)}血量 <b>+${pc(T.hp)}%</b>、傷害 <b>+${pc(T.dmg)}%</b>${T.start >= 2 ? `、開場格擋 ${Math.floor(T.start / 2)}` : ''}。進去前可以先餵掉或丟掉財寶，把貪婪降下來。</div>` : ''}
         <div class="col"><button class="btn primary" data-act="bossGo:${arg}">進去</button>${greedy ? '<button class="btn" data-act="bagSheet">看背包</button>' : ''}<button class="btn" data-act="closeSheet">再想想</button></div>`);
       return;
     }
     if(S.map[r][c].t === 'exit'){
       openSheet(`<div class="sheet-t">從這裡撤離？</div>
-        <div class="sheet-p">賣掉身上 ${S.bag.length} 件財寶得 <b style="color:var(--gold)">${Math.round((bagValue(S) - tollPaid(S, bagValue(S))) * (1 + (meta.meiBonus || 0)))}</b> 金幣${meta.meiBonus ? '（含梅姐收購價加成）' : ''}${tollPaid(S, bagValue(S)) ? `（已扣過路費 ${tollPaid(S, bagValue(S))}）` : ''}${(S.pouch || []).length ? `，贓物袋裡還有 ${S.pouch.length} 件拿不回來` : ''}${S.mutation ? `（已含異變「${MUTATIONS[S.mutation].n}」：${MUTATIONS[S.mutation].good}）` : ''}，再依貪婪拿一件<b style="color:${RARITY[runGearRarity(S, S.greed + stepGreedOf(S), false)].c}">${RARITY[runGearRarity(S, S.greed + stepGreedOf(S), false)].n}裝備</b>。這一趟就結束了。</div>
-        ${gearDepthCapped(S, S.greed + stepGreedOf(S)) ? `<div class="sheet-p" style="color:var(--dim);font-size:12px">貪婪夠高，但這一層最多只能拿${RARITY[runGearRarity(S, S.greed + stepGreedOf(S), false)].n}的裝備；往更深走才有更好的。打贏首領還能再升一階。</div>` : ''}
+        <div class="sheet-p">賣掉身上 ${S.bag.length} 件財寶得 <b style="color:var(--gold)">${Math.round((bagValue(S) - tollPaid(S, bagValue(S))) * (1 + (meta.meiBonus || 0)))}</b> 金幣${meta.meiBonus ? '（含梅姐收購價加成）' : ''}${tollPaid(S, bagValue(S)) ? `（已扣過路費 ${tollPaid(S, bagValue(S))}）` : ''}${(S.pouch || []).length ? `，贓物袋裡還有 ${S.pouch.length} 件拿不回來` : ''}${S.mutation ? `（已含異變「${MUTATIONS[S.mutation].n}」：${MUTATIONS[S.mutation].good}）` : ''}，帶回材料 <b>${MATS[tierIdx(S)].n} ×${(S.mats | 0) + exitMats(S, S.greed + stepGreedOf(S))}</b>${exitMats(S, S.greed + stepGreedOf(S)) ? `（含貪婪多給 ${exitMats(S, S.greed + stepGreedOf(S))}）` : ''}。這一趟就結束了。</div>
         <div class="col"><button class="btn primary" data-act="exitGo:${arg}">爬上去</button><button class="btn" data-act="closeSheet">再貪一點</button></div>`);
       return;
     }
@@ -1247,7 +1285,7 @@ function foeInfo(e){
     ${e.mk > 0 ? `<div class="sheet-p"><b style="color:#d9a6ff">咒印 ${e.mk}</b>：牠受到的每次傷害 +${e.mk}，不會消失。</div>` : ''}
     ${d0.dodge ? `<div class="sheet-p">閃避率 ${Math.round(d0.dodge * 100)}%。</div>` : ''}
     ${d0.half ? `<div class="sheet-p">生命過半後${e.half ? '（已經）' : ''}力量 +${d0.half.str}。</div>` : ''}
-    ${d0.form2 ? `<div class="sheet-p">生命過半後${e.form ? '（已經）' : ''}顯出真身：招式全換，每回合力量 +${d0.form2.grow || 0}，並回復 ${Math.round((d0.form2.heal || 0) * 100)}% 生命。</div>` : ''}
+    ${d0.form2 ? `<div class="sheet-p">生命過半後${e.form ? '（已經）' : ''}顯出真身：招式全換，力量一次 +${d0.form2.str || 0}，並回復 ${Math.round((d0.form2.heal || 0) * 100)}% 生命。</div>` : ''}
     ${e.traits.map(t => `<div class="sheet-p"><b style="color:#ff8a78">${TRAITS[t].n}</b>：${TRAITS[t].d}</div>`).join('')}
     <div class="sect">招式循環</div>
     ${d.pat.map((p, i) => `<div class="tier-line${i === now ? ' on' : ''}" style="grid-template-columns:70px 1fr"><span>${p.nm || (i === now ? '下一招' : '')}</span><span>${line(p)}</span></div>`).join('')}
