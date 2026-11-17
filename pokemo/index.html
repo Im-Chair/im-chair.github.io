@@ -512,7 +512,9 @@ const TREE_SHADE_A=.38;       // 樹林底下的深綠不透明度
 const PATH_FREE_ROT=['tiles','tiles_coast','tiles_ember','tiles_abyss'];   // 路面紋理可隨機旋轉的圖集（土、沙、灰）；其餘是木棧道、石板等人造鋪面，照格子排
 const TEX_CELLS=4,TEX_STAMP=1.5;   // 路、水的無縫紋理：邊長（格）、印章大小（格）；印章隨機旋轉，避免看出重複的斜紋
 // 世界變形（道路彎曲、區塊不規則）：每格取樣數、八度 [波長 l（格）, 幅度 a（格）]、地圖邊緣與剛性物（房屋、門、告示牌、碼頭、出口）的漸降距離 [0 起點, 全幅], 行列式下限、個別地圖倍率（MAPS 也可設 warp:{amp}）
-const WARP_R=4,WARP_OCT=[{l:15,a:1.6},{l:6.5,a:.45}],WARP_EDGE=[.6,4],WARP_RIGID=[.8,5],WARP_DET_MIN=.55;
+// 世界變形：WARP_R 每格取樣數｜WARP_AMP 全域幅度｜WARP_OCT 各向同性的雜訊八度（波長、幅度）｜WARP_WAVE 剪切波（波長、幅度）｜WARP_PHASE 剪切波相位雜訊（波長、幅度弧度）｜WARP_WAVE_V 剪切波幅度起伏（±比例）；行列式不夠的地方再局部壓低｜WARP_EDGE 地圖邊緣的法向漸降（格；切向位移保留）
+// WARP_RIG 剛性群組外的過渡寬度範圍（格），實際寬度＝WARP_RIG_K×群組周圍自由位移與群組位移的最大差，夾在範圍內｜WARP_RIG_M 群組外圈仍保持整組位移的寬度（網格內插才不會滲進組內）｜WARP_DET_MIN 行列式下限（防摺疊）
+const WARP_R=4,WARP_AMP=1,WARP_OCT=[{l:12,a:.5},{l:6,a:.3}],WARP_WAVE=[{l:9,a:.75},{l:5,a:.3}],WARP_PHASE=[12,2.5],WARP_WAVE_V=.3,WARP_EDGE=2.5,WARP_RIG=[1.5,3.5],WARP_RIG_K=2.7,WARP_RIG_M=.35,WARP_RIG_GAP=2.5,WARP_DET_MIN=.45;
 const WARP_MAP_AMP={throne:.5,tower:.5,memory1:.5,memory2:.5,memory3:.5,memory4:.5};
 const PROP_JIT=.16,PROP_JIT_IN=.24,PROP_JIT_Y=.1,PROP_SCALE=[.86,1.1];   // 樹石灌木的格內偏移（格；四周都不可走時用 _IN）與大小變化
 const snapPx=v=>Math.round(v*mdpr)/mdpr;            // 對齊裝置像素
@@ -1078,55 +1080,112 @@ function vnoise(seed){   // 二維值雜訊，回傳 f(x,y) ∈ -1~1
   return (x,y)=>{const i=Math.floor(x),j=Math.floor(y),fx=x-i,fy=y-j,sx=fx*fx*(3-2*fx),sy=fy*fy*(3-2*fy),a=h(i,j),b=h(i+1,j),c=h(i,j+1),d=h(i+1,j+1);return a+(b-a)*sx+(c-a)*sy+(a-b-c+d)*sx*sy};
 }
 /* --- 世界變形：邏輯座標 q（格子、碰撞、事件）與畫面上的世界座標 p 之間的平滑雙射 q = p + D(p) ---
-   D 是兩個八度的低頻位移場（種子＝地圖代號），地圖四周與房屋、門、告示牌、碼頭、出口落點附近漸降到 0。
+   D 是兩個八度的低頻位移場（種子＝地圖代號）。
+   剛性群組（房屋連門、柵門、噴泉、碼頭、多格擺設；相連的格算同一組）內 D 是常數：整組一起平移、保持端正；組外在過渡寬度內平滑接回自由位移。
+   單格的東西（告示牌、出口與落點、NPC、古碑）只是一個邏輯點，畫在正向位置、跟著地面走，不需要剛性。
+   地圖邊緣只有法向位移漸降到 0（內容不會被推出界外），切向位移保留，邊緣照樣彎。
    D 與反函數 E（p = q + E(q)）都預算在每格 WARP_R 點的網格上，用時雙線性內插；全圖檢查 Jacobian 行列式，太小就整張縮小幅度，不會摺疊。 */
 let WP=null;
 const WT=[0,0];
 function warpData(){
   if(WP&&WP.map===map)return WP;
   const amp0=CUR&&CUR.warp&&CUR.warp.amp!=null?CUR.warp.amp:(WARP_MAP_AMP[CURID]!=null?WARP_MAP_AMP[CURID]:1);
-  if(!amp0)return WP={map,off:true,maxD:0,amp:0,detMin:1,detMax:1};
-  const R=WARP_R,nx=MW*R+1,ny=MH*R+1,N=nx*ny,seed=strHash('warp-'+CURID);
-  // 剛性格：有功能或端正的人造物，與出口、落點
+  if(!amp0)return WP={map,off:true,maxD:0,amp:0,detMin:1,detMax:1,groups:[]};
+  const R=WARP_R,nx=MW*R+1,ny=MH*R+1,N=nx*ny,seed=strHash('warp-'+CURID),Le=WARP_EDGE,t2=[0,0];
+  const nz=WARP_OCT.map((o,k)=>[vnoise(seed+k*101+1),vnoise(seed+k*101+2)]);
+  // 剪切波：橫向位移隨 y 起伏（直的縱向路、岸線會左右擺），縱向位移隨 x 起伏；相位由低頻雜訊慢慢推移，各處擺法不同。剪切對面積（行列式）影響小，幅度可以給大
+  const pz=[vnoise(seed+501),vnoise(seed+502)],az=vnoise(seed+503),wr=rng(seed+504),ph=WARP_WAVE.map(()=>[wr()*6.283,wr()*6.283]),PL=WARP_PHASE[0],PA=WARP_PHASE[1];
+  const F=(x,y,o)=>{let dx=0,dy=0;for(let q=0;q<nz.length;q++){const l=WARP_OCT[q].l,a=WARP_OCT[q].a;dx+=a*nz[q][0](x/l,y/l);dy+=a*nz[q][1](x/l+57.3,y/l+11.9)}
+    const p1=PA*pz[0](x/PL,y/PL),p2=PA*pz[1](x/PL+23.1,y/PL+7.7),am=1+WARP_WAVE_V*az(x/PL+41.3,y/PL+3.1);
+    for(let q=0;q<WARP_WAVE.length;q++){const w=WARP_WAVE[q],k=6.2832/w.l;dx+=am*w.a*Math.sin(k*y+ph[q][0]+p1);dy+=am*w.a*Math.sin(k*x+ph[q][1]+p2)}
+    o[0]=dx;o[1]=dy;return o};
+  const F0=new Float32Array(N*2);   // 自由位移（未縮放）
+  for(let j=0;j<ny;j++)for(let i=0;i<nx;i++){F(i/R,j/R,t2);const k=(j*nx+i)*2;F0[k]=t2[0];F0[k+1]=t2[1]}
+  // 剛性格：多格貼圖，或與相鄰格有幾何關係的東西
   const rig=new Uint8Array(MW*MH),mark=(x,y)=>{x=Math.floor(x);y=Math.floor(y);if(x>=0&&y>=0&&x<MW&&y<MH)rig[y*MW+x]=1};
-  for(let y=0;y<MH;y++)for(let x=0;x<MW;x++){const t=map[y][x];if(t===T.HOUSE||t===T.DOOR||t===T.FOUNT||t===T.GATE||t===T.SIGN||t===T.DOCK)mark(x,y)}
+  for(let y=0;y<MH;y++)for(let x=0;x<MW;x++){const t=map[y][x];if(t===T.HOUSE||t===T.DOOR||t===T.FOUNT||t===T.GATE||t===T.DOCK)mark(x,y)}
   Object.keys(CUR.props||{}).forEach(k=>{const [x,y]=k.split(',').map(Number);mark(x,y);mark(x,y-1)});
   (CUR.gates||[]).forEach(g=>{for(let dx=-2;dx<=1;dx++)mark(g.x+dx,g.y-1)});
-  (CUR.warps||[]).forEach(w=>mark(w.x,w.y));
-  Object.values(MAPS).forEach(m=>(m.warps||[]).forEach(w=>{if(w.to===CURID)mark(w.tx,w.ty)}));
-  [CUR.spawn,CUR.home].forEach(s=>{if(s)mark(s.x,s.y)});
-  (CUR.npcs||[]).forEach(n=>{if(n.obj)mark(n.x,n.y)});
-  const rList=[];for(let i=0;i<MW*MH;i++)if(rig[i])rList.push([i%MW,(i/MW)|0]);
-  const r1=WARP_RIGID[1],W=Math.ceil(r1)+1;
-  const nz=WARP_OCT.map((o,k)=>[vnoise(seed+k*101+1),vnoise(seed+k*101+2)]);
-  // 剛性距離先在半格網格上算（變化平緩），取樣點再雙線性內插
-  const H=2,hx=MW*H+1,hy=MH*H+1,rd=new Float32Array(hx*hy);
-  for(let j=0;j<hy;j++)for(let i=0;i<hx;i++){const x=i/H,y=j/H,cx=Math.floor(x),cy=Math.floor(y);let dm=9;
-    for(let yy=Math.max(0,cy-W);yy<=Math.min(MH-1,cy+W);yy++)for(let xx=Math.max(0,cx-W);xx<=Math.min(MW-1,cx+W);xx++)if(rig[yy*MW+xx]){const d=Math.hypot(x-clamp(x,xx,xx+1),y-clamp(y,yy,yy+1));if(d<dm)dm=d}
-    rd[j*hx+i]=dm}
-  const D=new Float32Array(N*2);
-  for(let j=0;j<ny;j++)for(let i=0;i<nx;i++){
-    const x=i/R,y=j/R,k=j*nx+i;
-    let e=sstep(WARP_EDGE[0],WARP_EDGE[1],Math.min(x,MW-x,y,MH-y));
-    if(e>0){const fx=Math.min(x*H,hx-1.0001),fy=Math.min(y*H,hy-1.0001),a=fx|0,b=fy|0,u=fx-a,v=fy-b,q=b*hx+a;
-      e*=sstep(WARP_RIGID[0],r1,(rd[q]*(1-u)+rd[q+1]*u)*(1-v)+(rd[q+hx]*(1-u)+rd[q+hx+1]*u)*v)}
-    let dx=0,dy=0;
-    if(e>0)WARP_OCT.forEach((o,q)=>{dx+=o.a*nz[q][0](x/o.l,y/o.l);dy+=o.a*nz[q][1](x/o.l+57.3,y/o.l+11.9)});
-    D[k*2]=dx*e;D[k*2+1]=dy*e;
+  // 群組：八方向相連的剛性格；間隙小於 WARP_RIG_GAP 的再合併（窄縫裡來不及過渡，硬過渡會擠壓）
+  const gid=new Int32Array(MW*MH).fill(-1),groups=[];
+  for(let i=0;i<MW*MH;i++)if(rig[i]&&gid[i]<0){
+    const g={t:[]},st=[i];gid[i]=groups.length;
+    while(st.length){const c=st.pop(),x=c%MW,y=(c/MW)|0;g.t.push([x,y]);
+      for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){const xx=x+dx,yy=y+dy;if(xx<0||yy<0||xx>=MW||yy>=MH)continue;const c2=yy*MW+xx;if(rig[c2]&&gid[c2]<0){gid[c2]=groups.length;st.push(c2)}}}
+    groups.push(g);
   }
-  const detRange=s=>{let mn=9,mx=-9;for(let j=1;j<ny-1;j++)for(let i=1;i<nx-1;i++){const k=j*nx+i,h=R/2*s,
+  const gap=(a,b)=>{let m=99;for(const [x1,y1] of a.t)for(const [x2,y2] of b.t){const d=Math.hypot(Math.max(0,Math.abs(x1-x2)-1),Math.max(0,Math.abs(y1-y2)-1));if(d<m)m=d}return m};
+  for(let merged=1;merged;){merged=0;
+    outer:for(let a=0;a<groups.length;a++)for(let b=a+1;b<groups.length;b++)if(gap(groups[a],groups[b])<WARP_RIG_GAP){groups[a].t.push(...groups[b].t);groups.splice(b,1);merged=1;break outer}}
+  const M=WARP_RIG_M,PAD=Math.ceil(WARP_RIG[1]+M+.5),H=2;
+  groups.forEach(g=>{
+    let x0=1e9,y0=1e9,x1=-1,y1=-1;for(const [x,y] of g.t){if(x<x0)x0=x;if(y<y0)y0=y;if(x>x1)x1=x;if(y>y1)y1=y}
+    g.x0=x0;g.y0=y0;g.x1=x1+1;g.y1=y1+1;
+    F((g.x0+g.x1)/2,(g.y0+g.y1)/2,t2);g.cx=t2[0];g.cy=t2[1];   // 群組位移（未縮放）＝中心處的自由位移
+    let dev=0;for(let y=g.y0-2;y<=g.y1+2;y+=.5)for(let x=g.x0-2;x<=g.x1+2;x+=.5){F(x,y,t2);dev=Math.max(dev,Math.hypot(t2[0]-g.cx,t2[1]-g.cy))}
+    g.dev=dev;   // 群組周圍 2 格內自由位移與群組位移的最大差：決定過渡寬度
+    g.wx0=g.x0-PAD;g.wy0=g.y0-PAD;g.gw=(g.x1-g.x0+2*PAD)*H+1;g.gh=(g.y1-g.y0+2*PAD)*H+1;
+    const dg=g.dg=new Float32Array(g.gw*g.gh);   // 到群組各格的距離（邏輯座標，半格網格）
+    for(let j=0;j<g.gh;j++)for(let i=0;i<g.gw;i++){const x=g.wx0+i/H,y=g.wy0+j/H;let m=99;for(const [tx,ty] of g.t){const d=Math.hypot(x-clamp(x,tx,tx+1),y-clamp(y,ty,ty+1));if(d<m)m=d}dg[j*g.gw+i]=m}
+  });
+  const gp=groups.map(a=>groups.map(b=>a===b?99:gap(a,b)));
+  const D=new Float32Array(N*2),Wa=new Float32Array(N),Sx=new Float32Array(N),Sy=new Float32Array(N),ex=new Float32Array(nx),ey=new Float32Array(ny);
+  for(let i=0;i<nx;i++)ex[i]=sstep(0,Le,Math.min(i/R,MW-i/R));
+  for(let j=0;j<ny;j++)ey[j]=sstep(0,Le,Math.min(j/R,MH-j/R));
+  const lim=(c,lo,hi)=>lo<=0&&0<=hi?clamp(c,lo,hi):0;   // 群組靠邊：法向位移限制在「整組仍離邊 Le 以上」，做不到就取 0
+  const sg=new Float32Array(N).fill(1);   // 局部幅度（0~1）：只在行列式不夠的地方壓低，其他地方維持全幅
+  const node=(x,y)=>Math.round(clamp(y,0,MH)*R)*nx+Math.round(clamp(x,0,MW)*R);
+  const build=s=>{
+    Wa.fill(0);Sx.fill(0);Sy.fill(0);
+    groups.forEach(g=>{const a=s*sg[node((g.x0+g.x1)/2,(g.y0+g.y1)/2)];g.vx=lim(a*g.cx,g.x1-MW+Le,g.x0-Le);g.vy=lim(a*g.cy,g.y1-MH+Le,g.y0-Le)});
+    groups.forEach((g,a)=>{
+      let r1=clamp(WARP_RIG_K*s*sg[node((g.x0+g.x1)/2,(g.y0+g.y1)/2)]*g.dev,WARP_RIG[0],WARP_RIG[1]);
+      groups.forEach((h,b)=>{if(a!==b)r1=Math.min(r1,Math.max(.75,gp[a][b]-2*M-Math.hypot(g.vx-h.vx,g.vy-h.vy)))});   // 鄰組的過渡不可伸進本組（含外圈）
+      g.r1=r1;
+      const X1=g.wx0+(g.gw-1)/H,Y1=g.wy0+(g.gh-1)/H;
+      const i0=Math.max(0,Math.ceil((g.wx0-g.vx)*R)),i1=Math.min(nx-1,Math.floor((X1-g.vx)*R)),j0=Math.max(0,Math.ceil((g.wy0-g.vy)*R)),j1=Math.min(ny-1,Math.floor((Y1-g.vy)*R));
+      for(let j=j0;j<=j1;j++){const fy=(j/R+g.vy-g.wy0)*H,b0=Math.min(Math.max(fy|0,0),g.gh-2),v=fy-b0;
+        for(let i=i0;i<=i1;i++){const fx=(i/R+g.vx-g.wx0)*H,a0=Math.min(Math.max(fx|0,0),g.gw-2),u=fx-a0,q=b0*g.gw+a0;
+          const d=(g.dg[q]*(1-u)+g.dg[q+1]*u)*(1-v)+(g.dg[q+g.gw]*(1-u)+g.dg[q+g.gw+1]*u)*v;   // 畫面點 p 對應的邏輯點是 p+v
+          if(d>=r1+M)continue;const w=1-sstep(M,M+r1,d),k=j*nx+i;Wa[k]+=w;Sx[k]+=w*g.vx;Sy[k]+=w*g.vy}}
+    });
+    for(let j=0;j<ny;j++)for(let i=0;i<nx;i++){const k=j*nx+i,W=Wa[k],f=W<1?1-W:0,n=W>1?W:1;
+      D[k*2]=(Sx[k]+f*s*sg[k]*F0[k*2])/n*ex[i];D[k*2+1]=(Sy[k]+f*s*sg[k]*F0[k*2+1])/n*ey[j]}
+  };
+  const DT=new Float32Array(N),cw=MW+1,ch=MH+1,CA=new Float32Array(cw*ch),CB=new Float32Array(cw*ch);
+  const detField=()=>{let mn=9,mx=-9;const h=R/2;DT.fill(1);for(let j=1;j<ny-1;j++)for(let i=1;i<nx-1;i++){const k=j*nx+i,
+      a=1+(D[(k+1)*2]-D[(k-1)*2])*h,b=(D[(k+nx)*2]-D[(k-nx)*2])*h,c=(D[(k+1)*2+1]-D[(k-1)*2+1])*h,d=1+(D[(k+nx)*2+1]-D[(k-nx)*2+1])*h,v=a*d-b*c;
+      DT[k]=v;if(v<mn)mn=v;if(v>mx)mx=v}return [mn,mx]};
+  const pass=(src,dst,r,isMin,horiz)=>{   // 每格一點的粗網格上做一維最小值／平均濾波（邊界夾住）
+    for(let Y=0;Y<ch;Y++)for(let X=0;X<cw;X++){let acc=isMin?9:0;
+      for(let t=-r;t<=r;t++){const v=horiz?src[Y*cw+clamp(X+t,0,cw-1)]:src[clamp(Y+t,0,ch-1)*cw+X];if(isMin){if(v<acc)acc=v}else acc+=v}
+      dst[Y*cw+X]=isMin?acc:acc/(2*r+1)}};
+  // 局部壓低：該點需要的倍率 τ＝(1−下限′)/(1−det)；粗網格上先取鄰域最小、再平均（平均後仍不大於附近各點所需），內插回來乘進 sg
+  const relax=()=>{const tgt=WARP_DET_MIN+.04;
+    for(let Y=0;Y<ch;Y++)for(let X=0;X<cw;X++){let m=1;
+      for(let j=Math.max(0,(Y-1)*R);j<=Math.min(ny-1,(Y+1)*R);j++)for(let i=Math.max(0,(X-1)*R);i<=Math.min(nx-1,(X+1)*R);i++){const v=DT[j*nx+i];if(v<tgt){const t=Math.max(.15,(1-tgt)/(1-v));if(t<m)m=t}}
+      CA[Y*cw+X]=m}
+    pass(CA,CB,2,1,1);pass(CB,CA,2,1,0);pass(CA,CB,2,0,1);pass(CB,CA,2,0,0);
+    for(let j=0;j<ny;j++){const fy=Math.min(j/R,ch-1.0001),Y=fy|0,v=fy-Y;for(let i=0;i<nx;i++){const fx=Math.min(i/R,cw-1.0001),X=fx|0,u=fx-X,q=Y*cw+X;
+      sg[j*nx+i]*=(CA[q]*(1-u)+CA[q+1]*u)*(1-v)+(CA[q+cw]*(1-u)+CA[q+cw+1]*u)*v}}};
+  const detRange=()=>{let mn=9,mx=-9;const h=R/2;for(let j=1;j<ny-1;j++)for(let i=1;i<nx-1;i++){const k=j*nx+i,
       a=1+(D[(k+1)*2]-D[(k-1)*2])*h,b=(D[(k+nx)*2]-D[(k-nx)*2])*h,c=(D[(k+1)*2+1]-D[(k-1)*2+1])*h,d=1+(D[(k+nx)*2+1]-D[(k-nx)*2+1])*h,v=a*d-b*c;
       if(v<mn)mn=v;if(v>mx)mx=v}return [mn,mx]};
-  // 幅度：基準 × 地圖倍率；行列式太小就縮小（線性近似 det≈1+s·(det0−1)）
-  let s=amp0,dr=detRange(s);
-  for(let it=0;it<6&&dr[0]<WARP_DET_MIN;it++){s*=Math.max(.3,Math.min(.95,(1-WARP_DET_MIN)/(1-dr[0])*.97));dr=detRange(s)}
-  let maxD=0;for(let k=0;k<N*2;k++){D[k]*=s;const a=Math.abs(D[k]);if(a>maxD)maxD=a}
-  const w={map,off:false,R,nx,ny,D,E:null,amp:s,detMin:dr[0],detMax:dr[1],maxD,rig};
+  // 幅度：基準 × 地圖倍率；行列式太小就整張縮小（線性近似 det≈1+s·(det0−1)）
+  let s=amp0*WARP_AMP;build(s);let dr=detField();
+  for(let it=0;it<6&&dr[0]<WARP_DET_MIN;it++){relax();build(s);dr=detField()}
+  if(dr[0]<WARP_DET_MIN){   // 局部壓不完：整張再縮   // 先縮到合格，再在「合格」與「不合格」之間二分，取最大的合格幅度
+    let bad=s;for(let it=0;it<10&&dr[0]<WARP_DET_MIN;it++){bad=s;s*=Math.max(.3,Math.min(.95,(1-WARP_DET_MIN)/(1-dr[0])*.97));build(s);dr=detRange()}
+    let ok=s,okr=dr;for(let it=0;it<4;it++){const m=(ok+bad)/2;build(m);const r=detRange();if(r[0]>=WARP_DET_MIN){ok=m;okr=r}else bad=m}
+    s=ok;build(s);dr=okr;
+  }
+  let maxD=0;for(let k=0;k<N*2;k++){const a=Math.abs(D[k]);if(a>maxD)maxD=a}
+  const w={map,off:false,R,nx,ny,D,E:null,amp:s,detMin:dr[0],detMax:dr[1],maxD,groups};
   WP=w;
-  // 反函數網格：牛頓法解 p + D(p) = q
+  // 反函數網格：牛頓法解 p + D(p) = q（以左鄰的解當初值，通常 1–2 步收斂）
   const E=new Float32Array(N*2),o=[0,0],J=[0,0,0,0];
   for(let j=0;j<ny;j++)for(let i=0;i<nx;i++){
-    const qx=i/R,qy=j/R;let px,py;if(i){const k=(j*nx+i-1)*2;px=qx+E[k];py=qy+E[k+1]}else{warpD(qx,qy,o);px=qx-o[0];py=qy-o[1]}   // 以左鄰的解當初值，牛頓法通常 1–2 步收斂
+    const qx=i/R,qy=j/R;let px,py;if(i){const k=(j*nx+i-1)*2;px=qx+E[k];py=qy+E[k+1]}else{warpD(qx,qy,o);px=qx-o[0];py=qy-o[1]}
     for(let it=0;it<8;it++){warpD(px,py,o);const rx=px+o[0]-qx,ry=py+o[1]-qy;if(Math.abs(rx)+Math.abs(ry)<1e-5)break;warpJ(px,py,J);const det=J[0]*J[3]-J[1]*J[2]||1;px-=(J[3]*rx-J[1]*ry)/det;py-=(-J[2]*rx+J[0]*ry)/det}
     E[(j*nx+i)*2]=px-qx;E[(j*nx+i)*2+1]=py-qy;
   }
@@ -1139,17 +1198,21 @@ function warpLerp(A,x,y,o){   // 網格雙線性內插（座標夾在地圖內�
   return o;
 }
 function warpD(x,y,o){if(!WP||WP.off){o[0]=o[1]=0;return o}return warpLerp(WP.D,x,y,o)}
+const WJA=[0,0],WJB=[0,0];
 function warpJ(x,y,J){   // ∂q/∂p（2×2，列優先：[dqx/dpx, dqx/dpy, dqy/dpx, dqy/dpy]）
-  const h=.25,a=[0,0],b=[0,0];
+  const h=.25,a=WJA,b=WJB;
   warpD(x+h,y,a);warpD(x-h,y,b);J[0]=1+(a[0]-b[0])/(2*h);J[2]=(a[1]-b[1])/(2*h);
   warpD(x,y+h,a);warpD(x,y-h,b);J[1]=(a[0]-b[0])/(2*h);J[3]=1+(a[1]-b[1])/(2*h);
   return J;
 }
 const toLogic=(px,py,o)=>{warpD(px,py,o);o[0]+=px;o[1]+=py;return o};   // 畫面世界座標 → 邏輯座標
+const TVJ=[0,0,0,0];
 function toView(qx,qy,o){   // 邏輯座標 → 畫面世界座標
   o=o||[0,0];
   if(!WP||WP.off||!WP.E){o[0]=qx;o[1]=qy;return o}
-  warpLerp(WP.E,qx,qy,o);o[0]+=qx;o[1]+=qy;return o;
+  warpLerp(WP.E,qx,qy,o);let px=o[0]+qx,py=o[1]+qy;
+  warpD(px,py,o);const rx=px+o[0]-qx,ry=py+o[1]-qy,J=warpJ(px,py,TVJ),det=J[0]*J[3]-J[1]*J[2]||1;   // 反函數網格內插後再用牛頓法修一步，與地面取樣的 p+D(p) 嚴格互逆
+  o[0]=px-(J[3]*rx-J[1]*ry)/det;o[1]=py-(-J[2]*rx+J[0]*ry)/det;return o;
 }
 const SHAPE_KEYS=['water','tree','tg','path'];
 let SHP=null;
