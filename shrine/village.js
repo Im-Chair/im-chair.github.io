@@ -340,6 +340,19 @@ function chiefGoal(){
   if(!F['al:altar_water'])return G.claimWater;
   return G.temple;
 }
+function chiefGoalMap(){   // 與 chiefGoal 同一套判斷，回傳「下一個主線目標」在哪張地圖（世界地圖畫小星用）；null＝已通關
+  const F=ST.flags,H=id=>PROGRESS.has(id);
+  if(ST.cleared||F['bs:boss_temple'])return null;
+  if(!F['bs:boss_forest'])return H('deepgrove')?'altar_forest':'grove';
+  if(!F['al:altar_forest'])return 'altar_forest';
+  if(!F['bs:boss_fire'])return H('ashroad')?'altar_fire':'ashroad';
+  if(!F['al:altar_fire'])return 'altar_fire';
+  if(!F['bs:boss_water'])return H('lakeshore')?'altar_water':'lakeshore';
+  if(!F['al:altar_water'])return 'altar_water';
+  return H('templeyard')?'temple':'templeyard';
+}
+// 世界地圖畫面（index.html 的 drawWorld）要的資料
+HOOKS.worldInfo=()=>({info:shopHasInfo(),chest:mapChestCount,goal:chiefGoalMap(),relics:ST.relics,chestsOpen:Object.keys(ST.chests).length,chestsTotal:totalChests(),gems:ST.gotPieces,gemsTotal:totalGems(),time:fmtTime(ST.time)});
 async function talkChief(){
   const k=await ask([['村長',TEXT.npc.chief]],TEXT.chief.ask);
   if(k===0)await say([['村長',chiefGoal()]]);

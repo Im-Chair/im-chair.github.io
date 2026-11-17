@@ -1,4 +1,4 @@
-const CACHE = 'arcade-v88';
+const CACHE = 'arcade-v89';
 // 珠界的圖獨立一個快取、不跟 CACHE 改版：改版時不必重抓，也不用每次打開都等網路
 const ART_CACHE = 'arcade-pokemo-art';
 // RPG 敵人圖示：檔名＝ENEMIES／首領／域限精英的 key。v385 起 50 隻全數有圖，已無 SVG 回落。
@@ -83,7 +83,7 @@ const ASSETS = [
   // v83：珠界：聖林神廟（maps → 引擎 index.html → game → adventure → village，js 帶 ?v=SHRINE_VER，靠 ignoreSearch 對應）。
   // 地圖素材、NPC 角色圖、按鈕框借用 /pokemo/art/，已在 POKEMO_ART（珠界美術快取）裡
   '/shrine/', '/shrine/index.html', '/shrine/maps.js', '/shrine/game.js', '/shrine/adventure.js', '/shrine/village.js',
-  ...['hero','mon','goblin','archer','boss_forest','boss_fire','boss_water','boss_time'].map(k => `/shrine/art/${k}.webp`),
+  ...['hero','mon','goblin','archer','boss_forest','boss_fire','boss_water','boss_time','worldmap'].map(k => `/shrine/art/${k}.webp`),
 ];
 
 // 安裝只抓首頁必要檔案、馬上啟用。其餘交給 fillCaches，安裝時全抓會塞滿網路，遊戲的圖要排在幾百個請求後面

@@ -113,8 +113,13 @@ body.touch #itemBtn:not(.on),body.touch #cycBtn:not(.on){display:none}
 /* 世界地圖 */
 #world{position:absolute;inset:0;z-index:30;display:none;background:#070a14e6;padding:calc(12px + env(safe-area-inset-top)) 12px calc(12px + env(safe-area-inset-bottom))}
 #world.on{display:flex;flex-direction:column}
-#worldBox{position:relative;flex:1;min-height:0;max-width:760px;width:100%;margin:0 auto;background:#141c3acc;border:2px solid #6f86d6;border-radius:14px;overflow:hidden}
-#worldCv{position:absolute;inset:0;width:100%;height:100%}
+#worldBox{position:relative;flex:1;min-height:0;max-width:960px;width:100%;margin:0 auto;background:#1b130acc;border:2px solid #8a6a3a;border-radius:14px;overflow:hidden}
+#worldCv{position:absolute;inset:0;width:100%;height:100%;touch-action:manipulation}
+#worldInfo{position:absolute;left:10px;right:10px;bottom:8px;text-align:center;pointer-events:none;color:#efe3c2}
+#worldDesc{font-size:13px;line-height:1.45;min-height:38px;text-shadow:0 1px 2px #000}
+#worldDesc b{color:#ffe08a}
+#worldStat{font-size:12px;color:#c9b98a;margin-top:4px}
+#worldStat span{display:inline-block;white-space:nowrap;margin:0 8px}
 #worldClose{position:absolute;right:10px;top:10px;padding:6px 14px;background:#0009;border:1px solid #fff4;border-radius:20px;font-size:14px}
 
 /* 對話選項、面板（背包／商店／鍛造／賞金板，樣式沿用對話框）、挑戰計時 */
@@ -166,7 +171,7 @@ body.touch #itemBtn:not(.on),body.touch #cycBtn:not(.on){display:none}
 </style>
 <script>
 /* 版號：改了 maps.js 或這個檔就 +1，破除瀏覽器快取 */
-const SHRINE_VER='20';
+const SHRINE_VER='21';
 document.write('<script src="maps.js?v='+SHRINE_VER+'"><\/script>');
 </script>
 </head>
@@ -202,7 +207,7 @@ document.write('<script src="maps.js?v='+SHRINE_VER+'"><\/script>');
     <div id="dlg"><div id="dlgBox"><div id="dlgName"></div><div id="dlgText"></div><div id="dlgOpts"></div><div id="dlgNext">▼</div></div></div>
     <div id="panel"><div id="panelBox"><div id="panelHead"><b id="panelTitle"></b><span id="panelSub"></span><button id="panelClose">關閉</button></div><div id="panelTabs"></div><div id="panelBody"></div></div></div>
     <div id="chal"></div>
-    <div id="world"><div id="worldBox"><canvas id="worldCv"></canvas><button id="worldClose">關閉</button></div></div>
+    <div id="world"><div id="worldBox"><canvas id="worldCv"></canvas><div id="worldInfo"><div id="worldDesc"></div><div id="worldStat"></div></div><button id="worldClose">關閉</button></div></div>
   </section>
   <div id="fade"><div id="fadeTxt"></div><div id="fadeBar"><b></b></div></div>
 </div>
@@ -875,6 +880,7 @@ function startPreload(){
   const pq=new Set();
   for(const a of SART)if(a.startsWith('e-'))pq.add(sKey(a));   // 背包、商店的裝備小圖：第一次開面板才不會閃
   for(const id of order)mapArt(id).forEach(k=>pq.add(k));
+  pq.add('worldmap');   // 世界地圖底圖（第一次按 M 才不用等）
   preQ=[...pq].filter(k=>!ART[k]&&!artFail[k]&&!artLoad[k]);
   const idle=fn=>window.requestIdleCallback?requestIdleCallback(fn,{timeout:1500}):setTimeout(fn,200);
   const lane=()=>{
@@ -1259,15 +1265,108 @@ function drawLights(c,S,now,vx0,vy0){
 }
 
 /* ================= 世界地圖（M 鍵／右上按鈕） ================= */
+ART_SRC.worldmap=`art/worldmap.webp?v=${SHRINE_VER}`;   // 羊皮紙底圖（1024×1024，圖上沒有字；字與標記全在疊加層畫）
+const WORLD_R={village:13,grove:12,deepgrove:15,altar_forest:11,ashroad:13,altar_fire:11,lakeshore:14,altar_water:10,templeyard:11,temple:10};   // 各插圖的半寬（底圖寬的 %）：遮蔽大小與點選範圍
+const WORLD_LBL={temple:[-1.5,-.25]};   // 標籤位置（以 R 為單位的 [橫移, 縱移]；預設 [0,.7]＝插圖下方）：神廟的標籤改放左側，避開外庭的圖釘與鎖
+const WORLD_RELIC={altar_forest:'relic_forest',altar_fire:'relic_fire',altar_water:'relic_water'};   // 祭壇 → 聖物
+const WORLD_FONT='"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif';
+let worldT0=0,worldSel=null,worldHov=null,worldHit=[],worldLoopOn=false,worldWI=null,worldWIt=0,worldTxtKey='';
 function openWorld(on){
   worldOpen=on!=null?on:!worldOpen;$('#world').classList.toggle('on',worldOpen);
-  if(worldOpen){Object.keys(keys).forEach(k=>keys[k]=false);drawWorld(performance.now());requestAnimationFrame(worldLoop)}
+  if(worldOpen){
+    Object.keys(keys).forEach(k=>keys[k]=false);worldT0=performance.now();worldSel=worldHov=null;worldWI=null;worldTxtKey='';
+    if(!ART.worldmap&&!artFail.worldmap)needArt('worldmap');   // 還沒載好：畫面顯示「載入中…」，載好自動換上
+    drawWorld(performance.now());
+    if(!worldLoopOn){worldLoopOn=true;requestAnimationFrame(worldLoop)}
+  }
 }
-function worldLoop(now){if(!worldOpen)return;drawWorld(now);requestAnimationFrame(worldLoop)}
+function worldLoop(now){if(!worldOpen){worldLoopOn=false;return}drawWorld(now);requestAnimationFrame(worldLoop)}
+function worldRR(g,x,y,w,h,r){g.beginPath();g.moveTo(x+r,y);g.arcTo(x+w,y,x+w,y+h,r);g.arcTo(x+w,y+h,x,y+h,r);g.arcTo(x,y+h,x,y,r);g.arcTo(x,y,x+w,y,r);g.closePath()}
 function drawWorld(now){
   const cv=$('#worldCv'),r=cv.getBoundingClientRect(),d=Math.min(2,devicePixelRatio||1);
   if(cv.width!==Math.round(r.width*d)||cv.height!==Math.round(r.height*d)){cv.width=Math.round(r.width*d);cv.height=Math.round(r.height*d)}
   const g=cv.getContext('2d'),W=r.width,H=r.height;g.setTransform(d,0,0,d,0,0);g.clearRect(0,0,W,H);
+  const img=ART.worldmap,info=$('#worldInfo');
+  info.style.display=img?'':'none';
+  if(!img){
+    if(!artFail.worldmap){   // 載入中
+      needArt('worldmap');g.fillStyle='#e9d9b0';g.font='16px '+WORLD_FONT;g.textAlign='center';g.fillText('載入中…',W/2,H/2);
+      g.textAlign='left';g.font='bold 16px '+WORLD_FONT;g.fillStyle='#dfe6ff';g.fillText('世界地圖',14,26);return}
+    drawWorldNodes(g,W,H,now);worldHit=[];return}   // 底圖載入失敗：回落成節點圖
+  if(!worldWI||now-worldWIt>400){worldWI=(HOOKS.worldInfo&&HOOKS.worldInfo())||{};worldWIt=now}
+  const WI=worldWI,top=46,bot=82,sz=Math.max(120,Math.min(W-16,H-top-bot)),x0=(W-sz)/2,y0=top+(H-top-bot-sz)/2;
+  const fs=clamp(sz*.027,10.5,15),e=1-Math.pow(1-clamp((now-worldT0)/180,0,1),3);
+  const P=id=>{const w=MAPS[id].world||[50,50];return [x0+sz*w[0]/100,y0+sz*w[1]/100]},RR=id=>sz*(WORLD_R[id]||11)/100;
+  const ids=Object.keys(MAPS),seen=ids.filter(id=>PROGRESS.has(id)),near=new Set();
+  for(const a of seen)for(const ex of MAPS[a].exits||[])if(MAPS[ex.to]&&!PROGRESS.has(ex.to))near.add(ex.to);
+  g.fillStyle='#e9d9b0';g.font='bold 16px '+WORLD_FONT;g.textAlign='left';g.fillText('世界地圖',14,26);
+  g.save();g.globalAlpha=e;{const cx=W/2,cy=y0+sz/2,sc=.9+.1*e;g.translate(cx,cy);g.scale(sc,sc);g.translate(-cx,-cy)}   // 展開動畫：從中央放大淡入
+  g.drawImage(img,x0,y0,sz,sz);
+  worldHit=ids.map(id=>{const p=P(id);return {id,x:p[0],y:p[1],R:RR(id)}});
+  // 未探索：羊皮紙色的霧團蓋住插圖；相鄰於去過的地點再加「？」
+  for(const id of ids){if(PROGRESS.has(id))continue;
+    const [x,y]=P(id),R=RR(id),rnd=rng(hashStr('fog-'+id));
+    for(let k=0;k<7;k++){const a=rnd()*6.283,dd=k?R*.4*rnd():0,px=x+Math.cos(a)*dd,py=y+Math.sin(a)*dd*.8,rr=R*(k?.75+rnd()*.3:1.12);
+      const gr=g.createRadialGradient(px,py,rr*.1,px,py,rr);gr.addColorStop(0,'rgba(218,196,146,1)');gr.addColorStop(.68,'rgba(212,188,136,.96)');gr.addColorStop(1,'rgba(212,188,136,0)');
+      g.save();g.translate(px,py);g.scale(1,.86);g.translate(-px,-py);g.fillStyle=gr;g.fillRect(px-rr,py-rr,rr*2,rr*2);g.restore()}
+    g.strokeStyle='rgba(107,74,36,.35)';g.lineWidth=1.2;   // 墨跡：幾道淡淡的弧線
+    for(let k=0;k<3;k++){g.beginPath();g.ellipse(x,y,R*(.5+k*.14),R*(.5+k*.14)*.8,rnd()*3,rnd()*2,rnd()*2+2.5);g.stroke()}
+    if(near.has(id)){g.fillStyle='#5b3a17';g.font=`bold ${Math.round(fs*2.4)}px ${WORLD_FONT}`;g.textAlign='center';g.textBaseline='middle';g.fillText('？',x,y);g.textBaseline='alphabetic'}
+  }
+  // 地名標籤（紙條）＋寶箱進度＋聖物圖示
+  const relicIm=id=>{const rid=WORLD_RELIC[id];if(!rid||!(WI.relics||[]).includes(rid))return null;return sImg(ICON_OF[rid])||'dot'};
+  for(const id of seen){
+    const [x,y]=P(id),R=RR(id),M=MAPS[id],c=WI.info&&WI.chest?WI.chest(id):null,note=c&&c.total?`${TEXT_W('chest')} ${c.open}/${c.total}`:null,ri=relicIm(id);
+    g.font=`bold ${fs}px ${WORLD_FONT}`;const w1=g.measureText(M.name).width;g.font=`${fs*.86}px ${WORLD_FONT}`;const w2=note?g.measureText(note).width:0;
+    const iw=ri?fs*1.4+3:0,w=Math.max(w1,w2)+12+iw,h=fs*1.5+(note?fs*1.05:0);
+    const lo=WORLD_LBL[id]||[0,.7],lx=clamp(x+R*lo[0],x0+w/2+2,x0+sz-w/2-2),ly=clamp(y+R*lo[1],y0+2,y0+sz-h-2);
+    g.save();g.shadowColor='rgba(60,36,10,.35)';g.shadowBlur=4;g.shadowOffsetY=1;worldRR(g,lx-w/2,ly,w,h,5);g.fillStyle='rgba(247,235,198,.92)';g.fill();g.restore();
+    worldRR(g,lx-w/2,ly,w,h,5);g.strokeStyle='#7a5628';g.lineWidth=1.2;g.stroke();
+    const tx=lx+iw/2;g.textAlign='center';g.fillStyle='#3b2410';g.font=`bold ${fs}px ${WORLD_FONT}`;g.fillText(M.name,tx,ly+fs*1.12);
+    if(note){g.font=`${fs*.86}px ${WORLD_FONT}`;g.fillStyle='#8a4b0e';g.fillText(note,tx,ly+fs*2.08)}
+    if(ri){const s=fs*1.4,ix=lx-w/2+5,iy=ly+(h-s)/2;
+      if(ri==='dot'){g.fillStyle=ALTAR_COL[id]||'#ffd84a';g.beginPath();g.moveTo(ix+s/2,iy);g.lineTo(ix+s,iy+s/2);g.lineTo(ix+s/2,iy+s);g.lineTo(ix,iy+s/2);g.closePath();g.fill()}
+      else g.drawImage(ri,ix,iy,s,s)}
+  }
+  // 鎖：神廟的大門要三件聖物；湊齊後消失
+  if(seen.length&&(WI.relics||[]).length<3)for(const a of seen)for(const l of MAPS[a].locks||[]){if(l.need!=='relic3')continue;
+    for(const ex of MAPS[a].exits||[]){if(!MAPS[ex.to]||rectDist(l,ex.x+ex.w/2,ex.y+ex.h/2)>=3)continue;
+      const p=P(a),q=P(ex.to),lx=p[0]+(q[0]-p[0])*.68,ly=p[1]+(q[1]-p[1])*.68,s=fs*.9;
+      g.fillStyle='#4a2e12';g.strokeStyle='#e9c873';g.lineWidth=1.5;g.beginPath();g.arc(lx,ly,s*1.15,0,7);g.fill();g.stroke();
+      g.strokeStyle='#e9c873';g.lineWidth=2;g.beginPath();g.arc(lx,ly-s*.18,s*.38,Math.PI,0);g.stroke();g.fillStyle='#e9c873';worldRR(g,lx-s*.5,ly-s*.18,s,s*.72,2);g.fill()}}
+  // 主線目標：小星
+  if(WI.goal&&MAPS[WI.goal]){const [x,y]=P(WI.goal),R=RR(WI.goal),sx=x-R*.78,sy=y-R*.62+Math.sin(now/400)*1.5,o=fs*1.05,i=o*.45;
+    g.beginPath();for(let k=0;k<10;k++){const a=-Math.PI/2+k*Math.PI/5,rr=k%2?i:o;g.lineTo(sx+Math.cos(a)*rr,sy+Math.sin(a)*rr)}g.closePath();
+    g.fillStyle='#ffd23f';g.fill();g.strokeStyle='#6b4a24';g.lineWidth=1.4;g.stroke()}
+  // 目前位置：紅色圖釘＋脈動圈＋「你在這裡」
+  {const [x,y]=P(CURID),ph=(now%1400)/1400,hh=fs*1.7,hr=fs*.78;
+    g.strokeStyle=`rgba(200,40,30,${.7*(1-ph)})`;g.lineWidth=2.5;g.beginPath();g.ellipse(x,y,fs*(.8+1.6*ph),fs*(.8+1.6*ph)*.5,0,0,7);g.stroke();
+    g.fillStyle='rgba(60,20,10,.35)';g.beginPath();g.ellipse(x,y,fs*.6,fs*.25,0,0,7);g.fill();
+    g.fillStyle='#d3281c';g.strokeStyle='#5a0f0a';g.lineWidth=1.5;g.beginPath();g.moveTo(x,y);g.lineTo(x-hr*.8,y-hh+hr*.5);g.arc(x,y-hh,hr,Math.PI*.8,Math.PI*.2,false);g.closePath();g.fill();g.stroke();
+    g.fillStyle='#ffd0c8';g.beginPath();g.arc(x-hr*.25,y-hh-hr*.25,hr*.28,0,7);g.fill();
+    g.font=`bold ${fs*.9}px ${WORLD_FONT}`;const tw=g.measureText('你在這裡').width+10,side=x<x0+sz*.55?1:-1,   // 小字條放在圖釘旁（左半邊放右側、右半邊放左側），不蓋到其他地名
+      bx=clamp(x+side*(hr+4+tw/2),x0+tw/2+2,x0+sz-tw/2-2),by=clamp(y-hh-fs*.65,y0+2,y0+sz-fs*1.4);
+    worldRR(g,bx-tw/2,by,tw,fs*1.35,5);g.fillStyle='#b3221a';g.fill();g.strokeStyle='#fff3';g.lineWidth=1;g.stroke();
+    g.fillStyle='#fff';g.textAlign='center';g.fillText('你在這裡',bx,by+fs*1.0)}
+  g.restore();
+  // 底部：地點簡介＋總覽（DOM，會自動換行）
+  const sel=worldHov||worldSel||CURID,M=MAPS[sel],vis=PROGRESS.has(sel),W_=TEXT_W;
+  const txtKey=sel+'|'+vis+'|'+(WI.chestsOpen)+'|'+(WI.info?1:0)+'|'+WI.chestsTotal+'|'+WI.gems+'|'+WI.time+'|'+seen.length;
+  if(txtKey!==worldTxtKey){worldTxtKey=txtKey;
+    const dsc=$('#worldDesc');dsc.textContent='';const b=document.createElement('b');b.textContent=vis?M.name:'？？？';dsc.append(b,'　'+(vis?W_(sel):W_('unknown')));
+    const parts=[`${W_('explored')} ${seen.length}/${ids.length}`,`${W_('chest')} ${WI.chestsOpen|0}${WI.info?' / '+WI.chestsTotal:''}`,`${W_('gem')} ${WI.gems|0} / ${WI.gemsTotal|0}`,`${W_('time')} ${WI.time||'0:00'}`];
+    const st=$('#worldStat');st.textContent='';parts.forEach(t=>{const s=document.createElement('span');s.textContent=t;st.append(s)})}
+}
+const TEXT_W=k=>(typeof TEXT!=='undefined'&&TEXT.world&&TEXT.world[k])||'';
+function worldPick(ev){   // 指標落在哪個地點上（算到插圖半寬內）
+  const r=$('#worldCv').getBoundingClientRect(),x=ev.clientX-r.left,y=ev.clientY-r.top;let best=null,bd=1;
+  for(const h of worldHit){const dd=Math.hypot(x-h.x,(y-h.y)/.85)/h.R;if(dd<bd){bd=dd;best=h.id}}
+  return best;
+}
+$('#worldCv').addEventListener('pointermove',ev=>{if(!worldOpen||ev.pointerType!=='mouse')return;const id=worldPick(ev);worldHov=id;$('#worldCv').style.cursor=id?'pointer':''});
+$('#worldCv').addEventListener('pointerleave',()=>{worldHov=null});
+$('#worldCv').addEventListener('click',ev=>{if(!worldOpen)return;const id=worldPick(ev);if(id){worldSel=id;worldHov=null}});
+function drawWorldNodes(g,W,H,now){   // 舊畫法（底圖載入失敗時的回落）
   // 版面：保持大約 1:1 的比例置中（直式手機上不會被拉成細長條）
   const m=Math.min(W,H)*.1,aw0=W-2*m,ah0=H-2.4*m,aw=Math.min(aw0,ah0*1.5),ah=Math.min(ah0,aw0*1.25),ox=(W-aw)/2,oy=m*1.3+(ah0-ah)/2;
   const pos=id=>{const w=MAPS[id].world||[50,50];return [ox+aw*w[0]/100,oy+ah*w[1]/100]};
