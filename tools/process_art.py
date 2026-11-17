@@ -5,8 +5,8 @@
     python tools/process_art.py --src X --dst Y   # 測試用：指定來源與輸出根目錄
 
 原圖檔名（.png / .jpg / .webp 皆可），缺的會略過，所以可以一張一張補：
-    icon-sudoku / icon-minesweeper / icon-bulls-cows / icon-solitaire / icon-rpg / icon-tower-orbs / icon-drift-ark / icon-tetris / icon-pokemo / icon-outpost / icon-deep-miner / icon-neon-danmaku / icon-sky-frontier / icon-shrine
-    cover-<遊戲>（首頁彩色封面，14 款；大作 900×600、小品 600×600，清單見下方 COVER_SIZE；輸出 covers/<遊戲>.webp）
+    icon-sudoku / icon-minesweeper / icon-bulls-cows / icon-solitaire / icon-rpg / icon-tower-orbs / icon-drift-ark / icon-tetris / icon-pokemo / icon-outpost / icon-neon-danmaku / icon-sky-frontier / icon-shrine
+    cover-<遊戲>（首頁彩色封面，13 款；大作 900×600、小品 600×600，清單見下方 COVER_SIZE；輸出 covers/<遊戲>.webp）
     solitaire-back / solitaire-felt
     minesweeper-flag / minesweeper-mine
     relic-<id> / trait-<id> / boss-<id> / event-<id> / node-<id> / unlock-<id>（轉珠之塔地城，id 見下方 RG_ART）
@@ -168,7 +168,7 @@ RG_ART = {
 COVER_DIR = 'covers'
 COVER_QUALITY = 82
 COVER_SIZE = {
-    (900, 600): ['pokemo', 'shrine', 'rpg', 'tower-orbs', 'drift-ark', 'outpost', 'sky-frontier', 'deep-miner'],
+    (900, 600): ['pokemo', 'shrine', 'rpg', 'tower-orbs', 'drift-ark', 'outpost', 'sky-frontier'],   # 深掘礦工已併入天穹拓荒
     (600, 600): ['sudoku', 'minesweeper', 'bulls-cows', 'solitaire', 'tetris', 'neon-danmaku'],
 }
 
@@ -182,7 +182,7 @@ def cover(im, size):
 # 原圖名 → (輸出路徑, 處理函式)
 JOBS = {
     **{f'icon-{g}': (f'icons/{g}.webp', lambda im: icon(im, 256))
-       for g in ['sudoku', 'minesweeper', 'bulls-cows', 'solitaire', 'rpg', 'tower-orbs', 'drift-ark', 'tetris', 'pokemo', 'outpost', 'deep-miner', 'neon-danmaku', 'sky-frontier', 'shrine']},
+       for g in ['sudoku', 'minesweeper', 'bulls-cows', 'solitaire', 'rpg', 'tower-orbs', 'drift-ark', 'tetris', 'pokemo', 'outpost', 'neon-danmaku', 'sky-frontier', 'shrine']},
     # 首頁彩色封面：原圖 cover-<遊戲>，輸出 covers/<遊戲>.webp（品質 82）。尺寸依 COVER_SIZE 分大作／小品
     **{f'cover-{g}': (f'{COVER_DIR}/{g}.webp', (lambda s: lambda im: cover(im, s))(size))
        for size, games in COVER_SIZE.items() for g in games},

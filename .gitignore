@@ -34,3 +34,5 @@ rpg-next/_fuzz.js
 .claude/task-router/map.json
 .claude/task-router/map.md
 shrine/_bossbot.js
+# 天穹拓荒的本機平衡模擬
+sky-frontier/_sim.js

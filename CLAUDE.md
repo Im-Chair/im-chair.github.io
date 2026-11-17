@@ -28,9 +28,12 @@
 ├── drift-ark/          # 漂流紀元：最後的方舟（單一 index.html，美術以 base64 內嵌；存檔 key drift-ark-v1）
 ├── pokemo/             # 珠界：歸一之子（index.html 是唯一正本，直接改；美術放 art/，要用到才載入。新增圖檔要同步加進 sw.js 的 POKEMO_ART）
 ├── outpost/            # 晨昏線前哨（單一 index.html；Core 純邏輯、UI 介面分開，可用 node 模擬；紀錄 story.best.lost）
-├── deep-miner/         # 深掘礦工（單一 index.html）
+├── deep-miner/         # 只剩轉址頁（深掘礦工已併入天穹拓荒；舊存檔 arcade-deep-miner-save 由天穹拓荒詢問後轉換，不刪）
 ├── neon-danmaku/       # 霓虹彈幕狂想曲（單一 index.html，Canvas；紀錄 best.score 越大越好）
-├── sky-frontier/       # 天穹拓荒（單一 index.html，桌機鍵鼠＋手機觸控（橫向）2D 沙盒；世界存 arcade-sky-frontier-world-<1~3>，紀錄 best.era；選配美術放 art/，由 tools/process_art.py 產生 index.json，有圖用圖、沒圖用程式繪製）
+├── sky-frontier/       # 天穹拓荒（單一 index.html，回合制直向挖礦經營＝深掘礦工＋經濟模組規格書 v4.1：收購飽和、每日額度、捐獻換文明點數、五個時代）。
+│                       #   Miner 核心 IIFE 純邏輯（經濟全在這裡），node 可載入；_sim.js 平衡模擬（node 跑，不上 GitHub）；?debug=1 開 window.__sf；
+│                       #   存檔 arcade-sky-frontier-save（整個狀態，v:2）；紀錄 arcade-sky-frontier-stats＝{best:{era}, won, story:{plays,wins,best:{days,digs},deepest}}；
+│                       #   art/ 只用 npc-artisan、npc-scrap 兩張（其餘是舊版即時沙盒的圖，未使用）
 ├── shrine/             # 珠界：聖林神廟（俯視即時動作冒險，多檔、非 ES module）。載入順序 maps.js → index.html（地圖引擎＋HUD＋HOOKS）→ game.js（戰鬥、裝備 EQUIP、日夜 DAY、存檔）→ adventure.js（道具、機關、首領 BOSS_DEF、所有台詞 TEXT）→ village.js（背包、商店、鍛造、賞金板、營火、教官）；
 │                       #   改任何 js 要升 index.html 的 SHRINE_VER；地圖用形狀（控制點）定義，maps.js 欄位說明在檔頭；存檔 arcade-shrine-save、統計 arcade-shrine-stats（story.best.time／deaths 越小越好）；
 │                       #   地圖素材、NPC 圖、按鈕框借用 ../pokemo/art/（新增借用要確認在根 sw.js 的 POKEMO_ART）；測試用 ?debug=1 開 window.__shrine，__shrine.audit() 檢查地圖可達性；_bossbot.js 是首領平衡模擬（開發用）；選配美術走 `shrine/art/index.json`，由 tools/process_art.py 產生（清單有才發請求，沒有維持程式畫法）
@@ -96,7 +99,7 @@ RPG 內部版號已集中到 `rpg/index.html` `<head>` 的單一常數 **`RPG_VE
 
 - 根 `sw.js` 採 **network-first**（先抓網路、失敗才用快取）。快取名為 `arcade-vN`；**改動需要立即生效的資源時，把 `CACHE` 版本號 +1**，舊快取會在 activate 時清除。
 - `sudoku/` 有自己一套 `manifest.json` + `sw.js` + `icons/`，是獨立 PWA，與根設定分開維護。
-- 天穹拓荒的選配美術由 `fillCaches` 讀 `sky-frontier/art/index.json` 自動補快取，新增圖不必改 `sw.js`。
+- 天穹拓荒只用兩張 NPC 頭像，直接列在根 `sw.js` 的 ASSETS；不再讀 `sky-frontier/art/index.json` 補快取。
 - 根目錄 `_config.yml` 供 GitHub Pages（Jekyll）排除開發文件（CLAUDE.md、AGENTS.md、美術需求文件、`tools/`），不部署到網站。
 
 ## 本機預覽

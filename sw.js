@@ -1,4 +1,4 @@
-const CACHE = 'arcade-v94';
+const CACHE = 'arcade-v95';
 // 珠界的圖獨立一個快取、不跟 CACHE 改版：改版時不必重抓，也不用每次打開都等網路
 const ART_CACHE = 'arcade-pokemo-art';
 // RPG 敵人圖示：檔名＝ENEMIES／首領／域限精英的 key。v385 起 50 隻全數有圖，已無 SVG 回落。
@@ -61,12 +61,14 @@ const ASSETS = [
   '/drift-ark/',            // v48：漂流方舟（單檔，美術以 base64 內嵌）
   '/tetris/',               // v53：俄羅斯方塊（單檔）
   '/pokemo/',               // v56：珠界：歸一之子（單檔、內嵌美術）
-  '/outpost/', '/deep-miner/', '/neon-danmaku/',   // v59：晨昏線前哨、深掘礦工、霓虹彈幕（皆單檔）
-  '/sky-frontier/',         // v63：天穹拓荒（單檔）
+  '/outpost/', '/neon-danmaku/',   // v59：晨昏線前哨、霓虹彈幕（皆單檔）
+  '/sky-frontier/',         // v63：天穹拓荒（單檔）；v95 起併入深掘礦工（/deep-miner/ 只剩轉址頁，不預快取）
+  // v95：天穹拓荒只用這兩張 NPC 頭像（打開對話才載入），其餘 art/ 的圖是舊版即時沙盒的，不再快取
+  ...['npc-artisan','npc-scrap'].map(k => `/sky-frontier/art/${k}.webp`),
   // v45：小遊戲美術（可一張一張補；檔案還不存在時只會略過）。產出流程見 美術需求_ChatGPT出圖.md
-  ...['sudoku','minesweeper','bulls-cows','solitaire','rpg','tower-orbs','drift-ark','tetris','pokemo','outpost','deep-miner','neon-danmaku','sky-frontier','shrine'].map(k => `/icons/${k}.webp`),
+  ...['sudoku','minesweeper','bulls-cows','solitaire','rpg','tower-orbs','drift-ark','tetris','pokemo','outpost','neon-danmaku','sky-frontier','shrine'].map(k => `/icons/${k}.webp`),
   // 首頁彩色封面（可一張一張補；rpg-next 與 rpg 共用 rpg.webp）。只由 fillCaches 背景補，不進 CORE
-  ...['pokemo','shrine','rpg','tower-orbs','drift-ark','outpost','sky-frontier','deep-miner','sudoku','minesweeper','bulls-cows','solitaire','tetris','neon-danmaku'].map(k => `/covers/${k}.webp`),
+  ...['pokemo','shrine','rpg','tower-orbs','drift-ark','outpost','sky-frontier','sudoku','minesweeper','bulls-cows','solitaire','tetris','neon-danmaku'].map(k => `/covers/${k}.webp`),
   '/solitaire/back.webp', '/solitaire/felt.webp', '/minesweeper/flag.webp', '/minesweeper/mine.webp',
   // RPG：預先快取核心檔，讓「裝了 App 但還沒連網進過 RPG」的使用者也能離線開啟。
   // 這裡存的是「不帶 ?v= 版號」的基底網址，靠下方 fetch fallback 的 ignoreSearch 對應到實際帶版號的請求。
@@ -104,14 +106,7 @@ function fillCaches() {
   return filling || (filling = (async () => {
     await new Promise(r => setTimeout(r, 3000));   // 先讓使用者點進遊戲
     const jobs = [...ASSETS.map(u => [CACHE, u]), ...POKEMO_ART.map(u => [ART_CACHE, u])];
-    // 天穹拓荒的選配美術：清單在 art/index.json，照它列的檔名補；抓不到或格式不對就略過，不算 failed
-    try {
-      const r = await fetch('/sky-frontier/art/index.json', { priority: 'low' });
-      if (r.ok) {
-        const list = await r.json();
-        jobs.push([CACHE, '/sky-frontier/art/index.json'], ...list.map(k => [CACHE, `/sky-frontier/art/${k}.webp`]));
-      }
-    } catch (err) {}
+    // 天穹拓荒（v95 起回合制）只用兩張 NPC 頭像，已列在 ASSETS；不再照 art/index.json 補 80 張舊圖
     // 聖林神廟的選配美術：同樣照 art/index.json 補（圖檔網址在遊戲裡帶 ?v=，靠 fetch fallback 的 ignoreSearch 對應）；上面寫死的 8 張照舊
     try {
       const r = await fetch('/shrine/art/index.json', { priority: 'low' });

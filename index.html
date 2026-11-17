@@ -337,14 +337,7 @@
         <div class="card-cover"><span class="cv-emoji" aria-hidden="true">🏝️</span></div>
         <div class="card-body">
           <div class="card-name">天穹拓荒</div>
-          <div class="card-meta">沙盒</div>
-        </div>
-      </a>
-      <a class="game-card big" href="./deep-miner/" data-game="deep-miner" data-cover="covers/deep-miner.webp" data-icon="icons/deep-miner.webp" style="--h:30">
-        <div class="card-cover"><span class="cv-emoji" aria-hidden="true">⛏️</span></div>
-        <div class="card-body">
-          <div class="card-name">深掘礦工</div>
-          <div class="card-meta">挖礦探險</div>
+          <div class="card-meta">挖礦經營</div>
         </div>
       </a>
     </div>
@@ -440,17 +433,16 @@
     'outpost': st => {
       return st.story?.wins ? `🏆 最少損失 ${st.story.best?.lost ?? 0} 人` : '';
     },
-    'deep-miner': st => {
-      if (st.story?.best?.days != null) return `🏆 ${st.story.best.days} 天通關`;
-      return st.story?.deepest ? `⛏️ 最深 ${st.story.deepest} m` : '';
-    },
     'neon-danmaku': st => {
       const best = Math.max(st.story?.best?.score || 0, st.endless?.best?.score || 0);
       return best ? `🏆 ${best.toLocaleString()} 分` : '';
     },
+    // 天穹拓荒 v2（併入深掘礦工）：{ best: { era }, won, story: { best: { days }, deepest } }；沒有 story 的是舊版即時沙盒留下的紀錄，不顯示
     'sky-frontier': st => {
-      if (st.won) return '🏆 已討伐墜星';
-      return st.best?.era ? `${['拓荒','開墾','商業','工業','天穹','星辰'][st.best.era]}時代` : '';
+      if (!st.story) return '';
+      if (st.won) return `🏆 星辰時代${st.story.best?.days != null ? ` · ${st.story.best.days} 天` : ''}`;
+      if (st.best?.era) return `${['拓荒','開墾','商業','天穹','星辰'][st.best.era]}時代`;
+      return st.story.deepest ? `⛏️ 最深 ${st.story.deepest} m` : '';
     },
     'shrine': st => st.story?.wins ? `🏆 ${fmt(st.story.best?.time ?? 0)} · 倒下 ${st.story.best?.deaths ?? 0} 次` : '',
   };
@@ -478,7 +470,9 @@
     }
     let badge = null;
     // data-save：沒有 data-game 的遊戲（珠界、貪婪深淵、轉珠之塔、漂流方舟）直接指定它們的存檔 key，有存檔就算進行中
-    const resume = g ? lsGet(`arcade-${g}-save`) : lsHas(card.dataset.save || '');
+    let resume = g ? lsGet(`arcade-${g}-save`) : lsHas(card.dataset.save || '');
+    // 天穹拓荒：只認 v2 存檔（舊版即時沙盒的 {slot, era} 指標不算進行中）
+    if (g === 'sky-frontier' && resume?.v !== 2) resume = null;
     if (resume || DAILY_GAMES.includes(g) && lsGet(`arcade-${g}-daily-save`)?.daily === today) badge = { text: '進行中', cls: 'resume' };
     else if (DAILY_GAMES.includes(g)) badge = dailyBadge(g);
     if (badge) {
