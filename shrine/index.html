@@ -149,10 +149,16 @@ body.touch #itemBtn:not(.on),body.touch #cycBtn:not(.on){display:none}
 #chal.on{display:block}
 #fade{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#8a95c0;font-size:14px;letter-spacing:2px;background:#000;opacity:0;pointer-events:none;transition:opacity .28s;z-index:40}
 #fade.on{opacity:1;pointer-events:auto}
+#fade{flex-direction:column;gap:12px}
+#fadeTxt:empty{display:none}
+#fadeTxt.sm{font-size:11px;letter-spacing:1px;opacity:.6}
+#fadeBar{display:none;width:min(220px,56vw);height:4px;border-radius:2px;background:#1a2036;overflow:hidden}
+#fade.prog #fadeBar{display:block}
+#fadeBar b{display:block;height:100%;width:0;background:#8a95c0;transition:width .15s}
 </style>
 <script>
 /* 版號：改了 maps.js 或這個檔就 +1，破除瀏覽器快取 */
-const SHRINE_VER='18';
+const SHRINE_VER='19';
 document.write('<script src="maps.js?v='+SHRINE_VER+'"><\/script>');
 </script>
 </head>
@@ -190,7 +196,7 @@ document.write('<script src="maps.js?v='+SHRINE_VER+'"><\/script>');
     <div id="chal"></div>
     <div id="world"><div id="worldBox"><canvas id="worldCv"></canvas><button id="worldClose">關閉</button></div></div>
   </section>
-  <div id="fade"></div>
+  <div id="fade"><div id="fadeTxt"></div><div id="fadeBar"><b></b></div></div>
 </div>
 <script>
 'use strict';
@@ -218,6 +224,13 @@ const LOCK_DIST=1.4;      // 靠近鎖住的門多近會跳提示（單位）
 const TEX_UNITS=5;        // 地面紋理重複週期（單位）
 const TILE_INSET=6;       // 圖集取樣內縮（像素），避免吃到相鄰圖格
 const DEBUG=/[?&]debug=1/.test(location.search);
+const LOAD_MAX_MS=12000;     // 開場／換圖等圖的整體上限（毫秒）；超過就照現況進場，沒到的圖用程式畫法替代
+const FADE_SLOW_MS=600;      // 換圖等待超過這麼久，黑幕上才顯示「載入中…」
+const PRELOAD_LANES=2;       // 背景預載同時最多幾張
+const PRELOAD_GAP_MS=120;    // 背景預載：一張載完到下一張之間的間隔（毫秒）
+// 除錯用（只在 ?debug=1 生效）：?slow=毫秒 讓每張圖延後這麼久才發請求；?fail=a,b 讓網址含 a 或 b 的圖 404
+const DBG_SLOW=DEBUG?(+((/[?&]slow=(\d+)/.exec(location.search)||[])[1])||0):0;
+const DBG_FAIL=DEBUG?(((/[?&]fail=([^&]+)/.exec(location.search)||[])[1])||'').split(',').filter(Boolean):[];
 
 /* ===== 美術：沿用珠界的地圖素材（有圖用圖，缺變體用預設版，再不行用程式畫） ===== */
 const PK='../pokemo/art/';
@@ -237,7 +250,7 @@ for(const k in CH){CH[k].art='ch_'+k;CH[k].ch=202;ART_SRC['ch_'+k]=`${PK}ch-${k}
    id 前綴：m-怪物（2×2 四格）n-NPC p-場景物件 i-道具／掉落 e-裝備；成品由 tools/process_art.py 產生。
    清單啟動時抓一次；抓不到或格式不對就當空的，不影響開場 */
 const SART=new Set();
-const SART_READY=fetch(`art/index.json?v=${SHRINE_VER}`).then(r=>r.ok?r.json():[]).then(l=>{if(Array.isArray(l))l.forEach(k=>{if(typeof k==='string')SART.add(k)})}).catch(()=>{});
+const SART_READY=new Promise(r=>setTimeout(r,DBG_SLOW)).then(()=>fetch(`art/index.json?v=${SHRINE_VER}`)).then(r=>r.ok?r.json():[]).then(l=>{if(Array.isArray(l))l.forEach(k=>{if(typeof k==='string')SART.add(k)})}).catch(()=>{});
 function sKey(k){const key='s_'+k;if(!ART_SRC[key])ART_SRC[key]=`art/${k}.webp?v=${SHRINE_VER}`;return key}
 function sImg(k){   // 選配圖：不在清單 → null；在清單但還沒載好 → 觸發載入並回 null
   if(!SART.has(k))return null;const key=sKey(k);
@@ -357,9 +370,10 @@ function needArt(k){
   return artLoad[k]||(artLoad[k]=new Promise(r=>{
     if(!ART_SRC[k]){artFail[k]=1;return r(false)}
     const im=new Image();
-    im.onload=()=>{ART[k]=im;delete artFail[k];if(k.startsWith('tiles')&&texNeeds().includes(k)){buildTextures();GEN++}for(const s in SPR)SPR[s]=null;if(k.startsWith('s_i-')&&typeof advKey!=='undefined')advKey='';r(true)};
+    im.onload=()=>{ART[k]=im;delete artFail[k];if(k.startsWith('tiles')&&texNeeds().includes(k)){buildTextures();GEN++}if(/^(tree|house|rock|bush|sign)/.test(k))for(const s in SPR)SPR[s]=null;if(k.startsWith('s_i-')&&typeof advKey!=='undefined')advKey='';r(true)};
     im.onerror=()=>{artFail[k]=1;setTimeout(()=>{delete artLoad[k]},8000);r(false)};   // 抓失敗：先用預設版，幾秒後允許重抓
-    im.src=ART_SRC[k];
+    const src=DBG_FAIL.some(f=>ART_SRC[k].includes(f))?ART_SRC[k].replace('.webp','_404.webp'):ART_SRC[k];
+    if(DBG_SLOW)setTimeout(()=>{im.src=src},DBG_SLOW*(.4+Math.random()*1.2));else im.src=src;
   }));
 }
 // 物件圖：主題版 → 預設版 → null（呼叫端改用程式畫）；並預先縮到需要的解析度
@@ -790,23 +804,80 @@ const inRect=(e,x,y)=>x>=e.x&&x<=e.x+e.w&&y>=e.y&&y<=e.y+e.h;
 async function fade(on){$('#fade').classList.toggle('on',on);await sleep(300)}
 async function useExit(e){
   lock=true;await fade(true);
+  await loadMap(e.to);   // 淡出後先等新地圖的圖到齊，再換地圖、建好視野內的地面，才淡入
   go(e.to,e.tx,e.ty,e.face);
-  await artGate(mapArt(e.to),4000);
   render(performance.now());await sleep(30);
   await fade(false);lock=false;
 }
-function mapArt(id){   // 這張地圖要用的圖（主題版＋預設版當備援）
-  const th=MAPS[id].theme||'',ks=new Set(['hero','tiles','tiles_ember','tiles'+th]);
-  ['tree1','tree2','rock','bush','sign','house'].forEach(k=>{ks.add(k+th)});
-  (MAPS[id].npcs||[]).forEach(n=>{if(SART.has('n-'+n.id))ks.add(sKey('n-'+n.id));else if(CH[n.ch])ks.add(CH[n.ch].art)});
-  for(const a of SART)if(/^[pim]-/.test(a))ks.add(sKey(a));   // 場景物件、道具、怪物圖一次備齊（e- 裝備圖只在列表用 <img>）
-  HOOKS.art(id).forEach(k=>ks.add(k));
-  return [...ks].map(needArt);
+/* ===== 載圖等待：只靠 Promise＋setTimeout 推進（隱藏分頁 rAF 不跑也不會卡住） ===== */
+function texKeysOf(th){   // 這個主題的地面紋理會用到的圖集（含各紋理指定的別種圖集，如熔岩）
+  const ks=new Set(['tiles','tiles'+th,'tiles_ember']);
+  for(const n of TEX_NAMES){const sl=slotsOf(n,th);ks.add('tiles'+(sl[0][2]!=null?sl[0][2]:th))}
+  return [...ks];
 }
-async function artGate(need,ms){
-  const el=$('#fade');let done=0;
-  need.forEach(p=>p.then(()=>{done++;el.textContent=`載入中… ${done}/${need.length}`}));
-  await Promise.race([Promise.all(need),sleep(ms)]);el.textContent='';
+function mapArt(id){   // 這張地圖要用的圖（key 陣列；不發請求）
+  const M=MAPS[id],th=M.theme||'',ks=new Set(['hero']);
+  texKeysOf(th).forEach(k=>ks.add(k));
+  ['tree1','tree2','rock','bush','sign','house'].forEach(k=>ks.add(k+th));   // 主題版缺檔時 loadKeys 會補抓預設版
+  (M.npcs||[]).forEach(n=>{if(SART.has('n-'+n.id))ks.add(sKey('n-'+n.id));else if(CH[n.ch])ks.add(CH[n.ch].art)});
+  for(const a of SART)if(/^[pi]-/.test(a))ks.add(sKey(a));   // 場景物件 p-、掉落物與 HUD 圖示 i-（怪物 m-、首領圖由 HOOKS.art 依地圖給；e- 裝備圖留給背景預載）
+  HOOKS.art(id).forEach(k=>ks.add(k));
+  return [...ks];
+}
+const baseKey=k=>{const b=k.replace(/_(coast|ember|marsh|sky|abyss)$/,'');return b!==k&&ART_SRC[b]?b:null};
+let gating=0;   // >0＝正在等當前地圖的圖，背景預載讓路
+function fadeMsg(t,small){const el=$('#fadeTxt');el.textContent=t||'';el.classList.toggle('sm',!!small)}
+function fadeProg(d,n){$('#fade').classList.toggle('prog',n>0);$('#fadeBar b').style.width=n?Math.round(d/n*100)+'%':'0';fadeMsg(n?`載入中 ${d}/${n}`:'載入中…')}
+// 等 keys 全部載完（失敗的主題版再補抓預設版）；最多等 ms 毫秒，逾時就放行。回傳 {total,ms,timeout}
+async function loadKeys(keys,ms,onProg){
+  gating++;const t0=performance.now();let done=0,timeout=false;
+  const total=keys.length;onProg&&onProg(0,total);
+  const ps=keys.map(k=>needArt(k).then(ok=>{done++;onProg&&onProg(done,total);return ok}));
+  const all=Promise.all(ps).then(async res=>{
+    const fb=[];keys.forEach((k,i)=>{const b=!res[i]&&baseKey(k);if(b&&!ART[b])fb.push(b)});
+    if(fb.length)await Promise.all(fb.map(needArt));
+  });
+  let tm;
+  await Promise.race([all,new Promise(r=>{tm=setTimeout(()=>{timeout=true;r()},Math.max(0,ms))})]);
+  clearTimeout(tm);gating--;
+  return {total,ms:Math.round(performance.now()-t0),timeout};
+}
+// 換圖：新地圖的圖到齊才回來；超過 FADE_SLOW_MS 在黑幕上顯示小小的「載入中…」
+async function loadMap(id){
+  const tm=setTimeout(()=>fadeMsg('載入中…',true),FADE_SLOW_MS);
+  const r=await loadKeys(mapArt(id),LOAD_MAX_MS);
+  clearTimeout(tm);fadeMsg('');
+  LASTLOAD={map:id,...r,...loadState(mapArt(id))};
+  return r;
+}
+let LASTLOAD=null;
+function loadState(keys){
+  return {pending:keys.filter(k=>!ART[k]&&!artFail[k]),failed:keys.filter(k=>artFail[k]),loaded:keys.filter(k=>ART[k]).length,
+    texReal:TEX_NAMES.every(n=>!!texSource(n))}
+}
+/* ===== 背景預載：進場後用閒置時間慢慢載其他地圖的圖集、首領圖與裝備小圖；換圖等待中讓路 ===== */
+let preQ=null;
+function startPreload(){
+  if(preQ)return;
+  const order=[],seen=new Set([CURID]);let qs=[CURID];   // 從目前地圖往外走（相鄰的先載）
+  while(qs.length){const nx=[];for(const id of qs)for(const e of (MAPS[id]&&MAPS[id].exits)||[])if(MAPS[e.to]&&!seen.has(e.to)){seen.add(e.to);order.push(e.to);nx.push(e.to)}qs=nx}
+  for(const id in MAPS)if(!seen.has(id)){seen.add(id);order.push(id)}
+  const pq=new Set();
+  for(const a of SART)if(a.startsWith('e-'))pq.add(sKey(a));   // 背包、商店的裝備小圖：第一次開面板才不會閃
+  for(const id of order)mapArt(id).forEach(k=>pq.add(k));
+  preQ=[...pq].filter(k=>!ART[k]&&!artFail[k]&&!artLoad[k]);
+  const idle=fn=>window.requestIdleCallback?requestIdleCallback(fn,{timeout:1500}):setTimeout(fn,200);
+  const lane=()=>{
+    if(!preQ.length)return;
+    if(gating){setTimeout(lane,400);return}
+    idle(()=>{
+      if(gating){setTimeout(lane,400);return}
+      const k=preQ.shift();
+      if(!k||ART[k]||artFail[k]||artLoad[k]){lane();return}
+      needArt(k).then(()=>setTimeout(lane,PRELOAD_GAP_MS));
+    });
+  };
+  for(let i=0;i<PRELOAD_LANES;i++)setTimeout(lane,i*PRELOAD_GAP_MS);
 }
 
 /* ================= 對話（照珠界 say） ================= */
@@ -1351,18 +1422,23 @@ addEventListener('resize',()=>{if(running)resize()});
 /* ================= 開始 ================= */
 async function start(mode){   // mode：'new'｜'continue'（標題按鈕由 game.js 接；沒有 game.js 時直接開始）
   if(running)return;
+  const T0=performance.now(),left=()=>Math.max(0,LOAD_MAX_MS-(performance.now()-T0));
   const btns=[...document.querySelectorAll('#sTitle button')];btns.forEach(b=>b.disabled=true);
-  const el=$('#fade');el.classList.add('on');await sleep(300);
+  const el=$('#fade');fadeProg(0,0);el.classList.add('on');await sleep(300);   // 載入畫面：一直停到第一張地圖的圖都到齊（或失敗／逾時）
   $('#sTitle').classList.remove('on');$('#sMap').classList.add('on');
   ctx=$('#cv').getContext('2d');
   const s=HOOKS.begin(mode==='continue'?'continue':'new')||{},id=MAPS[s.map]?s.map:'village';
   C=compileMap(id);
   resize();
-  await Promise.race([SART_READY,sleep(2500)]);   // 選配美術清單：等不到就當沒有，之後抓到了也會自動啟用
-  await artGate(mapArt(id),6000);   // 網路不通就逾時放行，畫面用程式畫的替代
+  await Promise.race([SART_READY,sleep(left())]);   // 選配美術清單：這張地圖要用哪些圖由它決定，所以先等它（逾時當沒有）
+  const keys=mapArt(id),r=await loadKeys(keys,left(),fadeProg);   // 網路不通就逾時放行，畫面用程式畫的替代
   go(id,s.x,s.y,s.face);
-  running=true;last=performance.now();render(last);requestAnimationFrame(loop);
+  running=true;last=performance.now();render(last);requestAnimationFrame(loop);   // 先把視野內的地面區塊用圖集建好，再淡入
+  LASTLOAD={map:id,...r,...loadState(keys),sartLoaded:SART.size,blocks:blk.size,blocksCurrent:blk.size>0&&[...blk.values()].every(e=>e.gen===GEN),waitMs:Math.round(performance.now()-T0)};
   await sleep(30);el.classList.remove('on');btns.forEach(b=>b.disabled=false);
+  fadeMsg('');el.classList.remove('prog');
+  LASTLOAD.fadeMs=Math.round(performance.now()-T0);
+  startPreload();
 }
 document.title=GAME_TITLE;
 {const [a,b]=GAME_TITLE.split('：');$('#logo').innerHTML='';$('#logo').append(a||GAME_TITLE);if(b){const s=document.createElement('small');s.textContent=b;$('#logo').append(s)}}
@@ -1370,7 +1446,7 @@ Promise.all(['ui-btn','ui-btn-pri'].map(k=>new Promise((ok,no)=>{const im=new Im
 if(DEBUG){
   document.body.classList.add('debug');
   window.__shrine={go:(id,x,y,face)=>{const ok=go(id,x,y,face);if(ok&&running)render(performance.now());return ok},get state(){return {map:CURID,x:P.x,y:P.y,face:P.face,blocks:blk.size,built:stat.built,fps:stat.fps}},
-    stat,P,MAPS,PROGRESS,start,audit,openWorld,ask,openPanel,closePanel,get panelOpen(){return panelOpen},
+    stat,P,MAPS,PROGRESS,start,audit,get load(){return LASTLOAD},get art(){return {ART:Object.keys(ART).length,fail:Object.keys(artFail),pre:preQ?preQ.length:null,gating}},openWorld,ask,openPanel,closePanel,get panelOpen(){return panelOpen},
     keys,joy,tick:dt=>{update(dt);render(performance.now());return [CURID,P.x,P.y]},
     /* zoom：看全圖用，暫時改解析度讓視野變大 */
     zoom:z=>{dpr=z;tmpReset();buildTextures();for(const k in SPR)SPR[k]=null;clearBlocks();GEN++;forceFull=true;render(performance.now())},

@@ -2,7 +2,7 @@
 /* ============================================================
    珠界：聖林神廟 — 戰鬥核心（game.js，在引擎 index.html 之後載入；非 ES module）
    引擎提供的全域：C（目前地圖）、CURID、P（玩家位置／面向）、MAPS、PROGRESS、HOOKS、
-   circleFree、walkAt、wetAt、moveBy、inRect、go、fade、sleep、toast、render、mapArt、artGate、
+   circleFree、walkAt、wetAt、moveBy、inRect、go、fade、sleep、toast、render、mapArt、loadMap、
    ART／ART_SRC／needArt、drawShadow、keys、running、lock、dlgOpen、worldOpen、PLAYER_R、HERO_*。
    這個檔掛上 HOOKS，負責：玩家戰鬥、敵人、飛行物、掉落、互動物、HUD、存檔、音效、標題按鈕。
    座標單位同引擎（1 單位＝48 CSS px），時間單位秒，生命以「半顆心」為 1。
@@ -398,8 +398,9 @@ async function die(){
   const loss=Math.floor(ST.money*PL.deathLoss);ST.money-=loss;ST.hp=maxHp();
   const cp=ST.cp&&MAPS[ST.cp.map]?ST.cp:{map:'village',x:MAPS.village.spawn[0],y:MAPS.village.spawn[1],face:'down'};
   PS.dead=false;PS.kbt=0;PS.stop=0;
+  await loadMap(cp.map);   // 黑幕下先等重生地圖的圖到齊再換圖
   go(cp.map,cp.x,cp.y,cp.face);
-  await artGate(mapArt(cp.map),4000);render(performance.now());await sleep(60);
+  render(performance.now());await sleep(60);
   PS.inv=1.2;PS.blink=true;hud(true);
   await fade(false);lock=false;
   toast(loss?`你倒下了……失去 ${loss} ${MONEY}`:'你倒下了……');
@@ -644,7 +645,16 @@ function setupInteract(){
 HOOKS.player=(dt)=>playerTick(dt);
 HOOKS.faceLock=faceLocked;
 HOOKS.near=nearInteract;
-HOOKS.art=()=>['mon','goblin','archer'];
+HOOKS.art=id=>{   // 這張地圖會出現的怪物圖（首領戰會召喚史萊姆）：有新圖用 m-，沒有就用舊的 mon／goblin／archer
+  const M=MAPS[id],th=M.theme||'',kinds=new Set((M.spawns||[]).map(s=>s.k)),ks=new Set();
+  if(M.boss)kinds.add('slime');
+  for(const k of kinds){
+    const sk=SKIN[k];if(!sk)continue;
+    const skin=sk[th]!=null?sk[th]:sk[''],ma=MON_ART[skin];
+    if(ma&&SART.has('m-'+ma))ks.add(sKey('m-'+ma));else ks.add(typeof skin==='number'?'mon':skin);
+  }
+  return [...ks];
+};
 HOOKS.enter=id=>{
   ENEMIES=[];SHOTS=[];DROPS=[];FX=[];
   Object.assign(PS,{act:'',kbt:0,stop:0,charge:0,charged:false,shield:false});
