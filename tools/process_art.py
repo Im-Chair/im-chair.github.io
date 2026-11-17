@@ -5,7 +5,7 @@
     python tools/process_art.py --src X --dst Y   # 測試用：指定來源與輸出根目錄
 
 原圖檔名（.png / .jpg / .webp 皆可），缺的會略過，所以可以一張一張補：
-    icon-sudoku / icon-minesweeper / icon-bulls-cows / icon-solitaire / icon-rpg / icon-tower-orbs / icon-drift-ark / icon-tetris / icon-pokemo / icon-outpost / icon-deep-miner / icon-neon-danmaku / icon-sky-frontier
+    icon-sudoku / icon-minesweeper / icon-bulls-cows / icon-solitaire / icon-rpg / icon-tower-orbs / icon-drift-ark / icon-tetris / icon-pokemo / icon-outpost / icon-deep-miner / icon-neon-danmaku / icon-sky-frontier / icon-shrine
     solitaire-back / solitaire-felt
     minesweeper-flag / minesweeper-mine
     relic-<id> / trait-<id> / boss-<id> / event-<id> / node-<id> / unlock-<id>（轉珠之塔地城，id 見下方 RG_ART）
@@ -13,7 +13,9 @@
 
 聖林神廟（shrine）另有一組，原圖放 output/imagegen/shrine/（--shrine-src 可改），輸出到 shrine/art/ 並產生 index.json：
     m-<id>（怪物，2x2 四格）／n-<id>（NPC，單張正面）／sheet-props、sheet-items、sheet-equip（各 4x4 共 16 格）
-    以及 p-／i-／e-<id> 單張補圖（優先於圖表切出來的）。id 與格位順序見下方 SH_*，細節見 美術需求_ChatGPT出圖.md 第 15 節
+    以及 p-／i-／e-<id> 單張補圖（優先於圖表切出來的）。id 與格位順序見下方 SH_*，細節見 美術需求_ChatGPT出圖.md 第 16 節
+    hero（英雄，4 欄 × 3 列 12 格 → 取代 shrine/art/hero.webp）、boss-forest／fire／water／temple（首領 → boss_*.webp），
+    這兩類是固定檔名，不列入 index.json
 
 規格與 prompt 見 美術需求_ChatGPT出圖.md。只用 Pillow，不是網站的一部分（網站本身仍然零依賴）。
 """
@@ -163,7 +165,7 @@ RG_ART = {
 # 原圖名 → (輸出路徑, 處理函式)
 JOBS = {
     **{f'icon-{g}': (f'icons/{g}.webp', lambda im: icon(im, 256))
-       for g in ['sudoku', 'minesweeper', 'bulls-cows', 'solitaire', 'rpg', 'tower-orbs', 'drift-ark', 'tetris', 'pokemo', 'outpost', 'deep-miner', 'neon-danmaku', 'sky-frontier']},
+       for g in ['sudoku', 'minesweeper', 'bulls-cows', 'solitaire', 'rpg', 'tower-orbs', 'drift-ark', 'tetris', 'pokemo', 'outpost', 'deep-miner', 'neon-danmaku', 'sky-frontier', 'shrine']},
     'solitaire-back': ('solitaire/back.webp', lambda im: card_back(im, 300, 420)),
     'solitaire-felt': ('solitaire/felt.webp', lambda im: seamless_tile(im, 512)),
     'minesweeper-flag': ('minesweeper/flag.webp', lambda im: sprite(im, 96)),
@@ -192,6 +194,11 @@ SH_SHEETS = {
                     'e-scale_mail', 'e-ember_mail', 'e-wind_boots', 'e-lucky_ring', 'e-sword_crest', 'i-potion', 'i-arrow', 'i-heart-full'],
 }
 SH_ITEM_EDGE = {'p': 192, 'e': 192, 'i': 128}   # 小物件長邊縮到幾 px（依 id 前綴）
+# 首領原圖 boss-<key> → 成品檔名（temple 對應 boss_time，檔名沿用現行）
+SH_BOSS = {'forest': 'boss_forest', 'fire': 'boss_fire', 'water': 'boss_water', 'temple': 'boss_time'}
+HERO_CELL = (204, 154)    # 英雄圖集每格大小；成品 4 欄 × 4 列＝816×616，格式要跟 shrine/index.html 的 HERO_CW／HERO_CH 一致
+HERO_BODY = 150           # 站立格的人高（px），要跟 shrine/index.html 的 HERO_BODY 一致
+BOSS_SIDE = 384           # 首領成品是正方形
 SH_ID_RE = re.compile(r'^[mnpie]-')               # index.json 只收這幾類，art/ 裡原本的 hero、mon 等不列
 
 
@@ -329,25 +336,25 @@ def best_cuts(alpha, bb, axis, n=4, size=None, search=0.12):
     return cuts
 
 
-def slice_sheet(im, ids, label):
-    """4x4 圖表 -> {id: RGBA 圖（未縮放）}。格線不準也沒關係：依各物件中心落在哪一格來指派，
-    同一格有多塊就合併；黏在一起、明顯比一格大的連通塊，沿格線附近最空的切線切開再各自取範圍；
-    某格沒東西會印警告並略過。"""
+def slice_grid(im, cols, rows, label):
+    """圖表 -> {(列, 欄): RGBA 圖（未縮放）}。格線不準也沒關係：依各物件中心落在哪一格來指派，
+    同一格有多塊就合併；黏在一起、明顯比一格大的連通塊，沿格線附近最空的切線切開再各自取範圍。
+    沒東西的格不會出現在結果裡（由呼叫端決定要不要警告）。"""
     im = remove_bg(im)
     w, h = im.size
     alpha = im.getchannel('A')
-    cw, ch = w / 4, h / 4
+    cw, ch = w / cols, h / rows
     cellmap = {}
 
     def put(bb):
-        key = (min(3, max(0, int((bb[1] + bb[3]) / 2 / ch))), min(3, max(0, int((bb[0] + bb[2]) / 2 / cw))))
+        key = (min(rows - 1, max(0, int((bb[1] + bb[3]) / 2 / ch))), min(cols - 1, max(0, int((bb[0] + bb[2]) / 2 / cw))))
         cellmap.setdefault(key, []).append(bb)
 
     for bb in components(alpha):
         if (bb[2] - bb[0]) > cw * 1.3 or (bb[3] - bb[1]) > ch * 1.3:
             print(f'    [注意] {label}：有物件黏在一起（{bb}），沿格線切開')
-            xs = best_cuts(alpha, bb, 0, size=w) if (bb[2] - bb[0]) > cw * 1.3 else [bb[0], bb[2]]
-            ys = best_cuts(alpha, bb, 1, size=h) if (bb[3] - bb[1]) > ch * 1.3 else [bb[1], bb[3]]
+            xs = best_cuts(alpha, bb, 0, n=cols, size=w) if (bb[2] - bb[0]) > cw * 1.3 else [bb[0], bb[2]]
+            ys = best_cuts(alpha, bb, 1, n=rows, size=h) if (bb[3] - bb[1]) > ch * 1.3 else [bb[1], bb[3]]
             for j in range(len(ys) - 1):
                 for i in range(len(xs) - 1):
                     sub = alpha.crop((xs[i], ys[j], xs[i + 1], ys[j + 1]))
@@ -357,13 +364,62 @@ def slice_sheet(im, ids, label):
         else:
             put(bb)
     out = {}
+    for key, bbs in cellmap.items():
+        bb = (min(b[0] for b in bbs), min(b[1] for b in bbs), max(b[2] for b in bbs), max(b[3] for b in bbs))
+        out[key] = im.crop(bb)
+    return out
+
+
+def slice_sheet(im, ids, label):
+    """4x4 圖表 -> {id: RGBA 圖（未縮放）}；某格沒東西會印警告並略過。"""
+    cells = slice_grid(im, 4, 4, label)
+    out = {}
     for i, oid in enumerate(ids):
-        bbs = cellmap.get((i // 4, i % 4))
-        if not bbs:
+        c = cells.get((i // 4, i % 4))
+        if c is None:
             print(f'    [警告] {label} 第 {i // 4 + 1} 列第 {i % 4 + 1} 欄（{oid}）找不到物件，略過')
             continue
-        bb = (min(b[0] for b in bbs), min(b[1] for b in bbs), max(b[2] for b in bbs), max(b[3] for b in bbs))
-        out[oid] = im.crop(bb)
+        out[oid] = c
+    return out
+
+
+def shrine_hero(im):
+    """英雄：原圖 4 欄（站立、走路A、走路B、攻擊）× 3 列（正面、側面朝右、背面）共 12 格，
+    轉成遊戲讀的 4 欄 × 4 列圖集（每格 204×154，共 816×616）：列＝下（正面）、左（側面鏡射）、右（側面）、上（背面）。
+    12 格用同一個縮放比例（正面站立格人高＝HERO_BODY），腳底貼齊格底、水平置中；
+    某格（攻擊格伸出武器）比格子寬或高時，只把那一格等比縮到塞得下，不裁切。"""
+    cells = slice_grid(im, 4, 3, 'hero')
+    missing = [f'第{r + 1}列第{c + 1}欄' for r in range(3) for c in range(4) if (r, c) not in cells]
+    if missing:
+        raise ValueError('找不到物件：' + '、'.join(missing))
+    k = HERO_BODY / cells[(0, 0)].height   # 以正面站立格為準（人高＝HERO_BODY），其餘 11 格同一比例
+    cw, ch = HERO_CELL
+    out = Image.new('RGBA', (cw * 4, ch * 4), (0, 0, 0, 0))
+    # 原圖列 → 成品列；側面（原圖第 2 列）同時產生右（2）與鏡射的左（1）
+    for sr, dsts in ((0, [(0, False)]), (1, [(2, False), (1, True)]), (2, [(3, False)])):
+        for c in range(4):
+            cell = cells[(sr, c)]
+            kk = min(k, (cw - 2) / (cell.width * 1.0), (ch - 1) / (cell.height * 1.0))   # 超出才縮：只縮該格
+            sp = cell.resize((max(1, round(cell.width * kk)), max(1, round(cell.height * kk))), Image.LANCZOS)
+            slot = Image.new('RGBA', (cw, ch), (0, 0, 0, 0))
+            slot.paste(sp, ((cw - sp.width) // 2, ch - 1 - sp.height))
+            for dr, mirror in dsts:
+                out.paste(slot.transpose(Image.Transpose.FLIP_LEFT_RIGHT) if mirror else slot, (c * cw, dr * ch))
+    return out
+
+
+def shrine_boss(im):
+    """首領：取不透明範圍，等比縮到塞滿 384×384（留 4px 邊）、底部貼齊、水平置中。
+    遊戲用 drawImage(im, -w/2, -h, w, h) 畫（寬高皆為 size），所以成品必須是正方形。"""
+    im = remove_bg(im)
+    bb = alpha_bbox(im)
+    if bb is None:
+        raise ValueError('整張都是透明的')
+    im = im.crop(bb)
+    k = (BOSS_SIDE - 8) / max(im.size)
+    im = im.resize((max(1, round(im.width * k)), max(1, round(im.height * k))), Image.LANCZOS)
+    out = Image.new('RGBA', (BOSS_SIDE, BOSS_SIDE), (0, 0, 0, 0))
+    out.paste(im, ((BOSS_SIDE - im.width) // 2, BOSS_SIDE - 4 - im.height))
     return out
 
 
@@ -403,6 +459,16 @@ def process_shrine(src_dir, dst_root):
         if p:
             print(f'  {p.name} -> {SH_DIR}/n-{nid}.webp')
             safe(p.name, lambda: emit(f'n-{nid}', shrine_npc(Image.open(p))))
+
+    p = find_src(src_dir, 'hero')   # 沒有 hero 原圖就不動現有的 hero.webp
+    if p:
+        print(f'  {p.name} -> {SH_DIR}/hero.webp（12 格 → 4x4 圖集）')
+        safe(p.name, lambda: emit('hero', shrine_hero(Image.open(p))))
+    for key, oid in SH_BOSS.items():
+        p = find_src(src_dir, f'boss-{key}')
+        if p:
+            print(f'  {p.name} -> {SH_DIR}/{oid}.webp')
+            safe(p.name, lambda: emit(oid, shrine_boss(Image.open(p))))
 
     for sheet, ids in SH_SHEETS.items():
         p = find_src(src_dir, sheet)

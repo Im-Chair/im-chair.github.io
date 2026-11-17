@@ -151,7 +151,7 @@ body.touch #itemBtn:not(.on),body.touch #cycBtn:not(.on){display:none}
 </style>
 <script>
 /* 版號：改了 maps.js 或這個檔就 +1，破除瀏覽器快取 */
-const SHRINE_VER='15';
+const SHRINE_VER='17';
 document.write('<script src="maps.js?v='+SHRINE_VER+'"><\/script>');
 </script>
 </head>
@@ -221,7 +221,7 @@ const DEBUG=/[?&]debug=1/.test(location.search);
 /* ===== 美術：沿用珠界的地圖素材（有圖用圖，缺變體用預設版，再不行用程式畫） ===== */
 const PK='../pokemo/art/';
 const THEMES=['','_coast','_ember','_marsh','_sky','_abyss'];
-const ART_SRC={hero:'art/hero.webp'};
+const ART_SRC={hero:`art/hero.webp?v=${SHRINE_VER}`};   // 帶版號：換新圖後升 SHRINE_VER，瀏覽器才會重抓
 for(const t of THEMES)for(const k of ['tiles','tree1','tree2','house','rock','bush','sign'])ART_SRC[k+t]=`${PK}map-${k}${t}.webp`;
 // 物件種類 → 用哪張圖、顯示寬度（單位，再乘上各自的縮放）
 const PROP_ART={tree1:'tree1',tree2:'tree2',giant:'tree1',house:'house',rock:'rock',bush:'bush',sign:'sign'};

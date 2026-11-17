@@ -127,7 +127,7 @@ const BOSS_DEF={
     counterN:[8,7],counterR:2.2,counterWarn:.45,counterStyle:'star'}
 };
 const BOSS_HIT_DECAY=1.2;   // 首領「連續挨打」計數每秒消退幾下（停手一陣子就不會被震開）
-ART_SRC.boss_forest='art/boss_forest.webp';ART_SRC.boss_fire='art/boss_fire.webp';ART_SRC.boss_water='art/boss_water.webp';ART_SRC.boss_temple_img='art/boss_time.webp';
+ART_SRC.boss_forest=`art/boss_forest.webp?v=${SHRINE_VER}`;ART_SRC.boss_fire=`art/boss_fire.webp?v=${SHRINE_VER}`;ART_SRC.boss_water=`art/boss_water.webp?v=${SHRINE_VER}`;ART_SRC.boss_temple_img=`art/boss_time.webp?v=${SHRINE_VER}`;   // 帶版號：換新圖後升 SHRINE_VER
 const BOSS_ARENA_IN=.7;   // 走進場地半徑內多深才觸發
 const HZ_COL={vine:'#7cff5a',root:'#c89a5a',spore:'#c6ff7a',lava:'#ff7a2a',fire:'#ffa040',slam:'#ffcf6a',water:'#6ac8ff',bite:'#9fd0ff',star:'#ffe27a',slow:'#c8a0ff',arrow:'#ffb070'};
 

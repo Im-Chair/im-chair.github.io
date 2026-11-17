@@ -38,6 +38,7 @@
 | 6f | `icon-deep-miner` | 1024×1024 | `icons/deep-miner.webp` | 同上（深掘！像素礦工） | ★★★ |
 | 6g | `icon-neon-danmaku` | 1024×1024 | `icons/neon-danmaku.webp` | 同上（霓虹彈幕狂想曲） | ★★★ |
 | 6h | `icon-sky-frontier` | 1024×1024 | `icons/sky-frontier.webp` | 同上（天穹拓荒） | ★★★ |
+| 6i | `icon-shrine` | 1024×1024 | `icons/shrine.webp` | 同上（珠界：聖林神廟） | ★★★ |
 | 7 | `solitaire-back` | 1024×1536（直式） | `solitaire/back.webp`（300×420） | 接龍牌背 | ★★ |
 | 8 | `solitaire-felt` | 1024×1024 | `solitaire/felt.webp`（512，鋪滿） | 接龍桌布 | ★★ |
 | 9 | `minesweeper-flag` | 1024×1024 透明 | `minesweeper/flag.webp`（96） | 掃雷旗子 | ★ |
@@ -46,7 +47,7 @@
 | 12 | `drift-*` 6 張 | 1024×1024 透明 | 內嵌進 `drift-ark/index.html`（Claude 處理） | 漂流方舟合成物品（見第 12 節） | ★★ |
 | 13 | `sf-*`（80 張） | 見第 13 節 | `sky-frontier/art/` | 天穹拓荒的方塊、怪物、人物、背景 | ★★ |
 | 14 | `pokemo-btn`、`pokemo-btn-pri` | 1536×1024 | `pokemo/art/ui-btn*.webp` | 珠界主畫面的按鍵框 | ★★ |
-| 16 | `m-*`、`n-*`、`sheet-props`／`sheet-items`／`sheet-equip` | 見第 16 節 | `shrine/art/`（腳本另產生 `index.json`） | 聖林神廟的怪物、NPC、場景物件、道具、裝備 | ★★ |
+| 16 | `m-*`、`n-*`、`sheet-props`／`sheet-items`／`sheet-equip`、`hero`、`boss-*` | 見第 16 節 | `shrine/art/`（腳本另產生 `index.json`） | 聖林神廟的怪物、NPC、場景物件、道具、裝備 | ★★ |
 
 **投報率最高的是 1–6**：首頁是每次打開都會看到的畫面，而且 emoji 在不同手機上長得不一樣，換掉之後整個遊戲集才像同一個系列。
 
@@ -567,6 +568,11 @@
 | `sheet-items.png` | 同上 16 格：`i-coin`、`i-heart`、`i-key`、`i-bomb`、`i-boomerang`、`i-lantern`、`i-hookshot`、`i-piece`、`i-relic-forest`、`i-relic-fire`、`i-relic-water`、`i-shard`、`i-ore`、`i-core-forest`、`i-core-fire`、`i-core-water` | 各自 `i-*.webp`（長邊 128） |
 | `sheet-equip.png` | 同上 16 格：`e-wood_sword`、`e-iron_sword`、`e-flame_sword`、`e-star_sword`、`e-wood_shield`、`e-iron_shield`、`e-prism_shield`、`e-cloth`、`e-scale_mail`、`e-ember_mail`、`e-wind_boots`、`e-lucky_ring`、`e-sword_crest`、`i-potion`、`i-arrow`、`i-heart-full` | `e-*.webp`（長邊 192）、`i-*.webp`（128） |
 
+| `hero.png`（約 1254×1254，透明背景） | 英雄，4 欄 × 3 列共 12 格。欄＝站立、走路A、走路B、攻擊；列＝正面（面向鏡頭）、側面（面向畫面右）、背面。攻擊格武器可以伸出去 | `hero.webp`（取代現有檔，816×616＝4×4 圖集、每格 204×154；欄＝幀，列＝下／左／右／上；「左」列由側面列鏡射產生；12 格同一縮放，站立格人高 150px、腳底貼格底、水平置中；攻擊格太寬只縮該格）。固定檔名，不進 `index.json` |
+| `boss-forest.png`、`boss-fire.png`、`boss-water.png`、`boss-temple.png`（約 1254×1254，透明背景，單一角色單一姿勢） | 四隻首領。**`boss-water` 要朝左**（遊戲裡玩家在它右側時才會左右翻轉；其他三隻不翻） | `boss_forest.webp`、`boss_fire.webp`、`boss_water.webp`、`boss_time.webp`（temple 對應 boss_time）；各 384×384 正方形，角色取不透明範圍等比縮到塞滿（留 4px）、底部貼齊、水平置中。固定檔名，不進 `index.json` |
+| `icon-shrine.png`（在 `output/imagegen/arcade/`，1024×1024） | 首頁卡片圖示 | `icons/shrine.webp`（256），規則同第 1–6 節 |
+
+- hero／boss 圖在遊戲裡的載入網址帶 `?v=SHRINE_VER`：**真圖進來、執行腳本後，要把 `shrine/index.html` 的 `SHRINE_VER` +1**，再把根目錄 `sw.js` 的 `CACHE` +1。
 - 圖表格線不用很準：腳本先去背，找出各個不透明連通塊（很近的碎塊合併），依中心落在 4×4 的哪一格指派；某格找不到會印警告並略過。
 - 單張補圖：`p-chest.png`、`i-coin.png`、`e-iron_sword.png` 這種單檔存在時，優先於圖表切出來的。
 
