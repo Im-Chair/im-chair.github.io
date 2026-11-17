@@ -115,7 +115,17 @@ const MATS={
 for(const id in MATS)ITEMS[id]={name:MATS[id].name,kind:'mat'};
 const MAT_DROP={slime:{shard:.18},goblin:{shard:.22},archer:{shard:.22},knight:{shard:.3,ore:.6},pot:{ore:.05}};   // 掉落機率（夜晚再乘 DAY.mat）
 const BOSS_CORE_N=2;   // 首領掉幾個核心
-const POTION_MAX=3;    // 回復藥最多帶幾瓶
+const POTION_MAX=3;    // 回復藥最多帶幾瓶（旅商的藥水腰帶買了之後變 POTION_MAX_BELT，用 potMax() 讀）
+const POTION_MAX_BELT=5;
+/* 藥劑（手動使用的消耗品，旅商賣；背包「道具」頁使用）：dur＝持續秒數（遊戲暫停時不倒數）｜atk 斬擊傷害倍率｜spd 移速加成｜rollCd 翻滾冷卻倍率｜dmg 受到的傷害倍率
+   同種再喝只重置時間、不疊加；不同種可同時生效；倒下或讀檔後效果消失。持有數量存檔（ST.tonic），剩餘時間 TN 不存檔 */
+const TONIC={
+  power:{dur:60,atk:1.3,col:'#ff4a4a'},
+  swift:{dur:60,spd:.2,rollCd:.7,col:'#4aff6a'},
+  guard:{dur:60,dmg:.7,col:'#4a8aff'}
+};
+const TONIC_IDS=Object.keys(TONIC),TONIC_MAX=3;   // 每種最多帶幾瓶
+const TN={power:0,swift:0,guard:0};              // 效果剩餘秒數
 const POTION_REFUND=10;   // 帶滿時寶箱裡的回復藥換成多少珠幣
 /* 日夜：在村子營火切換。夜晚敵人較強、掉落較好（首領不受影響）
    hp／atk／spd 敵人倍率｜gold 珠幣倍率｜mat 材料掉率倍率｜dark 室外暗幕濃度｜tint 室外色調 */
@@ -128,7 +138,8 @@ const dayNow=()=>DAY[ST.day]||DAY[0];
 // 掉落：陶罐 60% 掉東西（其中 70% 錢）；錢的顏色依面額
 const DROP={potChance:.6,potCoin:.7,potCoinV:[1,3],life:14,blink:3,
   bombPot:.3,bombKill:.18,bombV:3};   // 有炸彈袋且沒滿時：陶罐／敵人改掉炸彈的機率、一次幾顆
-const BOMB_MAX=10;                     // 炸彈上限
+const BOMB_MAX=10;                     // 炸彈基本上限（拿到炸彈袋時給的數量）
+const BOMB_CAPS=[10,15,20];            // 炸彈上限：炸彈袋擴充 0／1／2 級（旅商）；用 bombMax() 讀
 const COIN_COL=v=>v>=20?['#ff8a9a','#d23a52']:v>=5?['#9fd2ff','#2f7fd6']:['#b8ffcc','#2fbf6a'];
 const FACE_V={down:[0,1],up:[0,-1],left:[-1,0],right:[1,0]};
 
@@ -157,23 +168,60 @@ const DEBRIS_HOLD=2.5,DEBRIS_FADE=1.5;   // 殘骸停留、淡出的秒數
 // tools：拿到的副道具（照取得順序）、tool：目前選的、bombs：炸彈數、relics：聖物 id、flags：機關／首領／祭壇狀態（adventure.js）、
 // deaths：倒下次數、time：遊玩秒數、gotPieces：累計拿到的命珠碎片、cleared：已通關
 // eq：身上的裝備｜mats：材料｜day：日夜（DAY 的索引）｜vil：村莊系統（village.js：商店庫存、賞金、教官進度）
-const ST_EXTRA=()=>({tools:[],tool:'',bombs:0,relics:[],flags:{},deaths:0,time:0,gotPieces:0,cleared:false,eq:{...EQ_START},mats:{},day:0,vil:{}});
+const ST_EXTRA=()=>({tonic:{power:0,swift:0,guard:0},tools:[],tool:'',bombs:0,relics:[],flags:{},deaths:0,time:0,gotPieces:0,cleared:false,eq:{...EQ_START},mats:{},day:0,vil:{}});
 const ST={hp:10,hearts:5,pieces:0,money:20,keys:0,bag:{potion:0,equip:[],misc:{}},chests:{},cp:null,...ST_EXTRA()};
 const START_EQUIP=()=>Object.values(EQ_START).filter(Boolean);
 // 裝備數值：把四件裝備的同名欄位合起來（atk、spinMul、chargeT、guard、shieldSpd 取裝備值，其餘相加）
 function eqStat(k){
   const own=EQUIP_SLOTS.map(s=>EQUIP[ST.eq[s]]).filter(Boolean);
   switch(k){
-    case 'atk':{const sw=EQUIP[ST.eq.sword]||EQUIP.wood_sword;return sw.atk+own.reduce((a,e)=>a+(e.atkAdd||0),0)}
+    case 'atk':{const sw=EQUIP[ST.eq.sword]||EQUIP.wood_sword;return Math.round((sw.atk+own.reduce((a,e)=>a+(e.atkAdd||0),0))*(TN.power>0?TONIC.power.atk:1))}
     case 'spinMul':return (EQUIP[ST.eq.sword]||{}).spinMul||PL.spinMul;
     case 'chargeT':return (EQUIP[ST.eq.sword]||{}).chargeT||PL.chargeT;
     case 'guard':{const sh=EQUIP[ST.eq.shield];return sh?sh.guard:1}
     case 'shieldSpd':return (EQUIP[ST.eq.shield]||{}).shieldSpd||PL.shieldSpd;
     case 'gold':return own.reduce((a,e)=>a*(e.gold||1),1);
-    case 'rollCd':return own.reduce((a,e)=>a*(e.rollCd||1),1);
+    case 'rollCd':return own.reduce((a,e)=>a*(e.rollCd||1),1)*(TN.swift>0?TONIC.swift.rollCd:1);
+    case 'spd':return own.reduce((a,e)=>a+(e.spd||0),0)+(TN.swift>0?TONIC.swift.spd:0);
+    case 'dmgTaken':return TN.guard>0?TONIC.guard.dmg:1;   // 守護藥劑：受到的傷害倍率
     case 'reflect':case 'fireproof':return own.some(e=>e[k]);
     default:return own.reduce((a,e)=>a+(e[k]||0),0);   // def、spd、boomAdd
   }
+}
+/* 旅商的擴充（存在 ST.vil.up）：炸彈袋 0～2 級、藥水腰帶 0／1 */
+const upLv=k=>((ST.vil&&ST.vil.up)||{})[k]|0;
+const potMax=()=>upLv('belt')>0?POTION_MAX_BELT:POTION_MAX;
+const bombMax=()=>BOMB_CAPS[Math.min(BOMB_CAPS.length-1,upLv('bomb'))];
+/* 藥劑：色調小圖（i-potion 離屏疊色，不另外放圖檔；沒圖回 null）、使用、倒數、HUD */
+const TONIC_IMG={};
+function tonicSprite(id){
+  const im=sImg('i-potion');if(!im||!TONIC[id])return null;
+  const h=TONIC_IMG[id];if(h&&h.im===im)return h;
+  const cv=mk(im.width,im.height),g=cv.getContext('2d');g.drawImage(im,0,0);g.globalCompositeOperation='source-atop';g.globalAlpha=.5;g.fillStyle=TONIC[id].col;g.fillRect(0,0,cv.width,cv.height);
+  return TONIC_IMG[id]={im,c:cv,url:null};
+}
+function tonicImg(id){   // 列表用的 <img>；沒圖回 null
+  const h=tonicSprite(id);if(!h)return null;
+  try{if(!h.url)h.url=h.c.toDataURL()}catch(e){return null}
+  const im=new Image();im.className='pic';im.alt='';im.src=h.url;return im;
+}
+let tonicKey='';
+function tonicHud(){
+  const box=document.getElementById('tonics');if(!box)return;
+  const on=TONIC_IDS.filter(k=>TN[k]>0),key=on.map(k=>k+Math.ceil(TN[k])).join('|');
+  if(key===tonicKey)return;tonicKey=key;box.innerHTML='';
+  for(const k of on){
+    const c=document.createElement('div');c.className='tchip';c.style.borderColor=TONIC[k].col;
+    const im=tonicImg(k);if(im)c.append(im);else{const d=document.createElement('i');d.style.background=TONIC[k].col;d.textContent=TEXT.shop.tonicShort[k];c.append(d)}
+    const t=document.createElement('b');t.textContent=Math.ceil(TN[k])+'s';c.append(t);box.append(c);
+  }
+}
+function tonicTick(dt){let any=false;for(const k of TONIC_IDS)if(TN[k]>0){TN[k]=Math.max(0,TN[k]-dt);any=true}if(any||tonicKey)tonicHud()}
+function tonicClear(){for(const k of TONIC_IDS)TN[k]=0;tonicHud()}
+function useTonic(id){   // 喝一瓶：同種重置時間、不疊加
+  if(!TONIC[id]||PS.dead||(ST.tonic[id]|0)<=0)return false;
+  ST.tonic[id]--;TN[id]=TONIC[id].dur;SFX.heart();sparks(P.x,P.y,TONIC[id].col,10,3,.8);
+  toast(TEXT.shop.tonicUse+TEXT.shop.items['tonic_'+id].name);tonicHud();save();return true;
 }
 function equip(id){   // 穿上背包裡的裝備；回傳 true＝成功
   const E=EQUIP[id];if(!E||!ST.bag.equip.includes(id))return false;
@@ -229,7 +277,7 @@ function save(){
   const pos=(typeof ADV!=='undefined'&&ADV.savePos&&ADV.savePos())||{map:CURID,x:P.x,y:P.y,face:P.face};
   try{localStorage.setItem(SAVE_KEY,JSON.stringify({v:SAVE_V,map:pos.map,x:+pos.x.toFixed(2),y:+pos.y.toFixed(2),face:pos.face,
     hp:ST.hp,hearts:ST.hearts,pieces:ST.pieces,money:ST.money,keys:ST.keys,bag:ST.bag,chests:ST.chests,cp:ST.cp,progress:PROGRESS.toJSON(),
-    tools:ST.tools,tool:ST.tool,bombs:ST.bombs,relics:ST.relics,flags:ST.flags,deaths:ST.deaths,time:Math.round(ST.time),gotPieces:ST.gotPieces,cleared:ST.cleared,eq:ST.eq,mats:ST.mats,day:ST.day,vil:ST.vil,t:Date.now()}));return true}catch(e){return false}
+    tools:ST.tools,tool:ST.tool,bombs:ST.bombs,relics:ST.relics,flags:ST.flags,deaths:ST.deaths,time:Math.round(ST.time),gotPieces:ST.gotPieces,cleared:ST.cleared,eq:ST.eq,mats:ST.mats,day:ST.day,vil:ST.vil,tonic:ST.tonic,t:Date.now()}));return true}catch(e){return false}
 }
 function loadSave(){try{const o=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');return o&&o.v===SAVE_V&&MAPS[o.map]?o:null}catch(e){return null}}
 function bumpPlays(){
@@ -237,6 +285,7 @@ function bumpPlays(){
 }
 function resetState(){
   Object.assign(ST,{hp:PL.hearts*2,hearts:PL.hearts,pieces:0,money:PL.startMoney,keys:0,bag:{potion:0,equip:START_EQUIP(),misc:{}},chests:{},cp:null},ST_EXTRA());
+  for(const k of TONIC_IDS)TN[k]=0;tonicKey='';
 }
 function applySave(o){
   resetState();
@@ -248,11 +297,15 @@ function applySave(o){
   ST.flags=o.flags&&typeof o.flags==='object'?o.flags:{};ST.deaths=o.deaths|0;ST.time=+o.time||0;ST.gotPieces=o.gotPieces|0;ST.cleared=!!o.cleared;
   // 裝備：背包至少有起始三件；舊存檔裡不存在的 id 濾掉（含舊版的 boots 類疾風靴照樣可穿：slot 以 EQUIP 為準）
   ST.bag.equip=[...new Set([...START_EQUIP(),...(Array.isArray(ST.bag.equip)?ST.bag.equip:[])])].filter(id=>EQUIP[id]);
-  ST.bag.potion=clamp(ST.bag.potion|0,0,POTION_MAX);
   const eq=o.eq&&typeof o.eq==='object'?o.eq:{};
   for(const s of EQUIP_SLOTS){const id=eq[s];ST.eq[s]=id&&EQUIP[id]&&EQUIP[id].slot===s&&ST.bag.equip.includes(id)?id:EQ_START[s]}
   ST.mats={};if(o.mats&&typeof o.mats==='object')for(const k in o.mats)if(MATS[k])ST.mats[k]=Math.max(0,o.mats[k]|0);
   ST.day=clamp(o.day|0,0,DAY.length-1);ST.vil=o.vil&&typeof o.vil==='object'?o.vil:{};
+  // 旅商的擴充等級（舊存檔沒有：補預設），再依等級夾住回復藥與炸彈數；藥劑持有量（舊存檔沒有：全 0）
+  if(!ST.vil.up||typeof ST.vil.up!=='object')ST.vil.up={bomb:0,belt:0};
+  ST.vil.up.bomb=clamp(ST.vil.up.bomb|0,0,BOMB_CAPS.length-1);ST.vil.up.belt=clamp(ST.vil.up.belt|0,0,1);
+  ST.bag.potion=clamp(ST.bag.potion|0,0,potMax());ST.bombs=Math.min(ST.bombs,bombMax());
+  if(o.tonic&&typeof o.tonic==='object')for(const k of TONIC_IDS)ST.tonic[k]=clamp(o.tonic[k]|0,0,TONIC_MAX);
   PROGRESS.load(o.progress);
 }
 
@@ -269,7 +322,7 @@ function giveItem(id,n=1){   // 回傳顯示用的文字
   switch(it.kind){
     case 'money':ST.money+=n;return `${n} ${MONEY}`;
     case 'key':ST.keys+=n;return it.name+(n>1?' ×'+n:'');
-    case 'potion':{const room=POTION_MAX-ST.bag.potion,k=Math.min(n,room);ST.bag.potion+=Math.max(0,k);
+    case 'potion':{const room=potMax()-ST.bag.potion,k=Math.min(n,room);ST.bag.potion+=Math.max(0,k);
       if(k<n){const v=(n-Math.max(0,k))*POTION_REFUND;ST.money+=v;return it.name+`（帶滿了，換成 ${v} ${MONEY}）`}return it.name+(n>1?' ×'+n:'')}
     case 'mat':ST.mats[id]=(ST.mats[id]||0)+n;return it.name+(n>1?' ×'+n:'');
     case 'heal':ST.hp=Math.min(maxHp(),ST.hp+2*n);return it.name;
@@ -277,7 +330,7 @@ function giveItem(id,n=1){   // 回傳顯示用的文字
       const fresh=!ST.tools.includes(id);if(fresh)ST.tools.push(id);if(fresh||!ST.tool)ST.tool=id;
       if(id==='bomb')ST.bombs=Math.max(ST.bombs,BOMB_MAX);
       return it.name+(id==='bomb'?`（炸彈 ×${BOMB_MAX}）`:'')}
-    case 'ammo':ST.bombs=Math.min(BOMB_MAX,ST.bombs+n);return `${it.name} ×${n}`;
+    case 'ammo':ST.bombs=Math.min(bombMax(),ST.bombs+n);return `${it.name} ×${n}`;
     case 'relic':if(!ST.relics.includes(id))ST.relics.push(id);return it.name;
     case 'container':ST.hearts=Math.min(PL.maxHearts,ST.hearts+n);ST.hp=maxHp();return `${it.name}——生命上限 +${n}！`;
     case 'piece':{
@@ -322,6 +375,7 @@ function roll(){
 function playerTick(dt){
   GT+=dt;
   if(PS.dead)return 0;
+  tonicTick(dt);
   PS.shield=IN.shd&&PS.act==='';   // 停頓、擊退中也維持舉盾
   if(PS.stop>0){PS.stop-=dt;FROZEN=true;return 0}
   FROZEN=false;
@@ -379,7 +433,7 @@ function hurtPlayer(dmg,sx,sy,o={}){
     }
   }
   // 減傷：盾（擋正面近戰）×衣（全部傷害）；小數累積在 PS.carry，湊滿 1 才扣（不會因為四捨五入讓減傷失效）
-  const raw=dmg*f*(1-eqStat('def'))+PS.carry;dmg=Math.floor(raw+1e-9);PS.carry=raw-dmg;
+  const raw=dmg*f*(1-eqStat('def'))*eqStat('dmgTaken')+PS.carry;dmg=Math.floor(raw+1e-9);PS.carry=raw-dmg;
   if(dmg<=0){PS.inv=PL.hurtInv*.5;PS.blink=true;const dx=P.x-sx,dy=P.y-sy,l=Math.hypot(dx,dy)||1;PS.kbx=dx/l*kb*.5;PS.kby=dy/l*kb*.5;PS.kbt=PL.hurtKbT;SFX.block();EVT.emit('hurt',0);return true}
   ST.hp=Math.max(0,ST.hp-dmg);PS.inv=PL.hurtInv;PS.blink=true;PS.flash=.28;PS.stop=Math.max(PS.stop,PL.hurtStop);
   const dx=P.x-sx,dy=P.y-sy,l=Math.hypot(dx,dy)||1;PS.kbx=dx/l*kb;PS.kby=dy/l*kb;PS.kbt=PL.hurtKbT;
@@ -393,7 +447,7 @@ function hurtPlayer(dmg,sx,sy,o={}){
 }
 async function die(){
   if(PS.dead)return;
-  PS.dead=true;PS.deadT=0;PS.act='';IN.atk=IN.shd=false;lock=true;ST.deaths++;SFX.death();EVT.emit('death');
+  PS.dead=true;PS.deadT=0;PS.act='';IN.atk=IN.shd=false;lock=true;ST.deaths++;tonicClear();SFX.death();EVT.emit('death');
   await sleep(900);await fade(true);
   const loss=Math.floor(ST.money*PL.deathLoss);ST.money-=loss;ST.hp=maxHp();
   const cp=ST.cp&&MAPS[ST.cp.map]?ST.cp:{map:'village',x:MAPS.village.spawn[0],y:MAPS.village.spawn[1],face:'down'};
@@ -585,7 +639,7 @@ function shotTick(s,dt){
 }
 
 /* ================= 掉落物 ================= */
-const wantBombs=()=>ST.tools.includes('bomb')&&ST.bombs<BOMB_MAX;
+const wantBombs=()=>ST.tools.includes('bomb')&&ST.bombs<bombMax();
 function spawnDrop(k,v,x,y){
   const a=Math.random()*Math.PI*2,s=rand(.6,1.4);
   DROPS.push({k,v,x,y,z:.2,vz:rand(3,4.2),vx:Math.cos(a)*s,vy:Math.sin(a)*s*.7,t:0});
@@ -595,7 +649,7 @@ function dropTick(o,dt){
   if(o.vz||o.z>0){o.z+=o.vz*dt;o.vz-=14*dt;if(o.z<=0){o.z=0;o.vz=Math.abs(o.vz)>1.2?-o.vz*.35:0;if(!o.vz)SFX.drop()}
     const nx=o.x+o.vx*dt,ny=o.y+o.vy*dt;if(walkAt(C,nx,ny)){o.x=nx;o.y=ny}else{o.vx=o.vy=0}o.vx*=.94;o.vy*=.94}
   if(o.t>.25&&o.z<.25&&!PS.dead&&Math.hypot(o.x-P.x,o.y-P.y)<PL.pickR){
-    if(o.k==='coin'){ST.money+=o.v;SFX.coin()}else if(o.k==='mat'){giveItem(o.v,1);SFX.drop();toast('撿到 '+MATS[o.v].name)}else if(o.k==='bomb'){ST.bombs=Math.min(BOMB_MAX,ST.bombs+o.v);SFX.drop()}else{ST.hp=Math.min(maxHp(),ST.hp+2);SFX.heart()}
+    if(o.k==='coin'){ST.money+=o.v;SFX.coin()}else if(o.k==='mat'){giveItem(o.v,1);SFX.drop();toast('撿到 '+MATS[o.v].name)}else if(o.k==='bomb'){ST.bombs=Math.min(bombMax(),ST.bombs+o.v);SFX.drop()}else{ST.hp=Math.min(maxHp(),ST.hp+2);SFX.heart()}
     sparks(o.x,o.y,o.k==='mat'?MATS[o.v].col:o.k==='coin'?COIN_COL(o.v)[0]:o.k==='bomb'?'#ffd28a':'#ff8aa8',5,2,.3);return false;
   }
   return o.t<DROP.life;
@@ -917,6 +971,6 @@ if(window.__shrine)Object.defineProperties(window.__shrine,Object.getOwnProperty
     shots:SHOTS.map(s=>({x:+s.x.toFixed(2),y:+s.y.toFixed(2),blocked:!!s.blocked,stuck:!!s.stuck})),drops:DROPS.map(o=>({k:o.k,v:o.v,x:+o.x.toFixed(2),y:+o.y.toFixed(2)})),
     pots:INTER.filter(p=>p.k==='pot').map(p=>({x:p.x,y:p.y,gone:!!p.gone})),chestsHere:INTER.filter(p=>p.k==='chest').map(p=>({id:p.id,x:p.x,y:p.y,open:!!p.open,loot:p.loot})),
     audio:SFX.created,frozen:FROZEN}},
-  G:{ST,PS,IN,PL,ENEMY,ITEMS,MAP_POWER,POWER_TIER,EVT,save,loadSave,hurtPlayer,damageEnemy,openChest,breakPot,restAt,eFree,get ENEMIES(){return ENEMIES},get SHOTS(){return SHOTS},get DROPS(){return DROPS}}
+  G:{ST,PS,IN,PL,TN,TONIC,TONIC_MAX,useTonic,potMax,bombMax,eqStat,ENEMY,ITEMS,MAP_POWER,POWER_TIER,EVT,save,loadSave,hurtPlayer,damageEnemy,openChest,breakPot,restAt,eFree,get ENEMIES(){return ENEMIES},get SHOTS(){return SHOTS},get DROPS(){return DROPS}}
 }));
 window.SHRINE_GAME={EVT,ST,ITEMS,giveItem,save};   // 下一階段（道具、首領、商店）掛事件用

@@ -7,20 +7,40 @@
                ask、say、toast、openPanel、closePanel、EVT、ENEMIES、SHOTS、HOOKS、C、CURID、P、PL…
 
    ── 結構 ──
-   數值表   SHOP（旅商商品、價格、每次補貨的庫存）、SELL（材料收購價）、FORGE（鐵匠配方）、BOUNTY（賞金委託）、
+   數值表   SHOP（旅商商品、價格、上架條件、每次補貨的庫存）、SELL（材料收購價）、FORGE（鐵匠配方）、BOUNTY（賞金委託）、
             STAKE（木樁挑戰）、TRAIN_NEED（教學每課要做幾次）
-   存檔     ST.vil：stock 商店剩餘庫存｜bq 進行中的委託 {id,n}｜bdone 已領賞的委託 id｜tr 教學進度（0～4，4＝結業）｜
+   存檔     ST.vil：stock 商店剩餘庫存（以 SHOP 的 key 為鍵）｜up 擴充等級 {bomb:0～2,belt:0～1}｜info 已買藏寶情報｜seen 已看過的上架品項（新貨提示用）｜bq 進行中的委託 {id,n}｜bdone 已領賞的委託 id｜tr 教學進度（0～4，4＝結業）｜
                     best 木樁最佳｜crest 已領木樁獎勵｜trPaid 已領結業獎勵
    ============================================================ */
 
 /* ================= 數值表 ================= */
-// 旅商：id＝ITEMS 的 id；n＝一次給幾個；stock＝每次補貨的數量（打倒首領時補滿）；need＝條件（道具 id 或 ST.flags 鍵）
+// 旅商：key＝庫存鍵（存檔用，別改）｜give＝ITEMS 的 id（giveItem 給）｜tonic＝藥劑 id（game.js 的 TONIC）｜up＝擴充（bomb 炸彈袋第 lv 級、belt 藥水腰帶、info 藏寶情報）
+//   n＝一次給幾個｜stock＝每次補貨補到幾份（打倒首領時補滿）｜once＝一次性／限量，買完不再補貨、從貨架消失｜cat＝面板分類
+//   need＝條件（道具 id 或 ST.flags 鍵；沒達成時顯示但不能買）｜boss＝要打倒幾隻首領（林、焰、淵三隻）才上架（沒達成時不顯示）｜after＝另一件（key）買完才上架
 const SHOP=[
-  {id:'potion',     price:30, stock:3},
-  {id:'bombs',      price:20, n:5, stock:4, need:'bomb'},
-  {id:'iron_shield',price:70, stock:1},
-  {id:'scale_mail', price:90, stock:1, need:'bs:boss_forest'}
-];   // 疾風靴在熔岩遺址的寶箱（maps.js ash_c2）
+  // 消耗品
+  {key:'potion',     give:'potion', price:30, stock:3, cat:'use'},
+  {key:'tonic_power',tonic:'power',  price:25, stock:3, cat:'use'},
+  {key:'tonic_swift',tonic:'swift',  price:25, stock:3, boss:1, cat:'use'},
+  {key:'tonic_guard',tonic:'guard',  price:30, stock:3, boss:2, cat:'use'},
+  {key:'bombs',      give:'bombs', n:5, price:20, stock:4, need:'bomb', cat:'use'},
+  // 擴充（一次性）
+  {key:'bag1',  up:'bomb',lv:1, price:60,  stock:1, once:1, need:'bomb', cat:'ext', ic:'bomb'},
+  {key:'bag2',  up:'bomb',lv:2, price:110, stock:1, once:1, need:'bomb', boss:2, after:'bag1', cat:'ext', ic:'bomb'},
+  {key:'belt',  up:'belt',lv:1, price:80,  stock:1, once:1, boss:1, cat:'ext', ic:'potion'},
+  {key:'piece1',give:'piece', price:90,  stock:1, once:1, cat:'ext'},
+  {key:'piece2',give:'piece', price:140, stock:1, once:1, boss:2, cat:'ext'},
+  // 材料
+  {key:'shard', give:'shard', price:14, stock:3, cat:'mat'},
+  {key:'ore',   give:'ore',   price:22, stock:2, boss:1, cat:'mat'},
+  // 裝備（疾風靴在熔岩遺址的寶箱，maps.js ash_c2）
+  {key:'iron_shield',give:'iron_shield', price:70, stock:1, cat:'gear'},
+  {key:'scale_mail', give:'scale_mail',  price:90, stock:1, need:'bs:boss_forest', cat:'gear'},
+  // 其他
+  {key:'info',  up:'info', lv:1, price:40, stock:1, once:1, cat:'other', ic:'key'}
+];
+const SHOP_CATS=['use','ext','mat','gear','other'];
+const BOSS_FLAGS=['bs:boss_forest','bs:boss_fire','bs:boss_water'];   // 「打倒 N 隻首領」只算這三隻（神廟首領是最後一戰）
 const SELL={shard:4,ore:6};   // 材料收購價（首領核心不收）
 // 鐵匠：from＝升級自哪件（要有，打造後收回、換成新的；穿著的話自動換上）
 const FORGE=[
@@ -49,14 +69,26 @@ const STAKE={time:30,count:4,goal:12,reward:'sword_crest',area:[24.6,16.2],rMin:
 
 /* ================= 共用 ================= */
 const V=()=>ST.vil;
-function vilInit(){const v=ST.vil;v.stock=v.stock||{};v.bdone=v.bdone||[];v.tr=v.tr|0;v.best=v.best|0;for(const s of SHOP)if(v.stock[s.id]==null)v.stock[s.id]=s.stock}
+function vilInit(){const v=ST.vil;v.stock=v.stock||{};v.bdone=v.bdone||[];v.tr=v.tr|0;v.best=v.best|0;if(!v.up)v.up={bomb:0,belt:0};for(const s of SHOP)if(v.stock[s.key]==null)v.stock[s.key]=s.stock}
+const bossCount=()=>BOSS_FLAGS.filter(f=>ST.flags[f]).length;
+const shopName=s=>(TEXT.shop.items[s.key]||TEXT.shop.items['tonic_'+s.tonic]||{}).name||nameOf(s.give);
+const shopSold=s=>!!s.once&&V().stock[s.key]<=0;                                               // 一次性品買完了
+const shopShown=s=>bossCount()>=(s.boss|0)&&(!s.after||V().stock[s.after]<=0)&&!shopSold(s);   // 已上架（還沒賣完）
+const shopPieces=()=>SHOP.filter(s=>s.give==='piece').length;                                   // 旅商賣的命珠碎片（算進「累計碎片 x/總數」的總數）
+function shopFull(s){
+  if(s.tonic)return ST.tonic[s.tonic]>=TONIC_MAX;
+  if(s.up)return s.up==='info'?!!V().info:(V().up[s.up]|0)>=s.lv;
+  if(s.give==='potion')return ST.bag.potion>=potMax();
+  if(s.give==='bombs')return ST.bombs>=bombMax();
+  return ITEMS[s.give].kind==='equip'&&ST.bag.equip.includes(s.give);
+}
 const nameOf=id=>(ITEMS[id]&&ITEMS[id].name)||id;
 const metNeed=need=>!need||(ITEMS[need]&&ITEMS[need].kind==='tool'?ST.tools.includes(need):!!ST.flags[need]);
 const NEED_TXT=need=>need==='bomb'?'要有炸彈袋':need==='bs:boss_forest'?'打倒林之首領後':need==='bs:boss_fire'?'打倒焰之首領後':need==='bs:boss_water'?'打倒淵之首領後':'';
 function el(tag,cls,txt){const e=document.createElement(tag);if(cls)e.className=cls;if(txt!=null)e.textContent=txt;return e}
 function row(body,name,desc,btn,onClick,opt={}){
   const r=el('div','prow'+(opt.on?' on':''));const i=el('div','pi'),pn=el('div','pn',name);
-  if(opt.icon){const ic=iconImg(opt.icon);if(ic)pn.prepend(ic)}   // 有選配小圖才加（opt.icon＝物品 id）
+  if(opt.icon||opt.tonic){const ic=opt.tonic?tonicImg(opt.tonic):iconImg(opt.icon);if(ic)pn.prepend(ic)}   // 有選配小圖才加（opt.icon＝物品 id，opt.tonic＝藥劑 id，圖是 i-potion 疊色）
   i.append(pn);if(desc)i.append(el('div','pd',desc));r.append(i);
   if(btn!=null){const b=el('button',null,btn);b.disabled=!!opt.off;b.onclick=onClick;r.append(b)}
   body.append(r);return r;
@@ -86,10 +118,13 @@ function openBag(){
       body.append(el('div','psec','生命'));
       const g=el('div','pgrid');body.append(g);
       const chip=(n,v,dim,ic)=>{const c=el('div','pchip'+(dim?' dim':''),n);const im=ic&&iconImg(ic);if(im)c.prepend(im);c.append(el('b',null,v));g.append(c)};
-      chip('心',`${ST.hearts}`,0,'heart');chip('命珠碎片',`${ST.pieces} / ${PL.piecesPerHeart}`,0,'piece');chip('累計碎片',`${ST.gotPieces} / ${totalGems()}`,0,'piece');chip('回復藥',`${ST.bag.potion} / ${POTION_MAX}`,0,'potion');chip('小鑰匙',`${ST.keys}`,0,'key');
+      chip('心',`${ST.hearts}`,0,'heart');chip('命珠碎片',`${ST.pieces} / ${PL.piecesPerHeart}`,0,'piece');chip('累計碎片',`${ST.gotPieces} / ${totalGems()}`,0,'piece');chip('回復藥',`${ST.bag.potion} / ${potMax()}`,0,'potion');chip('小鑰匙',`${ST.keys}`,0,'key');
+      body.append(el('div','psec','藥劑'));
+      for(const id of TONIC_IDS){const it=TEXT.shop.items['tonic_'+id],t=Math.ceil(TN[id]);
+        row(body,`${it.name}　${ST.tonic[id]} / ${TONIC_MAX}`,it.desc+(t>0?`\n生效中，剩 ${t} 秒`:''),'使用',()=>{useTonic(id);redraw()},{off:!ST.tonic[id],tonic:id,on:t>0})}
       body.append(el('div','psec','副道具'));
       if(!ST.tools.length)body.append(el('div','pd',TEXT.bag.empty));
-      for(const id of TOOL_ORDER)if(ST.tools.includes(id))row(body,TOOLS[id].name+(id==='bomb'?`（${ST.bombs} / ${BOMB_MAX}）`:''),(TEXT.tool[id]||'').replace(/^獲得「[^」]+」！/,''),ST.tool===id?'使用中':'選用',()=>{ST.tool=id;advHud(true);redraw()},{on:ST.tool===id,off:ST.tool===id,icon:id});
+      for(const id of TOOL_ORDER)if(ST.tools.includes(id))row(body,TOOLS[id].name+(id==='bomb'?`（${ST.bombs} / ${bombMax()}）`:''),(TEXT.tool[id]||'').replace(/^獲得「[^」]+」！/,''),ST.tool===id?'使用中':'選用',()=>{ST.tool=id;advHud(true);redraw()},{on:ST.tool===id,off:ST.tool===id,icon:id});
       body.append(el('div','psec','聖物'));
       const g2=el('div','pgrid');body.append(g2);
       for(const r of ['relic_forest','relic_fire','relic_water']){const c=el('div','pchip'+(ST.relics.includes(r)?'':' dim'),ITEMS[r].name);const im=iconImg(r);if(im)c.prepend(im);c.append(el('b',null,ST.relics.includes(r)?'✓':'—'));g2.append(c)}
@@ -105,33 +140,61 @@ function openBag(){
 HOOKS.bag=openBag;
 
 /* ================= 旅商 ================= */
-function shopBuy(s){
-  vilInit();const it=ITEMS[s.id],n=s.n||1;
+function shopBuy(s){   // s＝SHOP 的項目或它的 key
+  vilInit();if(typeof s==='string')s=SHOP.find(x=>x.key===s);if(!s||!shopShown(s))return false;
+  const n=s.n||1;
   if(!metNeed(s.need)){toast(TEXT.shop.needBomb);return false}
-  if(V().stock[s.id]<=0){toast(TEXT.shop.out);return false}
+  if(V().stock[s.key]<=0){toast(TEXT.shop.out);return false}
   if(ST.money<s.price){toast(TEXT.shop.poor);return false}
-  if(s.id==='potion'&&ST.bag.potion>=POTION_MAX||s.id==='bombs'&&ST.bombs>=BOMB_MAX||it.kind==='equip'&&ST.bag.equip.includes(s.id)){toast(TEXT.shop.full);return false}
-  ST.money-=s.price;V().stock[s.id]--;giveItem(s.id,n);SFX.coin();toast(TEXT.shop.bought+nameOf(s.id)+(n>1?' ×'+n:''));save();refresh();return true;
+  if(shopFull(s)){toast(TEXT.shop.full);return false}
+  ST.money-=s.price;V().stock[s.key]--;let msg=TEXT.shop.bought+shopName(s)+(n>1?' ×'+n:'');
+  if(s.tonic)ST.tonic[s.tonic]++;
+  else if(s.up==='info')V().info=1;
+  else if(s.up)V().up[s.up]=Math.max(V().up[s.up]|0,s.lv);
+  else{const r=giveItem(s.give,n);if(s.give==='piece')msg=TEXT.shop.bought+r}
+  SFX.coin();toast(msg);save();refresh();return true;
 }
 function shopSell(id,n=1){
   if(!SELL[id]||(ST.mats[id]|0)<n)return false;
   ST.mats[id]-=n;ST.money+=SELL[id]*n;SFX.coin();toast(TEXT.shop.sold+MATS[id].name+(n>1?' ×'+n:''));save();refresh();return true;
 }
+function shopDesc(s){
+  const it=TEXT.shop.items[s.key]||TEXT.shop.items['tonic_'+s.tonic];
+  if(s.tonic)return `${it.desc}　身上 ${ST.tonic[s.tonic]}/${TONIC_MAX}`;
+  if(s.give==='potion')return `生命歸零時自動喝下、回滿。身上 ${ST.bag.potion}/${potMax()}`;
+  if(s.give==='bombs')return `身上 ${ST.bombs}/${bombMax()}`;
+  if(ITEMS[s.give]&&ITEMS[s.give].kind==='equip')return EQUIP[s.give].desc;
+  if(s.give==='shard'||s.give==='ore')return `${it.desc}身上 ${ST.mats[s.give]|0}`;
+  return it?it.desc:'';
+}
+const shopList=()=>SHOP.filter(shopShown);   // 目前上架的品項
 function openShop(tab){
   vilInit();
   openPanel({title:'旅商',tabs:[['buy','買'],['sell','賣']],tab,sub:()=>moneyTxt(),onClose:refresh,render(body,t,redraw){
-    if(t==='buy')for(const s of SHOP){
-      const it=ITEMS[s.id],n=s.n||1,left=V().stock[s.id],owned=it.kind==='equip'&&ST.bag.equip.includes(s.id),ok=metNeed(s.need);
-      const desc=(it.kind==='equip'?EQUIP[s.id].desc:s.id==='potion'?`生命歸零時自動喝下、回滿。身上 ${ST.bag.potion}/${POTION_MAX}`:s.id==='bombs'?`身上 ${ST.bombs}/${BOMB_MAX}`:'')+(ok?'':`（${NEED_TXT(s.need)}）`)+(owned?'':`　剩 ${left}`);
-      row(body,`${nameOf(s.id)}${n>1?' ×'+n:''}　${s.price} ${MONEY}`,desc,owned?'已擁有':'買',()=>{shopBuy(s);redraw()},{off:owned||!ok||left<=0||ST.money<s.price,icon:s.id})}
-    else{let any=false;
+    if(t==='buy'){
+      for(const c of SHOP_CATS){
+        const list=shopList().filter(s=>s.cat===c);if(!list.length)continue;
+        body.append(el('div','psec',TEXT.shop.cat[c]));
+        for(const s of list){
+          const n=s.n||1,left=V().stock[s.key],owned=shopFull(s)&&(s.up||(ITEMS[s.give]&&ITEMS[s.give].kind==='equip')),ok=metNeed(s.need);
+          const desc=shopDesc(s)+(ok?'':`（${NEED_TXT(s.need)}）`)+(s.once||owned?'':`　剩 ${left}`);
+          row(body,`${shopName(s)}${n>1?' ×'+n:''}　${s.price} ${MONEY}`,desc,owned?'已擁有':left<=0?TEXT.shop.soldOut:'買',()=>{shopBuy(s);redraw()},{off:owned||!ok||left<=0||ST.money<s.price,icon:s.ic||s.give,tonic:s.tonic})}
+      }
+      if(SHOP.some(s=>bossCount()<(s.boss|0)))body.append(el('div','pd pmore',TEXT.shop.moreStock));
+    }else{let any=false;
       for(const id in SELL){const n=ST.mats[id]|0;if(!n)continue;any=true;
         const r=row(body,`${MATS[id].name} ×${n}`,`一個 ${SELL[id]} ${MONEY}`,'賣 1',()=>{shopSell(id,1);redraw()},{icon:id});
         if(n>1){const b=el('button',null,'全賣');b.onclick=()=>{shopSell(id,ST.mats[id]|0);redraw()};r.append(b)}}
       if(!any)body.append(el('div','pd','沒有可以賣的材料。（首領的核心留著鍛造用）'));}
   }});
 }
-EVT.on('boss',()=>{vilInit();for(const s of SHOP)if(!EQUIP[s.id])V().stock[s.id]=s.stock});   // 打倒首領：消耗品補貨
+EVT.on('boss',()=>{vilInit();for(const s of SHOP)if(!s.once&&!EQUIP[s.give])V().stock[s.key]=s.stock});   // 打倒首領：消耗品與材料補貨（一次性品、裝備不補）
+
+/* 藏寶情報：世界地圖上，去過的地圖旁標「寶箱 已開/總數」（index.html 的 drawWorld 呼叫） */
+const mapChestIds=id=>{const M=MAPS[id]||{};const a=[...(M.chests||[]).map(c=>c.id),...(M.cracks||[]).filter(k=>k.chest).map(k=>k.chest.id)];if(M.blockReward)a.push(M.blockReward.id);return a};
+function mapChestCount(id){const a=mapChestIds(id);return {open:a.filter(k=>ST.chests[k]).length,total:a.length}}   // 某張地圖的寶箱 已開/總數（獨立函式，新版世界地圖畫面直接呼叫；沒買藏寶情報時由呼叫端自行不顯示：看 shopHasInfo()）
+const shopHasInfo=()=>!!V().info;
+HOOKS.worldNote=id=>{if(!shopHasInfo())return null;const c=mapChestCount(id);return c.total?`${TEXT.shop.chestNote} ${c.open}/${c.total}`:null};   // 舊版世界地圖（drawWorld）用
 
 /* ================= 鐵匠 ================= */
 const recipeOK=f=>ST.money>=f.money&&Object.entries(f.mats).every(([k,n])=>(ST.mats[k]|0)>=n)&&ST.bag.equip.includes(f.from)&&!ST.bag.equip.includes(f.id);
@@ -287,7 +350,10 @@ async function talkChief(){
 const NPC_ACT={
   chief:talkChief,
   smith:async()=>{const k=await ask([['鐵匠',TEXT.smith.hi]],TEXT.smith.ask);if(k===0)openForge()},
-  merchant:async()=>{const k=await ask([['旅商',TEXT.shop.hi]],TEXT.shop.ask);if(k===0)openShop('buy');else if(k===1)openShop('sell')},
+  merchant:async()=>{
+    vilInit();const ids=shopList().map(x=>x.key),v=V(),fresh=v.seen?ids.filter(k=>!v.seen.includes(k)):(bossCount()>0?ids:[]);   // 第一次見面（沒有 seen）且還沒打首領：不提示
+    v.seen=ids;if(fresh.length)save();
+    const k=await ask([['旅商',TEXT.shop.hi],...(fresh.length?[['旅商',TEXT.shop.newStock]]:[])],TEXT.shop.ask);if(k===0)openShop('buy');else if(k===1)openShop('sell')},
   bounty:()=>openBoard(),
   trainer:talkTrainer,
   traveler:()=>say(TEXT.npc.traveler.map(l=>['營火旁的旅人',l])),
@@ -315,7 +381,7 @@ HOOKS.update=dt=>{_vUpdate(dt);if(FROZEN||PS.dead)return;lessonTick(dt);chalTick
 /* ================= 測試掛鉤（?debug=1） ================= */
 if(window.__shrine){
   Object.defineProperties(window.__shrine,Object.getOwnPropertyDescriptors({
-    V:{SHOP,SELL,FORGE,BOUNTY,STAKE,TRAIN_NEED,shopBuy,shopSell,forge,bountyAccept,bountyClaim,bountyQuit,setDay,startLesson,startStakes,endStakes,chiefGoal,openBag,openShop,openForge,openBoard,campMenu,NPC_ACT,
+    V:{SHOP,SELL,mapChestCount,shopHasInfo,bossCount,shopList,shopFull,shopDesc,mapChestIds,FORGE,BOUNTY,STAKE,TRAIN_NEED,shopBuy,shopSell,forge,bountyAccept,bountyClaim,bountyQuit,setDay,startLesson,startStakes,endStakes,chiefGoal,openBag,openShop,openForge,openBoard,campMenu,NPC_ACT,
       get LESSON(){return LESSON},get CHAL(){return CHAL}}
   }));
 }

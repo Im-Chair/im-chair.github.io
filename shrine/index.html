@@ -30,7 +30,7 @@ body.btn-art #sTitle button::before,body.btn-art #sTitle button::after{display:n
 .ver{font-size:12px;color:#8a95c0;margin-top:10px}
 
 /* 地圖畫面 */
-#sMap{background:#0c1a0f}
+#sMap{background:#0c1a0f;z-index:0;isolation:isolate}   /* 自成一個堆疊脈絡：裡面的 HUD／按鈕再怎麼設層級，都在 #fade 底下 */
 #cv{position:absolute;inset:0;width:100%;height:100%;display:block}
 #hud{position:absolute;top:calc(8px + env(safe-area-inset-top));left:8px;right:8px;display:flex;justify-content:space-between;align-items:flex-start;pointer-events:none}
 #hud button{pointer-events:auto;padding:6px 14px;background:#0009;border:1px solid #fff4;border-radius:20px;font-size:14px}
@@ -43,6 +43,14 @@ body.btn-art #sTitle button::before,body.btn-art #sTitle button::after{display:n
 .keyic{display:inline-block;width:14px;height:8px;position:relative;margin-left:6px}
 .keyic::before{content:"";position:absolute;left:0;top:0;width:6px;height:6px;border:2px solid #ffd84a;border-radius:50%}
 .keyic::after{content:"";position:absolute;left:8px;top:3px;width:7px;height:2px;background:#ffd84a;box-shadow:4px 2px 0 -0px #ffd84a}
+#tonics{display:flex;gap:4px;flex-wrap:wrap}
+#tonics:empty{display:none}
+.tchip{display:flex;align-items:center;gap:3px;background:#0009;border:1px solid;border-radius:12px;padding:1px 8px 1px 4px;font-size:12px;font-variant-numeric:tabular-nums}
+.tchip img{width:16px;height:16px}
+.tchip i{font-style:normal;width:16px;height:16px;border-radius:50%;color:#000;font-size:11px;font-weight:700;text-align:center;line-height:16px}
+.pmore{font-size:12px;color:#7f89b4;text-align:center;margin:10px 0 4px}
+/* 黑幕（#fade）蓋著時：HUD 與觸控鈕一律隱藏（淡入結束後才生效）且點不到 */
+body.fading #hud,body.fading #joy,body.fading .tbtn,body.fading #actBtn,body.fading #toast,body.fading #chal{visibility:hidden;pointer-events:none;transition:visibility 0s .3s}
 #hudPiece{font-size:12px;color:#ffb8c8;background:#0009;padding:2px 10px;border-radius:12px}
 /* 觸控按鈕（右下，圓形；搖桿在左下，不重疊） */
 .tbtn{position:absolute;border-radius:50%;padding:0;font-weight:700;display:none;background:#141c3acc;border:2px solid #6f86d6;color:#eef1ff;font-size:15px}
@@ -147,7 +155,7 @@ body.touch #itemBtn:not(.on),body.touch #cycBtn:not(.on){display:none}
 .pchip.dim{opacity:.45}
 #chal{position:absolute;left:50%;top:calc(64px + env(safe-area-inset-top));transform:translateX(-50%);display:none;background:#000c;border:1px solid #ffd84a88;padding:6px 16px;border-radius:14px;font-size:15px;font-weight:700;font-variant-numeric:tabular-nums;z-index:6;pointer-events:none;white-space:nowrap}
 #chal.on{display:block}
-#fade{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#8a95c0;font-size:14px;letter-spacing:2px;background:#000;opacity:0;pointer-events:none;transition:opacity .28s;z-index:40}
+#fade{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#8a95c0;font-size:14px;letter-spacing:2px;background:#000;opacity:0;pointer-events:none;transition:opacity .28s;z-index:100}
 #fade.on{opacity:1;pointer-events:auto}
 #fade{flex-direction:column;gap:12px}
 #fadeTxt:empty{display:none}
@@ -158,7 +166,7 @@ body.touch #itemBtn:not(.on),body.touch #cycBtn:not(.on){display:none}
 </style>
 <script>
 /* 版號：改了 maps.js 或這個檔就 +1，破除瀏覽器快取 */
-const SHRINE_VER='19';
+const SHRINE_VER='20';
 document.write('<script src="maps.js?v='+SHRINE_VER+'"><\/script>');
 </script>
 </head>
@@ -180,7 +188,7 @@ document.write('<script src="maps.js?v='+SHRINE_VER+'"><\/script>');
   </section>
   <section id="sMap" class="screen">
     <canvas id="cv"></canvas>
-    <div id="hud"><div id="hudL"><canvas id="hpCv"></canvas><div id="purse"><span class="gem"></span><b id="hudMoney">0</b><span id="hudKeyWrap" style="display:none"><span class="keyic"></span> <b id="hudKeys">0</b></span></div><div id="hudPiece" style="display:none"></div><div id="toolBox"><canvas id="toolCv" width="52" height="52"></canvas><span id="toolName"></span><b id="toolN"></b></div><div id="relics"><i></i><i></i><i></i></div><div id="hudName"></div></div><div id="hudR"><div id="hudBtns"><button id="bagBtn">背包</button><button id="mapBtn">地圖</button></div><div id="dayTag"></div><div id="dbg"></div></div></div>
+    <div id="hud"><div id="hudL"><canvas id="hpCv"></canvas><div id="purse"><span class="gem"></span><b id="hudMoney">0</b><span id="hudKeyWrap" style="display:none"><span class="keyic"></span> <b id="hudKeys">0</b></span></div><div id="hudPiece" style="display:none"></div><div id="tonics"></div><div id="toolBox"><canvas id="toolCv" width="52" height="52"></canvas><span id="toolName"></span><b id="toolN"></b></div><div id="relics"><i></i><i></i><i></i></div><div id="hudName"></div></div><div id="hudR"><div id="hudBtns"><button id="bagBtn">背包</button><button id="mapBtn">地圖</button></div><div id="dayTag"></div><div id="dbg"></div></div></div>
     <div id="joy"><div id="knob"></div></div>
     <button id="actBtn">對話</button>
     <button class="tbtn" id="atkBtn">攻擊</button>
@@ -801,6 +809,8 @@ function go(id,x,y,face){
   return true;
 }
 const inRect=(e,x,y)=>x>=e.x&&x<=e.x+e.w&&y>=e.y&&y<=e.y+e.h;
+const FADING=()=>$('#fade').classList.contains('on');   // 黑幕蓋著（開場載入、換地圖）：HUD 與按鈕藏起來、不給點
+new MutationObserver(()=>document.body.classList.toggle('fading',FADING())).observe($('#fade'),{attributes:true,attributeFilter:['class']});
 async function fade(on){$('#fade').classList.toggle('on',on);await sleep(300)}
 async function useExit(e){
   lock=true;await fade(true);
@@ -1287,6 +1297,7 @@ function drawWorld(now){
       blob(id,x,y,M.kind==='indoor'?rad*.8:rad,NODE_COL[M.theme||'']||'#4f9a3a',M.kind==='indoor'?'#0a0e27':'#f0e6c8');
       if(M.kind==='indoor'){g.fillStyle='#0a0e27';g.beginPath();g.arc(x,y,rad*.28,Math.PI,0);g.lineTo(x+rad*.28,y+rad*.2);g.lineTo(x-rad*.28,y+rad*.2);g.fill()}
       g.font='13px "Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif';g.fillStyle='#000a';g.fillText(M.name,x+1,y+rad+15);g.fillStyle='#eef1ff';g.fillText(M.name,x,y+rad+14);
+      const note=HOOKS.worldNote&&HOOKS.worldNote(id);if(note){g.font='11px "Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif';g.fillStyle='#000a';g.fillText(note,x+1,y+rad+28);g.fillStyle='#ffd84a';g.fillText(note,x,y+rad+27)}   // 藏寶情報（village.js）
     }else if(unknown.has(id)){
       blob(id,x,y,rad*.7,'#2b3a67','#6f86d6');g.fillStyle='#bfcaf5';g.font='bold 15px sans-serif';g.fillText('？',x,y+5);
     }
@@ -1394,8 +1405,8 @@ addEventListener('keydown',e=>{
   const k=e.key.length===1?e.key.toLowerCase():e.key;
   if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key))e.preventDefault();
   if(panelOpen){if(e.key==='Escape'||((k==='b'||e.key==='Tab')&&panelBag)){e.preventDefault();closePanel()}return}
-  if((k==='b'||e.key==='Tab')&&!e.repeat&&!dlgOpen&&!lock&&!worldOpen){e.preventDefault();HOOKS.bag();return}
-  if(k==='m'&&!e.repeat&&!dlgOpen&&!lock){openWorld();return}
+  if((k==='b'||e.key==='Tab')&&!e.repeat&&!dlgOpen&&!lock&&!worldOpen&&!FADING()){e.preventDefault();HOOKS.bag();return}
+  if(k==='m'&&!e.repeat&&!dlgOpen&&!lock&&!FADING()){openWorld();return}
   if(worldOpen){if(e.key==='Escape')openWorld(false);return}
   if((e.key===' '||e.key==='Enter')&&!e.repeat&&!dlgOpen){talk();return}
   keys[k]=true;
@@ -1413,8 +1424,8 @@ if(matchMedia('(pointer:coarse)').matches)document.body.classList.add('touch');
   el.addEventListener('pointerup',end);el.addEventListener('pointercancel',end);
 })();
 $('#actBtn').addEventListener('click',talk);
-$('#mapBtn').addEventListener('click',()=>{if(!dlgOpen&&!lock&&!panelOpen)openWorld()});
-$('#bagBtn').addEventListener('click',()=>{if(!dlgOpen&&!lock&&!worldOpen&&!panelOpen)HOOKS.bag()});
+$('#mapBtn').addEventListener('click',()=>{if(!dlgOpen&&!lock&&!panelOpen&&!FADING())openWorld()});
+$('#bagBtn').addEventListener('click',()=>{if(!dlgOpen&&!lock&&!worldOpen&&!panelOpen&&!FADING())HOOKS.bag()});
 $('#panelClose').addEventListener('click',()=>closePanel());
 $('#worldClose').addEventListener('click',()=>openWorld(false));
 addEventListener('resize',()=>{if(running)resize()});

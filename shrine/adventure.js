@@ -75,7 +75,23 @@ const TEXT={
       done:'林子的黑霧散了。你走進神廟後發生了什麼，我沒親眼見著。村子保住了，這就夠了。'
     }
   },
-  shop:{hi:'好貨不等人。藥水、炸彈隨你挑，包裡的材料我也收，價錢好談。',ask:['買東西','賣掉材料','先不用了'],bought:'買了 ',sold:'賣掉 ',poor:'這點珠幣不夠喔。先去林子裡轉轉再來吧。',full:'你這包袱塞得比我的貨箱還滿，先清出點空位吧。',out:'這批貨全讓你掃光了，等下回補貨再來吧。',needBomb:'得先有炸彈袋，才能買炸彈。'},
+  shop:{hi:'好貨不等人。藥水、炸彈隨你挑，包裡的材料我也收，價錢好談。',ask:['買東西','賣掉材料','先不用了'],bought:'買了 ',sold:'賣掉 ',poor:'這點珠幣不夠喔。先去林子裡轉轉再來吧。',full:'你這包袱塞得比我的貨箱還滿，先清出點空位吧。',out:'這批貨全讓你掃光了，等下回補貨再來吧。',needBomb:'得先有炸彈袋，才能買這個。',
+    newStock:'進了新貨，看看吧。',moreStock:'打倒更多首領後進貨',soldOut:'售完',tonicUse:'喝下了',tonicShort:{power:'力',swift:'疾',guard:'守'},chestNote:'寶箱',
+    cat:{use:'消耗品',ext:'擴充',mat:'材料',gear:'裝備',other:'其他'},
+    // 新品項的品名與說明（效果數值要和 game.js 的 TONIC、BOMB_CAPS、POTION_MAX_BELT 對得上）
+    items:{
+      tonic_power:{name:'力量藥劑',desc:'喝下後 60 秒內，斬擊傷害 +30%。同種再喝只會重算時間。'},
+      tonic_swift:{name:'疾行藥劑',desc:'喝下後 60 秒內，移動速度 +20%，翻滾冷卻縮短三成。'},
+      tonic_guard:{name:'守護藥劑',desc:'喝下後 60 秒內，受到的傷害減少三成。'},
+      bag1:{name:'炸彈袋擴充・一',desc:'炸彈上限從 10 顆增加到 15 顆。（要有炸彈袋）'},
+      bag2:{name:'炸彈袋擴充・二',desc:'炸彈上限從 15 顆增加到 20 顆。（要有炸彈袋）'},
+      belt:{name:'藥水腰帶',desc:'回復藥可帶的數量從 3 瓶增加到 5 瓶。'},
+      piece1:{name:'命珠碎片',desc:'和寶箱裡的一樣，集滿四片，生命上限 +1。限量一片，不補貨。'},
+      piece2:{name:'命珠碎片',desc:'和寶箱裡的一樣，集滿四片，生命上限 +1。最後一片，不補貨。'},
+      shard:{name:'魔晶',desc:'鍛造用的材料。'},
+      ore:{name:'鐵礦石',desc:'鍛造用的材料。'},
+      map:{name:'藏寶情報',desc:'世界地圖上，去過的地方會標出寶箱「已開／總數」。一次性。'}
+    }},
   smith:{hi:'……要打傢伙？材料跟珠幣放桌上。',ask:['打造裝備','先不用了'],made:'打造完成：',lack:'材料不夠，珠幣也差一點。湊齊了再來。'},
   bounty:{done:'委託完成了！回村子的賞金板領取獎勵吧。',take:'接下委託：',claim:'領到賞金：',busy:'別太貪心，手上這張辦妥了再接下一張。',already:'這個寶箱你早就開過了。這張直接算完成。',quit:'委託已放棄。'},
   camp:{ask:'要在營火旁休息嗎？生命會恢復，進度也會儲存。',opts:['休息到白天','休息到黃昏','休息到夜晚','先不用'],rested:'休息好了。現在是'},
@@ -610,7 +626,7 @@ EVT.on('chest',(p,loot)=>{const ids=parseLoot(loot).map(o=>o.id).filter(id=>TEXT
 /* ===== 通關 ===== */
 const fmtTime=s=>{s=Math.round(s);const h=Math.floor(s/3600),m=Math.floor(s/60)%60,ss=s%60;return (h?h+':'+String(m).padStart(2,'0'):m)+':'+String(ss).padStart(2,'0')};
 function totalGems(){let n=0;const isGem=l=>parseLoot(l).reduce((a,o)=>a+((o.id==='gem'||o.id==='piece')?o.n:0),0);
-  for(const M of Object.values(MAPS)){(M.chests||[]).forEach(c=>n+=isGem(c.loot));(M.cracks||[]).forEach(k=>k.chest&&(n+=isGem(k.chest.loot)));if(M.blockReward)n+=isGem(M.blockReward.loot)}return n}
+  for(const M of Object.values(MAPS)){(M.chests||[]).forEach(c=>n+=isGem(c.loot));(M.cracks||[]).forEach(k=>k.chest&&(n+=isGem(k.chest.loot)));if(M.blockReward)n+=isGem(M.blockReward.loot)}return n+(typeof shopPieces==='function'?shopPieces():0)}   // 旅商賣的命珠碎片也算進總數（village.js）
 function totalChests(){let n=0;for(const M of Object.values(MAPS)){n+=(M.chests||[]).length+(M.cracks||[]).filter(k=>k.chest).length+(M.blockReward?1:0)}return n}
 function recordWin(){
   try{const s=JSON.parse(localStorage.getItem(STATS_KEY)||'null')||{};const m=s.story=s.story||{plays:0,wins:0,best:{}};m.plays=m.plays|0;m.wins=(m.wins|0)+1;m.best=m.best||{};
