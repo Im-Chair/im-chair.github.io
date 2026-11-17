@@ -1276,7 +1276,8 @@ function finishRun(S, ok, why){
   const bossDown = ok && S.at && S.at[0] === GAME.rows - 1;
   /* 不再每趟送裝備。活著回去：這趟撿到的材料＋依最終貪婪階級的材料（黑暗異變再多）；死了材料留在下面 */
   const matGreed = ok ? exitMats(S, S.greed) : 0;
-  const mats = ok ? (S.mats | 0) + matGreed : 0;
+  /* 死了：這趟撿到的材料留一半（無條件捨去），其餘留在下面；活著：全部＋貪婪加給的 */
+  const mats = ok ? (S.mats | 0) + matGreed : Math.floor((S.mats | 0) * MAT_KEEP_DEATH);
   const ending = !!(bossDown && regionOf(S.depth || 0).final);
   /* 保命繩：死亡時仍帶回背包裡價值最高的一件（只一次），照撤離的方式結算那一件 */
   let saved = null;
@@ -1294,7 +1295,7 @@ function finishRun(S, ok, why){
   const fams = {gold: 0, relic: 0, curse: 0};
   back.forEach(id => { fams[treasure(id).fam]++; });
   S.result = {ok, why, ending, items: ok ? items : saved ? [saved] : [], lost: ok ? [] : items, value: gross - toll, toll, pouch: (S.pouch || []).slice(), rope: saved, greed: S.greed,
-              steps: S.stats.steps, kills: S.stats.kills, burned: S.stats.burned, mats, matGreed, matLost: ok ? 0 : (S.mats | 0), tier: tierIdx(S), bossDown, depth: S.depth, mutation: S.mutation || null, cls: clsOf(S), nm: S.nm || 0,
+              steps: S.stats.steps, kills: S.stats.kills, burned: S.stats.burned, mats, matGreed, matLost: ok ? 0 : (S.mats | 0) - mats, tier: tierIdx(S), bossDown, depth: S.depth, mutation: S.mutation || null, cls: clsOf(S), nm: S.nm || 0,
               maxGreed: S.stats.maxGreed || 0, healed: S.stats.healed === undefined ? 1 : S.stats.healed,
               /* 委託結算要用的：接下的委託、整趟計數器、帶回各類財寶件數、帶回的刻痕件數、有沒有帶著帳本撤離、這趟梅姐線開放第幾段 */
               quests: (S.quests || []).slice(), qc: Object.assign({}, S.qc), fams, mark: ok ? items.filter(isMarked).length : 0, book: ok && S.book ? 1 : 0, meiStage: S.meiStage || 0,
@@ -1482,6 +1483,7 @@ function bankRewards(meta, r){
   settleQuests(meta, r);                                       // 要在更新 meta.depth 之前，梅姐線各段的門檻看的是出發時的進度
   if(!r.ok){
     if(r.rope && r.value > 0){ meta.bank += r.sold; meta.gold += r.sold; meta.best = Math.max(meta.best, r.sold); }   // 保命繩帶回的那一件
+    if(r.mats){ const tD = Number.isFinite(r.tier) ? r.tier : Math.min(DIVE_MAX, r.depth || 0); meta.mats = meta.mats || {}; meta.mats[tD] = matOf(meta, tD) + r.mats; }   // 死亡保住的一半材料
     checkAchievements(meta, r); return;
   }
   meta.escapes++;
@@ -1531,6 +1533,12 @@ function bankRewards(meta, r){
    每降一階補 1 份該階材料（不能靠舊存檔直接跨過下一道牆）。③已通關的區：每個部位至少補到「最後通關那一區」的階（基本款），
    遷移後打得了已通關的區。④素質、金幣、成就、故事進度原樣保留；首殺紀錄依已通關的區補上（不重發招牌）。
    回傳遷移紀要 {down:[[舊,新]], fill:[id], mats:{區:份}}（給 UI 提示與測試用） */
+/* 存檔改版說明只給看一次：取出遷移紀錄與作廢退款，並把旗標清掉（畫面負責存檔）。沒有要說的回傳 null */
+function takeMigNote(meta){
+  const note = meta.migNote || null, refund = meta.runRefund | 0;
+  delete meta.migNote; delete meta.runRefund;
+  return note || refund ? {note, refund} : null;
+}
 function migrateMetaV6(meta){
   const note = {down: [], fill: [], mats: {}};
   meta.owned = Array.isArray(meta.owned) ? meta.owned.filter(id => GEAR[id]) : [];

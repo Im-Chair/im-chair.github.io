@@ -665,7 +665,7 @@ function rewardHtml(){
   if(!R.loot && !R.cards && R.again) body += `<div class="col" style="margin-top:14px">
     <button class="btn danger" data-act="chestAgain">再翻一次<small>${Math.round(GAME.chestMimic * 100)}% 機率是寶箱怪</small></button>
     <button class="btn primary" data-act="closeReward">見好就收</button></div>`;
-  const matLine = R.mat ? `<div class="page-text" style="color:var(--gold)">${MATS[tierIdx(S)].n} +${R.mat}（這趟共 ${S.mats | 0}，活著回去才算）</div>` : '';
+  const matLine = R.mat ? `<div class="page-text" style="color:var(--gold)">${MATS[tierIdx(S)].n} +${R.mat}（這趟共 ${S.mats | 0}；死在下面只帶得回一半）</div>` : '';
   return `${hud()}<div class="screen"><div class="page-title">${R.title}</div><div class="page-text">${R.text}</div>${matLine}${body}</div>`;
 }
 
@@ -756,7 +756,8 @@ function gearReward(r){
 function matResultHtml(r){
   const m = MATS[r.tier || 0];
   if(r.ok) return `<div class="mut-note">材料　<b>${m.n} ×${r.mats || 0}</b>${r.matGreed ? `（含貪婪「${GREED_TIERS[greedTierIndex(r.greed)].n}」多給 ${r.matGreed}）` : ''}<br><small>拿到鐵匠鋪打造${RARITY[r.tier || 0].n}裝備</small></div>`;
-  return r.matLost ? `<div class="mut-note">${m.n} ×${r.matLost} 跟著留在下面了</div>` : '';
+  if(!r.mats && !r.matLost) return '';
+  return `<div class="mut-note">材料　保住 <b>${m.n} ×${r.mats || 0}</b>${r.matLost ? `，${r.matLost} 份跟著留在下面了` : ''}<br><small>死在下面，這趟撿到的材料只帶得回一半</small></div>`;
 }
 /* 新一階解鎖的提示 */
 function unlockHtml(r){
@@ -791,6 +792,28 @@ function openSheet(html){
 function closeSheet(){ $('sheet').classList.remove('show'); pendingLoot = null; dlg = null; }
 
 /* 梅姐線完成的台詞：回營後用對話視窗一段一段播（播完才從 meta.meiSay 移除，中途關掉下次回營會再播） */
+/* 存檔改版說明：舊存檔遷移後第一次進營地跳一次（裝備換了哪幾件、退了多少材料、作廢的一趟退了多少金幣），看過就清掉旗標 */
+function showMigNote(){
+  const t = takeMigNote(meta);
+  if(!t) return false;
+  const n = t.note, rf = t.refund;
+  const g = id => `${GEAR[id].n}（${RARITY[GEAR[id].r].n}）`;
+  const li = a => `<ul class="sheet-p" style="margin:4px 0 8px 18px;padding:0">${a.map(t => `<li>${t}</li>`).join('')}</ul>`;
+  let h = `<div class="sheet-t">${MIG_TEXT.title}</div>`;
+  if(n){
+    h += `<div class="sheet-p">${MIG_TEXT.intro}</div>`;
+    const mats = Object.keys(n.mats || {}).filter(k => n.mats[k] > 0);
+    if(n.down.length) h += `<div class="sheet-p">${MIG_TEXT.down}</div>` + li(n.down.map(([a, b]) => `${g(a)} → ${g(b)}`));
+    if(n.fill.length) h += `<div class="sheet-p">${MIG_TEXT.fill}</div>` + li(n.fill.map(g));
+    if(mats.length) h += `<div class="sheet-p">${MIG_TEXT.mats}</div>` + li(mats.map(k => `${MATS[k].n} ×${n.mats[k]}`));
+    if(!n.down.length && !n.fill.length) h += `<div class="sheet-p">${MIG_TEXT.none}</div>`;
+  }
+  if(rf) h += `<div class="sheet-p">${MIG_TEXT.refund(rf)}</div>`;
+  h += `<div class="sheet-p">${MIG_TEXT.keep}</div><div class="col"><button class="btn primary" data-act="closeSheet">${MIG_TEXT.ok}</button></div>`;
+  saveMeta();
+  openSheet(h);
+  return true;
+}
 function playMeiSay(){
   const q = (meta.meiSay || []).filter(st => MEI_SAY[st - 1]);
   if(S || !q.length) return;
@@ -1132,7 +1155,7 @@ const ACT = {
     if(S.battle && S.battle.phase === 'enemy') runEnemyPhase();
   },
   toTitle(){ S = null; view = 'title'; closeSheet(); $('app').removeAttribute('style'); render(); },
-  toCamp(){ S = null; view = 'camp'; diveDepth = null; closeSheet(); $('app').removeAttribute('style'); render(); playMeiSay(); },
+  toCamp(){ S = null; view = 'camp'; diveDepth = null; closeSheet(); $('app').removeAttribute('style'); render(); if(!showMigNote()) playMeiSay(); },
   buy(k){ if(buyStat(meta, k)){ saveMeta(); SFX.clink(); renderKeep(); } },
   smith(id){ if(craftGear(meta, id)){ saveMeta(); SFX.clink(); renderKeep(); } },
   smithTab(k){ smithTab = k; renderKeep(); },

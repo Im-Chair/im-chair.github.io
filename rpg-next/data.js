@@ -87,21 +87,21 @@ const CARDS = {
   tox:    {n:'劇毒瓶', cls:'rogue', c:2, k:'skl', r:2, psn:9, t:'目標毒 9', long:'目標中毒 9。', up:{psn:14, t:'目標毒 14', long:'目標中毒 14。'}},
 
   /* —— 法師專屬：回合結束沒用完的行動點存成法力（上限 5，跨回合保留）。法術牌打出時吃掉全部法力，每點額外加成 —— */
-  spark:  {n:'火花', cls:'mage', c:1, k:'atk', r:0, sp:1, dmg:7, mx:3, t:'法術 傷害 {d}\n每法力+3', long:'法術：造成 {d} 點傷害，並吃掉全部法力，每點法力傷害 +3。', up:{dmg:10, mx:4, t:'法術 傷害 {d}\n每法力+4', long:'法術：造成 {d} 點傷害，並吃掉全部法力，每點法力傷害 +4。'}},
-  ward:   {n:'結界', cls:'mage', c:1, k:'def', r:0, blk:8, t:'格擋 {b}', long:'獲得 {b} 點格擋。', up:{blk:11}},
-  bolt:   {n:'奧術彈', cls:'mage', c:2, k:'atk', r:0, sp:1, dmg:10, mx:4, t:'法術 傷害 {d}\n每法力+4', long:'法術：造成 {d} 點傷害，並吃掉全部法力，每點法力傷害 +4。', up:{dmg:14, mx:5, t:'法術 傷害 {d}\n每法力+5', long:'法術：造成 {d} 點傷害，並吃掉全部法力，每點法力傷害 +5。'}},
+  spark:  {n:'火花', cls:'mage', c:1, k:'atk', r:0, sp:1, dmg:9, mx:3, t:'法術 傷害 {d}\n每法力+3', long:'法術：造成 {d} 點傷害，並吃掉全部法力，每點法力傷害 +3。', up:{dmg:13, mx:4, t:'法術 傷害 {d}\n每法力+4', long:'法術：造成 {d} 點傷害，並吃掉全部法力，每點法力傷害 +4。'}},
+  ward:   {n:'結界', cls:'mage', c:1, k:'def', r:0, blk:10, t:'格擋 {b}', long:'獲得 {b} 點格擋。', up:{blk:13}},
+  bolt:   {n:'奧術彈', cls:'mage', c:2, k:'atk', r:0, sp:1, dmg:13, mx:4, t:'法術 傷害 {d}\n每法力+4', long:'法術：造成 {d} 點傷害，並吃掉全部法力，每點法力傷害 +4。', up:{dmg:18, mx:5, t:'法術 傷害 {d}\n每法力+5', long:'法術：造成 {d} 點傷害，並吃掉全部法力，每點法力傷害 +5。'}},
   focus:  {n:'凝神', cls:'mage', c:0, k:'skl', r:0, mana:2, t:'法力 +2', long:'獲得 2 點法力。', up:{mana:3, t:'法力 +3', long:'獲得 3 點法力。'}},
   shard:  {n:'魔晶', cls:'mage', c:1, k:'atk', r:1, dmg:6, mana:1, t:'傷害 {d}\n法力 +1', long:'造成 {d} 點傷害，獲得 1 點法力。', up:{dmg:9, mana:2, t:'傷害 {d}\n法力 +2', long:'造成 {d} 點傷害，獲得 2 點法力。'}},
   chill:  {n:'寒氣', cls:'mage', c:1, k:'atk', r:1, dmg:4, vuln:2, t:'傷害 {d}\n易傷 2', long:'造成 {d} 點傷害，並給予 2 回合易傷（受到的傷害 +50%）。', up:{dmg:6, vuln:3, t:'傷害 {d}\n易傷 3', long:'造成 {d} 點傷害，並給予 3 回合易傷（受到的傷害 +50%）。'}},
   siphon: {n:'汲取', cls:'mage', c:0, k:'skl', r:1, mana:2, t:'法力 +2', long:'獲得 2 點法力。', up:{mana:3, t:'法力 +3', long:'獲得 3 點法力。'}},
   arcane: {n:'秘藏', cls:'mage', c:1, k:'skl', r:1, draw:2, mana:1, t:'抽 2\n法力 +1', long:'抽 2 張，獲得 1 點法力。', up:{c:0}},
   bank:   {n:'儲能', cls:'mage', c:1, k:'def', r:1, blk:6, mana:1, t:'格擋 {b}\n法力 +1', long:'獲得 {b} 點格擋，獲得 1 點法力。', up:{blk:9}},
-  prism:  {n:'稜鏡', cls:'mage', c:1, k:'atk', r:1, sp:1, dmg:3, hits:3, mx:1, t:'法術 傷害 {d}×3\n每法力+1', long:'法術：造成 {d} 點傷害，共 3 次，並吃掉全部法力，每點法力讓每次傷害 +1。', up:{dmg:4, mx:2, t:'法術 傷害 {d}×3\n每法力+2', long:'法術：造成 {d} 點傷害，共 3 次，並吃掉全部法力，每點法力讓每次傷害 +2。'}},
+  prism:  {n:'稜鏡', cls:'mage', c:1, k:'atk', r:1, sp:1, dmg:4, hits:3, mx:1, t:'法術 傷害 {d}×3\n每法力+1', long:'法術：造成 {d} 點傷害，共 3 次，並吃掉全部法力，每點法力讓每次傷害 +1。', up:{dmg:5, mx:2, t:'法術 傷害 {d}×3\n每法力+2', long:'法術：造成 {d} 點傷害，共 3 次，並吃掉全部法力，每點法力讓每次傷害 +2。'}},
   barrier:{n:'魔力護盾', cls:'mage', c:1, k:'def', r:1, sp:1, blk:4, mb:3, t:'法術 格擋 {b}\n每法力+3', long:'法術：獲得 {b} 點格擋，並吃掉全部法力，每點法力格擋 +3。', up:{blk:6, mb:4, t:'法術 格擋 {b}\n每法力+4', long:'法術：獲得 {b} 點格擋，並吃掉全部法力，每點法力格擋 +4。'}},
-  lance:  {n:'冰錐', cls:'mage', c:2, k:'atk', r:1, sp:1, dmg:10, mx:2, vuln:1, t:'法術 傷害 {d}\n易傷 1・每法力+2', long:'法術：造成 {d} 點傷害，給予 1 回合易傷，並吃掉全部法力，每點法力傷害 +2。', up:{dmg:13, mx:3, t:'法術 傷害 {d}\n易傷 1・每法力+3', long:'法術：造成 {d} 點傷害，給予 1 回合易傷，並吃掉全部法力，每點法力傷害 +3。'}},
-  chain:  {n:'連鎖閃電', cls:'mage', c:2, k:'atk', r:2, sp:1, dmg:7, all:1, mx:2, t:'法術 全體傷害 {d}\n每法力+2', long:'法術：對所有敵人造成 {d} 點傷害，並吃掉全部法力，每點法力傷害 +2。', up:{dmg:9, mx:3, t:'法術 全體傷害 {d}\n每法力+3', long:'法術：對所有敵人造成 {d} 點傷害，並吃掉全部法力，每點法力傷害 +3。'}},
-  meteor: {n:'隕石', cls:'mage', c:3, k:'atk', r:2, sp:1, dmg:18, mx:5, t:'法術 傷害 {d}\n每法力+5', long:'法術：造成 {d} 點傷害，並吃掉全部法力，每點法力傷害 +5。', up:{dmg:24, mx:6, t:'法術 傷害 {d}\n每法力+6', long:'法術：造成 {d} 點傷害，並吃掉全部法力，每點法力傷害 +6。'}},
-  echo:   {n:'回響', cls:'mage', c:2, k:'atk', r:2, sp:1, nokeep:1, dmg:10, mx:2, t:'法術 傷害 {d}\n每法力+2・不耗法力', long:'法術：造成 {d} 點傷害，每點法力傷害 +2，但不會消耗法力。', up:{dmg:13, mx:3, t:'法術 傷害 {d}\n每法力+3・不耗法力', long:'法術：造成 {d} 點傷害，每點法力傷害 +3，但不會消耗法力。'}},
+  lance:  {n:'冰錐', cls:'mage', c:2, k:'atk', r:1, sp:1, dmg:13, mx:2, vuln:1, t:'法術 傷害 {d}\n易傷 1・每法力+2', long:'法術：造成 {d} 點傷害，給予 1 回合易傷，並吃掉全部法力，每點法力傷害 +2。', up:{dmg:16, mx:3, t:'法術 傷害 {d}\n易傷 1・每法力+3', long:'法術：造成 {d} 點傷害，給予 1 回合易傷，並吃掉全部法力，每點法力傷害 +3。'}},
+  chain:  {n:'連鎖閃電', cls:'mage', c:2, k:'atk', r:2, sp:1, dmg:9, all:1, mx:2, t:'法術 全體傷害 {d}\n每法力+2', long:'法術：對所有敵人造成 {d} 點傷害，並吃掉全部法力，每點法力傷害 +2。', up:{dmg:11, mx:3, t:'法術 全體傷害 {d}\n每法力+3', long:'法術：對所有敵人造成 {d} 點傷害，並吃掉全部法力，每點法力傷害 +3。'}},
+  meteor: {n:'隕石', cls:'mage', c:3, k:'atk', r:2, sp:1, dmg:23, mx:5, t:'法術 傷害 {d}\n每法力+5', long:'法術：造成 {d} 點傷害，並吃掉全部法力，每點法力傷害 +5。', up:{dmg:30, mx:6, t:'法術 傷害 {d}\n每法力+6', long:'法術：造成 {d} 點傷害，並吃掉全部法力，每點法力傷害 +6。'}},
+  echo:   {n:'回響', cls:'mage', c:2, k:'atk', r:2, sp:1, nokeep:1, dmg:13, mx:2, t:'法術 傷害 {d}\n每法力+2・不耗法力', long:'法術：造成 {d} 點傷害，每點法力傷害 +2，但不會消耗法力。', up:{dmg:16, mx:3, t:'法術 傷害 {d}\n每法力+3・不耗法力', long:'法術：造成 {d} 點傷害，每點法力傷害 +3，但不會消耗法力。'}},
   overl:  {n:'超載', cls:'mage', c:0, k:'skl', r:2, mana:3, selfHp:4, exhaust:1, t:'法力 +3\n失去 4 生命・消耗', long:'失去 4 點生命（無視格擋），獲得 3 點法力。使用後本場消耗。', up:{mana:4, selfHp:3, t:'法力 +4\n失去 3 生命・消耗', long:'失去 3 點生命（無視格擋），獲得 4 點法力。使用後本場消耗。'}},
 
   /* —— 制魔師專屬：咒印（敵人身上，每層讓牠受到的每次傷害 +1，不會消失）與力量（整場疊加）。身上每件詛咒財寶，開場給全體敵人 1 層咒印 —— */
@@ -152,7 +152,7 @@ const CLASSES = {
   rogue:   {n:'盜賊', hp:60, img:'ui/cls_assassin.webp', need:1, hand:6, deck:['jab','jab','jab','jab','slip','slip','slip','coat','coat','quick'], line:'抽牌多、牌便宜。疊毒讓敵人自己流血，再用連擊收尾。',
             how:'每回合抽 6 張。<b>毒</b>：掛在敵人身上，輪到牠行動時先受毒層數的傷害，然後毒 -1。<b>連擊</b>：本回合已出的牌數，追擊、終結一擊等牌依此加傷。格擋每回合清空。',
             greed:{n:'手癢', d:`貪婪越高，每場戰鬥的第一回合越多抽牌（每個階級 1 張，最多 ${ROGUE_ITCH_MAX} 張）。`}},
-  mage:    {n:'法師', hp:50, img:'ui/cls_white.webp', need:2, mana0:3, hand:6, deck:['spark','spark','spark','spark','ward','ward','ward','bolt','bolt','focus'], line:'血少，但回合結束沒用完的行動點會存成法力，蓄一回合、爆一回合。',
+  mage:    {n:'法師', hp:55, img:'ui/cls_white.webp', need:2, mana0:3, hand:6, deck:['spark','spark','spark','spark','ward','ward','ward','bolt','bolt','focus'], line:'血少，但回合結束沒用完的行動點會存成法力，蓄一回合、爆一回合。',
             how:'<b>法力</b>：回合結束沒用完的行動點會存成法力（上限 5，跨回合保留）。<b>法術</b>牌打出時吃掉全部法力，每點法力讓效果更強。格擋每回合清空。',
             greed:{n:'共鳴', d:`貪婪越高，每場戰鬥開始時的法力越多（每個階級 1 點，最多 ${MAGE_RESO_MAX} 點）。`}},
   warlock: {n:'制魔師', hp:65, img:'ui/cls_dark.webp', need:3, deck:['dark','dark','dark','charm','charm','charm','brand','brand','oath','hexall'], line:'前期慢，咒印和力量越疊越強；詛咒財寶是你的朋友。',
@@ -488,9 +488,9 @@ const SEG_NAME = ['淺層', '深層', '首領'];
 /* —— 回到營地之後 —— */
 /* 素質：花金幣永久提升。第 lv 級（從 0 起算）的價格＝round(base × mult^lv) */
 const STAT_UPS = {
-  hp:  {n:'體魄',   d:'最大生命 +5',     key:'hp',  per:5, max:20, base:60,  mult:1.25},
-  blk: {n:'架勢',   d:'每場開場格擋 +2', key:'blk', per:2, max:10, base:80,  mult:1.3},
-  str: {n:'臂力',   d:'力量 +1',         key:'str', per:1, max:8,  base:250, mult:1.6},
+  hp:  {n:'體魄',   d:'最大生命 +5',     key:'hp',  per:5, max:20, base:60,  mult:1.08},
+  blk: {n:'架勢',   d:'每場開場格擋 +2', key:'blk', per:2, max:10, base:80,  mult:1.12},
+  str: {n:'臂力',   d:'力量 +1',         key:'str', per:1, max:8,  base:220, mult:1.2},
   bag: {n:'大背包', d:'背包 +1 格',      key:'bag', per:1, max:3,  base:400, mult:2.5},
 };
 /* 素質等級「正常價格」上限分段表：索引＝已打贏首領的最深層數（meta.depth，0＝一層都沒通關；超過表長取最後一格）。
@@ -641,7 +641,7 @@ const SIG_SLOT = {
   warlock: ['weapon',  'armor',   'weapon',  'armor',   'weapon'],
 };
 /* 材料：每區一種，只能打造該階。來源：該區菁英（MAT_ELITE）、首領（MAT_BOSS）、深層一般戰鬥（MAT_DEEP_P 機率 1 份）、
-   活著回去依最終貪婪階級（MAT_GREED）。死在下面，這趟拿到的材料跟財寶一起留在下面 */
+   活著回去依最終貪婪階級（MAT_GREED）。死在下面，這趟撿到的材料留一半（MAT_KEEP_DEATH，無條件捨去），貪婪加給的那份沒有 */
 const MATS = [
   {n:'鏽鐵塊',    d:'淺穴的礦工留下的廢鐵'},
   {n:'哥布林廢鐵', d:'聚落裡敲下來的破甲片'},
@@ -649,15 +649,16 @@ const MATS = [
   {n:'舊都銀',    d:'舊都城牆上剝下來的銀飾'},
   {n:'熔心石',    d:'熔獄裡還在發燙的石頭'},
 ];
-const MAT_ELITE = 1, MAT_BOSS = 2, MAT_DEEP_P = 0.25;
+const MAT_ELITE = 1, MAT_BOSS = 2, MAT_DEEP_P = 0.45;
+const MAT_KEEP_DEATH = 0.5;   // 死亡時這趟撿到的材料保留比例（無條件捨去）
 const MAT_GREED = [0, 0, 1, 1, 2];
 /* 鐵匠打造價格（索引＝階 − 1）：gold 金幣、mats 該區材料份數 */
 const CRAFT = [
   {gold: 120,  mats: 2},
-  {gold: 300,  mats: 3},
-  {gold: 550,  mats: 3},
-  {gold: 900,  mats: 3},
-  {gold: 1400, mats: 3},
+  {gold: 200,  mats: 2},
+  {gold: 300,  mats: 2},
+  {gold: 400,  mats: 2},
+  {gold: 500,  mats: 2},
 ];
 /* 首領門檻（營地「本區門檻」與首領房前提醒共用）：建議素質＝STAT_CAPS 該區那一格（體魄、架勢、臂力），
    建議裝備＝本階 GATE_GEAR[區] 件以上。只是建議，不擋路 */
