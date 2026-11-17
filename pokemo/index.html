@@ -171,7 +171,7 @@ body.btn-art #sTitle button::before,body.btn-art #sTitle button::after{display:n
     <button class="pri" id="btnCont" style="display:none">繼續遊戲</button>
     <button class="pri" id="btnNew">新遊戲</button>
     <button id="btnImp">匯入存檔碼</button>
-    <div class="ver">原型 v1.20 ・ 110 種怪物 ・ 前九章可玩</div>
+    <div class="ver">原型 v1.21 ・ 110 種怪物 ・ 前九章可玩</div>
   </div>
 
   <div id="sMap" class="screen">
@@ -494,7 +494,7 @@ const SOFT_CORE=[.12,.2,.28,.16,.24,.3],SOFT_JITTER=.12;   // 軟變體（地圖
 const GROUND_SOFT_DEF=[[0,1],[3,3]];   // 地圖沒指定 groundSoft 時，這些反差大的地面格（路面、雜色格）改成散斑疊上，不再是一格一格的方塊
 const FLOWER_JITTER=.16;      // 花叢圖格的位置偏移（格）
 const FT_MAX=120;             // 羽化圖格快取上限（張）
-const SHAPE_S=8;              // 形狀遮罩的取樣密度（每格幾個樣本）；以雙線性放大當 alpha，越大越細、建塊越慢
+const SHAPE_S=6;              // 形狀遮罩的取樣密度（每格幾個樣本）；以雙線性放大當 alpha，越大越細、建塊越慢
 const SHAPE_KEEP_R=.29,SHAPE_KEEP_K=.15;   // 可走格保護半徑（格，圓角方形＝角色站位範圍）與壓低量（場值）
 const SHAPE_WARP=.22,SHAPE_WARP_F=.33;   // 座標擾動幅度（格）與頻率（每格）：直邊的低頻左右擺動
 // 各層：s 平滑半徑（格，越大轉角越圓）、t 門檻（< .5 ＝ 比格子外擴）、e 邊緣柔和半寬（場值）、lo／lf 寬窄起伏幅度與頻率、hi／hf 碎邊幅度與頻率、
@@ -509,8 +509,11 @@ const WET_A=.18,WET_W=.2;     // 岸上濕邊（陸側淡暗帶）：不透明�
 const SHALLOW_A=.3,SHALLOW_MIX=.45;   // 淺水帶：不透明度、顏色＝水色往白混合的比例
 const PATH_HALO_A=.2,PATH_HALO_RGB='60,48,20';   // 路兩旁踩禿的暗邊
 const TREE_SHADE_A=.38;       // 樹林底下的深綠不透明度
-const PATH_FREE_ROT=['tiles','tiles_coast','tiles_ember'];   // 路面紋理可隨機旋轉的圖集（土、沙、灰）；其餘是木棧道、石板等人造鋪面，照格子排
+const PATH_FREE_ROT=['tiles','tiles_coast','tiles_ember','tiles_abyss'];   // 路面紋理可隨機旋轉的圖集（土、沙、灰）；其餘是木棧道、石板等人造鋪面，照格子排
 const TEX_CELLS=4,TEX_STAMP=1.5;   // 路、水的無縫紋理：邊長（格）、印章大小（格）；印章隨機旋轉，避免看出重複的斜紋
+// 世界變形（道路彎曲、區塊不規則）：每格取樣數、八度 [波長 l（格）, 幅度 a（格）]、地圖邊緣與剛性物（房屋、門、告示牌、碼頭、出口）的漸降距離 [0 起點, 全幅], 行列式下限、個別地圖倍率（MAPS 也可設 warp:{amp}）
+const WARP_R=4,WARP_OCT=[{l:15,a:1.6},{l:6.5,a:.45}],WARP_EDGE=[.6,4],WARP_RIGID=[.8,5],WARP_DET_MIN=.55;
+const WARP_MAP_AMP={throne:.5,tower:.5,memory1:.5,memory2:.5,memory3:.5,memory4:.5};
 const PROP_JIT=.16,PROP_JIT_IN=.24,PROP_JIT_Y=.1,PROP_SCALE=[.86,1.1];   // 樹石灌木的格內偏移（格；四周都不可走時用 _IN）與大小變化
 const snapPx=v=>Math.round(v*mdpr)/mdpr;            // 對齊裝置像素
 let blkCache=new Map(),ftCache=new Map(),maskCv=new Map(),blkFrame=0,TEXC=null;
@@ -1074,9 +1077,84 @@ function vnoise(seed){   // 二維值雜訊，回傳 f(x,y) ∈ -1~1
   const h=(i,j)=>{let v=Math.imul(i,374761393)+Math.imul(j,668265263)+Math.imul(seed,982451653)|0;v=Math.imul(v^v>>>13,1274126177);v^=v>>>16;return (v>>>0)/2147483648-1};
   return (x,y)=>{const i=Math.floor(x),j=Math.floor(y),fx=x-i,fy=y-j,sx=fx*fx*(3-2*fx),sy=fy*fy*(3-2*fy),a=h(i,j),b=h(i+1,j),c=h(i,j+1),d=h(i+1,j+1);return a+(b-a)*sx+(c-a)*sy+(a-b-c+d)*sx*sy};
 }
+/* --- 世界變形：邏輯座標 q（格子、碰撞、事件）與畫面上的世界座標 p 之間的平滑雙射 q = p + D(p) ---
+   D 是兩個八度的低頻位移場（種子＝地圖代號），地圖四周與房屋、門、告示牌、碼頭、出口落點附近漸降到 0。
+   D 與反函數 E（p = q + E(q)）都預算在每格 WARP_R 點的網格上，用時雙線性內插；全圖檢查 Jacobian 行列式，太小就整張縮小幅度，不會摺疊。 */
+let WP=null;
+const WT=[0,0];
+function warpData(){
+  if(WP&&WP.map===map)return WP;
+  const amp0=CUR&&CUR.warp&&CUR.warp.amp!=null?CUR.warp.amp:(WARP_MAP_AMP[CURID]!=null?WARP_MAP_AMP[CURID]:1);
+  if(!amp0)return WP={map,off:true,maxD:0,amp:0,detMin:1,detMax:1};
+  const R=WARP_R,nx=MW*R+1,ny=MH*R+1,N=nx*ny,seed=strHash('warp-'+CURID);
+  // 剛性格：有功能或端正的人造物，與出口、落點
+  const rig=new Uint8Array(MW*MH),mark=(x,y)=>{x=Math.floor(x);y=Math.floor(y);if(x>=0&&y>=0&&x<MW&&y<MH)rig[y*MW+x]=1};
+  for(let y=0;y<MH;y++)for(let x=0;x<MW;x++){const t=map[y][x];if(t===T.HOUSE||t===T.DOOR||t===T.FOUNT||t===T.GATE||t===T.SIGN||t===T.DOCK)mark(x,y)}
+  Object.keys(CUR.props||{}).forEach(k=>{const [x,y]=k.split(',').map(Number);mark(x,y);mark(x,y-1)});
+  (CUR.gates||[]).forEach(g=>{for(let dx=-2;dx<=1;dx++)mark(g.x+dx,g.y-1)});
+  (CUR.warps||[]).forEach(w=>mark(w.x,w.y));
+  Object.values(MAPS).forEach(m=>(m.warps||[]).forEach(w=>{if(w.to===CURID)mark(w.tx,w.ty)}));
+  [CUR.spawn,CUR.home].forEach(s=>{if(s)mark(s.x,s.y)});
+  (CUR.npcs||[]).forEach(n=>{if(n.obj)mark(n.x,n.y)});
+  const rList=[];for(let i=0;i<MW*MH;i++)if(rig[i])rList.push([i%MW,(i/MW)|0]);
+  const r1=WARP_RIGID[1],W=Math.ceil(r1)+1;
+  const nz=WARP_OCT.map((o,k)=>[vnoise(seed+k*101+1),vnoise(seed+k*101+2)]);
+  // 剛性距離先在半格網格上算（變化平緩），取樣點再雙線性內插
+  const H=2,hx=MW*H+1,hy=MH*H+1,rd=new Float32Array(hx*hy);
+  for(let j=0;j<hy;j++)for(let i=0;i<hx;i++){const x=i/H,y=j/H,cx=Math.floor(x),cy=Math.floor(y);let dm=9;
+    for(let yy=Math.max(0,cy-W);yy<=Math.min(MH-1,cy+W);yy++)for(let xx=Math.max(0,cx-W);xx<=Math.min(MW-1,cx+W);xx++)if(rig[yy*MW+xx]){const d=Math.hypot(x-clamp(x,xx,xx+1),y-clamp(y,yy,yy+1));if(d<dm)dm=d}
+    rd[j*hx+i]=dm}
+  const D=new Float32Array(N*2);
+  for(let j=0;j<ny;j++)for(let i=0;i<nx;i++){
+    const x=i/R,y=j/R,k=j*nx+i;
+    let e=sstep(WARP_EDGE[0],WARP_EDGE[1],Math.min(x,MW-x,y,MH-y));
+    if(e>0){const fx=Math.min(x*H,hx-1.0001),fy=Math.min(y*H,hy-1.0001),a=fx|0,b=fy|0,u=fx-a,v=fy-b,q=b*hx+a;
+      e*=sstep(WARP_RIGID[0],r1,(rd[q]*(1-u)+rd[q+1]*u)*(1-v)+(rd[q+hx]*(1-u)+rd[q+hx+1]*u)*v)}
+    let dx=0,dy=0;
+    if(e>0)WARP_OCT.forEach((o,q)=>{dx+=o.a*nz[q][0](x/o.l,y/o.l);dy+=o.a*nz[q][1](x/o.l+57.3,y/o.l+11.9)});
+    D[k*2]=dx*e;D[k*2+1]=dy*e;
+  }
+  const detRange=s=>{let mn=9,mx=-9;for(let j=1;j<ny-1;j++)for(let i=1;i<nx-1;i++){const k=j*nx+i,h=R/2*s,
+      a=1+(D[(k+1)*2]-D[(k-1)*2])*h,b=(D[(k+nx)*2]-D[(k-nx)*2])*h,c=(D[(k+1)*2+1]-D[(k-1)*2+1])*h,d=1+(D[(k+nx)*2+1]-D[(k-nx)*2+1])*h,v=a*d-b*c;
+      if(v<mn)mn=v;if(v>mx)mx=v}return [mn,mx]};
+  // 幅度：基準 × 地圖倍率；行列式太小就縮小（線性近似 det≈1+s·(det0−1)）
+  let s=amp0,dr=detRange(s);
+  for(let it=0;it<6&&dr[0]<WARP_DET_MIN;it++){s*=Math.max(.3,Math.min(.95,(1-WARP_DET_MIN)/(1-dr[0])*.97));dr=detRange(s)}
+  let maxD=0;for(let k=0;k<N*2;k++){D[k]*=s;const a=Math.abs(D[k]);if(a>maxD)maxD=a}
+  const w={map,off:false,R,nx,ny,D,E:null,amp:s,detMin:dr[0],detMax:dr[1],maxD,rig};
+  WP=w;
+  // 反函數網格：牛頓法解 p + D(p) = q
+  const E=new Float32Array(N*2),o=[0,0],J=[0,0,0,0];
+  for(let j=0;j<ny;j++)for(let i=0;i<nx;i++){
+    const qx=i/R,qy=j/R;let px,py;if(i){const k=(j*nx+i-1)*2;px=qx+E[k];py=qy+E[k+1]}else{warpD(qx,qy,o);px=qx-o[0];py=qy-o[1]}   // 以左鄰的解當初值，牛頓法通常 1–2 步收斂
+    for(let it=0;it<8;it++){warpD(px,py,o);const rx=px+o[0]-qx,ry=py+o[1]-qy;if(Math.abs(rx)+Math.abs(ry)<1e-5)break;warpJ(px,py,J);const det=J[0]*J[3]-J[1]*J[2]||1;px-=(J[3]*rx-J[1]*ry)/det;py-=(-J[2]*rx+J[0]*ry)/det}
+    E[(j*nx+i)*2]=px-qx;E[(j*nx+i)*2+1]=py-qy;
+  }
+  w.E=E;return w;
+}
+function warpLerp(A,x,y,o){   // 網格雙線性內插（座標夾在地圖內）
+  const w=WP,R=w.R,fx=Math.min(Math.max(x*R,0),w.nx-1.0001),fy=Math.min(Math.max(y*R,0),w.ny-1.0001),i=fx|0,j=fy|0,u=fx-i,v=fy-j,k=(j*w.nx+i)*2,k2=k+w.nx*2;
+  o[0]=(A[k]*(1-u)+A[k+2]*u)*(1-v)+(A[k2]*(1-u)+A[k2+2]*u)*v;
+  o[1]=(A[k+1]*(1-u)+A[k+3]*u)*(1-v)+(A[k2+1]*(1-u)+A[k2+3]*u)*v;
+  return o;
+}
+function warpD(x,y,o){if(!WP||WP.off){o[0]=o[1]=0;return o}return warpLerp(WP.D,x,y,o)}
+function warpJ(x,y,J){   // ∂q/∂p（2×2，列優先：[dqx/dpx, dqx/dpy, dqy/dpx, dqy/dpy]）
+  const h=.25,a=[0,0],b=[0,0];
+  warpD(x+h,y,a);warpD(x-h,y,b);J[0]=1+(a[0]-b[0])/(2*h);J[2]=(a[1]-b[1])/(2*h);
+  warpD(x,y+h,a);warpD(x,y-h,b);J[1]=(a[0]-b[0])/(2*h);J[3]=1+(a[1]-b[1])/(2*h);
+  return J;
+}
+const toLogic=(px,py,o)=>{warpD(px,py,o);o[0]+=px;o[1]+=py;return o};   // 畫面世界座標 → 邏輯座標
+function toView(qx,qy,o){   // 邏輯座標 → 畫面世界座標
+  o=o||[0,0];
+  if(!WP||WP.off||!WP.E){o[0]=qx;o[1]=qy;return o}
+  warpLerp(WP.E,qx,qy,o);o[0]+=qx;o[1]+=qy;return o;
+}
 const SHAPE_KEYS=['water','tree','tg','path'];
 let SHP=null;
 function shapeData(){   // 這張地圖的指示場與雜訊（map 換成新陣列就重算）
+  warpData();
   if(SHP&&SHP.map===map)return SHP;
   const n=MW*MH,ind=SHAPE_KEYS.map(()=>new Uint8Array(n)),seed=strHash('shape-'+CURID);
   for(let y=0;y<MH;y++)for(let x=0;x<MW;x++){
@@ -1089,7 +1167,8 @@ function shapeData(){   // 這張地圖的指示場與雜訊（map 換成新陣�
   return SHP={map,ind,walk,wx:nz(1),wy:nz(2),lo:SHAPE_KEYS.map((_,i)=>nz(10+i)),hi:SHAPE_KEYS.map((_,i)=>nz(20+i))};
 }
 const SHG=new Float64Array(5),SHH=new Float64Array(5),SHC=new Int32Array(5),SHR=new Int32Array(5);
-function shapeField(sd,x,y,out,act){   // 在 (x,y)（格）算各層場值；act[i] 為假的層不算
+function shapeField(sd,x,y,out,act){   // 在畫面世界座標 (x,y)（格）算各層場值：先經世界變形換成邏輯座標再取樣；act[i] 為假的層不算
+  if(WP&&!WP.off){warpLerp(WP.D,x,y,WT);x+=WT[0];y+=WT[1]}
   const xw=x+SHAPE_WARP*sd.wx(x*SHAPE_WARP_F,y*SHAPE_WARP_F),yw=y+SHAPE_WARP*sd.wy(x*SHAPE_WARP_F+31.7,y*SHAPE_WARP_F+17.3);
   const x0=Math.floor(xw),y0=Math.floor(yw);
   for(let k=0;k<5;k++){const u=x0-2+k,v=y0-2+k;SHC[k]=u<0?0:u>=MW?MW-1:u;SHR[k]=(v<0?0:v>=MH?MH-1:v)*MW}   // 地圖外沿用邊緣格
@@ -1108,7 +1187,7 @@ function shapeField(sd,x,y,out,act){   // 在 (x,y)（格）算各層場值；ac
     }
   }
 }
-function shapeAt(x,y){   // 某一點各層畫出來的不透明度（0~1）；驗證與除錯用
+function shapeAt(x,y){   // 畫面世界座標某一點各層畫出來的不透明度（0~1）；驗證與除錯用
   const f=new Float32Array(4);shapeField(shapeData(),x,y,f,null);const o={};
   SHAPE_KEYS.forEach((k,i)=>{const p=SHAPE_L[k];o[k]=sstep(p.t-p.e,p.t+p.e,f[i])});return o;
 }
@@ -1120,8 +1199,9 @@ function shpBuf(name,n){   // 低解析度遮罩畫布（每種一張，建塊�
 }
 function shapeMasks(bx,by){   // 這一塊的各種遮罩：低解析度畫布、true（整塊都有）或 null（整塊都沒有）
   const sd=shapeData(),S=SHAPE_S,n=BLOCK*S+1,ox=bx*BLOCK,oy=by*BLOCK;
-  const st=sd.ind.map(I=>{let any=0,all=1;   // 本塊含外圈 2 格：0 全無、1 部分、2 全有
-    for(let y=oy-2;y<=oy+BLOCK+1;y++){const r=(y<0?0:y>=MH?MH-1:y)*MW;for(let x=ox-2;x<=ox+BLOCK+1;x++){const v=I[r+(x<0?0:x>=MW?MW-1:x)];any|=v;all&=v}}
+  const pd=2+Math.ceil(WP?WP.maxD:0);   // 外圈：平滑半徑 2 格＋世界變形的最大位移
+  const st=sd.ind.map(I=>{let any=0,all=1;   // 本塊對應的邏輯範圍：0 全無、1 部分、2 全有
+    for(let y=oy-pd;y<=oy+BLOCK+pd-1;y++){const r=(y<0?0:y>=MH?MH-1:y)*MW;for(let x=ox-pd;x<=ox+BLOCK+pd-1;x++){const v=I[r+(x<0?0:x>=MW?MW-1:x)];any|=v;all&=v}}
     return any?(all?2:1):0});
   const act=st.map(s=>s===1),R={st},A={};
   const want=(name,on)=>{if(!on)return;const b=shpBuf(name,n);A[name]=b.img.data;R[name]=b.cv};
@@ -1148,18 +1228,18 @@ function shapeMasks(bx,by){   // 這一塊的各種遮罩：低解析度畫布�
 function avgCol(im,col,row){
   try{const cv=document.createElement('canvas');cv.width=cv.height=1;const g=cv.getContext('2d',{willReadFrequently:true});g.drawImage(im,col*128+TILE_INSET,row*128+TILE_INSET,128-2*TILE_INSET,128-2*TILE_INSET,0,0,1,1);const d=g.getImageData(0,0,1,1).data;return [d[0],d[1],d[2]]}catch(e){return [120,140,160]}
 }
-function mkTex(im,col,row,seed,rot){
-  const N=Math.round(TEX_CELLS*TS*mdpr),cv=document.createElement('canvas');cv.width=cv.height=N;const g=cv.getContext('2d');
-  g.fillStyle=`rgb(${avgCol(im,col,row)})`;g.fillRect(0,0,N,N);
-  const sz=Math.round(TEX_STAMP*TS*mdpr),st=document.createElement('canvas');st.width=st.height=sz;const sg=st.getContext('2d');
-  sg.drawImage(im,col*128+TILE_INSET,row*128+TILE_INSET,128-2*TILE_INSET,128-2*TILE_INSET,0,0,sz,sz);
-  const gr=sg.createRadialGradient(sz/2,sz/2,0,sz/2,sz/2,sz/2);gr.addColorStop(0,'#fff');gr.addColorStop(.5,'#fff');gr.addColorStop(1,'rgba(255,255,255,0)');
-  sg.globalCompositeOperation='destination-in';sg.fillStyle=gr;sg.fillRect(0,0,sz,sz);
-  const R=rng(seed),m=Math.ceil(TEX_CELLS/(TEX_STAMP*.48)),G=N/m,list=[];
-  if(!rot){const C=N/TEX_CELLS;for(let y=0;y<TEX_CELLS;y++)for(let x=0;x<TEX_CELLS;x++)g.drawImage(im,col*128,row*128,128,128,x*C,y*C,C,C);return cv}   // 人造鋪面（木棧道、石板）：照格子平鋪、不旋轉
-  for(let y=0;y<m;y++)for(let x=0;x<m;x++)list.push([(x+.5+(R()-.5)*.9)*G,(y+.5+(R()-.5)*.9)*G,rot(R),.9+R()*.25,R()]);
+function mkTex(im,slots,seed,rot){   // slots：[[欄,列],…] 隨機混用；rot：印章旋轉角產生器，null＝照格子平鋪（人造鋪面）
+  const N=Math.round(TEX_CELLS*TS*mdpr),cv=document.createElement('canvas');cv.width=cv.height=N;const g=cv.getContext('2d'),R=rng(seed);
+  g.fillStyle=`rgb(${avgCol(im,slots[0][0],slots[0][1])})`;g.fillRect(0,0,N,N);
+  if(!rot){const C=N/TEX_CELLS;for(let y=0;y<TEX_CELLS;y++)for(let x=0;x<TEX_CELLS;x++){const [col,row]=slots[Math.floor(R()*slots.length)];g.drawImage(im,col*128,row*128,128,128,x*C,y*C,C,C)}return cv}   // 人造鋪面（木棧道、石板）：照格子平鋪、不旋轉
+  const sz=Math.round(TEX_STAMP*TS*mdpr),stamps=slots.map(([col,row])=>{const st=document.createElement('canvas');st.width=st.height=sz;const sg=st.getContext('2d');
+    sg.drawImage(im,col*128+TILE_INSET,row*128+TILE_INSET,128-2*TILE_INSET,128-2*TILE_INSET,0,0,sz,sz);
+    const gr=sg.createRadialGradient(sz/2,sz/2,0,sz/2,sz/2,sz/2);gr.addColorStop(0,'#fff');gr.addColorStop(.5,'#fff');gr.addColorStop(1,'rgba(255,255,255,0)');
+    sg.globalCompositeOperation='destination-in';sg.fillStyle=gr;sg.fillRect(0,0,sz,sz);return st});
+  const m=Math.ceil(TEX_CELLS/(TEX_STAMP*.48)),G=N/m,list=[];
+  for(let y=0;y<m;y++)for(let x=0;x<m;x++)list.push([(x+.5+(R()-.5)*.9)*G,(y+.5+(R()-.5)*.9)*G,rot(R),.9+R()*.25,R(),stamps[Math.floor(R()*stamps.length)]]);
   list.sort((a,b)=>a[4]-b[4]);   // 打亂疊放順序，避免看出方向
-  for(const [x,y,a,s] of list)for(const dx of [-N,0,N])for(const dy of [-N,0,N]){
+  for(const [x,y,a,s,,st] of list)for(const dx of [-N,0,N])for(const dy of [-N,0,N]){
     const px=x+dx,py=y+dy;if(px<-sz||py<-sz||px>N+sz||py>N+sz)continue;
     g.save();g.translate(px,py);g.rotate(a);g.scale(s,s);g.drawImage(st,-sz/2,-sz/2);g.restore();
   }
@@ -1169,7 +1249,9 @@ function shapeTex(){
   const k=artKey('tiles'),im=ART[k],key=k+'|'+TS+'|'+mdpr+'|'+CURID;
   if(TEXC&&TEXC.key===key)return TEXC;
   const wv=CUR.water||WATER_DEF,s=strHash(key),wr=R=>(R()<.5?0:Math.PI)+(R()-.5)*.6,pr=R=>R()*Math.PI*2,wa=avgCol(im,wv[1][0],wv[1][1]);
-  return TEXC={key,path:mkTex(im,0,1,s+1,PATH_FREE_ROT.includes(k)?pr:null),wb:mkTex(im,wv[0][0],wv[0][1],s+2,wr),wt:mkTex(im,wv[1][0],wv[1][1],s+3,wr),
+  const free=PATH_FREE_ROT.includes(k),gv=CUR.ground||GROUND_DEF,soft=CUR.groundSoft||GROUND_SOFT_DEF,gs=gv.filter(g=>!soft.some(t=>t[0]===g[0]&&t[1]===g[1]));
+  return TEXC={key,ground:mkTex(im,gs.length?gs:[CUR.groundBase||gv[0]],s+4,free?pr:null),tg:mkTex(im,[[3,0]],s+5,()=>0),
+    path:mkTex(im,[[0,1]],s+1,free?pr:null),wb:mkTex(im,[wv[0]],s+2,wr),wt:mkTex(im,[wv[1]],s+3,wr),
     light:wa.map(v=>Math.round(v+(255-v)*SHALLOW_MIX)).join(',')};
 }
 let shpTmp=null;
@@ -1178,16 +1260,19 @@ function buildBlock(bx,by){
   const mkCv=()=>{const cv=document.createElement('canvas');cv.width=cv.height=W;const c=cv.getContext('2d');c.scale(mdpr,mdpr);return [cv,c]};
   const [cv,c]=mkCv();
   const ox=bx*BLOCK,oy=by*BLOCK,cells=[],M=shapeMasks(bx,by),tex=shapeTex();
-  for(let ty=Math.max(0,oy-1);ty<=Math.min(MH-1,oy+BLOCK);ty++)for(let tx=Math.max(0,ox-1);tx<=Math.min(MW-1,ox+BLOCK);tx++)   // 多算周圍一圈，塊邊界才不會變接縫
-    cells.push({tx,ty,t:map[ty][tx],x:(tx-ox)*TS,y:(ty-oy)*TS,h:hash(tx,ty),v:hash(tx*7+3,ty*11+5)%FEATHER_BANDS.length});
+  const pd=1+Math.ceil(WP?WP.maxD:0),pv=[0,0];   // 逐格的東西畫在邏輯格中心的「畫面位置」；落在本塊外擴一格內的才畫（塊邊界才不會變接縫）
+  for(let ty=Math.max(0,oy-pd);ty<=Math.min(MH-1,oy+BLOCK+pd-1);ty++)for(let tx=Math.max(0,ox-pd);tx<=Math.min(MW-1,ox+BLOCK+pd-1);tx++){
+    toView(tx+.5,ty+.5,pv);if(pv[0]<ox-1.2||pv[1]<oy-1.2||pv[0]>ox+BLOCK+1.2||pv[1]>oy+BLOCK+1.2)continue;
+    cells.push({tx,ty,t:map[ty][tx],x:(pv[0]-.5-ox)*TS,y:(pv[1]-.5-oy)*TS,h:hash(tx,ty),v:hash(tx*7+3,ty*11+5)%FEATHER_BANDS.length});
+  }
   const jit=(e,i)=>(i?hash(e.tx*5,e.ty+17):hash(e.tx+11,e.ty*3)-0)/49.5-1;   // -1~1，同一格永遠相同
   const put=(ctx,ft,e,jx,jy)=>{const D=ft.width/mdpr;ctx.drawImage(ft,snapPx(e.x+TS/2-D/2+jx*TS),snapPx(e.y+TS/2-D/2+jy*TS),D,D)};
   const oxd=ox*TS*mdpr,oyd=oy*TS*mdpr;
   const fillTex=(g,t)=>{const N=t.width;g.fillStyle=g.createPattern(t,'repeat');g.setTransform(1,0,0,1,-(oxd%N),-(oyd%N));g.fillRect(0,0,W+N,W+N);g.setTransform(1,0,0,1,0,0)};
   if(M.land!==null){
-    // 1) 草地：每格都鋪（路、水、樹格底下也鋪），之後由各層形狀蓋上或挖掉；草地的「軟變體」先墊一格普通草再以寬羽化疊上
+    // 1) 草地：無縫地面紋理鋪滿整塊（世界空間），之後由各層形狀蓋上或挖掉；反差大的地面格與花叢以散斑疊在各格的畫面位置
     const gv=CUR.ground||GROUND_DEF,soft=CUR.groundSoft||GROUND_SOFT_DEF,base=CUR.groundBase||gv[0],isSoft=g=>soft.some(s=>s[0]===g[0]&&s[1]===g[1]);
-    for(const e of cells){const g=gv[e.h%gv.length],gc=isSoft(g)?base:g;put(c,featherTile(im,k,gc[0],gc[1],e.v,false),e,jit(e,0)*FEATHER_JITTER,jit(e,1)*FEATHER_JITTER)}
+    c.save();fillTex(c,tex.ground);c.restore();
     for(const e of cells){const g=gv[e.h%gv.length];if(isSoft(g))put(c,featherTile(im,k,g[0],g[1],e.v,true),e,jit(e,0)*SOFT_JITTER,jit(e,1)*SOFT_JITTER)}
     for(const e of cells)if(e.t===T.FLOWER){const inner=[[-1,0],[1,0],[0,-1],[0,1]].every(([dx,dy])=>tileAt(e.tx+dx,e.ty+dy)===T.FLOWER);put(c,featherTile(im,k,2,e.h%2?3:1,e.v,!inner),e,jit(e,1)*FLOWER_JITTER,jit(e,0)*FLOWER_JITTER)}   // 花叢外緣用散斑遮罩，邊界不成直線
     // 圖層工具：暫存畫布填色／紋理／圖格 → 乘上形狀遮罩 → 疊到陸地圖
@@ -1204,9 +1289,8 @@ function buildBlock(bx,by){
     // 2) 路：兩旁踩禿的暗邊 → 土路紋理
     layer(M.halo,col(PATH_HALO_RGB),PATH_HALO_A);
     layer(M.path,()=>fillTex(tc,tex.path),1);
-    // 3) 高草：與立體高草蓋層同一段貼圖、不偏移（角色腳下才無縫）；高草格與其鄰格都鋪，遮罩外擴處才不會透
-    const tgNear=e=>{for(let y=e.ty-1;y<=e.ty+1;y++)for(let x=e.tx-1;x<=e.tx+1;x++)if(tileAt(x,y)===T.TG)return true;return false};
-    layer(M.tg,()=>{tc.setTransform(mdpr,0,0,mdpr,0,0);for(const e of cells)if(tgNear(e))put(tc,featherTile(im,k,3,0,e.v,false),e,0,0);tc.setTransform(1,0,0,1,0,0)},1);
+    // 3) 高草：世界空間的高草紋理（不旋轉）；立體高草蓋層用同一張紋理，角色腳下才無縫
+    layer(M.tg,()=>fillTex(tc,tex.tg),1);
     // 4) 樹林暗底
     layer(M.tree,col('8,48,22'),TREE_SHADE_A);
     // 5) 水：挖掉陸地 → 淺水帶、岸線暗邊（水側）、濕邊（陸側）
@@ -1239,8 +1323,8 @@ let camXg=0,camYg=0;
 function tgTile(c,x,y){const w=(128-2*TILE_INSET)/FEATHER_SCALE,o=TILE_INSET+((128-2*TILE_INSET)-w)/2;c.drawImage(ART[artKey('tiles')],3*128+o,o,w,w,x,y,TS+1,TS+1)}
 function coverGrass(c,px,py){
   if(!ART[artKey('tiles')])return;
-  const wx=px+camXg,wy=py+camYg,ftx=Math.floor(wx/TS),fty=Math.floor((wy-2)/TS);
-  if(tileAt(ftx,fty)!==T.TG)return;
+  const q=toLogic((px+camXg)/TS,(py+camYg-2)/TS,[0,0]);   // 腳下的邏輯格
+  if(tileAt(Math.floor(q[0]),Math.floor(q[1]))!==T.TG)return;
   const x0=px-TS*.62,x1=px+TS*.62,st=TS*.11,bot=py+TS*.07;
   const pts=[[x0,bot]];
   for(let x=Math.floor((x0+camXg)/st)*st-camXg;x<=x1+st;x+=st){
@@ -1250,7 +1334,8 @@ function coverGrass(c,px,py){
   }
   pts.push([x1,bot]);
   c.save();c.beginPath();pts.forEach((p,i)=>i?c.lineTo(p[0],p[1]):c.moveTo(p[0],p[1]));c.closePath();c.clip();
-  for(let ty=fty-2;ty<=fty+1;ty++)for(let tx=ftx-1;tx<=ftx+1;tx++)if(tileAt(tx,ty)===T.TG)tgTile(c,snapPx(tx*TS-camXg),snapPx(ty*TS-camYg));
+  c.translate(-camXg,-camYg);c.scale(1/mdpr,1/mdpr);c.fillStyle=c.createPattern(shapeTex().tg,'repeat');   // 與地面同一張世界空間高草紋理
+  c.fillRect((x0+camXg)*mdpr-2,(py-TS+camYg)*mdpr,(x1-x0)*mdpr+4,TS*1.3*mdpr);
   c.restore();
   c.strokeStyle='rgba(8,48,20,.4)';c.lineWidth=1.5;c.beginPath();pts.slice(1,-1).forEach((p,i)=>i?c.lineTo(p[0],p[1]):c.moveTo(p[0],p[1]));c.stroke();
 }
@@ -1288,15 +1373,16 @@ function drawChar(c,key,px,py,face,label,bob,fr,col,hair){
   if(label){c.font='bold 11px sans-serif';c.textAlign='center';const ty=py-h-bob-3;c.fillStyle='#000b';c.fillText(label,px+1,ty+1);c.fillStyle='#fff';c.fillText(label,px,ty)}
 }
 function drawStele(c,n,camX,camY,now){
-  const cx=(n.x+.5)*TS-camX,by=(n.y+1)*TS-camY,seen=P.flags.stele,tower=P.flags.c8_done;
+  const v=toView(n.x+.5,n.y+1),cx=v[0]*TS-camX,by=v[1]*TS-camY,seen=P.flags.stele,tower=P.flags.c8_done;
   if(!seen&&P.flags.q1){const a=.25+.2*Math.sin(now/400);c.fillStyle=`rgba(120,220,255,${a})`;c.beginPath();c.ellipse(cx,by-TS*.55,TS*.75,TS*.9,0,0,7);c.fill()}
-  drawArt(c,'rock',n.x+.5,n.y+1,camX,camY);
+  drawArt(c,'rock',v[0],v[1],camX,camY);
   c.fillStyle=tower?'rgba(255,214,94,.95)':seen?'rgba(120,220,255,.9)':'rgba(220,230,255,.6)';c.font='bold '+Math.round(TS*.4)+'px serif';c.textAlign='center';c.fillText(tower?'塔':'歸',cx,by-TS*.28);if(tower){c.font='bold 11px sans-serif';c.fillStyle='#000b';c.fillText('無盡之塔',cx+1,by-TS*1.05+1);c.fillStyle='#fff';c.fillText('無盡之塔',cx,by-TS*1.05)}
   if(P.flags.q1&&!seen){c.font='bold 11px sans-serif';c.fillStyle='#000b';c.fillText('古碑',cx+1,by-TS*1.05+1);c.fillStyle='#fff';c.fillText('古碑',cx,by-TS*1.05)}
 }
 function drawMap(now,full){   // full：不限制本幀新建幾塊地面快取（換圖、圖集剛載入時用）
   const c=mctx;c.setTransform(mdpr,0,0,mdpr,0,0);
-  const camX=clamp(P.x*TS-mw/2,0,Math.max(0,MW*TS-mw)),camY=clamp(P.y*TS-mh/2,0,Math.max(0,MH*TS-mh));
+  warpData();const pv=toView(P.x,P.y);   // 玩家的畫面位置（世界變形後）；鏡頭跟著它
+  const camX=clamp(pv[0]*TS-mw/2,0,Math.max(0,MW*TS-mw)),camY=clamp(pv[1]*TS-mh/2,0,Math.max(0,MH*TS-mh));
   camXg=camX;camYg=camY;
   c.fillStyle='#000';c.fillRect(0,0,mw,mh);
   const x0=Math.floor(camX/TS),y0=Math.floor(camY/TS),x1=Math.min(MW-1,Math.ceil((camX+mw)/TS)),y1=Math.min(MH-1,Math.ceil((camY+mh)/TS));
@@ -1327,24 +1413,25 @@ function drawMap(now,full){   // full：不限制本幀新建幾塊地面快取�
     c.setTransform(mdpr,0,0,mdpr,0,0);
     if(blkCache.size>BLOCK_MAX)for(const [k,e] of blkCache){if(blkCache.size<=BLOCK_MAX)break;if(e.t!==blkFrame)blkCache.delete(k)}   // 淘汰最久沒用的（Map 依最近使用排序，且只刪本幀沒用到的）
   }
-  const ents=[];
+  // 立體物件：邏輯錨點換成畫面位置畫；排序鍵也用畫面 y（遮擋跟著畫面走）
+  const ents=[],art=(key,qx,qy,ky,sc)=>{const v=toView(qx,qy);ents.push({y:toView(qx,ky)[1],f:()=>drawArt(c,key,v[0],v[1],camX,camY,sc)})};
   if(ART[artKey('tiles')]){
-    // 立體物件：往上/兩側多掃一些格，避免高大的圖在畫面邊緣被切掉
-    for(let ty=Math.max(0,y0);ty<=Math.min(MH-1,y1+4);ty++)for(let tx=Math.max(0,x0-2);tx<=Math.min(MW-1,x1+2);tx++){
+    const pd=Math.ceil(WP?WP.maxD:0);   // 往上／兩側多掃一些格（含世界變形位移），避免高大的圖在畫面邊緣被切掉
+    for(let ty=Math.max(0,y0-pd);ty<=Math.min(MH-1,y1+4+pd);ty++)for(let tx=Math.max(0,x0-2-pd);tx<=Math.min(MW-1,x1+2+pd);tx++){
       const t=map[ty][tx],cx=tx+.5;
-      if(t===T.TREE||t===T.BUSH||t===T.ROCK){   // 樹石灌木：格內固定偏移與大小變化（排序鍵不變，遮擋關係同原本）
+      if(t===T.TREE||t===T.BUSH||t===T.ROCK){   // 樹石灌木：格內固定偏移與大小變化
         const [dx,dy,s]=propOff(tx,ty),k=t===T.TREE?(hash(tx*5,ty*3)<55?'tree1':'tree2'):t===T.BUSH?'bush':'rock';
-        ents.push({y:ty+.9,f:()=>drawArt(c,k,cx+dx,ty+1+dy,camX,camY,s)});
+        art(k,cx+dx,ty+1+dy,ty+.9,s);
       }
-      else if(t===T.FOUNT)ents.push({y:ty+.95,f:()=>drawArt(c,'fountain',cx,ty+1.08,camX,camY)});
-      else if(CUR.props&&CUR.props[tx+','+ty]){const k=CUR.props[tx+','+ty];ents.push({y:ty+.95,f:()=>drawArt(c,k,cx,ty+1,camX,camY)})}
-      else if(t===T.SIGN)ents.push({y:ty+1,f:()=>drawArt(c,'sign',cx,ty+1,camX,camY)});
+      else if(t===T.FOUNT)art('fountain',cx,ty+1.08,ty+.95);
+      else if(CUR.props&&CUR.props[tx+','+ty])art(CUR.props[tx+','+ty],cx,ty+1,ty+.95);
+      else if(t===T.SIGN)art('sign',cx,ty+1,ty+1);
     }
-    (CUR.houses||[]).forEach(([hx,hy])=>ents.push({y:hy+3,f:()=>drawArt(c,'house',hx+1.5,hy+3.08,camX,camY)}));
-    (CUR.gates||[]).forEach(g=>ents.push({y:g.y-.1,f:()=>drawArt(c,'gate',g.x,g.y,camX,camY)}));
+    (CUR.houses||[]).forEach(([hx,hy])=>art('house',hx+1.5,hy+3.08,hy+3));
+    (CUR.gates||[]).forEach(g=>art('gate',g.x,g.y,g.y-.1));
   }
-  activeNpcs().forEach(n=>ents.push({y:n.y+.5,f:()=>n.obj?drawStele(c,n,camX,camY,now):drawChar(c,n.ch,(n.x+.5)*TS-camX,(n.y+.5)*TS-camY+TS*.3,faceTo(n),n.name,0,0,n.col,n.hair)}));
-  ents.push({y:P.y,f:()=>drawChar(c,'main',P.x*TS-camX,P.y*TS-camY+TS*.3,G.face,P.name,0,G.moving?[1,0,1,2][Math.floor(now/140)%4]:1)});
+  activeNpcs().forEach(n=>{const v=toView(n.x+.5,n.y+.5);ents.push({y:v[1],f:()=>n.obj?drawStele(c,n,camX,camY,now):drawChar(c,n.ch,v[0]*TS-camX,v[1]*TS-camY+TS*.3,faceTo(n),n.name,0,0,n.col,n.hair)})});
+  ents.push({y:pv[1],f:()=>drawChar(c,'main',pv[0]*TS-camX,pv[1]*TS-camY+TS*.3,G.face,P.name,0,G.moving?[1,0,1,2][Math.floor(now/140)%4]:1)});
   ents.sort((a,b)=>a.y-b.y).forEach(e=>e.f());
 }
 let mapRunning=false;
@@ -1369,14 +1456,15 @@ function update(dt){
   if(G.lock)return;
   const[dx,dy]=dirVec();
   if(Math.abs(dx)+Math.abs(dy)<0.15)return;
-  const sp=3.6,mx=dx*sp*dt,my=dy*sp*dt;
+  G.face=Math.abs(dx)>Math.abs(dy)?(dx<0?2:3):(dy<0?1:0);   // 面向跟畫面方向
+  warpData();const pv=toView(P.x,P.y),J=warpJ(pv[0],pv[1],[0,0,0,0]),qx=J[0]*dx+J[1]*dy,qy=J[2]*dx+J[3]*dy;   // 輸入是畫面方向：dq＝(I+∇D)·dp，畫面上速度恆定
+  const sp=3.6,mx=qx*sp*dt,my=qy*sp*dt;
   let moved=0;
-  G.face=Math.abs(dx)>Math.abs(dy)?(dx<0?2:3):(dy<0?1:0);
   if(canStand(P.x+mx,P.y)){P.x+=mx;moved+=Math.abs(mx)}
   if(canStand(P.x,P.y+my)){P.y+=my;moved+=Math.abs(my)}
   G.moving=moved>0;
   // 碰撞互動
-  const l=Math.hypot(dx,dy)||1,px=P.x+dx/l*0.55,py=P.y+dy/l*0.55;
+  const l=Math.hypot(qx,qy)||1,px=P.x+qx/l*0.55,py=P.y+qy/l*0.55;   // 面前那一格：沿邏輯位移方向
   if(G.bump<=0){
     const n=npcNear(px,py,0.85);
     const itx=clamp(Math.floor(px),0,MW-1),ity=clamp(Math.floor(py),0,MH-1),tt=map[ity][itx];
