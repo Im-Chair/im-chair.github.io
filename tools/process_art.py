@@ -6,6 +6,7 @@
 
 原圖檔名（.png / .jpg / .webp 皆可），缺的會略過，所以可以一張一張補：
     icon-sudoku / icon-minesweeper / icon-bulls-cows / icon-solitaire / icon-rpg / icon-tower-orbs / icon-drift-ark / icon-tetris / icon-pokemo / icon-outpost / icon-deep-miner / icon-neon-danmaku / icon-sky-frontier / icon-shrine
+    cover-<遊戲>（首頁彩色封面，14 款；大作 900×600、小品 600×600，清單見下方 COVER_SIZE；輸出 covers/<遊戲>.webp）
     solitaire-back / solitaire-felt
     minesweeper-flag / minesweeper-mine
     relic-<id> / trait-<id> / boss-<id> / event-<id> / node-<id> / unlock-<id>（轉珠之塔地城，id 見下方 RG_ART）
@@ -162,10 +163,29 @@ RG_ART = {
     'unlock': (96, ['gold', 'relics', 'lead4', 'asc', 'kit']),
 }
 
+# 首頁封面：(寬, 高) → 遊戲清單。大作＝橫幅 3:2（900×600），小品＝方形 1:1（600×600）。
+# 要跟根 index.html 兩個區塊的卡片一致；rpg-next 與 rpg 共用 covers/rpg.webp，不另出圖
+COVER_DIR = 'covers'
+COVER_QUALITY = 82
+COVER_SIZE = {
+    (900, 600): ['pokemo', 'shrine', 'rpg', 'tower-orbs', 'drift-ark', 'outpost', 'sky-frontier', 'deep-miner'],
+    (600, 600): ['sudoku', 'minesweeper', 'bulls-cows', 'solitaire', 'tetris', 'neon-danmaku'],
+}
+
+
+def cover(im, size):
+    """首頁封面：從原圖中央裁成目標比例再縮到 size（寬, 高）。"""
+    w, h = size
+    return center_crop(im.convert('RGB'), w / h).resize(size, Image.LANCZOS)
+
+
 # 原圖名 → (輸出路徑, 處理函式)
 JOBS = {
     **{f'icon-{g}': (f'icons/{g}.webp', lambda im: icon(im, 256))
        for g in ['sudoku', 'minesweeper', 'bulls-cows', 'solitaire', 'rpg', 'tower-orbs', 'drift-ark', 'tetris', 'pokemo', 'outpost', 'deep-miner', 'neon-danmaku', 'sky-frontier', 'shrine']},
+    # 首頁彩色封面：原圖 cover-<遊戲>，輸出 covers/<遊戲>.webp（品質 82）。尺寸依 COVER_SIZE 分大作／小品
+    **{f'cover-{g}': (f'{COVER_DIR}/{g}.webp', (lambda s: lambda im: cover(im, s))(size))
+       for size, games in COVER_SIZE.items() for g in games},
     'solitaire-back': ('solitaire/back.webp', lambda im: card_back(im, 300, 420)),
     'solitaire-felt': ('solitaire/felt.webp', lambda im: seamless_tile(im, 512)),
     'minesweeper-flag': ('minesweeper/flag.webp', lambda im: sprite(im, 96)),
@@ -520,7 +540,7 @@ def main():
             continue
         dst = args.dst / out
         dst.parent.mkdir(parents=True, exist_ok=True)
-        result.save(dst, 'WEBP', quality=88, method=6)
+        result.save(dst, 'WEBP', quality=COVER_QUALITY if out.startswith(COVER_DIR + '/') else 88, method=6)
         print(f'    [OK] {result.size[0]}x{result.size[1]}，{dst.stat().st_size // 1024} KB')
         done.append(out)
 

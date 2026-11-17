@@ -576,6 +576,21 @@
 - 圖表格線不用很準：腳本先去背，找出各個不透明連通塊（很近的碎塊合併），依中心落在 4×4 的哪一格指派；某格找不到會印警告並略過。
 - 單張補圖：`p-chest.png`、`i-coin.png`、`e-iron_sword.png` 這種單檔存在時，優先於圖表切出來的。
 
+## 17　首頁彩色封面（14 張）
+
+首頁改成「冒險大作」「輕鬆小品」兩區，每張卡片用彩色封面圖。畫風跟站上遊戲一致（手繪彩色 RPG 風），封面要能看出這款遊戲在玩什麼，**不放文字與 Logo**（遊戲名稱由首頁卡片自己顯示）。
+
+| 區塊 | 遊戲（原圖檔名 `cover-<遊戲>`） | 成品尺寸 | 成品 |
+|------|------|------|------|
+| 冒險大作（橫幅 3:2） | pokemo、shrine、rpg、tower-orbs、drift-ark、outpost、sky-frontier、deep-miner | 900×600 | `covers/<遊戲>.webp` |
+| 輕鬆小品（方形 1:1） | sudoku、minesweeper、bulls-cows、solitaire、tetris、neon-danmaku | 600×600 | `covers/<遊戲>.webp` |
+
+- 原圖放 `output/imagegen/arcade/cover-<遊戲>.png`（.jpg／.webp 也可），缺的略過，可一張一張補。
+- 大作原圖建議 3:2 橫幅（例如 1536×1024），小品建議正方形（1024×1024）；比例不對時腳本會從中央裁切，所以重點放在畫面中央、四邊留一點餘裕。
+- 腳本執行 `python tools/process_art.py`，品質約 82。
+- 貪婪深淵重製版（rpg-next）與 rpg 共用 `covers/rpg.webp`，不另出圖。
+- 沒有封面時，首頁會退回 `icons/<遊戲>.webp`（置中放在漸層色塊上），再不行用 emoji；有圖後記得把根目錄 `sw.js` 的 `CACHE` +1。
+
 ## 待出圖總表（2026-11-07 盤點）
 
 | 順序 | 項目 | 張數 | Prompt 在哪 | 備註 |

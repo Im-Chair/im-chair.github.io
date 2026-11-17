@@ -4,14 +4,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="ARCADE">
-  <meta name="theme-color" content="#080808">
+  <meta name="theme-color" content="#0a0e1c">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&display=swap" rel="stylesheet">
   <title>ARCADE</title>
   <link rel="icon" href="/icon.png">
   <style>
@@ -20,28 +20,35 @@
       -webkit-tap-highlight-color: transparent;
     }
 
+    /* 配色集中在這裡：深藍灰底＋暖金強調，對齊站上 RPG 遊戲的介面色 */
     :root {
-      --bg: #080808;
-      --ink: #f2f0ea;
-      --ink2: rgba(242,240,234,0.45);
-      --ink3: rgba(242,240,234,0.18);
-      --accent: #c8f135;
-      --accent2: #f1c135;
-      --card: #111110;
-      --card-border: rgba(242,240,234,0.08);
-      --font-display: 'Syne', sans-serif;
-      --font-mono: 'DM Mono', monospace;
+      --bg: #0a0e1c;            /* 頁面底色 */
+      --bg-top: #0e1430;        /* 頁面頂端漸層色 */
+      --bg-bottom: #080b17;     /* 頁面底端漸層色 */
+      --card: #141a30;          /* 卡片底 */
+      --card-hover: #1a2140;    /* 卡片 hover 底 */
+      --line: #2a3358;          /* 邊框 */
+      --ink: #eef1ff;           /* 主要文字 */
+      --ink2: rgba(238,241,255,0.6);   /* 次要文字 */
+      --ink3: rgba(238,241,255,0.32);  /* 更淡（頁尾） */
+      --accent: #e8c46a;        /* 強調：暖金（徽章、hover 邊框、Logo 重點字、紀錄） */
+      --on-accent: #1a1405;     /* 金底上的文字 */
+      --chip: rgba(10,14,28,0.78);     /* 封面上的半透明深色膠囊 */
+      --font-display: 'Syne', 'Noto Sans TC', sans-serif;
+      --font-body: "Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
+      --font-num: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
     }
 
-    html, body {
+    html { background: var(--bg); }
+    body {
       min-height: 100vh;
-      background: var(--bg);
+      background: linear-gradient(180deg, var(--bg-top) 0, var(--bg) 360px, var(--bg-bottom) 100%) no-repeat, var(--bg);
       color: var(--ink);
-      font-family: var(--font-mono);
+      font-family: var(--font-body);
       overflow-x: hidden;
     }
 
-    /* grain overlay */
+    /* 細微紋理 */
     body::before {
       content: '';
       position: fixed;
@@ -50,13 +57,13 @@
       background-size: 180px;
       pointer-events: none;
       z-index: 0;
-      opacity: 0.6;
+      opacity: 0.5;
     }
 
     #app {
       position: relative;
       z-index: 1;
-      max-width: 860px;
+      max-width: 1100px;
       margin: 0 auto;
       padding: 0 16px;
       padding-top: max(16px, env(safe-area-inset-top));
@@ -64,7 +71,6 @@
       min-height: 100vh;
       display: flex;
       flex-direction: column;
-      gap: 0;
     }
 
     /* ── Header ── */
@@ -72,7 +78,7 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 20px;
+      margin-bottom: 18px;
     }
     .header-title {
       font-family: var(--font-display);
@@ -82,15 +88,7 @@
       line-height: 1;
       color: var(--ink);
     }
-    .header-title span {
-      color: var(--accent);
-      display: inline-block;
-      animation: flicker 6s infinite 2s;
-    }
-    @keyframes flicker {
-      0%,95%,97%,100% { opacity: 1; }
-      96% { opacity: 0.2; }
-    }
+    .header-title span { color: var(--accent); }
     /* 音效總開關（各小遊戲讀 localStorage arcade-sound） */
     .sound-toggle {
       width: 44px;
@@ -98,94 +96,180 @@
       font-size: 18px;
       color: inherit;
       background: var(--card);
-      border: 0.5px solid var(--card-border);
+      border: 1px solid var(--line);
       border-radius: 12px;
       cursor: pointer;
+      transition: border-color 0.2s, transform 0.15s;
     }
     .sound-toggle:active { transform: scale(0.94); }
     .sound-toggle.off { opacity: 0.5; }
+    @media (hover: hover) { .sound-toggle:hover { border-color: var(--accent); } }
 
-    /* ── Game grid：像手機桌面的圖示格，遊戲變多也一眼看得完 ── */
-    .games {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 14px 10px;
-      margin-bottom: 24px;
-      animation: fadeUp 0.35s ease both;
+    /* ── 區塊 ── */
+    .sec { margin-bottom: 26px; }
+    .sec-title {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      margin-bottom: 12px;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      color: var(--ink);
     }
-    @media (min-width: 560px) { .games { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-    @media (min-width: 760px) { .games { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+    .sec-title::before {
+      content: '';
+      width: 4px;
+      height: 15px;
+      border-radius: 2px;
+      background: var(--accent);
+    }
 
-    /* ── Game card ── */
+    /* 大作：手機 2 欄（落單的最後一張橫跨整列）、平板以上 3 欄；小品：手機 3 欄、桌機 6 欄 */
+    .grid { display: grid; gap: 12px; }
+    .grid.big-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid.big-grid > .big:last-child:nth-child(odd) { grid-column: 1 / -1; }
+    .grid.small-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+    @media (min-width: 640px) {
+      .grid { gap: 16px; }
+      .grid.big-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .grid.big-grid > .big:last-child:nth-child(odd) { grid-column: auto; }
+    }
+    @media (min-width: 760px) {
+      .grid.small-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 14px; }
+    }
+
+    /* ── 卡片 ── */
     .game-card {
       display: block;
       position: relative;
       min-width: 0;
+      overflow: hidden;
       text-decoration: none;
-      transition: transform 0.15s;
+      color: inherit;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      transition: transform 0.18s, border-color 0.2s, background 0.2s, box-shadow 0.2s;
+      /* 只用 backwards：結束後不鎖住 transform，:active 的縮放才會生效 */
+      animation: rise 0.45s ease backwards;
+      animation-delay: calc(min(var(--i, 0), 12) * 35ms);
     }
-    .game-card:active { transform: scale(0.96); }
-    .card-icon {
+    .game-card:active { transform: scale(0.97); }
+    @media (hover: hover) {
+      .game-card:hover {
+        transform: translateY(-3px);
+        border-color: var(--accent);
+        background: var(--card-hover);
+        box-shadow: 0 10px 24px rgba(0,0,0,0.35);
+      }
+      .game-card:active { transform: scale(0.97); }
+    }
+
+    /* 封面框：固定長寬比，圖載入前後高度一致。底層是帶漸層的色塊（色相由 --h 決定） */
+    .card-cover {
+      position: relative;
       width: 100%;
-      aspect-ratio: 1;
-      border-radius: 18px;
       overflow: hidden;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 40px;
-      background: var(--card);
-      border: 0.5px solid var(--card-border);
-      transition: border-color 0.2s;
+      background:
+        radial-gradient(120% 90% at 30% 20%, hsl(var(--h, 220) 45% 34% / 0.9), transparent 70%),
+        linear-gradient(150deg, hsl(var(--h, 220) 38% 24%), hsl(calc(var(--h, 220) + 28) 44% 12%));
     }
-    .game-card:hover .card-icon { border-color: var(--accent); }
-    /* 有自製圖示（icons/<遊戲>.webp）時取代 emoji */
-    .card-icon img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .big .card-cover { aspect-ratio: 3 / 2; font-size: 52px; }
+    .small .card-cover { aspect-ratio: 1; font-size: 40px; }
+    .cv-emoji { line-height: 1; filter: drop-shadow(0 3px 6px rgba(0,0,0,0.4)); }
+    .card-cover img { display: block; opacity: 0; transition: opacity 0.3s; user-select: none; -webkit-user-drag: none; }
+    /* 沒有封面時退回圖示：置中放在色塊上 */
+    .card-cover img.cv-icon {
+      position: absolute;
+      top: 50%; left: 50%;
+      border-radius: 20%;
+      object-fit: cover;
+      transform: translate(-50%, -50%);
+      box-shadow: 0 6px 18px rgba(0,0,0,0.45);
+    }
+    .big .card-cover img.cv-icon { height: 74%; aspect-ratio: 1; }
+    .small .card-cover img.cv-icon { width: 66%; aspect-ratio: 1; }
+    .card-cover.has-icon img.cv-icon { opacity: 1; }
+    .card-cover.has-icon .cv-emoji { opacity: 0; }
+    /* 彩色封面：滿版蓋在最上面 */
+    .card-cover img.cv-cover { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+    .card-cover.has-cover img.cv-cover { opacity: 1; }
+    .card-cover.has-cover img.cv-icon, .card-cover.has-cover .cv-emoji { opacity: 0; }
+
+    /* 封面底部的暗角，讓徽章與邊緣更穩 */
+    .card-cover::after {
+      content: '';
+      position: absolute;
+      inset: auto 0 0 0;
+      height: 28%;
+      background: linear-gradient(180deg, transparent, rgba(8,11,23,0.35));
+      pointer-events: none;
+    }
+
+    .card-body { padding: 9px 11px 11px; }
+    .small .card-body { padding: 7px 8px 9px; }
     .card-name {
-      margin-top: 7px;
-      font-size: 14px;
-      font-weight: 500;
-      color: var(--ink);
+      font-size: 15px;
+      font-weight: 700;
+      line-height: 1.35;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
+    .small .card-name { font-size: 13px; }
     /* 類型；有紀錄時換成最佳紀錄 */
     .card-meta {
-      margin-top: 1px;
-      font-size: 11px;
+      margin-top: 2px;
+      font-size: 12px;
+      line-height: 1.4;
       color: var(--ink2);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
-    .card-meta.record { color: var(--accent); }
-    /* 圖示右上角：進行中／每日挑戰狀態 */
-    .card-badge {
+    .small .card-meta { font-size: 11px; }
+    .card-meta.record { color: var(--accent); font-family: var(--font-num); font-size: 11.5px; letter-spacing: -0.2px; }
+
+    /* 封面左上：系列小字條；右上：進行中／每日挑戰狀態（半透明深色膠囊，彩色封面上也讀得清） */
+    .series-tag, .card-badge {
       position: absolute;
-      top: 6px;
-      right: 6px;
-      padding: 2px 7px;
-      font-size: 10px;
+      z-index: 2;
+      top: 7px;
+      padding: 2px 8px;
+      font-size: 11px;
+      font-weight: 700;
       line-height: 1.5;
-      border-radius: 10px;
-      color: #080808;
-      background: var(--accent);
+      border-radius: 999px;
+      -webkit-backdrop-filter: blur(4px);
+      backdrop-filter: blur(4px);
+      white-space: nowrap;
     }
-    .card-badge.resume { background: var(--accent2); }
-    .card-badge.done { color: var(--accent); background: rgba(8,8,8,0.82); }
+    .series-tag { left: 7px; color: var(--accent); background: var(--chip); border: 1px solid rgba(232,196,106,0.4); }
+    .card-badge { right: 7px; color: var(--ink); background: var(--chip); border: 1px solid rgba(238,241,255,0.28); }
+    .card-badge.resume { color: var(--on-accent); background: var(--accent); border-color: var(--accent); }
+    .card-badge.done { color: var(--accent); border-color: rgba(232,196,106,0.5); }
+    .small .card-badge { top: 5px; right: 5px; padding: 1px 6px; font-size: 10px; }
 
     /* ── Footer ── */
     .footer {
       margin-top: auto;
-      font-size: 11px;
+      padding-top: 6px;
+      font-size: 12px;
       color: var(--ink3);
       text-align: center;
     }
 
-    @keyframes fadeUp {
-      from { opacity: 0; transform: translateY(16px); }
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(10px); }
       to { opacity: 1; transform: translateY(0); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .game-card { animation: none; }
+      .game-card, .card-cover img { transition: none; }
     }
   </style>
 </head>
@@ -197,83 +281,122 @@
     <button class="sound-toggle" id="sound-toggle" type="button" aria-pressed="true" aria-label="音效">🔊</button>
   </header>
 
-  <div class="games">
-    <a class="game-card" href="./sudoku/" data-game="sudoku" data-icon="icons/sudoku.webp">
-      <div class="card-icon">⊞</div>
-      <div class="card-name">數獨</div>
-      <div class="card-meta">益智</div>
-    </a>
-    <a class="game-card" href="./minesweeper/" data-game="minesweeper" data-icon="icons/minesweeper.webp">
-      <div class="card-icon">💣</div>
-      <div class="card-name">掃雷</div>
-      <div class="card-meta">邏輯推理</div>
-    </a>
-    <a class="game-card" href="./bulls-cows/" data-game="bulls-cows" data-icon="icons/bulls-cows.webp">
-      <div class="card-icon">🔢</div>
-      <div class="card-name">幾A幾B</div>
-      <div class="card-meta">猜數字</div>
-    </a>
-    <a class="game-card" href="./solitaire/" data-game="solitaire" data-icon="icons/solitaire.webp">
-      <div class="card-icon">🃏</div>
-      <div class="card-name">接龍</div>
-      <div class="card-meta">紙牌</div>
-    </a>
-    <a class="game-card" href="./rpg/" data-icon="icons/rpg.webp">
-      <div class="card-icon">🕳️</div>
-      <div class="card-name">貪婪深淵</div>
-      <div class="card-meta">Roguelite</div>
-    </a>
-    <a class="game-card" href="./rpg-next/" data-icon="icons/rpg.webp">
-      <div class="card-icon">🕳️</div>
-      <div class="card-name">貪婪深淵 重製版</div>
-      <div class="card-meta">Roguelite</div>
-    </a>
-    <a class="game-card" href="./tower-orbs/" data-icon="icons/tower-orbs.webp">
-      <div class="card-icon">🔮</div>
-      <div class="card-name">轉珠之塔</div>
-      <div class="card-meta">轉珠養成</div>
-    </a>
-    <a class="game-card" href="./drift-ark/" data-icon="icons/drift-ark.webp">
-      <div class="card-icon">🛟</div>
-      <div class="card-name">漂流方舟</div>
-      <div class="card-meta">海上生存</div>
-    </a>
-    <a class="game-card" href="./tetris/" data-game="tetris" data-icon="icons/tetris.webp">
-      <div class="card-icon">🧱</div>
-      <div class="card-name">俄羅斯方塊</div>
-      <div class="card-meta">消行對戰</div>
-    </a>
-    <a class="game-card" href="./pokemo/" data-icon="icons/pokemo.webp">
-      <div class="card-icon">🔮</div>
-      <div class="card-name">珠界</div>
-      <div class="card-meta">珠獸 RPG</div>
-    </a>
-    <a class="game-card" href="./outpost/" data-game="outpost" data-icon="icons/outpost.webp">
-      <div class="card-icon">🛰️</div>
-      <div class="card-name">晨昏線前哨</div>
-      <div class="card-meta">殖民經營</div>
-    </a>
-    <a class="game-card" href="./deep-miner/" data-game="deep-miner" data-icon="icons/deep-miner.webp">
-      <div class="card-icon">⛏️</div>
-      <div class="card-name">深掘礦工</div>
-      <div class="card-meta">挖礦探險</div>
-    </a>
-    <a class="game-card" href="./neon-danmaku/" data-game="neon-danmaku" data-icon="icons/neon-danmaku.webp">
-      <div class="card-icon">⚡</div>
-      <div class="card-name">霓虹彈幕</div>
-      <div class="card-meta">彈幕射擊</div>
-    </a>
-    <a class="game-card" href="./sky-frontier/" data-game="sky-frontier" data-icon="icons/sky-frontier.webp">
-      <div class="card-icon">🏝️</div>
-      <div class="card-name">天穹拓荒</div>
-      <div class="card-meta">沙盒</div>
-    </a>
-    <a class="game-card" href="./shrine/" data-game="shrine" data-icon="icons/shrine.webp">
-      <div class="card-icon">🗡️</div>
-      <div class="card-name">聖林神廟</div>
-      <div class="card-meta">動作冒險</div>
-    </a>
-  </div>
+  <section class="sec">
+    <h2 class="sec-title">冒險大作</h2>
+    <div class="grid big-grid">
+      <a class="game-card big" href="./pokemo/" data-save="orbrpg_save_v3" data-cover="covers/pokemo.webp" data-icon="icons/pokemo.webp" style="--h:215">
+        <div class="card-cover"><span class="cv-emoji" aria-hidden="true">🔮</span><span class="series-tag">珠界系列</span></div>
+        <div class="card-body">
+          <div class="card-name">珠界：歸一之子</div>
+          <div class="card-meta">珠獸 RPG</div>
+        </div>
+      </a>
+      <a class="game-card big" href="./shrine/" data-game="shrine" data-cover="covers/shrine.webp" data-icon="icons/shrine.webp" style="--h:150">
+        <div class="card-cover"><span class="cv-emoji" aria-hidden="true">🗡️</span><span class="series-tag">珠界系列</span></div>
+        <div class="card-body">
+          <div class="card-name">珠界：聖林神廟</div>
+          <div class="card-meta">動作冒險</div>
+        </div>
+      </a>
+      <a class="game-card big" href="./rpg/" data-save="abyss-save-v1" data-cover="covers/rpg.webp" data-icon="icons/rpg.webp" style="--h:275">
+        <div class="card-cover"><span class="cv-emoji" aria-hidden="true">🕳️</span></div>
+        <div class="card-body">
+          <div class="card-name">貪婪深淵</div>
+          <div class="card-meta">Roguelite</div>
+        </div>
+      </a>
+      <a class="game-card big" href="./rpg-next/" data-save="abyss2-run" data-cover="covers/rpg.webp" data-icon="icons/rpg.webp" style="--h:350">
+        <div class="card-cover"><span class="cv-emoji" aria-hidden="true">🕳️</span></div>
+        <div class="card-body">
+          <div class="card-name">貪婪深淵 重製版</div>
+          <div class="card-meta">Roguelite</div>
+        </div>
+      </a>
+      <a class="game-card big" href="./tower-orbs/" data-save="tower_orbs_save_v1" data-cover="covers/tower-orbs.webp" data-icon="icons/tower-orbs.webp" style="--h:255">
+        <div class="card-cover"><span class="cv-emoji" aria-hidden="true">🔮</span></div>
+        <div class="card-body">
+          <div class="card-name">轉珠之塔</div>
+          <div class="card-meta">轉珠養成</div>
+        </div>
+      </a>
+      <a class="game-card big" href="./drift-ark/" data-save="drift-ark-v1" data-cover="covers/drift-ark.webp" data-icon="icons/drift-ark.webp" style="--h:195">
+        <div class="card-cover"><span class="cv-emoji" aria-hidden="true">🛟</span></div>
+        <div class="card-body">
+          <div class="card-name">漂流方舟</div>
+          <div class="card-meta">海上生存</div>
+        </div>
+      </a>
+      <a class="game-card big" href="./outpost/" data-game="outpost" data-cover="covers/outpost.webp" data-icon="icons/outpost.webp" style="--h:25">
+        <div class="card-cover"><span class="cv-emoji" aria-hidden="true">🛰️</span></div>
+        <div class="card-body">
+          <div class="card-name">晨昏線前哨</div>
+          <div class="card-meta">殖民經營</div>
+        </div>
+      </a>
+      <a class="game-card big" href="./sky-frontier/" data-game="sky-frontier" data-cover="covers/sky-frontier.webp" data-icon="icons/sky-frontier.webp" style="--h:200">
+        <div class="card-cover"><span class="cv-emoji" aria-hidden="true">🏝️</span></div>
+        <div class="card-body">
+          <div class="card-name">天穹拓荒</div>
+          <div class="card-meta">沙盒</div>
+        </div>
+      </a>
+      <a class="game-card big" href="./deep-miner/" data-game="deep-miner" data-cover="covers/deep-miner.webp" data-icon="icons/deep-miner.webp" style="--h:30">
+        <div class="card-cover"><span class="cv-emoji" aria-hidden="true">⛏️</span></div>
+        <div class="card-body">
+          <div class="card-name">深掘礦工</div>
+          <div class="card-meta">挖礦探險</div>
+        </div>
+      </a>
+    </div>
+  </section>
+
+  <section class="sec">
+    <h2 class="sec-title">輕鬆小品</h2>
+    <div class="grid small-grid">
+      <a class="game-card small" href="./sudoku/" data-game="sudoku" data-cover="covers/sudoku.webp" data-icon="icons/sudoku.webp" style="--h:220">
+        <div class="card-cover"><span class="cv-emoji" aria-hidden="true">⊞</span></div>
+        <div class="card-body">
+          <div class="card-name">數獨</div>
+          <div class="card-meta">益智</div>
+        </div>
+      </a>
+      <a class="game-card small" href="./minesweeper/" data-game="minesweeper" data-cover="covers/minesweeper.webp" data-icon="icons/minesweeper.webp" style="--h:0">
+        <div class="card-cover"><span class="cv-emoji" aria-hidden="true">💣</span></div>
+        <div class="card-body">
+          <div class="card-name">掃雷</div>
+          <div class="card-meta">邏輯推理</div>
+        </div>
+      </a>
+      <a class="game-card small" href="./bulls-cows/" data-game="bulls-cows" data-cover="covers/bulls-cows.webp" data-icon="icons/bulls-cows.webp" style="--h:160">
+        <div class="card-cover"><span class="cv-emoji" aria-hidden="true">🔢</span></div>
+        <div class="card-body">
+          <div class="card-name">幾A幾B</div>
+          <div class="card-meta">猜數字</div>
+        </div>
+      </a>
+      <a class="game-card small" href="./solitaire/" data-game="solitaire" data-cover="covers/solitaire.webp" data-icon="icons/solitaire.webp" style="--h:140">
+        <div class="card-cover"><span class="cv-emoji" aria-hidden="true">🃏</span></div>
+        <div class="card-body">
+          <div class="card-name">接龍</div>
+          <div class="card-meta">紙牌</div>
+        </div>
+      </a>
+      <a class="game-card small" href="./tetris/" data-game="tetris" data-cover="covers/tetris.webp" data-icon="icons/tetris.webp" style="--h:185">
+        <div class="card-cover"><span class="cv-emoji" aria-hidden="true">🧱</span></div>
+        <div class="card-body">
+          <div class="card-name">俄羅斯方塊</div>
+          <div class="card-meta">消行對戰</div>
+        </div>
+      </a>
+      <a class="game-card small" href="./neon-danmaku/" data-game="neon-danmaku" data-cover="covers/neon-danmaku.webp" data-icon="icons/neon-danmaku.webp" style="--h:300">
+        <div class="card-cover"><span class="cv-emoji" aria-hidden="true">⚡</span></div>
+        <div class="card-body">
+          <div class="card-name">霓虹彈幕</div>
+          <div class="card-meta">彈幕射擊</div>
+        </div>
+      </a>
+    </div>
+  </section>
 
   <footer class="footer"><span id="game-count"></span> 個遊戲 · 玩了 <span id="play-count">0</span> 次</footer>
 
@@ -290,6 +413,7 @@
 
   // 卡片上的最佳紀錄＋「進行中」標記（資料由各遊戲寫入：arcade-<遊戲>-stats / -save）
   function lsGet(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } }
+  function lsHas(k) { try { return localStorage.getItem(k) !== null; } catch { return false; } }
   const fmt = s => String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
   // 有紀錄的最高難度
   function hardestBest(stats, levels) {
@@ -335,7 +459,7 @@
   const today = ymd(new Date());
   const yesterday = ymd(new Date(Date.now() - 864e5));
   const DAILY_GAMES = ['sudoku', 'minesweeper', 'bulls-cows'];
-  // 圖示右上角的標記：今日未玩／今日完成（含連勝）
+  // 封面右上角的標記：今日未玩／今日完成（含連勝）
   function dailyBadge(g) {
     const d = lsGet(`arcade-${g}-daily`);
     const streak = d && (d.lastWin === today || d.lastWin === yesterday) ? d.streak : 0;
@@ -343,36 +467,45 @@
     return { text: '今日' + (streak ? ` 🔥${streak}` : ''), cls: '' };
   }
 
-  document.querySelectorAll('.game-card[data-game]').forEach(card => {
+  document.querySelectorAll('.game-card').forEach(card => {
     const g = card.dataset.game;
     // 沒在 RECORD 登記的遊戲就不顯示紀錄（避免整段首頁腳本中斷）
-    const text = RECORD[g] ? RECORD[g](lsGet(`arcade-${g}-stats`) || {}) : '';
+    const text = g && RECORD[g] ? RECORD[g](lsGet(`arcade-${g}-stats`) || {}) : '';
     if (text) {
       const meta = card.querySelector('.card-meta');
       meta.textContent = text;
       meta.classList.add('record');
     }
     let badge = null;
-    if (lsGet(`arcade-${g}-save`) || DAILY_GAMES.includes(g) && lsGet(`arcade-${g}-daily-save`)?.daily === today) badge = { text: '進行中', cls: 'resume' };
+    // data-save：沒有 data-game 的遊戲（珠界、貪婪深淵、轉珠之塔、漂流方舟）直接指定它們的存檔 key，有存檔就算進行中
+    const resume = g ? lsGet(`arcade-${g}-save`) : lsHas(card.dataset.save || '');
+    if (resume || DAILY_GAMES.includes(g) && lsGet(`arcade-${g}-daily-save`)?.daily === today) badge = { text: '進行中', cls: 'resume' };
     else if (DAILY_GAMES.includes(g)) badge = dailyBadge(g);
     if (badge) {
       const el = document.createElement('span');
       el.className = 'card-badge ' + badge.cls;
       el.textContent = badge.text;
-      card.appendChild(el);
+      card.querySelector('.card-cover').appendChild(el);
     }
   });
 
-  // 卡片圖示：icons/<遊戲>.webp 存在就換掉 emoji，不存在就維持 emoji（圖可以一張一張補）
-  document.querySelectorAll('.game-card[data-icon]').forEach(card => {
-    const img = new Image();
-    img.alt = '';
-    img.onload = () => {
-      const box = card.querySelector('.card-icon');
-      box.textContent = '';
+  // 封面：covers/<遊戲>.webp 載得到就用封面；否則退回 icons/<遊戲>.webp（置中放在漸層色塊上）；再不行維持 emoji。
+  // 圖可以一張一張補。封面框有固定長寬比，所以圖載入前後版面不會跳動；前 4 張大作先載，其餘 lazy
+  document.querySelectorAll('.game-card').forEach((card, i) => {
+    const box = card.querySelector('.card-cover');
+    const loading = card.classList.contains('big') && i < 4 ? 'eager' : 'lazy';
+    function layer(src, cls, onok, onfail) {
+      const img = new Image();
+      img.alt = ''; img.className = cls; img.decoding = 'async'; img.loading = loading; img.draggable = false;
+      img.onload = () => { box.classList.add(onok); };
+      img.onerror = () => { img.remove(); if (onfail) onfail(); };
       box.appendChild(img);
-    };
-    img.src = card.dataset.icon;
+      img.src = src;   // 先掛上 DOM 再設 src，lazy 才會以版面位置決定要不要載
+    }
+    const tryIcon = () => { if (card.dataset.icon) layer(card.dataset.icon, 'cv-icon', 'has-icon'); };
+    if (card.dataset.cover) layer(card.dataset.cover, 'cv-cover', 'has-cover', tryIcon);
+    else tryIcon();
+    card.style.setProperty('--i', i);
   });
 
   // 音效總開關：預設開，'off' 才關。各遊戲每次出聲前都會讀這個 key

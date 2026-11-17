@@ -14,7 +14,7 @@
 
 ```
 /
-├── index.html          # 遊戲集首頁（卡片列表 + localStorage 遊玩次數）
+├── index.html          # 遊戲集首頁（「冒險大作」「輕鬆小品」兩區彩色封面卡片 + localStorage 遊玩次數）
 ├── manifest.json       # 根 PWA 設定（ARCADE）
 ├── sw.js               # 根 Service Worker（快取名 arcade-vN，network-first）
 ├── icon.png            # PWA 圖示
@@ -36,7 +36,8 @@
 │                       #   地圖素材、NPC 圖、按鈕框借用 ../pokemo/art/（新增借用要確認在根 sw.js 的 POKEMO_ART）；測試用 ?debug=1 開 window.__shrine，__shrine.audit() 檢查地圖可達性；_bossbot.js 是首領平衡模擬（開發用）；選配美術走 `shrine/art/index.json`，由 tools/process_art.py 產生（清單有才發請求，沒有維持程式畫法）
 ├── rpg/                # 貪婪深淵（Roguelite，模組化多檔案 — 見下）
 ├── rpg-next/           # 貪婪深淵重製版（四職、五區、異變、噩夢階；首頁有獨立卡片，使用者確認後才取代 rpg/ 與舊卡片）。data → story（故事文本，只有資料）→ core（純邏輯，_sim.js 平衡模擬與 _fuzz.js 壓力測試都用 node 跑，不上 GitHub）→ ui；美術借用 ../rpg/（data.js 的 ART；三張首領圖放 rpg-next/art/，因為 GitHub Pages 不部署底線開頭的資料夾）；改 js/css 要升 index.html 的 NEXT_VER；委託板（data.js 的 QUESTS、MEI_STAGES 梅姐線；判定與結算在 core.js 的 questDone／settleQuests，財寶 id 尾端 * ＝三角刻痕）；各層第二條規則（尾隨的手／提燈／過路費／心臟收縮）：data.js 區域資料的 rule2 與具名常數，core.js 的 rule2Of／enterRule2（每進節點）／stealOnWin＋returnPouch（winBattle）／lampRefuel／heartFeed／tollPaid（finishRun），狀態存在 run 的 pouch／lamp／toll／heart，舊檔欄位由 ensureRuleState 補；存檔 abyss2-run（這一趟）、abyss2-meta（v:5，金幣、素質、裝備、深度、職業、成就）
-├── icons/              # 首頁卡片圖示 <遊戲>.webp（可缺，缺的卡片沿用 emoji）
+├── covers/             # 首頁彩色封面 <遊戲>.webp（大作 900×600、小品 600×600；rpg-next 共用 rpg.webp；可缺，缺的退回 icons/ 再退回 emoji）
+├── icons/              # 首頁卡片圖示 <遊戲>.webp（封面缺席時的退路，置中放在漸層色塊上；可缺，缺的沿用 emoji）
 └── tools/process_art.py  # 小遊戲美術後製（Pillow；不是網站的一部分）。流程見 美術需求_ChatGPT出圖.md
 ```
 
@@ -45,7 +46,7 @@
 - **存檔／紀錄**：各遊戲用 localStorage `arcade-<遊戲>-save`（進行中的局）與 `arcade-<遊戲>-stats`（`{ 模式: { plays, wins, best: {…越小越好} } }`）。首頁卡片會讀這兩個 key 顯示最佳紀錄與「進行中」。
 - **每日挑戰**（數獨、掃雷、幾A幾B）：以日期字串為種子（`seededRng('<遊戲>-YYYY-MM-DD')`），同一天大家同一題、一天一次。紀錄在 `arcade-<遊戲>-daily`（`{ last, streak, best, lastWin }`），進度另存 `arcade-<遊戲>-daily-save`，與一般模式互不覆蓋。**改動產生器或亂數消耗順序會讓同一天的題目變掉**，上線當天別改。
 - **音效**：各小遊戲內嵌一段 `SFX`（WebAudio 即時合成，無音檔）；總開關在首頁統計列，localStorage `arcade-sound`（`'off'` 為關，每次出聲前重讀）。
-- **選配美術**：圖檔存在就換上、不存在維持 emoji／CSS（首頁 `icons/`、接龍 `back.webp`/`felt.webp`、掃雷 `flag.webp`/`mine.webp`、天穹拓荒 `art/`、珠界按鍵框 `art/ui-btn*.webp`）。
+- **選配美術**：圖檔存在就換上、不存在維持 emoji／CSS（首頁 `covers/`、`icons/`、接龍 `back.webp`/`felt.webp`、掃雷 `flag.webp`/`mine.webp`、天穹拓荒 `art/`、珠界按鍵框 `art/ui-btn*.webp`）。
 - **Service Worker 快取**：三支 SW（根、`sudoku/`、`tower-orbs/`）的 activate 只能刪**自己前綴**的舊快取——快取空間整站共用。珠界美術另有 `arcade-pokemo-art` 快取，先讀快取、背景更新，不隨 `CACHE` 改版。根 SW 安裝時只抓 `CORE`，其餘由首頁發訊息觸發背景慢慢補（`fillCaches`）；**別改回安裝時全抓**，幾百個請求會擋住正在玩的遊戲。
 
 ## 兩種遊戲型態
@@ -114,8 +115,8 @@ python -m http.server 8000
 ## 慣例小結（改動前請遵守）
 
 - 維持繁體中文介面與註解。
-- 沿用既有暗色美術系統：背景 `#080808`、accent 螢光綠 `#c8f135`、字型 Syne（標題）/ DM Mono（內文）。
+- 首頁配色沿用站上 RPG 遊戲的深藍灰系：背景 `#0a0e1c`、卡片 `#141a30`、邊框 `#2a3358`、文字 `#eef1ff`、強調暖金 `#e8c46a`；字型 Logo 用 Syne，內文用 Noto Sans TC／PingFang TC／Microsoft JhengHei。顏色全在根 `index.html` 的 `:root` 變數，不要寫死。（舊的黑底螢光綠已淘汰；各遊戲內部頁面自有配色，不受影響。）
 - 不要引入框架、build 工具或 npm 依賴，除非有明確需求並先討論。
 - 動到 rpg 檔案 → 更新 `rpg/index.html` 的 `RPG_VER` 一處；動到需即時更新的快取資源 → 更新對應 `sw.js` 的 `CACHE` 版本。
-- 新增遊戲：建子資料夾放 `index.html`，並在根 `index.html` 的 `.games` 區塊加一張 `.game-card` 卡片（只放圖示、名稱、兩三個字的類型，不寫介紹；遊戲數會自動算）。
+- 新增遊戲：建子資料夾放 `index.html`，並在根 `index.html` 加一張 `.game-card` 卡片（只放封面、名稱、兩三個字的類型，不寫介紹；遊戲數會自動算）。冒險大作（長線、有劇情或養成）放「冒險大作」區（`.big`，封面 3:2），輕鬆小品（單局型）放「輕鬆小品」區（`.small`，封面 1:1）。卡片要帶 `data-cover="covers/<遊戲>.webp"` 與 `data-icon="icons/<遊戲>.webp"`；封面原圖放 `output/imagegen/arcade/cover-<遊戲>.png`，由 `tools/process_art.py` 的 `COVER_SIZE` 表輸出（新遊戲要加進表），並把圖加進根 `sw.js` 的 covers 清單、`CACHE` +1。沒有 `data-game` 的遊戲可用 `data-save="<存檔 key>"` 讓卡片顯示「進行中」。
 ```
