@@ -1,4 +1,4 @@
-const CACHE = 'arcade-v95';
+const CACHE = 'arcade-v96';
 // 珠界的圖獨立一個快取、不跟 CACHE 改版：改版時不必重抓，也不用每次打開都等網路
 const ART_CACHE = 'arcade-pokemo-art';
 // RPG 敵人圖示：檔名＝ENEMIES／首領／域限精英的 key。v385 起 50 隻全數有圖，已無 SVG 回落。
@@ -63,8 +63,16 @@ const ASSETS = [
   '/pokemo/',               // v56：珠界：歸一之子（單檔、內嵌美術）
   '/outpost/', '/neon-danmaku/',   // v59：晨昏線前哨、霓虹彈幕（皆單檔）
   '/sky-frontier/',         // v63：天穹拓荒（單檔）；v95 起併入深掘礦工（/deep-miner/ 只剩轉址頁，不預快取）
-  // v95：天穹拓荒只用這兩張 NPC 頭像（打開對話才載入），其餘 art/ 的圖是舊版即時沙盒的，不再快取
-  ...['npc-artisan','npc-scrap'].map(k => `/sky-frontier/art/${k}.webp`),
+  '/sky-frontier/classic/', // v96：舊版即時沙盒還原頁（美術不預快取，進去時線上抓）
+  // v96：天穹拓荒回合制版換回原本的美術；只列新版實際用到的圖（與 index.html 的 ART_LIST 一致），
+  // 其餘 art/ 的圖只有 classic 用，不預快取
+  ...['bg-far','bg-mid','bg-sun','bg-island-1','bg-island-3','cave-dirt','cave-stone','cave-deep',
+      'wall_wood','wall_brick','wall_stone','player','npc-artisan','npc-scrap',
+      'tile-dirt','tile-moss','tile-stone','tile-cobble','tile-deep','tile-bedrock','tile-ruin','tile-seal','tile-lava',
+      'tile-o_coal','tile-o_iron','tile-o_gold','tile-o_blue','tile-o_crystal','tile-o_star','tile-o_aether',
+      'tile-log','tile-plank','tile-leaves','tile-ladder','tile-torch','tile-bed',
+      'tile-seller','tile-chest','tile-bench','tile-board','tile-door','tile-altar','tile-furnace','tile-anvil'
+     ].map(k => `/sky-frontier/art/${k}.webp`),
   // v45：小遊戲美術（可一張一張補；檔案還不存在時只會略過）。產出流程見 美術需求_ChatGPT出圖.md
   ...['sudoku','minesweeper','bulls-cows','solitaire','rpg','tower-orbs','drift-ark','tetris','pokemo','outpost','neon-danmaku','sky-frontier','shrine'].map(k => `/icons/${k}.webp`),
   // 首頁彩色封面（可一張一張補；rpg-next 與 rpg 共用 rpg.webp）。只由 fillCaches 背景補，不進 CORE
@@ -106,7 +114,7 @@ function fillCaches() {
   return filling || (filling = (async () => {
     await new Promise(r => setTimeout(r, 3000));   // 先讓使用者點進遊戲
     const jobs = [...ASSETS.map(u => [CACHE, u]), ...POKEMO_ART.map(u => [ART_CACHE, u])];
-    // 天穹拓荒（v95 起回合制）只用兩張 NPC 頭像，已列在 ASSETS；不再照 art/index.json 補 80 張舊圖
+    // 天穹拓荒（v96 起）回合制版用到的 44 張圖已列在 ASSETS；不照 art/index.json 補全部 80 張（其餘只有 classic 用）
     // 聖林神廟的選配美術：同樣照 art/index.json 補（圖檔網址在遊戲裡帶 ?v=，靠 fetch fallback 的 ignoreSearch 對應）；上面寫死的 8 張照舊
     try {
       const r = await fetch('/shrine/art/index.json', { priority: 'low' });

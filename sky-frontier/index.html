@@ -277,6 +277,130 @@ dialog::backdrop { background: rgba(0, 0, 0, .62); }
 .ledger .p { color: var(--good); text-align: right; font-family: var(--font-px); }
 .ledger .m { color: var(--bad); text-align: right; font-family: var(--font-px); }
 
+/* =====================================================================
+ * 美術圖（sky-frontier/art/，與原版即時沙盒同一套）
+ * 全部包在 html.art 底下：預載成功才加上 .art；缺任何一張就不加，維持上面的 CSS／emoji 畫法
+ * 地層貼圖：256 px 的無縫材質鋪在 4×4 格上（.tx0~3／.ty0~3 依世界座標取材質的哪一塊），
+ *          整片岩壁是連續的，再用 --tint 疊色分出各層色調；礦物是 64 px 去背圖疊在岩石上
+ * 圖都是縮小顯示（64→26~40 px），不用 pixelated，縮小時讓瀏覽器平滑
+ * ===================================================================== */
+.art #map { position: relative; z-index: 1; }
+.art .tile { --bx: 0px; --by: 0px; }
+.art .tx1 { --bx: calc(var(--ts) * -1); } .art .tx2 { --bx: calc(var(--ts) * -2); } .art .tx3 { --bx: calc(var(--ts) * -3); }
+.art .ty1 { --by: calc(var(--ts) * -1); } .art .ty2 { --by: calc(var(--ts) * -2); } .art .ty3 { --by: calc(var(--ts) * -3); }
+/* 各層：--tex 岩石材質、--tint 疊色、--cave 挖空後的通道底圖 */
+.art .L0, .art .L1 { --tex: url(art/tile-dirt.webp); --tint: rgba(120, 66, 28, .32); --cave: url(art/cave-dirt.webp); }
+.art .L2 { --tex: url(art/tile-stone.webp); --tint: rgba(236, 226, 206, .3); --cave: url(art/cave-stone.webp); }
+.art .L3 { --tex: url(art/tile-cobble.webp); --tint: rgba(30, 90, 140, .3); --cave: url(art/cave-stone.webp); }
+.art .L4 { --tex: url(art/tile-deep.webp); --tint: rgba(125, 70, 200, .3); --cave: url(art/cave-stone.webp); }
+.art .L5 { --tex: url(art/tile-bedrock.webp); --tint: rgba(160, 45, 15, .3); --cave: url(art/cave-deep.webp); }
+.art .L6 { --tex: url(art/tile-ruin.webp); --tint: rgba(0, 0, 0, .05); --cave: url(art/cave-deep.webp); }
+.art .L7 { --tex: url(art/tile-seal.webp); --tint: rgba(5, 10, 30, .38); --cave: url(art/cave-deep.webp); }
+.art .tile.k-rock, .art .tile.k-ore, .art .tile.k-boulder, .art .tile.k-gp, .art .tile.k-page {
+  background: linear-gradient(var(--tint), var(--tint)), var(--tex) var(--bx) var(--by) / calc(var(--ts) * 4) calc(var(--ts) * 4);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .3), inset 1px 1px 0 rgba(255, 255, 255, .1);
+}
+.art .tile.k-empty, .art .tile.k-mem, .art .tile.k-gas, .art .tile.k-beam {
+  background: linear-gradient(rgba(0, 0, 0, .4), rgba(0, 0, 0, .4)), var(--cave) var(--bx) var(--by) / calc(var(--ts) * 4) calc(var(--ts) * 4);
+}
+.art .tile.k-glowfloor { background: radial-gradient(circle, rgba(220, 210, 180, .25), transparent 70%), var(--cave) var(--bx) var(--by) / calc(var(--ts) * 4) calc(var(--ts) * 4); }
+.art .tile.k-water { background: linear-gradient(rgba(70, 140, 205, .78), rgba(35, 85, 145, .88)), var(--cave) var(--bx) var(--by) / calc(var(--ts) * 4) calc(var(--ts) * 4); }
+.art .tile.k-gas::after { z-index: 1; }
+.art .tile.k-lava { background: url(art/tile-lava.webp) var(--bx) var(--by) / calc(var(--ts) * 4) calc(var(--ts) * 4); }
+.art .tile.k-station {
+  background: url(art/tile-torch.webp) 92% 6% / 40% no-repeat, url(art/tile-ladder.webp) center / 92% no-repeat,
+    linear-gradient(rgba(0, 0, 0, .3), rgba(0, 0, 0, .3)), var(--cave) var(--bx) var(--by) / calc(var(--ts) * 4) calc(var(--ts) * 4);
+}
+.art .tile.k-camp {
+  background: url(art/tile-bed.webp) center 85% / 92% no-repeat, radial-gradient(circle, rgba(230, 200, 140, .35), transparent 70%),
+    var(--cave) var(--bx) var(--by) / calc(var(--ts) * 4) calc(var(--ts) * 4);
+}
+.art .tile.k-grass {
+  background: url(art/tile-moss.webp) 0 0 / 100% 100% no-repeat, linear-gradient(var(--tint), var(--tint)), url(art/tile-dirt.webp) var(--bx) var(--by) / calc(var(--ts) * 4) calc(var(--ts) * 4);
+  box-shadow: none;
+}
+/* 礦物：畫在 ::before（濾鏡只套在礦上，不影響底下的岩石）；圖只有 7 張，其餘用色相濾鏡做變體 */
+.art .tile.k-ore::before { content: ''; position: absolute; inset: 7%; background: var(--oimg) center / contain no-repeat; filter: var(--of, none); }
+.oi { display: inline-block; width: 1.4em; height: 1.4em; vertical-align: -.35em; background: var(--oimg) center / contain no-repeat; filter: var(--of, none); }
+.row .ri .oi { width: 26px; height: 26px; vertical-align: middle; }
+.art .o-coal { --oimg: url(art/tile-o_coal.webp); --of: drop-shadow(0 0 1px rgba(255, 255, 255, .35)); }
+.art .o-copper { --oimg: url(art/tile-o_iron.webp); --of: saturate(1.8) hue-rotate(12deg) brightness(1.3); }
+.art .o-iron { --oimg: url(art/tile-o_iron.webp); --of: saturate(.4) brightness(1.2); }
+.art .o-silver { --oimg: url(art/tile-o_blue.webp); --of: saturate(.25) brightness(1.65); }
+.art .o-jade { --oimg: url(art/tile-o_aether.webp); --of: hue-rotate(65deg) saturate(1.1); }
+.art .o-quartz { --oimg: url(art/tile-o_crystal.webp); --of: saturate(.15) brightness(1.5); }
+.art .o-amethyst { --oimg: url(art/tile-o_crystal.webp); --of: hue-rotate(75deg) saturate(1.5); }
+.art .o-obsidian { --oimg: url(art/tile-o_coal.webp); --of: drop-shadow(0 0 2px #a68bff) brightness(1.15); }
+.art .o-gold { --oimg: url(art/tile-o_gold.webp); }
+.art .o-ruby { --oimg: url(art/tile-o_crystal.webp); --of: hue-rotate(165deg) saturate(3) brightness(.9); }
+.art .o-starsilver { --oimg: url(art/tile-o_star.webp); --of: hue-rotate(-115deg) saturate(.8) brightness(1.2) drop-shadow(0 0 3px #bfe8ff); }
+.art .o-abyssal { --oimg: url(art/tile-o_crystal.webp); --of: hue-rotate(-25deg) saturate(2.2) drop-shadow(0 0 3px #40f0e0); }
+/* 支撐木：兩根原木柱＋木板橫梁 */
+.art .tile.k-beam::after {
+  border: none; inset: 0; border-radius: 0;
+  background: url(art/tile-plank.webp) 0 0 / 100% 24% no-repeat, url(art/tile-log.webp) 6% 0 / 22% 100% no-repeat, url(art/tile-log.webp) 94% 0 / 22% 100% no-repeat;
+}
+/* 礦工：player.webp 是單張站姿（48×128），往上超出格子一點，朝向用 --face 水平翻轉 */
+.art .tile.me { overflow: visible; z-index: 4; }
+.art .tile.me::after { content: none; }
+.art .tile.k-beam.me::after { content: ''; }
+.art .tile.me::before {
+  content: ''; position: absolute; left: 50%; bottom: 0; z-index: 2;
+  width: calc(var(--ts) * .62); height: calc(var(--ts) * 1.5); margin-left: calc(var(--ts) * -.31);
+  background: url(art/player.webp) center bottom / contain no-repeat;
+  transform: scaleX(var(--face, 1));
+  filter: drop-shadow(0 0 1px rgba(0, 0, 0, .95)) drop-shadow(0 0 3px rgba(255, 220, 140, .55));
+}
+.art .tile.me.hurt::before { filter: drop-shadow(0 0 2px #ff5040) sepia(1) hue-rotate(-50deg) saturate(4); }
+/* 天空：地表上方的格子透明，後面墊一層 #sky（遠山、近丘、太陽；天穹時代起加浮島） */
+#sky { display: none; }
+.art #sky {
+  display: block; position: absolute; left: 4px; right: 4px; top: 4px; height: var(--skyH, 0px); z-index: 0; pointer-events: none;
+  background:
+    url(art/bg-sun.webp) 84% 14% / auto 40% no-repeat,
+    url(art/bg-mid.webp) 0 calc(var(--skyH) * -1.08) / auto calc(var(--skyH) * 2.6) repeat-x,
+    url(art/bg-far.webp) 35% calc(var(--skyH) * -.92) / auto calc(var(--skyH) * 2.6) repeat-x,
+    linear-gradient(#86b2d6, #d5e5ec);
+}
+.art #sky.aether {
+  background:
+    url(art/bg-sun.webp) 84% 14% / auto 40% no-repeat,
+    url(art/bg-island-1.webp) 6% 10% / auto 24% no-repeat,
+    url(art/bg-island-3.webp) 60% 32% / auto 17% no-repeat,
+    url(art/bg-mid.webp) 0 calc(var(--skyH) * -1.08) / auto calc(var(--skyH) * 2.6) repeat-x,
+    url(art/bg-far.webp) 35% calc(var(--skyH) * -.92) / auto calc(var(--skyH) * 2.6) repeat-x,
+    linear-gradient(#7fa9d4, #d9e4f0);
+}
+.art .tile.k-sky { background: transparent; }
+/* 鎮上建築：牆面材質＋屋頂的小屋，門口放代表物件（收購店＝收購箱、鐵匠＝熔爐＋鐵砧……） */
+.art .tile.k-house { background: transparent; overflow: visible; z-index: 2; font-size: 0; }
+.art .k-house::before {
+  content: ''; position: absolute; left: 3%; right: 3%; bottom: 0; height: calc(var(--ts) * 1.55);
+  background: linear-gradient(var(--roof, #7a3b2a) 0 40%, transparent 40%), var(--wall) center / calc(var(--ts) * 2);
+  clip-path: polygon(0 40%, 50% 0, 100% 40%, 100% 100%, 0 100%);
+}
+.art .k-house::after {
+  content: ''; position: absolute; left: 50%; bottom: 3%; width: calc(var(--ts) * .74); height: calc(var(--ts) * .74);
+  margin-left: calc(var(--ts) * -.37); background: var(--sign) center bottom / contain no-repeat;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .6));
+}
+.art .b-shop { --wall: url(art/wall_wood.webp); --sign: url(art/tile-seller.webp); --roof: #8a4a22; }
+.art .b-office { --wall: url(art/wall_stone.webp); --sign: url(art/tile-chest.webp); --roof: #4d5a6e; }
+.art .b-artisan { --wall: url(art/wall_brick.webp); --sign: url(art/tile-bench.webp); --roof: #3e6a5a; }
+.art .b-zhou { --wall: url(art/wall_wood.webp); --sign: url(art/tile-board.webp); --roof: #5b4636; }
+.art .b-home { --wall: url(art/wall_brick.webp); --sign: url(art/tile-door.webp); --roof: #9a3a2e; }
+.art .b-museum { --wall: url(art/tile-ruin.webp); --sign: url(art/tile-altar.webp); --roof: #6a5a8a; }
+.art .b-smith::before { clip-path: none; height: calc(var(--ts) * 1.3); background: url(art/tile-furnace.webp) center bottom / contain no-repeat; }
+.art .b-smith::after { --sign: url(art/tile-anvil.webp); left: auto; right: -12%; margin-left: 0; width: calc(var(--ts) * .6); height: calc(var(--ts) * .6); }
+.art .b-bm::before { clip-path: none; height: calc(var(--ts) * 1.45); background: url(art/npc-scrap.webp) center bottom / contain no-repeat; }
+.art .b-bm::after { content: none; }
+.art .b-tree::before { clip-path: none; left: 38%; right: 38%; height: calc(var(--ts) * .75); background: url(art/tile-log.webp) center / cover; }
+.art .b-tree::after { --sign: url(art/tile-leaves.webp); bottom: calc(var(--ts) * .5); width: calc(var(--ts) * 1.05); height: calc(var(--ts) * 1.05); margin-left: calc(var(--ts) * -.525); background-size: cover; border-radius: 45%; }
+a.row { color: var(--ink); text-decoration: none; }
+#loading { position: fixed; inset: 0; display: grid; place-items: center; color: var(--muted); font-size: 14px; letter-spacing: .1em; }
+body.booting #app { visibility: hidden; }
+body:not(.booting) #loading { display: none; }
+
 @media (min-width: 600px) {
   body { padding-top: 18px; }
   .title h1 { font-size: 21px; }
@@ -286,8 +410,9 @@ dialog::backdrop { background: rgba(0, 0, 0, .62); }
 }
 </style>
 </head>
-<body>
+<body class="booting">
 
+<div id="loading">載入中…</div>
 <div id="app">
   <header class="top">
     <a class="icon" href="../" aria-label="回首頁">🏠</a>
@@ -309,6 +434,7 @@ dialog::backdrop { background: rgba(0, 0, 0, .62); }
   <div class="next" id="vNext" role="status"></div>
 
   <div class="map-wrap" id="mapWrap">
+    <div id="sky"></div>
     <div id="map" role="grid" aria-label="礦坑地圖：點相鄰的格子挖掘或移動，點遠處的通道可自動走過去"></div>
     <div id="banner"></div>
   </div>
@@ -1597,7 +1723,7 @@ var Miner = (function () {
   if (typeof document === 'undefined') return;   // 在 node 測試時只載入核心
 
   var M = Miner;
-  var SF_VER = '2.0.0';                         // 版號（顯示在選單角落）
+  var SF_VER = '2.1.0';                         // 版號（顯示在選單角落）
   var SAVE_KEY = 'arcade-sky-frontier-save';
   var STATS_KEY = 'arcade-sky-frontier-stats';
   var OLD_DM_KEY = 'arcade-deep-miner-save';     // 深掘礦工的舊存檔：只讀，用來問要不要接續，不刪
@@ -1965,13 +2091,47 @@ var Miner = (function () {
   // ---------------- 地圖格子（建一次，之後只更新 class 與文字；點擊用事件委派） ----------------
   var COLS = M.W, ROWS = 11, camTop = 0;
   var cells = [], lastCls = [], lastTxt = [];
-  // 鎮上的房子：時代開放到哪裡，就蓋到哪裡
+  // ---------------- 美術圖（sky-frontier/art/） ----------------
+  // 進遊戲前全部預載；全部載入成功才在 <html> 加上 .art（CSS 只在 .art 底下換成圖），
+  // 任何一張失敗或逾時就維持 CSS／emoji 畫法。清單要與根 sw.js 的天穹美術白名單一致
+  var ART_LIST = [
+    'bg-far', 'bg-mid', 'bg-sun', 'bg-island-1', 'bg-island-3', 'cave-dirt', 'cave-stone', 'cave-deep',
+    'wall_wood', 'wall_brick', 'wall_stone', 'player', 'npc-artisan', 'npc-scrap',
+    'tile-dirt', 'tile-moss', 'tile-stone', 'tile-cobble', 'tile-deep', 'tile-bedrock', 'tile-ruin', 'tile-seal', 'tile-lava',
+    'tile-o_coal', 'tile-o_iron', 'tile-o_gold', 'tile-o_blue', 'tile-o_crystal', 'tile-o_star', 'tile-o_aether',
+    'tile-log', 'tile-plank', 'tile-leaves', 'tile-ladder', 'tile-torch', 'tile-bed',
+    'tile-seller', 'tile-chest', 'tile-bench', 'tile-board', 'tile-door', 'tile-altar', 'tile-furnace', 'tile-anvil'
+  ];
+  // 有礦圖（或圖的濾鏡變體）的礦；化石、古代遺物沒有對得上的圖，維持符號
+  var ORE_ART = { coal: 1, copper: 1, iron: 1, silver: 1, jade: 1, quartz: 1, amethyst: 1, obsidian: 1, gold: 1, ruby: 1, starsilver: 1, abyssal: 1 };
+  var ART_OK = false;
+  var artImgs = [];   // 留住 Image 物件，讓瀏覽器把解碼後的圖留在記憶體快取
+  function preloadArt(done) {
+    if (DEBUG && /[?&]noart=1/.test(location.search)) { done(false); return; }   // 測試退路：?debug=1&noart=1
+    var left = ART_LIST.length, failed = false, finished = false;
+    function finish(ok) { if (finished) return; finished = true; done(ok); }
+    var timer = setTimeout(function () { finish(false); }, 8000);
+    ART_LIST.forEach(function (n) {
+      var im = new Image();
+      im.onload = function () { if (--left === 0 && !failed) { clearTimeout(timer); finish(true); } };
+      im.onerror = function () { failed = true; clearTimeout(timer); finish(false); };
+      im.src = 'art/' + n + '.webp';
+      artImgs.push(im);
+    });
+  }
+  // 礦物小圖示（面板、背包列）：有圖用圖，沒有就用原本的彩色符號
+  function oreIcon(o) {
+    if (ART_OK && ORE_ART[o]) return '<i class="oi o-' + o + '" aria-hidden="true"></i>';
+    return '<span class="g o-' + o + '" style="color:var(--oc)">' + M.ORES[o].g + '</span>';
+  }
+
+  // 鎮上的房子：時代開放到哪裡，就蓋到哪裡。[建築種類（對應 CSS .b-*）, 沒有圖時的 emoji]
   function townIcons() {
-    var t = { 1: '🌲', 2: '🏪', 4: '⚒️', 6: '🏚️', 8: '🏡', 11: '🌲', 12: '🌲' };
-    if (S.tut.donate) t[0] = '🏛️';
-    if (S.era >= 1) { t[3] = '🔨'; t[9] = '🏺'; }
-    if (S.era >= M.TAX_FROM_ERA && S.gear.contract) t[10] = '🎒';
-    else t[10] = '🌲';
+    var t = { 1: ['tree', '🌲'], 2: ['shop', '🏪'], 4: ['smith', '⚒️'], 6: ['zhou', '🏚️'], 8: ['home', '🏡'], 11: ['tree', '🌲'], 12: ['tree', '🌲'] };
+    if (S.tut.donate) t[0] = ['office', '🏛️'];
+    if (S.era >= 1) { t[3] = ['artisan', '🔨']; t[9] = ['museum', '🏺']; }
+    if (S.era >= M.TAX_FROM_ERA && S.gear.contract) t[10] = ['bm', '🎒'];
+    else t[10] = ['tree', '🌲'];
     return t;
   }
   var TOWN_NPC = { 0: 'office', 2: 'guei', 3: 'artisan', 4: 'bing', 6: 'zhou', 8: 'home', 9: 'museum', 10: 'bm' };
@@ -2022,17 +2182,20 @@ var Miner = (function () {
   // 一格要畫成什麼：回傳 [class, 文字]
   function look(wx, wy, R) {
     if (wy < 0) {
-      if (wy === -1) { var ti = townIcons(); if (ti[wx]) return ['k-house', ti[wx]]; }
-      if (wy === -2 && wx === 6 && S.era > 0) return ['k-sky hi', M.ERAS[S.era].icon];
-      if (wy === -2 && (wx === 3 || wx === 9)) return ['k-sky hi', '☁️'];
+      if (wy === -1) { var ti = townIcons(); if (ti[wx]) return ['k-house b-' + ti[wx][0], ART_OK ? '' : ti[wx][1]]; }
+      // 有圖時房子會往上長到第 -2 列，時代旗子改放高一列；雲改由背景圖的天空表現
+      if (wy === (ART_OK ? -3 : -2) && wx === 6 && S.era > 0) return ['k-sky hi', M.ERAS[S.era].icon];
+      if (!ART_OK && wy === -2 && (wx === 3 || wx === 9)) return ['k-sky hi', '☁️'];
       return [wy <= -2 ? 'k-sky hi' : 'k-sky', ''];
     }
     var t = M.tileAt(S, wx, wy);
     if (t === 'wall') return ['k-dark', ''];
     var me = wx === S.x && wy === S.y;
-    if (wy === 0) return ['L0 k-grass' + (me ? ' me' : ''), me ? '👷' : ''];
+    var TX = ' tx' + (wx & 3) + ' ty' + (wy & 3);   // 材質取 4×4 的哪一塊（有圖時用）
+    var ME_TXT = ART_OK ? '' : '👷';
+    if (wy === 0) return ['L0 k-grass' + TX + (me ? ' me' : ''), me ? ME_TXT : ''];
     var li = M.layerIndex(wy);
-    var L = ' L' + li;
+    var L = ' L' + li + TX;
     var dx = wx - S.x, dy = wy - S.y, d2 = dx * dx + dy * dy;
     var lit = d2 <= R * R + R;
     var dim = !lit && d2 <= (R + 1) * (R + 1) + R + 1;
@@ -2054,28 +2217,36 @@ var Miner = (function () {
       case 'water': cls = 'k-water'; txt = '≈'; break;
       case 'gas': cls = 'k-gas'; txt = '∴'; break;
       case 'lava': case 'lavaf': cls = 'k-lava'; break;
-      case 'station': cls = 'k-station'; txt = '🚡'; break;
-      case 'camp': cls = 'k-camp'; txt = '⛺'; break;
+      case 'station': cls = 'k-station'; txt = ART_OK ? '' : '🚡'; break;
+      case 'camp': cls = 'k-camp'; txt = ART_OK ? '' : '⛺'; break;
       case 'beam': cls = 'k-beam'; break;
       case 'boulder': cls = 'k-boulder' + (S.wob[wx + ',' + wy] ? ' wob' : ''); break;
       case 'gaspocket': cls = 'k-gp'; break;
       case 'page': cls = 'k-page'; txt = '📜'; break;
       default:
-        if (M.ORES[t]) { cls = 'k-ore o-' + t; txt = M.ORES[t].g; }
+        if (M.ORES[t]) { cls = 'k-ore o-' + t; txt = ART_OK && ORE_ART[t] ? '' : M.ORES[t].g; }
         else cls = 'k-rock' + (M.hash(S.seed, wx, wy, 5) < 0.5 ? ' v1' : '');
     }
     cls += L;
-    if (me) { cls += ' me' + (hurtFlash ? ' hurt' : ''); txt = '👷'; }
+    if (me) { cls += ' me' + (hurtFlash ? ' hurt' : ''); txt = ME_TXT; }
     else if (dim && !glow) cls += ' dim';
     return [cls, txt];
   }
 
   var hurtFlash = false;
+  var face = 1;        // 礦工朝向：1 向右、-1 向左（最後一次左右移動的方向）
   var stripH = -1;
   function render() {
     if (!S) return;
     var R = M.lightRadius(S);
-    camTop = Math.max(-2, S.y - Math.floor(ROWS * 0.42));
+    // 有圖時地表上方多留兩列天空（房子有高度、背景才看得到山）
+    camTop = Math.max(ART_OK ? -4 : -2, S.y - Math.floor(ROWS * 0.42));
+    if (ART_OK) {
+      var wrapEl = $('mapWrap'), skyEl = $('sky');
+      wrapEl.style.setProperty('--skyH', Math.max(0, -camTop) * cells[0].offsetHeight + 'px');
+      skyEl.classList.toggle('aether', S.era >= 3);
+      $('map').style.setProperty('--face', face);
+    }
     for (var r = 0; r < ROWS; r++) {
       for (var c = 0; c < COLS; c++) {
         var i = r * COLS + c;
@@ -2139,7 +2310,7 @@ var Miner = (function () {
     if (!keys.length) { el.innerHTML = '<span class="chip empty">背包空空的</span>'; return; }
     keys.sort(function (a, b) { return M.ORES[b].v - M.ORES[a].v; });
     el.innerHTML = keys.map(function (o) {
-      return '<span class="chip"><span class="g o-' + o + '" style="color:var(--oc)">' + M.ORES[o].g + '</span>' +
+      return '<span class="chip">' + oreIcon(o) +
         M.ORES[o].name + '×' + S.bag[o] + '</span>';
     }).join('') + '<span class="chip">回收估 ' + M.quoteAll(S, M.SELL_RATE).gross + ' 希爾</span>';
   }
@@ -2162,6 +2333,7 @@ var Miner = (function () {
   var pendingSheets = [];
   function doAct(cmd) {
     if (!S) return null;
+    if (cmd.t === 'move' && cmd.dx) face = cmd.dx < 0 ? -1 : 1;
     var ctx = M.act(S, cmd);
     var stop = false;
     ctx.ev.forEach(function (e) {
@@ -2524,7 +2696,7 @@ var Miner = (function () {
       var a0 = (S.sat[o] || 0) * M.SAT_DECAY;
       var tom = a0 < 0.5 ? 1 : Math.exp(-a0 / (M.SAT_K * M.ORES[o].v));
       var low = q1.n && n1 <= 0;
-      html += '<div class="sellrow"><div class="nm"><span class="o-' + o + '" style="color:var(--oc)">' + M.ORES[o].g + '</span> ' + M.ORES[o].name + ' ×' + n +
+      html += '<div class="sellrow"><div class="nm">' + oreIcon(o) + ' ' + M.ORES[o].name + ' ×' + n +
         '<small>單價 ' + (unit >= 10 ? Math.round(unit) : unit.toFixed(1)) + ' 希爾 · 行情 ' + Math.round(sat * 100) + '%（明天約 ' + Math.round(tom * 100) + '%）' + (low ? ' · 行情太低，明天會回升' : '') + '</small>' + bar(sat) + '</div>' +
         '<div class="bt"><button type="button" data-act="sell" data-arg="' + shop + ':' + o + ':1"' + (q1.n && n1 > 0 ? '' : ' disabled') + '>賣 1<br>+' + n1 + '</button>' +
         (n > 1 ? '<button type="button" data-act="sell" data-arg="' + shop + ':' + o + ':' + n + '"' + (qa.n && na > 0 ? '' : ' disabled') + '>' + (qa.n < n ? '賣 ' + qa.n : '全賣') + '<br>+' + na + '</button>' : '') +
@@ -2564,7 +2736,7 @@ var Miner = (function () {
       var r = M.donateRate(S, o), n = S.bag[o];
       var c1 = M.cpQuote(S, o, 1), ca = M.cpQuote(S, o, n);
       total += ca;
-      html += '<div class="sellrow"><div class="nm"><span class="o-' + o + '" style="color:var(--oc)">' + M.ORES[o].g + '</span> ' + M.ORES[o].name + ' ×' + n +
+      html += '<div class="sellrow"><div class="nm">' + oreIcon(o) + ' ' + M.ORES[o].name + ' ×' + n +
         '<small>兌換率 ' + Math.round(r * 100) + '%' + kindNote(o) + '</small>' + bar(r) + '</div>' +
         '<div class="bt"><button type="button" data-act="donate" data-arg="' + o + ':1">捐 1<br>' + (cpFull ? '點數已滿' : '+' + Math.round(c1)) + '</button>' +
         (n > 1 ? '<button type="button" data-act="donate" data-arg="' + o + ':' + n + '">全捐<br>' + (cpFull ? '點數已滿' : '+' + Math.round(ca)) + '</button>' : '') + '</div></div>';
@@ -2597,8 +2769,8 @@ var Miner = (function () {
       html += '<h3>' + w.name + (S.wings[wi] ? '<span class="tag">策展人</span>' : '') + '</h3>';
       w.ores.forEach(function (o) {
         var O = M.ORES[o];
-        if (S.museum[o]) html += rowHtml('<span class="o-' + o + '" style="color:var(--oc)">' + O.g + '</span>', O.name, '第 ' + S.museum[o] + ' 天收藏', '✓', 'noop', '', true);
-        else if (S.bag[o]) html += rowHtml('<span class="o-' + o + '" style="color:var(--oc)">' + O.g + '</span>', O.name, '背包裡有，收藏一顆', '+' + Math.floor(O.v * M.MUSEUM_FIRST), 'museum', o);
+        if (S.museum[o]) html += rowHtml(oreIcon(o), O.name, '第 ' + S.museum[o] + ' 天收藏', '✓', 'noop', '', true);
+        else if (S.bag[o]) html += rowHtml(oreIcon(o), O.name, '背包裡有，收藏一顆', '+' + Math.floor(O.v * M.MUSEUM_FIRST), 'museum', o);
         else html += rowHtml('▫️', '？？？', '還沒帶來', null, 'noop', '', true);
       });
     });
@@ -2619,7 +2791,7 @@ var Miner = (function () {
     list.forEach(function (v) {
       var O = M.ORES[v.id], have = S.bag[v.id] || 0, q = M.specQuote(S, v.id, have);
       var left = M.SPEC_PER_DAY - (S.today.spec[v.id] || 0);
-      html += rowHtml('<span class="o-' + v.id + '" style="color:var(--oc)">' + O.g + '</span>', O.name + '（每顆 ' + O.v * M.SPEC_MULT + '）',
+      html += rowHtml(oreIcon(v.id), O.name + '（每顆 ' + O.v * M.SPEC_MULT + '）',
         '今天還收 ' + left + ' 顆 · 收到第 ' + (v.until - 1) + ' 天 · 背包 ' + have, have ? '+' + (q.gross - M.taxFor(S, q.gross)) : null, 'spec', v.id, !q.n);
     });
     html += '<p style="font-size:12px;color:var(--muted)">投機品每天另有 ' + M.SPEC_CAP + ' 希爾上限，今天已收 ' + S.today.specSold + '。</p>';
@@ -2703,6 +2875,7 @@ var Miner = (function () {
       rowHtml('🌫️', '重看序章', '灰燈鎮的故事', null, 'prologue') +
       rowHtml('🏆', '紀錄', '全破天數、最高時代、最深紀錄', null, 'stats') +
       rowHtml('🆕', '新的旅程', '換一座新的礦坑重新開始', null, 'newgame') +
+      '<a class="row" href="./classic/"><span class="ri">🕹️</span><span class="rt">原版（即時沙盒）›<small>橫向即時的舊版天穹拓荒，進度與這裡分開</small></span></a>' +
       '<p class="seed">礦坑編號 ' + S.seed.toString(16).toUpperCase() + ' · 第 ' + S.day + ' 天 · 敲了 ' + S.digs + ' 下</p>' +
       '<div class="ver">天穹拓荒 v' + SF_VER + '</div>';
     openSheet('選單', html, [{ label: '關閉' }]);
@@ -2756,6 +2929,14 @@ var Miner = (function () {
   window.addEventListener('pagehide', function () { if (S) saveNow(); });
 
   var PLACEHOLDER = null;
+  // 先預載美術圖再開畫面（避免先看到一堆沒貼圖的色塊）；載不到就用 CSS 畫法照常開
+  preloadArt(function (ok) {
+    ART_OK = ok;
+    if (ok) document.documentElement.classList.add('art');
+    document.body.classList.remove('booting');
+    boot();
+  });
+  function boot() {
   var raw = lsGet(SAVE_KEY);
   S = raw ? M.normalize(raw) : null;   // 舊版即時沙盒的 {slot, era} 指標沒有 v:2，視同沒有存檔
   if (S) {
@@ -2770,6 +2951,7 @@ var Miner = (function () {
     var conv = M.migrateV1(lsGet(OLD_DM_KEY));
     if (conv) askMigrate(conv);
     else startNewGame();
+  }
   }
 })();
 </script>
