@@ -335,6 +335,18 @@ dialog::backdrop { background: rgba(0, 0, 0, .62); }
 .art .o-ruby { --oimg: url(art/tile-o_crystal.webp); --of: hue-rotate(165deg) saturate(3) brightness(.9); }
 .art .o-starsilver { --oimg: url(art/tile-o_star.webp); --of: hue-rotate(-115deg) saturate(.8) brightness(1.2) drop-shadow(0 0 3px #bfe8ff); }
 .art .o-abyssal { --oimg: url(art/tile-o_crystal.webp); --of: hue-rotate(-25deg) saturate(2.2) drop-shadow(0 0 3px #40f0e0); }
+/* 落石、毒氣、含毒氣岩塊、日記殘頁、化石、古代遺物（v2.1.1 新圖）；落下前晃動的「!」警示沿用 .wob::before */
+.art .tile.k-boulder::before { content: ''; position: absolute; inset: 6%; left: 6%; top: 6%; width: auto; height: auto; background: url(art/tile-boulder.webp) center / contain no-repeat; transform: none; z-index: 1; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .55)); }
+.art .tile.k-boulder::after { content: none; }
+.art .tile.k-boulder.wob { box-shadow: inset 0 0 0 2px #ffdd55, 0 0 6px rgba(255, 221, 85, .6); }
+.art .tile.k-boulder.wob::before { content: ''; inset: 6%; z-index: 1; }
+.art .tile.k-boulder.wob::after { content: '!'; position: absolute; inset: 0 2px auto auto; width: auto; height: auto; background: none; box-shadow: none; border-radius: 0; font-family: var(--font-px); font-size: calc(var(--ts) * .38); color: #ffdd55; text-shadow: 0 0 2px #000; z-index: 3; }
+.art .tile.k-gas::after { inset: -8%; background: url(art/tile-gas.webp) center / 100% 100% no-repeat; opacity: .8; }
+.art .tile.k-gp::after { inset: 0; background: url(art/tile-gas.webp) 82% 84% / 52% no-repeat; opacity: .95; }
+.art .tile.k-page::before { content: ''; position: absolute; inset: 9%; background: url(art/tile-page.webp) center / contain no-repeat; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .5)); }
+.art .o-fossil { --oimg: url(art/tile-o_fossil.webp); }
+.art .o-relic { --oimg: url(art/tile-o_relic.webp); }
+.pgi { display: inline-block; width: 26px; height: 26px; vertical-align: middle; background: url(art/tile-page.webp) center / contain no-repeat; }
 /* 支撐木：兩根原木柱＋木板橫梁 */
 .art .tile.k-beam::after {
   border: none; inset: 0; border-radius: 0;
@@ -1723,7 +1735,7 @@ var Miner = (function () {
   if (typeof document === 'undefined') return;   // 在 node 測試時只載入核心
 
   var M = Miner;
-  var SF_VER = '2.1.0';                         // 版號（顯示在選單角落）
+  var SF_VER = '2.1.1';                         // 版號（顯示在選單角落）
   var SAVE_KEY = 'arcade-sky-frontier-save';
   var STATS_KEY = 'arcade-sky-frontier-stats';
   var OLD_DM_KEY = 'arcade-deep-miner-save';     // 深掘礦工的舊存檔：只讀，用來問要不要接續，不刪
@@ -2100,10 +2112,11 @@ var Miner = (function () {
     'tile-dirt', 'tile-moss', 'tile-stone', 'tile-cobble', 'tile-deep', 'tile-bedrock', 'tile-ruin', 'tile-seal', 'tile-lava',
     'tile-o_coal', 'tile-o_iron', 'tile-o_gold', 'tile-o_blue', 'tile-o_crystal', 'tile-o_star', 'tile-o_aether',
     'tile-log', 'tile-plank', 'tile-leaves', 'tile-ladder', 'tile-torch', 'tile-bed',
-    'tile-seller', 'tile-chest', 'tile-bench', 'tile-board', 'tile-door', 'tile-altar', 'tile-furnace', 'tile-anvil'
+    'tile-seller', 'tile-chest', 'tile-bench', 'tile-board', 'tile-door', 'tile-altar', 'tile-furnace', 'tile-anvil',
+    'tile-boulder', 'tile-gas', 'tile-page', 'tile-o_fossil', 'tile-o_relic'
   ];
-  // 有礦圖（或圖的濾鏡變體）的礦；化石、古代遺物沒有對得上的圖，維持符號
-  var ORE_ART = { coal: 1, copper: 1, iron: 1, silver: 1, jade: 1, quartz: 1, amethyst: 1, obsidian: 1, gold: 1, ruby: 1, starsilver: 1, abyssal: 1 };
+  // 有礦圖（或圖的濾鏡變體）的礦；化石、古代遺物有專屬圖（不用濾鏡）
+  var ORE_ART = { fossil: 1, relic: 1, coal: 1, copper: 1, iron: 1, silver: 1, jade: 1, quartz: 1, amethyst: 1, obsidian: 1, gold: 1, ruby: 1, starsilver: 1, abyssal: 1 };
   var ART_OK = false;
   var artImgs = [];   // 留住 Image 物件，讓瀏覽器把解碼後的圖留在記憶體快取
   function preloadArt(done) {
@@ -2124,6 +2137,9 @@ var Miner = (function () {
     if (ART_OK && ORE_ART[o]) return '<i class="oi o-' + o + '" aria-hidden="true"></i>';
     return '<span class="g o-' + o + '" style="color:var(--oc)">' + M.ORES[o].g + '</span>';
   }
+
+  // 日記殘頁小圖示：有圖用圖，沒有就用 📜
+  function pageIcon() { return ART_OK ? '<i class="pgi" aria-hidden="true"></i>' : '📜'; }
 
   // 鎮上的房子：時代開放到哪裡，就蓋到哪裡。[建築種類（對應 CSS .b-*）, 沒有圖時的 emoji]
   function townIcons() {
@@ -2222,7 +2238,7 @@ var Miner = (function () {
       case 'beam': cls = 'k-beam'; break;
       case 'boulder': cls = 'k-boulder' + (S.wob[wx + ',' + wy] ? ' wob' : ''); break;
       case 'gaspocket': cls = 'k-gp'; break;
-      case 'page': cls = 'k-page'; txt = '📜'; break;
+      case 'page': cls = 'k-page'; txt = ART_OK ? '' : '📜'; break;
       default:
         if (M.ORES[t]) { cls = 'k-ore o-' + t; txt = ART_OK && ORE_ART[t] ? '' : M.ORES[t].g; }
         else cls = 'k-rock' + (M.hash(S.seed, wx, wy, 5) < 0.5 ? ' v1' : '');
@@ -2859,7 +2875,7 @@ var Miner = (function () {
   function openJournal() {
     var html = '<div class="jlist">' + rowHtml('📕', PREFACE.title, '爺爺的筆跡', null, 'page', 'pre');
     for (var i = 0; i < JOURNAL.length; i++) {
-      if (S.pages.indexOf(i) >= 0) html += rowHtml('📜', '第 ' + (i + 1) + ' 頁 · ' + JOURNAL[i].date, JOURNAL[i].text.slice(0, 22) + '……', null, 'page', i);
+      if (S.pages.indexOf(i) >= 0) html += rowHtml(pageIcon(), '第 ' + (i + 1) + ' 頁 · ' + JOURNAL[i].date, JOURNAL[i].text.slice(0, 22) + '……', null, 'page', i);
       else {
         var hint = i < 7 ? '大約在 ' + meters(M.PAGE_ROWS[i]) + ' 公尺附近（' + M.LAYERS[M.layerIndex(M.PAGE_ROWS[i])].name + '）' : '在最深的地方';
         html += rowHtml('▫️', '第 ' + (i + 1) + ' 頁 · 還沒找到', hint, null, 'noop', '', true);

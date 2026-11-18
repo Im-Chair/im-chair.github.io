@@ -99,7 +99,7 @@ RPG 內部版號已集中到 `rpg/index.html` `<head>` 的單一常數 **`RPG_VE
 
 - 根 `sw.js` 採 **network-first**（先抓網路、失敗才用快取）。快取名為 `arcade-vN`；**改動需要立即生效的資源時，把 `CACHE` 版本號 +1**，舊快取會在 activate 時清除。
 - `sudoku/` 有自己一套 `manifest.json` + `sw.js` + `icons/`，是獨立 PWA，與根設定分開維護。
-- 天穹拓荒回合制版用到的 44 張圖（與 `sky-frontier/index.html` 的 `ART_LIST` 一致）列在根 `sw.js` 的 ASSETS；不再讀 `sky-frontier/art/index.json` 補快取。`sky-frontier/classic/` 是舊的即時沙盒原版（存檔 `arcade-sky-frontier-classic-save`、世界 `arcade-sky-frontier-world-<1~3>`），共用 `../art/`，其餘圖進去時線上抓。**原版入口與這批美術不可拿掉**（使用者明確要求）。
+- 天穹拓荒回合制版用到的 49 張圖（與 `sky-frontier/index.html` 的 `ART_LIST` 一致）列在根 `sw.js` 的 ASSETS；不再讀 `sky-frontier/art/index.json` 補快取。`sky-frontier/classic/` 是舊的即時沙盒原版（存檔 `arcade-sky-frontier-classic-save`、世界 `arcade-sky-frontier-world-<1~3>`），共用 `../art/`，其餘圖進去時線上抓。**原版入口與這批美術不可拿掉**（使用者明確要求）。
 - 根目錄 `_config.yml` 供 GitHub Pages（Jekyll）排除開發文件（CLAUDE.md、AGENTS.md、美術需求文件、`tools/`），不部署到網站。
 
 ## 本機預覽
