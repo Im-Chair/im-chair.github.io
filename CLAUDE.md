@@ -39,6 +39,10 @@
 │                       #   地圖素材、NPC 圖、按鈕框借用 ../pokemo/art/（新增借用要確認在根 sw.js 的 POKEMO_ART）；測試用 ?debug=1 開 window.__shrine，__shrine.audit() 檢查地圖可達性；_bossbot.js 是首領平衡模擬（開發用）；選配美術走 `shrine/art/index.json`，由 tools/process_art.py 產生（清單有才發請求，沒有維持程式畫法）；選配音效走 `shrine/sfx/index.json`（清單有才載入、沒有就用合成音，取樣播放器 `SND` 在 game.js），來源 casper.tw/sound-effects
 ├── rpg/                # 貪婪深淵（Roguelite，模組化多檔案 — 見下）
 ├── rpg-next/           # 貪婪深淵重製版（四職、五區、異變、噩夢階；首頁有獨立卡片，使用者確認後才取代 rpg/ 與舊卡片）。data → story（故事文本，只有資料）→ core（純邏輯，_sim.js 平衡模擬與 _fuzz.js 壓力測試都用 node 跑，不上 GitHub）→ ui；美術借用 ../rpg/（data.js 的 ART；三張首領圖放 rpg-next/art/，因為 GitHub Pages 不部署底線開頭的資料夾）；改 js/css 要升 index.html 的 NEXT_VER；委託板（data.js 的 QUESTS、MEI_STAGES 梅姐線；判定與結算在 core.js 的 questDone／settleQuests，財寶 id 尾端 * ＝三角刻痕）；各層第二條規則（尾隨的手／提燈／過路費／心臟收縮）：data.js 區域資料的 rule2 與具名常數，core.js 的 rule2Of／enterRule2（每進節點）／stealOnWin＋returnPouch（winBattle）／lampRefuel／heartFeed／tollPaid（finishRun），狀態存在 run 的 pouch／lamp／toll／heart，舊檔欄位由 ensureRuleState 補；存檔 abyss2-run（這一趟）、abyss2-meta（v:5，金幣、素質、裝備、深度、職業、成就）
+├── border-lord/        # 邊境領主（單檔 index.html，村莊經營＋掠奪戰略；存檔 border_lord_save_v1，會讀舊 key travian_offline_save_v1）。
+│                       #   CSS 是 Tailwind v3.4.17 CLI 一次性產出後內嵌在 <style id="tailwind-static">（零 build，專案裡沒有 Tailwind 設定）；之後新增 Tailwind class 要手寫 CSS 或重跑一次 CLI（content 指向該 index.html）
+├── blizzard-cabin/     # 暴雪求生：20關破屋大改造（單檔 index.html，修屋闖關；存檔 blizzard_cabin_fix_v1，會讀舊 key）。
+│                       #   純邏輯在檔內 CORE-BEGIN～CORE-END，可用 node 抽出來模擬；CSS 同樣是 Tailwind v3.4.17 CLI 一次性產出後內嵌（<style id="tailwind-static">）
 ├── covers/             # 首頁彩色封面 <遊戲>.webp（大作 900×600、小品 600×600；rpg-next 共用 rpg.webp；可缺，缺的退回 icons/ 再退回 emoji）
 ├── icons/              # 首頁卡片圖示 <遊戲>.webp（封面缺席時的退路，置中放在漸層色塊上；可缺，缺的沿用 emoji）
 └── tools/process_art.py  # 小遊戲美術後製（Pillow；不是網站的一部分）。流程見 美術需求_ChatGPT出圖.md

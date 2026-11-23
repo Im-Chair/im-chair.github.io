@@ -1,0 +1,3107 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>暴雪求生：20關破屋大改造</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@500;700;900&display=swap');
+
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+    }
+
+    body {
+      font-family: 'Noto Sans TC', sans-serif;
+      background: radial-gradient(circle at top, #1e293b 0%, #060911 100%);
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      height: 100dvh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    #game-shell {
+      width: 100%;
+      max-width: 540px;
+      height: 100dvh;
+      max-height: 960px;
+      background: #0f172a;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 25px 70px rgba(0, 0, 0, 0.92), 0 0 0 2px rgba(251, 191, 36, 0.25);
+    }
+
+    @media (min-width: 560px) {
+      #game-shell {
+        height: 96dvh;
+        border-radius: 28px;
+      }
+    }
+
+    /* 立體三選一工具卡片 */
+    .tool-card {
+      background: linear-gradient(180deg, #fffbeb 0%, #fef3c7 55%, #fde68a 100%);
+      border: 3px solid #f59e0b;
+      box-shadow: 0 5px 0 #b45309, 0 8px 16px rgba(0, 0, 0, 0.55);
+      transition: transform 0.12s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.15s ease;
+      position: relative;
+      overflow: hidden;
+      pointer-events: auto;
+    }
+
+    .tool-card:hover:not(:disabled) {
+      transform: translateY(-3px) scale(1.02);
+      border-color: #fbbf24;
+      box-shadow: 0 7px 0 #b45309, 0 0 20px rgba(251, 191, 36, 0.65);
+    }
+
+    .tool-card:active:not(:disabled) {
+      transform: translateY(3px) scale(0.96);
+      box-shadow: 0 1px 0 #b45309;
+    }
+
+    .tool-card:disabled {
+      opacity: 0.45;
+      filter: grayscale(0.8);
+      cursor: not-allowed;
+    }
+
+    @keyframes screenShake {
+      0%, 100% { transform: translate(0, 0) rotate(0deg); }
+      20% { transform: translate(-8px, 4px) rotate(-0.9deg); }
+      40% { transform: translate(8px, -4px) rotate(0.9deg); }
+      60% { transform: translate(-5px, -3px) rotate(-0.4deg); }
+      80% { transform: translate(5px, 3px) rotate(0.4deg); }
+    }
+
+    .shake {
+      animation: screenShake 0.42s ease-in-out;
+    }
+
+    @keyframes flashFade {
+      0% { opacity: 0.72; }
+      100% { opacity: 0; }
+    }
+
+    .flash-anim {
+      pointer-events: none !important;
+      animation: flashFade 0.55s ease-out forwards;
+    }
+
+    .frost-vignette {
+      pointer-events: none !important;
+      box-shadow: inset 0 0 54px 16px rgba(125, 211, 252, 0.78), inset 0 0 18px 6px rgba(255, 255, 255, 0.85);
+      transition: opacity 0.35s ease;
+    }
+
+    .cta-btn {
+      background: linear-gradient(180deg, #22c55e 0%, #15803d 100%);
+      border: 2px solid #86efac;
+      box-shadow: 0 4px 0 #14532d, 0 8px 18px rgba(0, 0, 0, 0.5);
+    }
+    .cta-btn:active {
+      transform: translateY(3px);
+      box-shadow: 0 1px 0 #14532d;
+    }
+
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+    .map-scroll::-webkit-scrollbar { width: 5px; }
+    .map-scroll::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.6); }
+    .map-scroll::-webkit-scrollbar-thumb { background: rgba(245, 158, 11, 0.65); border-radius: 999px; }
+  </style>
+<style id="tailwind-static">
+/* Tailwind CSS v3.4.17 CLI 一次性產出（取代執行期 Tailwind CDN，讓遊戲能離線玩）。新增 class 要手寫 CSS 或重跑一次 CLI */
+*,:after,:before{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgba(59,130,246,.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }::backdrop{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgba(59,130,246,.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }/*! tailwindcss v3.4.17 | MIT License | tailwindcss.com*/*,:after,:before{box-sizing:border-box;border:0 solid #e5e7eb}:after,:before{--tw-content:""}:host,html{line-height:1.5;-webkit-text-size-adjust:100%;-moz-tab-size:4;-o-tab-size:4;tab-size:4;font-family:ui-sans-serif,system-ui,sans-serif,Apple Color Emoji,Segoe UI Emoji,Segoe UI Symbol,Noto Color Emoji;font-feature-settings:normal;font-variation-settings:normal;-webkit-tap-highlight-color:transparent}body{margin:0;line-height:inherit}hr{height:0;color:inherit;border-top-width:1px}abbr:where([title]){-webkit-text-decoration:underline dotted;text-decoration:underline dotted}h1,h2,h3,h4,h5,h6{font-size:inherit;font-weight:inherit}a{color:inherit;text-decoration:inherit}b,strong{font-weight:bolder}code,kbd,pre,samp{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,Liberation Mono,Courier New,monospace;font-feature-settings:normal;font-variation-settings:normal;font-size:1em}small{font-size:80%}sub,sup{font-size:75%;line-height:0;position:relative;vertical-align:baseline}sub{bottom:-.25em}sup{top:-.5em}table{text-indent:0;border-color:inherit;border-collapse:collapse}button,input,optgroup,select,textarea{font-family:inherit;font-feature-settings:inherit;font-variation-settings:inherit;font-size:100%;font-weight:inherit;line-height:inherit;letter-spacing:inherit;color:inherit;margin:0;padding:0}button,select{text-transform:none}button,input:where([type=button]),input:where([type=reset]),input:where([type=submit]){-webkit-appearance:button;background-color:transparent;background-image:none}:-moz-focusring{outline:auto}:-moz-ui-invalid{box-shadow:none}progress{vertical-align:baseline}::-webkit-inner-spin-button,::-webkit-outer-spin-button{height:auto}[type=search]{-webkit-appearance:textfield;outline-offset:-2px}::-webkit-search-decoration{-webkit-appearance:none}::-webkit-file-upload-button{-webkit-appearance:button;font:inherit}summary{display:list-item}blockquote,dd,dl,figure,h1,h2,h3,h4,h5,h6,hr,p,pre{margin:0}fieldset{margin:0}fieldset,legend{padding:0}menu,ol,ul{list-style:none;margin:0;padding:0}dialog{padding:0}textarea{resize:vertical}input::-moz-placeholder,textarea::-moz-placeholder{opacity:1;color:#9ca3af}input::placeholder,textarea::placeholder{opacity:1;color:#9ca3af}[role=button],button{cursor:pointer}:disabled{cursor:default}audio,canvas,embed,iframe,img,object,svg,video{display:block;vertical-align:middle}img,video{max-width:100%;height:auto}[hidden]:where(:not([hidden=until-found])){display:none}.pointer-events-none{pointer-events:none}.pointer-events-auto{pointer-events:auto}.absolute{position:absolute}.relative{position:relative}.inset-0{inset:0}.bottom-0{bottom:0}.left-1\/2{left:50%}.right-0\.5{right:.125rem}.top-0{top:0}.top-0\.5{top:.125rem}.top-2\.5{top:.625rem}.z-10{z-index:10}.z-20{z-index:20}.z-30{z-index:30}.z-40{z-index:40}.z-50{z-index:50}.col-span-5{grid-column:span 5/span 5}.col-span-7{grid-column:span 7/span 7}.my-0\.5{margin-top:.125rem}.mb-0\.5,.my-0\.5{margin-bottom:.125rem}.mb-1{margin-bottom:.25rem}.mb-1\.5{margin-bottom:.375rem}.mb-2{margin-bottom:.5rem}.mb-4{margin-bottom:1rem}.mb-5{margin-bottom:1.25rem}.mt-0\.5{margin-top:.125rem}.mt-1{margin-top:.25rem}.mt-1\.5{margin-top:.375rem}.line-clamp-1{-webkit-line-clamp:1}.line-clamp-1,.line-clamp-2{overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical}.line-clamp-2{-webkit-line-clamp:2}.block{display:block}.flex{display:flex}.grid{display:grid}.hidden{display:none}.h-10{height:2.5rem}.h-2\.5{height:.625rem}.h-8{height:2rem}.h-full{height:100%}.min-h-\[240px\]{min-height:240px}.w-0\.5{width:.125rem}.w-10{width:2.5rem}.w-8{width:2rem}.w-\[93\%\]{width:93%}.w-full{width:100%}.min-w-0{min-width:0}.max-w-\[88px\]{max-width:88px}.max-w-md{max-width:28rem}.max-w-xs{max-width:20rem}.flex-1{flex:1 1 0%}.shrink-0{flex-shrink:0}.-translate-x-1\/2{--tw-translate-x:-50%}.-translate-x-1\/2,.-translate-y-2{transform:translate(var(--tw-translate-x),var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}.-translate-y-2{--tw-translate-y:-0.5rem}.translate-y-0{--tw-translate-y:0px}.scale-105,.translate-y-0{transform:translate(var(--tw-translate-x),var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}.scale-105{--tw-scale-x:1.05;--tw-scale-y:1.05}.transform{transform:translate(var(--tw-translate-x),var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}@keyframes pulse{50%{opacity:.5}}.animate-pulse{animation:pulse 2s cubic-bezier(.4,0,.6,1) infinite}.cursor-not-allowed{cursor:not-allowed}.cursor-pointer{cursor:pointer}.resize{resize:both}.grid-cols-1{grid-template-columns:repeat(1,minmax(0,1fr))}.grid-cols-12{grid-template-columns:repeat(12,minmax(0,1fr))}.grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}.grid-cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}.flex-col{flex-direction:column}.flex-wrap{flex-wrap:wrap}.items-start{align-items:flex-start}.items-end{align-items:flex-end}.items-center{align-items:center}.items-stretch{align-items:stretch}.justify-start{justify-content:flex-start}.justify-end{justify-content:flex-end}.justify-center{justify-content:center}.justify-between{justify-content:space-between}.gap-0\.5{gap:.125rem}.gap-1{gap:.25rem}.gap-1\.5{gap:.375rem}.gap-2{gap:.5rem}.gap-2\.5{gap:.625rem}.gap-3{gap:.75rem}.space-y-2\.5>:not([hidden])~:not([hidden]){--tw-space-y-reverse:0;margin-top:calc(.625rem*(1 - var(--tw-space-y-reverse)));margin-bottom:calc(.625rem*var(--tw-space-y-reverse))}.space-y-5>:not([hidden])~:not([hidden]){--tw-space-y-reverse:0;margin-top:calc(1.25rem*(1 - var(--tw-space-y-reverse)));margin-bottom:calc(1.25rem*var(--tw-space-y-reverse))}.overflow-hidden{overflow:hidden}.overflow-x-auto{overflow-x:auto}.overflow-y-auto{overflow-y:auto}.truncate{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rounded{border-radius:.25rem}.rounded-2xl{border-radius:1rem}.rounded-3xl{border-radius:1.5rem}.rounded-full{border-radius:9999px}.rounded-lg{border-radius:.5rem}.rounded-md{border-radius:.375rem}.rounded-xl{border-radius:.75rem}.border{border-width:1px}.border-2{border-width:2px}.border-b{border-bottom-width:1px}.border-t-2{border-top-width:2px}.border-dashed{border-style:dashed}.border-amber-200{--tw-border-opacity:1;border-color:rgb(253 230 138/var(--tw-border-opacity,1))}.border-amber-400{--tw-border-opacity:1;border-color:rgb(251 191 36/var(--tw-border-opacity,1))}.border-amber-400\/70{border-color:rgba(251,191,36,.7)}.border-amber-500\/40{border-color:rgba(245,158,11,.4)}.border-amber-500\/70{border-color:rgba(245,158,11,.7)}.border-amber-600\/50{border-color:rgba(217,119,6,.5)}.border-cyan-400{--tw-border-opacity:1;border-color:rgb(34 211 238/var(--tw-border-opacity,1))}.border-emerald-400{--tw-border-opacity:1;border-color:rgb(52 211 153/var(--tw-border-opacity,1))}.border-emerald-500{--tw-border-opacity:1;border-color:rgb(16 185 129/var(--tw-border-opacity,1))}.border-emerald-500\/40{border-color:rgba(16,185,129,.4)}.border-emerald-600\/70{border-color:rgba(5,150,105,.7)}.border-orange-500{--tw-border-opacity:1;border-color:rgb(249 115 22/var(--tw-border-opacity,1))}.border-red-400{--tw-border-opacity:1;border-color:rgb(248 113 113/var(--tw-border-opacity,1))}.border-red-500{--tw-border-opacity:1;border-color:rgb(239 68 68/var(--tw-border-opacity,1))}.border-red-500\/60{border-color:rgba(239,68,68,.6)}.border-red-500\/70{border-color:rgba(239,68,68,.7)}.border-rose-500\/40{border-color:rgba(244,63,94,.4)}.border-sky-400{--tw-border-opacity:1;border-color:rgb(56 189 248/var(--tw-border-opacity,1))}.border-sky-500\/40{border-color:rgba(14,165,233,.4)}.border-sky-500\/70{border-color:rgba(14,165,233,.7)}.border-sky-600\/60{border-color:rgba(2,132,199,.6)}.border-slate-500{--tw-border-opacity:1;border-color:rgb(100 116 139/var(--tw-border-opacity,1))}.border-slate-600{--tw-border-opacity:1;border-color:rgb(71 85 105/var(--tw-border-opacity,1))}.border-slate-700{--tw-border-opacity:1;border-color:rgb(51 65 85/var(--tw-border-opacity,1))}.border-slate-700\/90{border-color:rgba(51,65,85,.9)}.border-slate-800{--tw-border-opacity:1;border-color:rgb(30 41 59/var(--tw-border-opacity,1))}.border-yellow-100{--tw-border-opacity:1;border-color:rgb(254 249 195/var(--tw-border-opacity,1))}.bg-amber-100{--tw-bg-opacity:1;background-color:rgb(254 243 199/var(--tw-bg-opacity,1))}.bg-amber-200{--tw-bg-opacity:1;background-color:rgb(253 230 138/var(--tw-bg-opacity,1))}.bg-amber-300{--tw-bg-opacity:1;background-color:rgb(252 211 77/var(--tw-bg-opacity,1))}.bg-amber-300\/30{background-color:rgba(252,211,77,.3)}.bg-amber-300\/35{background-color:rgba(252,211,77,.35)}.bg-amber-400{--tw-bg-opacity:1;background-color:rgb(251 191 36/var(--tw-bg-opacity,1))}.bg-amber-500{--tw-bg-opacity:1;background-color:rgb(245 158 11/var(--tw-bg-opacity,1))}.bg-amber-900{--tw-bg-opacity:1;background-color:rgb(120 53 15/var(--tw-bg-opacity,1))}.bg-amber-950{--tw-bg-opacity:1;background-color:rgb(69 26 3/var(--tw-bg-opacity,1))}.bg-amber-950\/60{background-color:rgba(69,26,3,.6)}.bg-amber-950\/85{background-color:rgba(69,26,3,.85)}.bg-amber-950\/90{background-color:rgba(69,26,3,.9)}.bg-cyan-400\/45{background-color:rgba(34,211,238,.45)}.bg-cyan-950{--tw-bg-opacity:1;background-color:rgb(8 51 68/var(--tw-bg-opacity,1))}.bg-emerald-200{--tw-bg-opacity:1;background-color:rgb(167 243 208/var(--tw-bg-opacity,1))}.bg-emerald-400{--tw-bg-opacity:1;background-color:rgb(52 211 153/var(--tw-bg-opacity,1))}.bg-emerald-500{--tw-bg-opacity:1;background-color:rgb(16 185 129/var(--tw-bg-opacity,1))}.bg-emerald-950{--tw-bg-opacity:1;background-color:rgb(2 44 34/var(--tw-bg-opacity,1))}.bg-emerald-950\/60{background-color:rgba(2,44,34,.6)}.bg-emerald-950\/80{background-color:rgba(2,44,34,.8)}.bg-lime-200{--tw-bg-opacity:1;background-color:rgb(217 249 157/var(--tw-bg-opacity,1))}.bg-orange-200{--tw-bg-opacity:1;background-color:rgb(254 215 170/var(--tw-bg-opacity,1))}.bg-orange-950{--tw-bg-opacity:1;background-color:rgb(67 20 7/var(--tw-bg-opacity,1))}.bg-red-600{--tw-bg-opacity:1;background-color:rgb(220 38 38/var(--tw-bg-opacity,1))}.bg-red-950{--tw-bg-opacity:1;background-color:rgb(69 10 10/var(--tw-bg-opacity,1))}.bg-red-950\/95{background-color:rgba(69,10,10,.95)}.bg-rose-200{--tw-bg-opacity:1;background-color:rgb(254 205 211/var(--tw-bg-opacity,1))}.bg-rose-950\/60{background-color:rgba(76,5,25,.6)}.bg-sky-200{--tw-bg-opacity:1;background-color:rgb(186 230 253/var(--tw-bg-opacity,1))}.bg-sky-300\/25{background-color:rgba(125,211,252,.25)}.bg-sky-400\/25{background-color:rgba(56,189,248,.25)}.bg-sky-950{--tw-bg-opacity:1;background-color:rgb(8 47 73/var(--tw-bg-opacity,1))}.bg-sky-950\/60{background-color:rgba(8,47,73,.6)}.bg-sky-950\/80{background-color:rgba(8,47,73,.8)}.bg-slate-300{--tw-bg-opacity:1;background-color:rgb(203 213 225/var(--tw-bg-opacity,1))}.bg-slate-700{--tw-bg-opacity:1;background-color:rgb(51 65 85/var(--tw-bg-opacity,1))}.bg-slate-800{--tw-bg-opacity:1;background-color:rgb(30 41 59/var(--tw-bg-opacity,1))}.bg-slate-800\/80{background-color:rgba(30,41,59,.8)}.bg-slate-900{--tw-bg-opacity:1;background-color:rgb(15 23 42/var(--tw-bg-opacity,1))}.bg-slate-900\/60{background-color:rgba(15,23,42,.6)}.bg-slate-950{--tw-bg-opacity:1;background-color:rgb(2 6 23/var(--tw-bg-opacity,1))}.bg-slate-950\/85{background-color:rgba(2,6,23,.85)}.bg-gradient-to-b{background-image:linear-gradient(to bottom,var(--tw-gradient-stops))}.bg-gradient-to-r{background-image:linear-gradient(to right,var(--tw-gradient-stops))}.from-amber-500{--tw-gradient-from:#f59e0b var(--tw-gradient-from-position);--tw-gradient-to:rgba(245,158,11,0) var(--tw-gradient-to-position);--tw-gradient-stops:var(--tw-gradient-from),var(--tw-gradient-to)}.from-amber-950\/85{--tw-gradient-from:rgba(69,26,3,.85) var(--tw-gradient-from-position);--tw-gradient-to:rgba(69,26,3,0) var(--tw-gradient-to-position);--tw-gradient-stops:var(--tw-gradient-from),var(--tw-gradient-to)}.from-cyan-500{--tw-gradient-from:#06b6d4 var(--tw-gradient-from-position);--tw-gradient-to:rgba(6,182,212,0) var(--tw-gradient-to-position);--tw-gradient-stops:var(--tw-gradient-from),var(--tw-gradient-to)}.from-emerald-500{--tw-gradient-from:#10b981 var(--tw-gradient-from-position);--tw-gradient-to:rgba(16,185,129,0) var(--tw-gradient-to-position);--tw-gradient-stops:var(--tw-gradient-from),var(--tw-gradient-to)}.from-red-600{--tw-gradient-from:#dc2626 var(--tw-gradient-from-position);--tw-gradient-to:rgba(220,38,38,0) var(--tw-gradient-to-position);--tw-gradient-stops:var(--tw-gradient-from),var(--tw-gradient-to)}.from-slate-900{--tw-gradient-from:#0f172a var(--tw-gradient-from-position);--tw-gradient-to:rgba(15,23,42,0) var(--tw-gradient-to-position);--tw-gradient-stops:var(--tw-gradient-from),var(--tw-gradient-to)}.via-yellow-400{--tw-gradient-to:rgba(250,204,21,0) var(--tw-gradient-to-position);--tw-gradient-stops:var(--tw-gradient-from),#facc15 var(--tw-gradient-via-position),var(--tw-gradient-to)}.to-emerald-400{--tw-gradient-to:#34d399 var(--tw-gradient-to-position)}.to-lime-300{--tw-gradient-to:#bef264 var(--tw-gradient-to-position)}.to-orange-600{--tw-gradient-to:#ea580c var(--tw-gradient-to-position)}.to-rose-400{--tw-gradient-to:#fb7185 var(--tw-gradient-to-position)}.to-sky-300{--tw-gradient-to:#7dd3fc var(--tw-gradient-to-position)}.to-slate-900{--tw-gradient-to:#0f172a var(--tw-gradient-to-position)}.to-slate-950{--tw-gradient-to:#020617 var(--tw-gradient-to-position)}.to-yellow-300{--tw-gradient-to:#fde047 var(--tw-gradient-to-position)}.p-0\.5{padding:.125rem}.p-2{padding:.5rem}.p-3{padding:.75rem}.p-3\.5{padding:.875rem}.p-5{padding:1.25rem}.p-6{padding:1.5rem}.px-1{padding-left:.25rem;padding-right:.25rem}.px-1\.5{padding-left:.375rem;padding-right:.375rem}.px-2{padding-left:.5rem;padding-right:.5rem}.px-2\.5{padding-left:.625rem;padding-right:.625rem}.px-3{padding-left:.75rem;padding-right:.75rem}.px-3\.5{padding-left:.875rem;padding-right:.875rem}.px-4{padding-left:1rem;padding-right:1rem}.py-0\.5{padding-top:.125rem;padding-bottom:.125rem}.py-1{padding-top:.25rem;padding-bottom:.25rem}.py-1\.5{padding-top:.375rem;padding-bottom:.375rem}.py-2{padding-top:.5rem;padding-bottom:.5rem}.py-2\.5{padding-top:.625rem;padding-bottom:.625rem}.py-3{padding-top:.75rem;padding-bottom:.75rem}.pb-1{padding-bottom:.25rem}.pb-2{padding-bottom:.5rem}.pb-3{padding-bottom:.75rem}.pr-2{padding-right:.5rem}.pt-1{padding-top:.25rem}.pt-1\.5{padding-top:.375rem}.pt-2{padding-top:.5rem}.pt-2\.5{padding-top:.625rem}.pt-4{padding-top:1rem}.text-left{text-align:left}.text-center{text-align:center}.text-right{text-align:right}.text-2xl{font-size:1.5rem;line-height:2rem}.text-3xl{font-size:1.875rem;line-height:2.25rem}.text-4xl{font-size:2.25rem;line-height:2.5rem}.text-5xl{font-size:3rem;line-height:1}.text-\[10px\]{font-size:10px}.text-\[11px\]{font-size:11px}.text-\[9\.5px\]{font-size:9.5px}.text-\[9px\]{font-size:9px}.text-base{font-size:1rem;line-height:1.5rem}.text-sm{font-size:.875rem;line-height:1.25rem}.text-xl{font-size:1.25rem;line-height:1.75rem}.text-xs{font-size:.75rem;line-height:1rem}.font-black{font-weight:900}.font-bold{font-weight:700}.tabular-nums{--tw-numeric-spacing:tabular-nums;font-variant-numeric:var(--tw-ordinal) var(--tw-slashed-zero) var(--tw-numeric-figure) var(--tw-numeric-spacing) var(--tw-numeric-fraction)}.leading-4{line-height:1rem}.leading-none{line-height:1}.leading-relaxed{line-height:1.625}.leading-snug{line-height:1.375}.leading-tight{line-height:1.25}.tracking-tighter{letter-spacing:-.05em}.tracking-wide{letter-spacing:.025em}.tracking-widest{letter-spacing:.1em}.text-amber-100{--tw-text-opacity:1;color:rgb(254 243 199/var(--tw-text-opacity,1))}.text-amber-200{--tw-text-opacity:1;color:rgb(253 230 138/var(--tw-text-opacity,1))}.text-amber-300{--tw-text-opacity:1;color:rgb(252 211 77/var(--tw-text-opacity,1))}.text-amber-400{--tw-text-opacity:1;color:rgb(251 191 36/var(--tw-text-opacity,1))}.text-amber-900{--tw-text-opacity:1;color:rgb(120 53 15/var(--tw-text-opacity,1))}.text-amber-950{--tw-text-opacity:1;color:rgb(69 26 3/var(--tw-text-opacity,1))}.text-cyan-200{--tw-text-opacity:1;color:rgb(165 243 252/var(--tw-text-opacity,1))}.text-cyan-300{--tw-text-opacity:1;color:rgb(103 232 249/var(--tw-text-opacity,1))}.text-cyan-400{--tw-text-opacity:1;color:rgb(34 211 238/var(--tw-text-opacity,1))}.text-emerald-100{--tw-text-opacity:1;color:rgb(209 250 229/var(--tw-text-opacity,1))}.text-emerald-300{--tw-text-opacity:1;color:rgb(110 231 183/var(--tw-text-opacity,1))}.text-emerald-400{--tw-text-opacity:1;color:rgb(52 211 153/var(--tw-text-opacity,1))}.text-emerald-700{--tw-text-opacity:1;color:rgb(4 120 87/var(--tw-text-opacity,1))}.text-emerald-900{--tw-text-opacity:1;color:rgb(6 78 59/var(--tw-text-opacity,1))}.text-lime-900{--tw-text-opacity:1;color:rgb(54 83 20/var(--tw-text-opacity,1))}.text-orange-300{--tw-text-opacity:1;color:rgb(253 186 116/var(--tw-text-opacity,1))}.text-orange-900{--tw-text-opacity:1;color:rgb(124 45 18/var(--tw-text-opacity,1))}.text-red-100{--tw-text-opacity:1;color:rgb(254 226 226/var(--tw-text-opacity,1))}.text-red-200{--tw-text-opacity:1;color:rgb(254 202 202/var(--tw-text-opacity,1))}.text-red-300{--tw-text-opacity:1;color:rgb(252 165 165/var(--tw-text-opacity,1))}.text-red-400{--tw-text-opacity:1;color:rgb(248 113 113/var(--tw-text-opacity,1))}.text-red-700{--tw-text-opacity:1;color:rgb(185 28 28/var(--tw-text-opacity,1))}.text-rose-300{--tw-text-opacity:1;color:rgb(253 164 175/var(--tw-text-opacity,1))}.text-rose-400{--tw-text-opacity:1;color:rgb(251 113 133/var(--tw-text-opacity,1))}.text-rose-900{--tw-text-opacity:1;color:rgb(136 19 55/var(--tw-text-opacity,1))}.text-sky-100{--tw-text-opacity:1;color:rgb(224 242 254/var(--tw-text-opacity,1))}.text-sky-200{--tw-text-opacity:1;color:rgb(186 230 253/var(--tw-text-opacity,1))}.text-sky-300{--tw-text-opacity:1;color:rgb(125 211 252/var(--tw-text-opacity,1))}.text-sky-900{--tw-text-opacity:1;color:rgb(12 74 110/var(--tw-text-opacity,1))}.text-slate-100{--tw-text-opacity:1;color:rgb(241 245 249/var(--tw-text-opacity,1))}.text-slate-200{--tw-text-opacity:1;color:rgb(226 232 240/var(--tw-text-opacity,1))}.text-slate-300{--tw-text-opacity:1;color:rgb(203 213 225/var(--tw-text-opacity,1))}.text-slate-400{--tw-text-opacity:1;color:rgb(148 163 184/var(--tw-text-opacity,1))}.text-slate-500{--tw-text-opacity:1;color:rgb(100 116 139/var(--tw-text-opacity,1))}.text-slate-600{--tw-text-opacity:1;color:rgb(71 85 105/var(--tw-text-opacity,1))}.text-slate-700{--tw-text-opacity:1;color:rgb(51 65 85/var(--tw-text-opacity,1))}.text-slate-800{--tw-text-opacity:1;color:rgb(30 41 59/var(--tw-text-opacity,1))}.text-slate-900{--tw-text-opacity:1;color:rgb(15 23 42/var(--tw-text-opacity,1))}.text-slate-950{--tw-text-opacity:1;color:rgb(2 6 23/var(--tw-text-opacity,1))}.text-white{--tw-text-opacity:1;color:rgb(255 255 255/var(--tw-text-opacity,1))}.text-yellow-300{--tw-text-opacity:1;color:rgb(253 224 71/var(--tw-text-opacity,1))}.opacity-0{opacity:0}.opacity-100{opacity:1}.opacity-50{opacity:.5}.opacity-90{opacity:.9}.shadow{--tw-shadow:0 1px 3px 0 rgba(0,0,0,.1),0 1px 2px -1px rgba(0,0,0,.1);--tw-shadow-colored:0 1px 3px 0 var(--tw-shadow-color),0 1px 2px -1px var(--tw-shadow-color)}.shadow,.shadow-2xl{box-shadow:var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow)}.shadow-2xl{--tw-shadow:0 25px 50px -12px rgba(0,0,0,.25);--tw-shadow-colored:0 25px 50px -12px var(--tw-shadow-color)}.shadow-\[0_0_15px_rgba\(245\2c 158\2c 11\2c 0\.25\)\]{--tw-shadow:0 0 15px rgba(245,158,11,.25);--tw-shadow-colored:0 0 15px var(--tw-shadow-color)}.shadow-\[0_0_15px_rgba\(245\2c 158\2c 11\2c 0\.25\)\],.shadow-\[0_0_6px_\#34d399\]{box-shadow:var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow)}.shadow-\[0_0_6px_\#34d399\]{--tw-shadow:0 0 6px #34d399;--tw-shadow-colored:0 0 6px var(--tw-shadow-color)}.shadow-inner{--tw-shadow:inset 0 2px 4px 0 rgba(0,0,0,.05);--tw-shadow-colored:inset 0 2px 4px 0 var(--tw-shadow-color)}.shadow-inner,.shadow-md{box-shadow:var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow)}.shadow-md{--tw-shadow:0 4px 6px -1px rgba(0,0,0,.1),0 2px 4px -2px rgba(0,0,0,.1);--tw-shadow-colored:0 4px 6px -1px var(--tw-shadow-color),0 2px 4px -2px var(--tw-shadow-color)}.grayscale{--tw-grayscale:grayscale(100%)}.filter,.grayscale{filter:var(--tw-blur) var(--tw-brightness) var(--tw-contrast) var(--tw-grayscale) var(--tw-hue-rotate) var(--tw-invert) var(--tw-saturate) var(--tw-sepia) var(--tw-drop-shadow)}.backdrop-blur-md{--tw-backdrop-blur:blur(12px)}.backdrop-blur-md,.backdrop-blur-sm{-webkit-backdrop-filter:var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia);backdrop-filter:var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia)}.backdrop-blur-sm{--tw-backdrop-blur:blur(4px)}.transition{transition-property:color,background-color,border-color,text-decoration-color,fill,stroke,opacity,box-shadow,transform,filter,-webkit-backdrop-filter;transition-property:color,background-color,border-color,text-decoration-color,fill,stroke,opacity,box-shadow,transform,filter,backdrop-filter;transition-property:color,background-color,border-color,text-decoration-color,fill,stroke,opacity,box-shadow,transform,filter,backdrop-filter,-webkit-backdrop-filter;transition-timing-function:cubic-bezier(.4,0,.2,1);transition-duration:.15s}.transition-all{transition-property:all;transition-timing-function:cubic-bezier(.4,0,.2,1);transition-duration:.15s}.transition-colors{transition-property:color,background-color,border-color,text-decoration-color,fill,stroke;transition-timing-function:cubic-bezier(.4,0,.2,1);transition-duration:.15s}.transition-transform{transition-property:transform;transition-timing-function:cubic-bezier(.4,0,.2,1);transition-duration:.15s}.duration-100{transition-duration:.1s}.duration-200{transition-duration:.2s}.ease-out{transition-timing-function:cubic-bezier(0,0,.2,1)}.hover\:border-amber-400:hover{--tw-border-opacity:1;border-color:rgb(251 191 36/var(--tw-border-opacity,1))}.hover\:border-red-500:hover{--tw-border-opacity:1;border-color:rgb(239 68 68/var(--tw-border-opacity,1))}.hover\:bg-amber-950:hover{--tw-bg-opacity:1;background-color:rgb(69 26 3/var(--tw-bg-opacity,1))}.hover\:bg-red-950:hover{--tw-bg-opacity:1;background-color:rgb(69 10 10/var(--tw-bg-opacity,1))}.hover\:bg-slate-700:hover{--tw-bg-opacity:1;background-color:rgb(51 65 85/var(--tw-bg-opacity,1))}.hover\:bg-slate-800:hover{--tw-bg-opacity:1;background-color:rgb(30 41 59/var(--tw-bg-opacity,1))}.hover\:text-red-300:hover{--tw-text-opacity:1;color:rgb(252 165 165/var(--tw-text-opacity,1))}.active\:translate-y-0\.5:active{--tw-translate-y:0.125rem;transform:translate(var(--tw-translate-x),var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}.disabled\:opacity-40:disabled{opacity:.4}@media (min-width:640px){.sm\:text-2xl{font-size:1.5rem;line-height:2rem}.sm\:text-lg{font-size:1.125rem;line-height:1.75rem}.sm\:text-sm{font-size:.875rem;line-height:1.25rem}}
+</style>
+</head>
+<body>
+  <div id="game-shell">
+    <!-- ========================================================================
+         1. 頂部狀態儀表板 (室溫生命線 + 豪華改造度 + 狂風預警)
+         ======================================================================== -->
+    <header class="relative z-20 px-3 pt-2.5 pb-2 bg-slate-950 border-b border-slate-800 shrink-0">
+      <div class="flex items-center justify-between gap-1.5 mb-2">
+        <!-- 返回 20 關地圖按鈕 -->
+        <button id="btn-open-map" type="button" class="bg-gradient-to-r from-amber-500 to-orange-600 border border-amber-200 px-2.5 py-1 rounded-xl flex items-center gap-1.5 shrink-0 shadow cursor-pointer active:translate-y-0.5">
+          <span class="text-xs">🗺️</span>
+          <div class="leading-none text-left">
+            <div id="hud-level-badge" class="text-[10px] font-black text-amber-100">第 1 關</div>
+            <div id="hud-level-name" class="text-[11px] font-black text-white max-w-[88px] truncate">漏風破木屋</div>
+          </div>
+        </button>
+
+        <!-- 暴風雪狂風預警條 -->
+        <div id="gale-hud" class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-2 py-1 flex items-center justify-between gap-1 min-w-0">
+          <div class="flex items-center gap-1 min-w-0">
+            <span id="gale-icon" class="text-xs shrink-0">🌨️</span>
+            <span id="gale-label" class="text-[10px] font-black text-slate-300 truncate">暴風雪平穩</span>
+          </div>
+          <span id="gale-timer" class="text-[10px] font-black px-1.5 py-0.5 rounded bg-slate-800 text-cyan-300 tabular-nums shrink-0">無狂風</span>
+        </div>
+
+        <!-- 音效與重來按鈕 -->
+        <div class="flex items-center gap-1 shrink-0">
+          <button id="btn-sound" type="button" title="音效開關" class="w-8 h-8 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 flex items-center justify-center text-xs text-white cursor-pointer">
+            🔊
+          </button>
+          <button id="btn-quick-restart" type="button" title="重玩本關" class="w-8 h-8 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 flex items-center justify-center text-xs text-white cursor-pointer">
+            🔄
+          </button>
+        </div>
+      </div>
+
+      <!-- 室溫生命線 & 豪華改造進度 -->
+      <div class="grid grid-cols-12 gap-1.5 items-stretch">
+        <!-- 左側：室內溫度計 (降到 0°C 凍死，升到目標溫度過關) -->
+        <div class="col-span-7 bg-slate-900 border border-slate-700/90 rounded-2xl px-2.5 py-1.5 flex flex-col justify-between">
+          <div class="flex items-center justify-between gap-1 mb-1">
+            <div class="flex items-center gap-1">
+              <span id="temp-emoji" class="text-base leading-none">🥶</span>
+              <span id="temp-value" class="text-sm font-black text-cyan-300 tabular-nums">12.0°C</span>
+            </div>
+            <span id="leak-badge" class="text-[10px] font-black px-1.5 py-0.5 rounded-md bg-red-950 text-red-300 border border-red-500/70">
+              冷風滲入中
+            </span>
+          </div>
+          <div class="relative w-full h-2.5 bg-slate-950 rounded-full overflow-hidden p-0.5 border border-slate-700">
+            <div id="temp-bar" class="h-full rounded-full transition-all duration-100 bg-gradient-to-r from-cyan-500 to-sky-300" style="width: 45%;"></div>
+            <div id="target-temp-marker" class="absolute top-0 bottom-0 w-0.5 bg-emerald-400 shadow-[0_0_6px_#34d399]" style="left: 78%;"></div>
+          </div>
+          <div class="flex justify-between text-[9px] font-bold text-slate-400 mt-0.5">
+            <span>0°C 凍僵</span>
+            <span id="target-temp-text" class="text-emerald-400">目標 22°C</span>
+          </div>
+        </div>
+
+        <!-- 右側：破屋變豪宅星級進度 -->
+        <div class="col-span-5 bg-slate-900 border border-slate-700/90 rounded-2xl px-2.5 py-1.5 flex flex-col justify-between">
+          <div class="flex items-center justify-between">
+            <span class="text-[10px] font-bold text-amber-300">豪宅改造度</span>
+            <span id="luxury-stars-preview" class="text-[11px] tracking-tighter">☆☆☆</span>
+          </div>
+          <div class="w-full h-2.5 bg-slate-950 rounded-full overflow-hidden p-0.5 border border-slate-700 my-0.5">
+            <div id="luxury-bar" class="h-full rounded-full transition-all duration-200 bg-gradient-to-r from-amber-500 via-yellow-400 to-emerald-400" style="width: 0%;"></div>
+          </div>
+          <div class="flex items-center justify-between text-[9px] font-bold">
+            <span class="text-slate-400">已修繕</span>
+            <span id="repair-count-text" class="text-amber-300 font-black">0 / 6 處</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 材料點數 / 本關天氣 / 章節規則 -->
+      <div id="info-row" class="mt-1.5 flex flex-col gap-1">
+        <div class="flex items-start gap-1.5">
+          <span id="budget-chip" class="shrink-0 px-2 py-0.5 rounded-md text-[10px] font-black tabular-nums bg-amber-950 text-amber-200 border border-amber-500/70">🧰 材料 0 / 0</span>
+          <span id="weather-chip" class="flex-1 min-w-0 px-2 py-0.5 rounded-md text-[10px] font-bold leading-tight bg-slate-900 text-sky-200 border border-sky-600/60"></span>
+        </div>
+        <div id="rule-chip" class="hidden px-2 py-0.5 rounded-md text-[10px] font-bold leading-tight bg-slate-900 text-amber-200 border border-amber-600/50"></div>
+      </div>
+    </header>
+
+    <!-- ========================================================================
+         2. 中央 Canvas 互動舞台 (可直接點擊場景破洞 + 破屋變豪宅即時演變)
+         ======================================================================== -->
+    <main id="canvas-wrapper" class="relative flex-1 w-full min-h-[240px] overflow-hidden bg-slate-800">
+      <canvas id="game-canvas" class="block w-full h-full cursor-pointer"></canvas>
+
+      <!-- 低於 5°C 結霜邊框 -->
+      <div id="frost-layer" class="pointer-events-none absolute inset-0 z-10 frost-vignette opacity-0"></div>
+
+      <!-- 浮動事件反饋提示 -->
+      <div id="feedback-toast" class="pointer-events-none absolute top-2.5 left-1/2 -translate-x-1/2 z-20 w-[93%] max-w-md opacity-0 transition-all duration-200 transform -translate-y-2">
+        <div id="feedback-toast-inner" class="px-3.5 py-2 rounded-2xl border-2 text-center shadow-2xl backdrop-blur-md pointer-events-none">
+          <div id="feedback-title" class="text-xs sm:text-sm font-black"></div>
+          <div id="feedback-desc" class="text-[11px] font-bold mt-0.5 leading-snug"></div>
+        </div>
+      </div>
+
+      <!-- 閃光特效層 -->
+      <div id="flash-layer" class="hidden pointer-events-none absolute inset-0 z-10"></div>
+    </main>
+
+    <!-- ========================================================================
+         3. 底部「道具三選一」操作面板 (每個破洞抽 3 張，點數不足的卡變灰)
+         ======================================================================== -->
+    <section id="bottom-control-panel" class="relative z-30 bg-slate-950 border-t-2 border-amber-500/40 px-2.5 pt-2 pb-3 shrink-0 pointer-events-auto">
+      <!-- 快捷破損目標切換列 (與畫布點擊完全同步) -->
+      <div class="flex items-center justify-between gap-1 mb-1.5">
+        <span class="text-[10px] font-black text-amber-400 shrink-0">👆 點破洞或選項目：</span>
+        <div id="hotspot-tabs" class="flex items-center gap-1 overflow-x-auto no-scrollbar flex-1 justify-end"></div>
+      </div>
+
+      <!-- 當前選中破洞的提示說明條 -->
+      <div class="bg-slate-900 border border-slate-700/90 rounded-xl px-2.5 py-1 mb-2 flex items-center justify-between gap-2">
+        <div id="selected-hotspot-desc" class="text-[11px] font-bold text-slate-100 truncate">
+          屋頂大破洞：寒風與暴雪正從頭頂灌入！
+        </div>
+        <span id="selected-hotspot-leak" class="text-[10px] font-black px-1.5 py-0.5 rounded bg-red-950 text-red-300 border border-red-500/60 shrink-0">
+          ❄️❄️❄️ 極寒漏風
+        </span>
+      </div>
+
+      <!-- 經典道具三選一大卡片 -->
+      <div id="cards-container" class="grid grid-cols-3 gap-1.5"></div>
+      <!-- 免費保底道具：點數用完時的出路 -->
+      <div id="fallback-container" class="mt-1.5"></div>
+    </section>
+
+    <!-- ========================================================================
+         4. 20 關地圖選擇覆蓋層
+         ======================================================================== -->
+    <div id="map-overlay" class="absolute inset-0 z-40 bg-slate-950/96 backdrop-blur-md flex flex-col">
+      <div class="px-4 pt-4 pb-3 bg-gradient-to-b from-slate-900 to-slate-950 border-b border-slate-800 shrink-0">
+        <a href="../" style="display:inline-block;margin-bottom:6px;font-size:11px;font-weight:700;color:#94a3b8;text-decoration:none" aria-label="回 ARCADE 首頁">← ARCADE</a>
+        <div class="flex items-center justify-between mb-2">
+          <div class="flex items-center gap-2">
+            <span class="text-2xl">🏡</span>
+            <div>
+              <h1 class="text-base sm:text-lg font-black text-white leading-tight">暴雪求生：20關破屋大改造</h1>
+              <p class="text-[11px] text-slate-400">點選破洞 • 抽三選一 • 看天氣與材料點數 • 破屋蛻變豪宅</p>
+            </div>
+          </div>
+          <div class="bg-amber-950/85 border border-amber-400/70 rounded-2xl px-3 py-1 text-right shrink-0">
+            <div class="text-[9px] font-bold text-amber-300">總收集星數</div>
+            <div id="total-stars-display" class="text-sm font-black text-yellow-300">⭐ 0 / 60</div>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between gap-2 pt-1">
+          <button id="btn-continue-latest" type="button" class="flex-1 cta-btn py-2 px-3 rounded-xl text-xs font-black text-white flex items-center justify-center gap-1.5 cursor-pointer">
+            <span>▶️ 開始挑戰最新關卡</span>
+          </button>
+          <button id="btn-dev-unlock" type="button" title="一鍵解鎖全部 20 關" class="px-2.5 py-2 rounded-xl bg-slate-900 hover:bg-amber-950 border border-amber-500/70 text-[10px] font-black text-amber-300 cursor-pointer transition-colors">
+            🔓 全關解鎖
+          </button>
+          <button id="btn-reset-save" type="button" class="px-2.5 py-2 rounded-xl bg-slate-900 hover:bg-red-950 border border-slate-700 hover:border-red-500 text-[10px] font-bold text-slate-400 hover:text-red-300 cursor-pointer transition-colors">
+            重置
+          </button>
+        </div>
+      </div>
+
+      <div id="map-list-container" class="map-scroll flex-1 overflow-y-auto p-3.5 space-y-5"></div>
+    </div>
+
+    <!-- ========================================================================
+         5. 單關結算覆蓋層 (雙結局展示：勉強破屋 vs 夢幻豪華別墅)
+         ======================================================================== -->
+    <div id="end-overlay" class="hidden pointer-events-none absolute inset-0 z-50 bg-slate-950/92 backdrop-blur-md flex flex-col items-center justify-center p-5 text-center">
+      <div id="end-badge" class="px-4 py-1 rounded-full text-xs font-black tracking-widest mb-2 border"></div>
+      <div id="end-stars-row" class="text-4xl mb-1.5 tracking-widest">⭐⭐⭐</div>
+      <div id="end-emoji" class="text-5xl mb-2">🏰</div>
+      <h2 id="end-title" class="text-xl sm:text-2xl font-black text-white mb-1.5"></h2>
+      <p id="end-subtitle" class="text-xs text-slate-300 max-w-xs mb-4 leading-relaxed"></p>
+
+      <div class="w-full max-w-xs bg-slate-900 border border-slate-700 rounded-2xl p-3 mb-5 grid grid-cols-3 gap-2">
+        <div class="bg-slate-800/80 rounded-xl p-2">
+          <div class="text-[9px] text-slate-400 font-bold">室內溫度</div>
+          <div id="stat-final-temp" class="text-sm font-black text-amber-400 mt-0.5">24.0°C</div>
+        </div>
+        <div class="bg-slate-800/80 rounded-xl p-2">
+          <div class="text-[9px] text-slate-400 font-bold">豪宅改造度</div>
+          <div id="stat-luxury-pct" class="text-sm font-black text-emerald-300 mt-0.5">100%</div>
+        </div>
+        <div class="bg-slate-800/80 rounded-xl p-2">
+          <div class="text-[9px] text-slate-400 font-bold">選錯次數</div>
+          <div id="stat-mistakes" class="text-sm font-black text-rose-400 mt-0.5">0 次</div>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2.5 w-full max-w-xs">
+        <button id="btn-end-map" type="button" class="flex-1 px-4 py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-xs font-black text-white cursor-pointer">
+          🗺️ 關卡地圖
+        </button>
+        <button id="btn-end-next" type="button" class="flex-1 cta-btn px-4 py-3 rounded-2xl text-xs font-black text-white cursor-pointer">
+          ➡️ 下一關
+        </button>
+      </div>
+    </div>
+
+    <!-- 自訂確認重置彈窗 -->
+    <div id="confirm-modal" class="hidden pointer-events-none absolute inset-0 z-50 bg-slate-950/85 backdrop-blur-sm flex items-center justify-center p-6">
+      <div class="bg-slate-900 border-2 border-red-500/70 rounded-3xl p-5 max-w-xs w-full text-center shadow-2xl">
+        <div class="text-3xl mb-2">⚠️</div>
+        <h3 class="text-base font-black text-white mb-1">確定要清除所有關卡進度？</h3>
+        <p class="text-xs text-slate-300 mb-4">所有星級評價與已解鎖地圖將重置回第 1 關。</p>
+        <div class="grid grid-cols-2 gap-2">
+          <button id="btn-cancel-reset" type="button" class="py-2.5 rounded-xl bg-slate-800 border border-slate-600 text-xs font-black text-slate-200 cursor-pointer">取消</button>
+          <button id="btn-confirm-reset" type="button" class="py-2.5 rounded-xl bg-red-600 border border-red-400 text-xs font-black text-white cursor-pointer">確定重置</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /**
+     * ============================================================================
+     * 1. Web Audio API 合成音效引擎 (風雪聲 / 敲打修繕 / 豪華叮咚 / 搞笑失誤音)
+     * ============================================================================
+     */
+    class SoundEngine {
+      constructor() {
+        this.ctx = null;
+        this.enabled = true;
+        this.windGain = null;
+        this.windFilter = null;
+        this.currentWindLevel = 0.04;
+      }
+
+      init() {
+        try {
+          if (!this.ctx) {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (!AudioCtx) return;
+            this.ctx = new AudioCtx();
+            this.startWindLoop();
+          }
+          if (this.ctx && this.ctx.state === 'suspended') {
+            this.ctx.resume();
+          }
+        } catch (e) {}
+      }
+
+      toggle() {
+        this.enabled = !this.enabled;
+        if (this.windGain && this.ctx) {
+          this.windGain.gain.setTargetAtTime(this.enabled ? this.currentWindLevel : 0, this.ctx.currentTime, 0.1);
+        }
+        return this.enabled;
+      }
+
+      startWindLoop() {
+        if (!this.ctx) return;
+        const bufferSize = this.ctx.sampleRate * 2;
+        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          data[i] = Math.random() * 2 - 1;
+        }
+
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = buffer;
+        noise.loop = true;
+
+        this.windFilter = this.ctx.createBiquadFilter();
+        this.windFilter.type = 'bandpass';
+        this.windFilter.frequency.value = 390;
+        this.windFilter.Q.value = 3.2;
+
+        this.windGain = this.ctx.createGain();
+        this.windGain.gain.value = this.enabled ? this.currentWindLevel : 0;
+
+        noise.connect(this.windFilter);
+        this.windFilter.connect(this.windGain);
+        this.windGain.connect(this.ctx.destination);
+        noise.start();
+      }
+
+      setWindIntensity(level, isGale = false) {
+        this.currentWindLevel = level;
+        if (this.windGain && this.ctx) {
+          this.windGain.gain.setTargetAtTime(this.enabled ? level : 0, this.ctx.currentTime, 0.2);
+          if (this.windFilter) {
+            this.windFilter.frequency.setTargetAtTime(isGale ? 680 : 380, this.ctx.currentTime, 0.2);
+          }
+        }
+      }
+
+      playClick() {
+        if (!this.enabled || !this.ctx) return;
+        try {
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(600, now);
+          osc.frequency.exponentialRampToValueAtTime(880, now + 0.05);
+          gain.gain.setValueAtTime(0.12, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.065);
+        } catch (e) {}
+      }
+
+      playLuxurySuccess() {
+        if (!this.enabled || !this.ctx) return;
+        try {
+          const now = this.ctx.currentTime;
+          // 兩下木槌敲擊聲
+          [0, 0.11].forEach((offset) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(180, now + offset);
+            osc.frequency.exponentialRampToValueAtTime(65, now + offset + 0.075);
+            gain.gain.setValueAtTime(0.13, now + offset);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.08);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(now + offset);
+            osc.stop(now + offset + 0.085);
+          });
+
+          // 華麗和弦叮咚
+          [523.25, 659.25, 783.99, 1046.5].forEach((freq, idx) => {
+            const t = now + 0.20 + idx * 0.065;
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, t);
+            gain.gain.setValueAtTime(0.14, t);
+            gain.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(t);
+            osc.stop(t + 0.23);
+          });
+        } catch (e) {}
+      }
+
+      playMakeshiftSuccess() {
+        if (!this.enabled || !this.ctx) return;
+        try {
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(420, now);
+          osc.frequency.linearRampToValueAtTime(560, now + 0.14);
+          gain.gain.setValueAtTime(0.13, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.17);
+        } catch (e) {}
+      }
+
+      playFail() {
+        if (!this.enabled || !this.ctx) return;
+        try {
+          const now = this.ctx.currentTime;
+          [0, 0.14, 0.28].forEach((offset) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(150, now + offset);
+            osc.frequency.linearRampToValueAtTime(75, now + offset + 0.12);
+            gain.gain.setValueAtTime(0.18, now + offset);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.13);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(now + offset);
+            osc.stop(now + offset + 0.135);
+          });
+        } catch (e) {}
+      }
+
+      playAlarm() {
+        if (!this.enabled || !this.ctx) return;
+        try {
+          const now = this.ctx.currentTime;
+          [0, 0.18].forEach((offset) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(760, now + offset);
+            osc.frequency.linearRampToValueAtTime(520, now + offset + 0.14);
+            gain.gain.setValueAtTime(0.11, now + offset);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.15);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(now + offset);
+            osc.stop(now + offset + 0.16);
+          });
+        } catch (e) {}
+      }
+
+      playVictory() {
+        if (!this.enabled || !this.ctx) return;
+        try {
+          const now = this.ctx.currentTime;
+          [
+            { f: 523.25, t: 0.0, d: 0.12 },
+            { f: 659.25, t: 0.13, d: 0.12 },
+            { f: 783.99, t: 0.26, d: 0.12 },
+            { f: 1046.5, t: 0.39, d: 0.38 }
+          ].forEach((n) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(n.f, now + n.t);
+            gain.gain.setValueAtTime(0.18, now + n.t);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + n.t + n.d);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(now + n.t);
+            osc.stop(now + n.t + n.d + 0.02);
+          });
+        } catch (e) {}
+      }
+
+      playGameOver() {
+        if (!this.enabled || !this.ctx) return;
+        try {
+          const now = this.ctx.currentTime;
+          [392.0, 349.23, 311.13, 261.63].forEach((freq, idx) => {
+            const t = now + idx * 0.22;
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, t);
+            gain.gain.setValueAtTime(0.16, t);
+            gain.gain.exponentialRampToValueAtTime(0.001, t + 0.26);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(t);
+            osc.stop(t + 0.28);
+          });
+        } catch (e) {}
+      }
+    }
+
+    const sound = new SoundEngine();
+
+    /**
+     * ============================================================================
+     * 2. 材料特性 / 天氣 / 場景破洞道具池 (純資料)
+     *    每個破洞有 5~6 張一般道具 (含 1 張陷阱)，每次打開從中抽 3 張。
+     *    道具特性會與「本關天氣」互相作用，沒有任何一張卡在所有天氣下都最好。
+     * ============================================================================
+     */
+    // ==CORE-BEGIN== (以下到 CORE-END 為純資料與純邏輯，不碰 DOM，可在 node 下載入模擬)
+
+    // 道具特性標籤：卡片上直接顯示
+    const TRAIT_INFO = {
+      windproof: { label: '抗風', tip: '狂風吹不掉' },
+      galefear:  { label: '怕狂風', tip: '狂風來必被吹掉，連豪華材料也一樣' },
+      warm:      { label: '保暖', tip: '每秒加溫較多' },
+      damp:      { label: '怕潮', tip: '濕雪天或剛除冰的破洞，效果打折' },
+      dry:       { label: '烘乾', tip: '除冰後不留潮氣' }
+    };
+
+    // 材料類別 (第四章「缺料」規則使用)
+    const CATEGORIES = { wood: '木材', soft: '布紙', hard: '五金石材' };
+
+    // 本關天氣：所有數值都在這裡，方便日後調整
+    //   leakMul 漏風倍率、baseMul 基礎失溫倍率、dampMul 怕潮材料的效果倍率、
+    //   warmMul 保暖材料的每秒加溫倍率、galeLeakMul 狂風來襲那 5 秒的漏風倍率
+    const WEATHERS = {
+      normal: { id: 'normal', name: '一般', icon: '🌨️', leakMul: 1, baseMul: 1, dampMul: 1, warmMul: 1,
+        desc: '一般：暴雪平穩，沒有額外影響，材料照常發揮。' },
+      gale:   { id: 'gale', name: '狂風', icon: '🌪️', leakMul: 1, baseMul: 1, dampMul: 1, warmMul: 1, galeLeakMul: 2.1,
+        desc: '狂風：每 {N} 秒吹掉不抗風的修補，怕狂風的材料即使豪華也一樣。' },
+      wet:    { id: 'wet', name: '濕雪', icon: '💧', leakMul: 1, baseMul: 1, dampMul: 0.5, warmMul: 1,
+        desc: '濕雪：怕潮的材料效果減半。' },
+      cold:   { id: 'cold', name: '酷寒', icon: '🥶', leakMul: 1.35, baseMul: 1.35, dampMul: 1, warmMul: 2,
+        desc: '酷寒：降溫更快，保暖材料的加溫加倍。' }
+    };
+    // 結冰剛除掉的破洞是濕的：怕潮材料沿用濕雪的折扣
+    const WET_HOTSPOT_DAMP_MUL = WEATHERS.wet.dampMul;
+
+    // 道具建構小工具 (純資料)：陷阱 / 湊合 / 豪華
+    const TRAP = (icon, name, tag, delta, fail, say, fx) =>
+      ({ tier: 'trap', icon, name, tag, delta, fail, say, fx, cost: 0 });
+    const MS = (icon, name, cost, delta, seal, traits, cat, say, heat) =>
+      ({ tier: 'makeshift', icon, name, cost, delta, seal, traits, cat, say, heat: heat || 0 });
+    const LX = (icon, name, cost, delta, seal, heat, traits, cat, say) =>
+      ({ tier: 'luxury', icon, name, cost, delta, seal, heat, traits, cat, say });
+    // 除冰道具 (第一階段)：tier 只決定費用與烘乾；traits 含 'dry' 代表除冰後乾燥
+    const DEICE = (tier, icon, name, cost, delta, traits, cat, say) =>
+      ({ tier, icon, name, cost, delta, traits, cat, say, stage1: true });
+
+    const HOTSPOT_LIBRARY = {
+      // 1. 屋頂破洞 (最大冷風口)
+      roof: {
+        id: 'roof', name: '屋頂破洞', icon: '🏚️', coldLevel: 3, leakPerSec: 0.65,
+        pos: { x: 0.50, y: 0.11 },
+        brokenDesc: '屋頂大破洞：暴雪與寒流正從頭頂瘋狂灌入！',
+        makeshiftDesc: '臨時遮蓋：勉強擋風，沒有抗風的材料遇狂風會被掀飛！',
+        luxuryDesc: '隔熱屋頂完工：溫暖氣密，垂掛金色聖誕花環！',
+        choices: [
+          TRAP('💨', '吹風機往上吹', '越吹越冷', -3.2, '吹風機把屋頂積雪全吹進屋裡！', '哇啊！雪全被吹進屋裡啦！', 'snow_dump'),
+          MS('⛺', '塑膠帆布蓋住', 1, 1.5, 0.75, [], 'soft', '暫時擋住雪了，不過帆布被風吹得啪啪響…'),
+          LX('🧱', '紅瓦片+原木樑', 3, 3.5, 1, null, ['damp'], 'wood', '太棒了！屋頂變得又堅固又漂亮！'),
+          MS('🪨', '壓石防水布', 1, 0.9, 0.5, ['windproof'], 'hard', '石頭壓著，風再大也掀不動。'),
+          MS('🌾', '稻草保溫層', 1, 1.0, 0.6, ['warm', 'damp'], 'soft', '稻草鋪厚一點，屋裡像窩一樣暖。', 0.15),
+          LX('🔲', '鍍鋁隔熱板', 2, 2.4, 0.85, 0.2, ['warm', 'galefear'], 'hard', '亮晶晶的隔熱板，就是怕大風。')
+        ]
+      },
+
+      // 2. 碎裂窗戶 (結冰時先除冰 -> 再裝窗)
+      window: {
+        id: 'window', name: '碎裂窗戶', icon: '🪟', coldLevel: 2, leakPerSec: 0.48,
+        pos: { x: 0.20, y: 0.34 },
+        brokenDesc: '西側碎裂窗框：刺骨寒風呼嘯灌入！',
+        icedDesc: '窗框結滿鋒利冰柱！必須先除冰才能安裝新窗戶！',
+        makeshiftDesc: '臨時封窗：昏暗又透風，不抗風的材料遇狂風會被吹破！',
+        luxuryDesc: '雙層玻璃窗完工：溫暖透光！',
+        stage1Choices: [
+          TRAP('🔨', '直接硬塞玻璃', '冰柱卡住', -3.0, '窗框冰柱把新玻璃當場頂碎！', '哎呀！冰柱沒清掉，玻璃全碎了！', 'spark_fail'),
+          DEICE('makeshift', '🫖', '潑溫水融冰', 1, 0.8, [], 'soft', '冰化掉了，快趁還沒結冰把窗戶修好！'),
+          DEICE('luxury', '🔦', '高溫噴燈除冰', 2, 2.0, ['dry'], 'hard', '好暖和！窗框上的冰全消失了！'),
+          DEICE('makeshift', '🧂', '撒融雪鹽', 1, 0.6, [], 'hard', '鹽一撒冰就酥了，可惜窗框濕答答。'),
+          DEICE('luxury', '🔥', '小火盆烤窗框', 2, 1.6, ['dry'], 'wood', '火盆一烤，窗框又乾又暖。')
+        ],
+        choices: [
+          TRAP('💦', '潑水結冰封窗', '變成冰窖', -3.2, '潑出去的水在地板結成大冰塊！', '媽媽好冷，地板全結冰了！', 'ice_blast'),
+          MS('📰', '舊報紙+膠帶', 1, 1.5, 0.75, ['damp'], 'soft', '雖然糊上報紙了，但風吹過來還是涼涼的…'),
+          LX('🪟', '雙層防風彩窗', 3, 3.2, 1, null, [], 'hard', '哇～新窗戶和紅窗簾看起來好像城堡！'),
+          MS('🪵', '釘木板封窗', 1, 0.9, 0.5, ['windproof'], 'wood', '木板釘死，窗是黑了點，風可進不來。'),
+          MS('🧶', '厚毛毯掛窗', 1, 1.0, 0.6, ['warm', 'damp'], 'soft', '毛毯一掛，窗邊就暖多了。', 0.15),
+          LX('🎞️', '真空隔熱膜', 2, 2.3, 0.85, 0.2, ['warm', 'galefear'], 'soft', '薄薄一層保溫效果好，風一大就被撕走。')
+        ]
+      },
+
+      // 3. 牆壁大破洞
+      wall: {
+        id: 'wall', name: '牆壁破洞', icon: '🧱', coldLevel: 2, leakPerSec: 0.45,
+        pos: { x: 0.80, y: 0.34 },
+        brokenDesc: '東側牆壁破大洞：暴雪冷風橫向吹襲！',
+        makeshiftDesc: '臨時封洞：勉強擋風，不抗風的材料遇狂風會被撕裂！',
+        luxuryDesc: '實木壁板完工：溫馨氣派！',
+        choices: [
+          TRAP('⛄', '堆雪塊堵破洞', '極寒傳導', -3.5, '雪牆把零下寒氣直接導進屋內！', '雪塊融化後把牆壁弄得更冰了！', 'snow_dump'),
+          MS('📦', '舊紙箱板遮擋', 1, 1.4, 0.75, ['damp'], 'soft', '紙箱暫時擋住風了，希望別吹破…'),
+          LX('🪵', '實木壁板+壁燈', 3, 3.2, 1, null, ['damp'], 'wood', '壁燈亮起來好溫暖，破洞完全看不見了！'),
+          MS('🔩', '鐵皮波浪板', 1, 0.9, 0.5, ['windproof'], 'hard', '鐵皮敲得叮噹響，風吹不掉。'),
+          MS('🐑', '羊毛氈填縫', 1, 1.0, 0.6, ['warm', 'damp'], 'soft', '羊毛塞滿縫隙，牆邊暖暖的。', 0.15),
+          LX('⬜', '發泡隔熱板', 2, 2.3, 0.85, 0.2, ['warm', 'galefear'], 'soft', '又輕又保暖，可惜風大會被掀走。')
+        ]
+      },
+
+      // 4. 破舊木門 / 門縫灌風
+      door: {
+        id: 'door', name: '歪斜破木門', icon: '🚪', coldLevel: 2, leakPerSec: 0.40,
+        pos: { x: 0.91, y: 0.56 },
+        brokenDesc: '大門門板破裂、門縫狂灌冷風！',
+        makeshiftDesc: '臨時擋門：勉強擋風，外觀破舊！',
+        luxuryDesc: '厚實橡木門：氣派防風！',
+        choices: [
+          TRAP('🪢', '細麻繩綁門把', '門縫依舊', -2.6, '狂風一吹門板照樣敞開灌雪！', '門縫還在吹冷風，腳都凍麻了！', 'paper_fly'),
+          MS('🧣', '破舊布簾遮門', 1, 1.3, 0.75, [], 'soft', '布簾擋住一點風了，但還是有點透風…'),
+          LX('🚪', '雕花橡木防風門', 3, 3.0, 1, null, [], 'wood', '這扇新大門好氣派，風一點都吹不進來了！'),
+          MS('🔒', '橫木門閂加固', 1, 0.9, 0.5, ['windproof'], 'wood', '門閂一插，門板再也不會被吹開。'),
+          MS('🧥', '厚棉被門簾', 1, 1.0, 0.6, ['warm', 'damp'], 'soft', '棉被掛上去，腳邊不再結霜。', 0.15),
+          LX('🐑', '羊毛填充棉門', 2, 2.2, 0.85, 0.2, ['warm', 'damp'], 'soft', '厚厚的羊毛門，暖是暖，就怕淋濕。')
+        ]
+      },
+
+      // 5. 壁爐 (結冰時先清煙囪積冰 -> 點燃壁爐)
+      fireplace: {
+        id: 'fireplace', name: '冰封壁爐', icon: '🔥', coldLevel: 1, leakPerSec: 0.25, heatPerSec: 1.15,
+        pos: { x: 0.72, y: 0.68 },
+        brokenDesc: '壁爐熄滅冰冷：點燃它就能讓全屋持續升溫！',
+        icedDesc: '壁爐煙囪結滿厚冰！未清冰前直接點火會濃煙倒灌！',
+        makeshiftDesc: '小火苗：火勢微弱，勉強取暖！',
+        luxuryDesc: '熊熊烈火：全屋暖流湧動！',
+        stage1Choices: [
+          TRAP('🔥', '直接點火燒冰', '濃煙倒灌', -4.2, '煙囪冰塞導致濃煙全灌進屋裡！', '咳咳咳！煙排不出去，好嗆啊！', 'poison_cloud'),
+          DEICE('makeshift', '⛏️', '鐵鍬手動鑿冰', 1, 0.8, [], 'hard', '呼～終於把煙囪裡的冰鑿掉了！'),
+          DEICE('luxury', '🧨', '噴火槍+通煙刷', 2, 2.2, ['dry'], 'hard', '煙囪徹底通了！快生火取暖吧！'),
+          DEICE('makeshift', '♨️', '沸水沖煙囪', 1, 0.6, [], 'soft', '熱水一沖，冰塊嘩啦啦掉下來。'),
+          DEICE('luxury', '🪨', '熱石塊投煙道', 2, 1.8, ['dry'], 'hard', '燒紅的石頭一丟，煙道又乾又暖。')
+        ],
+        choices: [
+          TRAP('🧯', '乾冰滅火器噴射', '零下凍結', -4.5, '乾冰噴射把壁爐徹底凍成萬年冰山！', '啊啊啊！更冷了，壁爐結成冰塊了！', 'ice_blast'),
+          MS('🌿', '潮濕樹枝+火柴', 1, 2.0, 0.6, ['warm', 'damp'], 'wood', '火苗好小，大家快靠過來烤烤手…', 0.3),
+          LX('🔥', '乾燥橡木+打火石', 3, 4.5, 1, null, [], 'wood', '好暖和啊！壁爐的火燒得好旺！'),
+          MS('⚫', '木炭火盆', 1, 1.0, 0.5, ['warm', 'windproof'], 'hard', '炭火紅通通，風吹不滅，就是火力不大。', 0.3),
+          MS('🪵', '乾柴小火堆', 2, 1.8, 0.7, ['warm'], 'wood', '乾柴劈啪響，雖然火不大但很穩。', 0.65),
+          LX('🏺', '鑄鐵柴爐', 3, 3.2, 0.9, 0.95, ['warm', 'galefear'], 'hard', '鐵爐燒得暖烘烘，煙囪口怕大風倒灌。')
+        ]
+      },
+
+      // 6. 地面積冰 / 破地板
+      floor: {
+        id: 'floor', name: '冰冷破地板', icon: '🧊', coldLevel: 2, leakPerSec: 0.38,
+        pos: { x: 0.48, y: 0.87 },
+        brokenDesc: '地板破裂且結滿冰霜：寒氣從腳底直竄全身！',
+        makeshiftDesc: '臨時鋪地：勉強隔絕一點地寒！',
+        luxuryDesc: '實木地板與厚地毯：腳底暖呼呼！',
+        choices: [
+          TRAP('🪣', '倒冷水沖洗地板', '瞬間溜冰場', -3.5, '整片地板瞬間結成超滑大冰面！', '好冰！地板全變成冰塊了！', 'ice_blast'),
+          MS('🧺', '鋪舊草蓆與破布', 1, 1.4, 0.75, ['damp'], 'soft', '墊了草蓆好一點了，但還是有點濕冷…'),
+          LX('🧶', '實木地板+波斯地毯', 3, 3.2, 1, null, ['damp'], 'wood', '這張紅地毯好軟好暖和呀！'),
+          MS('🪨', '石板鋪地', 1, 0.9, 0.5, ['windproof'], 'hard', '石板冷是冷，但踩得穩、掀不走。'),
+          MS('🐑', '羊毛氈地墊', 1, 1.0, 0.6, ['warm', 'damp'], 'soft', '踩上去軟軟的，腳底回暖了。', 0.15),
+          LX('🟫', '輕質隔熱地墊', 2, 2.3, 0.85, 0.2, ['warm', 'galefear'], 'soft', '輕輕的保暖地墊，風一大就捲起來。')
+        ]
+      },
+
+      // 7. 破草墊 / 暖床與冬衣
+      bed: {
+        id: 'bed', name: '冰冷破床鋪', icon: '🛏️', coldLevel: 1, leakPerSec: 0.25, heatPerSec: 0.45,
+        pos: { x: 0.27, y: 0.72 },
+        brokenDesc: '母子三人裹著破麻布發抖：急需暖床與厚冬衣！',
+        makeshiftDesc: '臨時保暖：勉強蓋著取暖，衣服還是破舊的！',
+        luxuryDesc: '羽絨暖床加新毛衣：溫暖幸福！',
+        choices: [
+          TRAP('🏖️', '竹蓆與薄涼被', '越蓋越冷', -3.5, '暴雪天鋪竹蓆，母子冷到牙齒打顫！', '好冰的竹蓆，快凍僵了！', 'ice_blast'),
+          MS('🧵', '縫補舊破棉被', 1, 1.8, 0.75, [], 'soft', '蓋上舊棉被暖和一點了…'),
+          LX('🛏️', '羽絨暖床+新毛衣', 3, 3.8, 1, null, ['damp'], 'soft', '新毛衣和羽絨被好舒服，我們一點都不冷了！'),
+          MS('🪨', '熱石頭暖被窩', 1, 1.0, 0.5, ['warm', 'windproof'], 'hard', '把熱石頭塞進被窩，腳丫子暖烘烘。', 0.3),
+          MS('🐑', '厚羊毛毯', 1, 1.2, 0.6, ['warm', 'damp'], 'soft', '羊毛毯蓋到下巴，不怕冷了。', 0.3),
+          LX('💧', '暖水袋+毛毯組', 2, 2.5, 0.85, 0.6, ['warm', 'galefear'], 'soft', '抱著暖水袋，連夢裡都是暖的，可惜風一來就涼了。')
+        ]
+      },
+
+      // 8. 破木桌 / 熱騰騰大餐
+      feast: {
+        id: 'feast', name: '空蕩破木桌', icon: '🍲', coldLevel: 1, leakPerSec: 0.20, heatPerSec: 0.40,
+        pos: { x: 0.54, y: 0.75 },
+        brokenDesc: '斷腿破木桌，全家人又餓又冷沒有體力！',
+        makeshiftDesc: '簡單熱食：勉強填飽肚子！',
+        luxuryDesc: '豪華大餐：體溫瞬間回滿！',
+        choices: [
+          TRAP('🍧', '雪地挫冰大碗公', '核心體溫驟降', -3.8, '零下暴雪天吃挫冰，全員冷到發紫！', '腦袋凍得好痛，不能在雪天吃冰啊！', 'ice_blast'),
+          MS('🥔', '幾顆熱馬鈴薯', 1, 1.8, 0.75, [], null, '有熱馬鈴薯吃就很好了，謝謝你！'),
+          LX('🍗', '烤火雞+熱可可宴', 3, 4.0, 1, null, [], null, '哇！是香噴噴的烤火雞和熱可可！太幸福了！'),
+          MS('🍲', '悶燒鍋燉湯', 1, 1.0, 0.5, ['warm', 'windproof'], 'hard', '悶燒鍋一掀，熱氣直冒，風吹不涼。', 0.3),
+          MS('🍵', '辣薑茶', 1, 1.3, 0.6, ['warm'], null, '一口薑茶下肚，從喉嚨暖到腳趾。', 0.3),
+          LX('🥘', '大鍋熱湯火鍋', 2, 2.6, 0.85, 0.5, ['warm', 'galefear'], 'hard', '火鍋咕嘟咕嘟，風一來熱氣就被吹散。')
+        ]
+      }
+    };
+
+    // 保底道具：零成本、效果很小，點數用完時的出路
+    const FALLBACK_REPAIR = {
+      id: 'fallback', tier: 'makeshift', icon: '🧤', name: '就地取材', tag: '免費保底',
+      cost: 0, delta: 0.2, seal: 0.35, heat: 0, traits: [], cat: null, pts: 0.2, rank: 0, free: true,
+      say: '先拿手邊的東西頂著，總比沒有好。'
+    };
+    const FALLBACK_DEICE = {
+      id: 'fallback_deice', tier: 'makeshift', icon: '🧤', name: '徒手摳冰', tag: '免費保底',
+      cost: 0, delta: 0, traits: [], cat: null, rank: 0, free: true, stage1: true,
+      say: '手都凍紅了，但冰總算鬆動了。'
+    };
+
+    // 立即升溫的縮放：材料主要靠「封住漏風＋每秒加溫」撐住溫度，立即升溫只是小甜頭，
+    // 這樣要到達目標溫度就得真的把多數破洞補起來，星等才有意義
+    const ITEM_DELTA_SCALE = 0.5;   // 修補／除冰道具的立即升溫倍率
+    const TRAP_DELTA_SCALE = 0.6;   // 陷阱的立即降溫倍率
+    const ITEM_HEAT_SCALE = 0.5;    // 所有「每秒加溫」的倍率，讓加溫與漏風的量級相當
+
+    // 補齊預設值 (id、費用、封堵率、階級、豪華分)
+    (function finalizeLibrary() {
+      Object.keys(HOTSPOT_LIBRARY).forEach((hid) => {
+        const def = HOTSPOT_LIBRARY[hid];
+        [def.choices, def.stage1Choices].forEach((list, li) => {
+          if (!list) return;
+          list.forEach((it, i) => {
+            it.id = `${hid}_${li === 1 ? 's' : 'c'}${i}`;
+            it.hotspotId = hid;
+            it.traits = it.traits || [];
+            if (it.cost == null) it.cost = it.tier === 'trap' ? 0 : (it.tier === 'luxury' ? 3 : 1);
+            if (!it.stage1) {
+              if (it.seal == null) it.seal = it.tier === 'luxury' ? 1 : (it.tier === 'makeshift' ? 0.75 : 0);
+            }
+            it.delta = Math.round(it.delta * (it.tier === 'trap' ? TRAP_DELTA_SCALE : ITEM_DELTA_SCALE) * 10) / 10;
+            it.rank = it.tier === 'luxury' ? 2 : (it.tier === 'makeshift' ? 1 : -1);
+            if (it.pts == null) it.pts = it.tier === 'luxury' ? 1.0 : 0.45;
+          });
+        });
+      });
+    })();
+
+    /**
+     * ============================================================================
+     * 3. 20 張漸進難度地圖設計 (4 大章節)
+     *    章節規則：一 無 / 二 結冰 / 三 破洞擴大 / 四 缺料
+     *    關卡欄位：startTemp 起始溫度、targetTemp 過關溫度、weather 本關天氣、
+     *    galeCycle 狂風週期(僅狂風天氣使用)、budget 材料點數、leakScale 漏風倍率、
+     *    stars 兩星／三星的改造度門檻(%)、hint 新機制第一次出現時的一句提示
+     * ============================================================================
+     */
+    const CHAPTERS = [
+      { id: 1, name: '第一章：荒野破木屋', badge: '第 1~5 關 • 認識材料與天氣', color: 'emerald',
+        rule: { type: 'none', text: '本章沒有特殊規則：先熟悉材料點數與卡片標籤。' } },
+      { id: 2, name: '第二章：冰封雪山站', badge: '第 6~10 關 • 結冰要先除冰', color: 'sky',
+        rule: { type: 'ice', text: '結冰：結冰的破洞要先除冰才能修補，剛除冰的地方是濕的。' } },
+      { id: 3, name: '第三章：暴雪狂風夜', badge: '第 11~15 關 • 破洞會擴大', color: 'amber',
+        rule: { type: 'expand', rate: 0.04, cap: 2.4, text: '破洞會擴大：放著不修的破洞，漏風會一秒比一秒重。' } },
+      { id: 4, name: '第四章：極寒煉獄挑戰', badge: '第 16~20 關 • 每關有一類材料缺貨', color: 'rose',
+        rule: { type: 'shortage', cats: ['wood', 'soft', 'hard'], text: '缺料：每關開場隨機一類材料缺貨，標示缺貨的卡不能用。' } }
+    ];
+
+    // 快速產生破洞清單：名稱後面加 * 代表一開始結冰
+    const H = (...ids) => ids.map((s) => (s.endsWith('*') ? { id: s.slice(0, -1), iced: true } : { id: s, iced: false }));
+
+    const LEVELS = [
+      // === 第一章 (第1~5關)：認識材料點數、卡片標籤、天氣 ===
+      {
+        id: 1, chapter: 1, name: '漏風小木屋', theme: 'cabin',
+        desc: '經典開局！先把最大的漏風口補好，再點燃壁爐。材料點數很充裕，放心試試看。',
+        hint: '材料點數：每張卡要花「🧰」點數，點數用完就買不起了；卡片上的標籤是材料特性。',
+        startTemp: 13.0, targetTemp: 22.0, weather: 'normal', galeCycle: 0, budget: 16, leakScale: 0.16,
+        stars: { two: 35, three: 55 },
+        hotspots: H('roof', 'window', 'wall', 'fireplace', 'bed', 'feast')
+      },
+      {
+        id: 2, chapter: 1, name: '荒野破舊穀倉', theme: 'barn',
+        desc: '四面漏風的穀倉，先止住最大的破洞，點數開始要精打細算。',
+        hint: '看清卡片標籤：「抗風」「保暖」「怕潮」會隨天氣改變效果，數字會直接變色。',
+        startTemp: 12.0, targetTemp: 22.5, weather: 'normal', galeCycle: 0, budget: 14, leakScale: 0.16,
+        stars: { two: 45, three: 65 },
+        hotspots: H('roof', 'wall', 'door', 'floor', 'fireplace', 'bed')
+      },
+      {
+        id: 3, chapter: 1, name: '雪林獵人小屋', theme: 'cabin',
+        desc: '7 處破損同時漏風，天空飄起濕雪，木頭與紙類材料都怕潮。',
+        hint: '濕雪天來了：「怕潮」的材料效果減半，卡片上的數字會變紅。',
+        startTemp: 11.5, targetTemp: 23.0, weather: 'wet', galeCycle: 0, budget: 18, leakScale: 0.2,
+        stars: { two: 45, three: 65 },
+        hotspots: H('roof', 'window', 'wall', 'door', 'fireplace', 'bed', 'feast')
+      },
+      {
+        id: 4, chapter: 1, name: '廢棄鐵路小站', theme: 'train',
+        desc: '酷寒的候車室，降溫特別快，保暖材料這次特別有用。',
+        hint: '酷寒來襲：降溫更快，但「保暖」材料每秒加溫加倍。',
+        startTemp: 11.0, targetTemp: 23.0, weather: 'cold', galeCycle: 0, budget: 18, leakScale: 0.3,
+        stars: { two: 40, three: 60 },
+        hotspots: H('roof', 'window', 'floor', 'door', 'fireplace', 'bed', 'feast')
+      },
+      {
+        id: 5, chapter: 1, name: '湖畔破舊度假屋', theme: 'mansion',
+        desc: '第一章大改造！全屋 8 處破損齊發，用有限的點數盡量改造成豪宅。',
+        startTemp: 11.0, targetTemp: 23.5, weather: 'normal', galeCycle: 0, budget: 14, leakScale: 0.2,
+        stars: { two: 40, three: 60 },
+        hotspots: H('roof', 'window', 'wall', 'door', 'floor', 'fireplace', 'bed', 'feast')
+      },
+
+      // === 第二章 (第6~10關)：結冰兩階段修繕 ===
+      {
+        id: 6, chapter: 2, name: '冰封壁爐山莊', theme: 'cabin',
+        desc: '壁爐煙囪被厚冰封住了！先除冰疏通，才能點火取暖；濕雪天除冰後更要小心潮氣。',
+        hint: '結冰的破洞要先除冰；除冰後沒烘乾會留潮氣，怕潮的材料會打折。',
+        startTemp: 12.0, targetTemp: 23.0, weather: 'wet', galeCycle: 0, budget: 11, leakScale: 0.16,
+        stars: { two: 35, three: 55 },
+        hotspots: H('roof', 'window', 'wall', 'fireplace*', 'bed', 'feast')
+      },
+      {
+        id: 7, chapter: 2, name: '雪山破舊巴士', theme: 'train',
+        desc: '碎裂車窗掛滿冰柱！直接裝玻璃會被頂碎，先除冰再封窗，酷寒下動作要快。',
+        startTemp: 11.5, targetTemp: 23.0, weather: 'cold', galeCycle: 0, budget: 16, leakScale: 0.3,
+        stars: { two: 35, three: 55 },
+        hotspots: H('roof', 'window*', 'door', 'floor', 'fireplace', 'bed', 'feast')
+      },
+      {
+        id: 8, chapter: 2, name: '孤島冰封燈塔', theme: 'lighthouse',
+        desc: '窗戶與壁爐雙雙結冰，海風開始呼嘯：狂風會吹掉不抗風的修補。',
+        hint: '狂風天氣：每隔一段時間吹掉不抗風的修補，抗風或高級材料才吹不掉。',
+        startTemp: 11.0, targetTemp: 23.5, weather: 'gale', galeCycle: 18, budget: 14, leakScale: 0.13,
+        stars: { two: 40, three: 60 },
+        hotspots: H('roof', 'window*', 'wall', 'door', 'fireplace*', 'bed', 'feast')
+      },
+      {
+        id: 9, chapter: 2, name: '積雪古教堂避難所', theme: 'church',
+        desc: '高挑教堂冷風四溢，8 處全開＋雙結冰點，濕雪讓木頭與布料都不好使。',
+        startTemp: 11.0, targetTemp: 24.0, weather: 'wet', galeCycle: 0, budget: 14, leakScale: 0.1,
+        stars: { two: 35, three: 55 },
+        hotspots: H('roof', 'window*', 'wall', 'door', 'floor', 'fireplace*', 'bed', 'feast')
+      },
+      {
+        id: 10, chapter: 2, name: '冰川裂谷觀測站', theme: 'glacier',
+        desc: '第二章守關戰！酷寒開局，快速封頂、除冰、點火才能逆轉局勢。',
+        startTemp: 10.0, targetTemp: 24.0, weather: 'cold', galeCycle: 0, budget: 14, leakScale: 0.2,
+        stars: { two: 30, three: 50 },
+        hotspots: H('roof', 'window*', 'wall', 'door', 'floor', 'fireplace*', 'bed', 'feast')
+      },
+
+      // === 第三章 (第11~15關)：暴雪狂風夜，破洞會擴大 ===
+      {
+        id: 11, chapter: 3, name: '狂風山脊木屋', theme: 'cabin',
+        desc: '狂風啟動！破洞放著不修會越裂越大，沒有抗風的材料會被整片吹飛。',
+        hint: '破洞會擴大：放著不修的破洞，漏風會一秒比一秒重，先處理最嚴重的。',
+        startTemp: 12.0, targetTemp: 23.5, weather: 'gale', galeCycle: 15, budget: 14, leakScale: 0.13,
+        stars: { two: 40, three: 60 },
+        hotspots: H('roof', 'window', 'wall', 'door', 'fireplace', 'bed', 'feast')
+      },
+      {
+        id: 12, chapter: 3, name: '暴雪海岬燈塔', theme: 'lighthouse',
+        desc: '濕雪與結冰窗框，破洞越拖越大，要選不怕潮的材料。',
+        startTemp: 11.5, targetTemp: 24.0, weather: 'wet', galeCycle: 0, budget: 12, leakScale: 0.13,
+        stars: { two: 40, three: 60 },
+        hotspots: H('roof', 'window*', 'wall', 'floor', 'fireplace', 'bed', 'feast')
+      },
+      {
+        id: 13, chapter: 3, name: '雪崩掩埋舊莊園', theme: 'mansion',
+        desc: '全屋 8 處破損＋狂風吹襲！被吹飛的修補要重新花點數，挑抗風的材料更划算。',
+        startTemp: 11.5, targetTemp: 24.0, weather: 'gale', galeCycle: 14, budget: 16, leakScale: 0.1,
+        stars: { two: 35, three: 55 },
+        hotspots: H('roof', 'window', 'wall', 'door', 'floor', 'fireplace*', 'bed', 'feast')
+      },
+      {
+        id: 14, chapter: 3, name: '冰原廢棄貨輪艙', theme: 'ship',
+        desc: '酷寒的貨輪艙，破洞擴大得更快，保暖材料是撐下去的關鍵。',
+        startTemp: 11.0, targetTemp: 24.5, weather: 'cold', galeCycle: 0, budget: 18, leakScale: 0.16,
+        stars: { two: 40, three: 60 },
+        hotspots: H('roof', 'window*', 'wall', 'door', 'floor', 'fireplace*', 'bed', 'feast')
+      },
+      {
+        id: 15, chapter: 3, name: '暴風眼極地哨站', theme: 'station',
+        desc: '第三章 Boss 關！狂風頻襲、破洞擴大，考驗點數分配。',
+        startTemp: 10.5, targetTemp: 24.5, weather: 'gale', galeCycle: 12.5, budget: 16, leakScale: 0.1,
+        stars: { two: 30, three: 50 },
+        hotspots: H('roof', 'window*', 'wall', 'door', 'floor', 'fireplace*', 'bed', 'feast')
+      },
+
+      // === 第四章 (第16~20關)：極寒煉獄挑戰，每關一類材料缺貨 ===
+      {
+        id: 16, chapter: 4, name: '極寒冰川裂縫屋', theme: 'glacier',
+        desc: '極寒章節開啟！天寒地凍，而且有一類材料缺貨，看清楚再選。',
+        hint: '缺料：本關有一類材料缺貨，標示缺貨的卡不能用，看清楚再選。',
+        startTemp: 10.5, targetTemp: 24.0, weather: 'cold', galeCycle: 0, budget: 12, leakScale: 0.2,
+        stars: { two: 30, three: 50 },
+        hotspots: H('roof', 'window*', 'wall', 'door', 'floor', 'fireplace*', 'bed', 'feast')
+      },
+      {
+        id: 17, chapter: 4, name: '雪山之巔古鐘樓', theme: 'clocktower',
+        desc: '高空濕雪！缺貨加上怕潮，選錯一步就可能凍僵。',
+        startTemp: 10.0, targetTemp: 24.5, weather: 'wet', galeCycle: 0, budget: 16, leakScale: 0.2,
+        stars: { two: 40, three: 60 },
+        hotspots: H('roof', 'window*', 'wall', 'door', 'floor', 'fireplace*', 'bed', 'feast')
+      },
+      {
+        id: 18, chapter: 4, name: '北極圈破冰船遺跡', theme: 'ship',
+        desc: '結霜警報，狂風頻襲！迅速封頂補牆，讓壁爐烈火扭轉乾坤。',
+        startTemp: 9.5, targetTemp: 24.5, weather: 'gale', galeCycle: 11, budget: 14, leakScale: 0.13,
+        stars: { two: 30, three: 50 },
+        hotspots: H('roof', 'window*', 'wall', 'door', 'floor', 'fireplace*', 'bed', 'feast')
+      },
+      {
+        id: 19, chapter: 4, name: '八千米絕境雪峰營', theme: 'summit',
+        desc: '酷寒開局！在暴風雪吞噬木屋前，用缺貨下的材料改造溫暖宮殿。',
+        startTemp: 9.0, targetTemp: 25.0, weather: 'cold', galeCycle: 0, budget: 12, leakScale: 0.16,
+        stars: { two: 30, three: 50 },
+        hotspots: H('roof', 'window*', 'wall', 'door', 'floor', 'fireplace*', 'bed', 'feast')
+      },
+      {
+        id: 20, chapter: 4, name: '終極極光冰窟宮殿', theme: 'palace',
+        desc: '最終決戰！全屋 8 處雙階破損、狂風猛襲又有材料缺貨，拯救母子三人！',
+        startTemp: 8.5, targetTemp: 25.0, weather: 'gale', galeCycle: 10, budget: 16, leakScale: 0.13,
+        stars: { two: 35, three: 55 },
+        hotspots: H('roof', 'window*', 'wall', 'door', 'floor', 'fireplace*', 'bed', 'feast')
+      }
+    ];
+
+    /**
+     * ============================================================================
+     * 3b. 核心規則 (純邏輯)：抽牌、情境效果、溫度變化、狂風、結算、星等
+     *     所有函式只讀寫傳入的狀態物件 g，與畫面無關。
+     * ============================================================================
+     */
+    function hasTrait(it, t) { return (it.traits || []).indexOf(t) >= 0; }
+    function blownByGale(it) {
+      return hasTrait(it, 'galefear') || (it.tier === 'makeshift' && !hasTrait(it, 'windproof'));
+    }
+    function levelWeather(lvl) { return WEATHERS[lvl.weather] || WEATHERS.normal; }
+    function chapterRule(lvl) {
+      const chap = CHAPTERS.find((c) => c.id === lvl.chapter);
+      return (chap && chap.rule) || { type: 'none', text: '' };
+    }
+    function weatherText(lvl) { return levelWeather(lvl).desc.replace('{N}', String(lvl.galeCycle)); }
+    function itemHeat(def, it) {
+      const raw = it.heat != null ? it.heat : (it.tier === 'luxury' ? (def.heatPerSec || 0.12) : 0);
+      return raw * ITEM_HEAT_SCALE;
+    }
+
+    function initLevel(g, lvl, rng) {
+      g.level = lvl;
+      g.rng = rng || Math.random;
+      g.maxTemp = g.maxTemp || 28.0;
+      g.temp = lvl.startTemp;
+      g.mistakes = 0;
+      g.budget = lvl.budget;
+      g.spent = 0;
+      g.playTime = 0;
+      g.galePhase = 'calm';
+      g.galeTimer = (lvl.weather === 'gale' ? lvl.galeCycle : 0) || 0;
+      g.rule = chapterRule(lvl);
+      g.shortageCat = null;
+      if (g.rule.type === 'shortage' && g.rule.cats && g.rule.cats.length) {
+        g.shortageCat = g.rule.cats[Math.floor(g.rng() * g.rule.cats.length)];
+      }
+      g.hotspotStates = {};
+      lvl.hotspots.forEach((spec) => {
+        if (!HOTSPOT_LIBRARY[spec.id]) return;
+        g.hotspotStates[spec.id] = {
+          id: spec.id, tier: 'broken', iced: Boolean(spec.iced), wet: false,
+          item: null, seal: 0, heat: 0, pts: 0, rank: -1, brokenSecs: 0,
+          hand: null, hand1: null
+        };
+      });
+      return g;
+    }
+
+    // 道具在當前情境下的實際效果 (卡片顯示與結算共用)
+    function effOf(g, hsId, it, stage1) {
+      const def = HOTSPOT_LIBRARY[hsId];
+      const st = g.hotspotStates[hsId];
+      const w = levelWeather(g.level);
+      const cost = it.cost || 0;
+      const oos = Boolean(it.cat && g.shortageCat && it.cat === g.shortageCat);
+      const base = { delta: it.delta || 0, seal: 0, heat: 0, dampHit: false, warmUp: false, blown: false, oos, cost, afford: cost <= g.budget };
+      if (stage1 || it.tier === 'trap') return base;
+      let delta = it.delta || 0;
+      let seal = it.seal || 0;
+      let heat = itemHeat(def, it);
+      const dampHit = hasTrait(it, 'damp') && (g.level.weather === 'wet' || Boolean(st && st.wet));
+      const warmUp = hasTrait(it, 'warm') && w.warmMul > 1;
+      if (dampHit) {
+        delta *= WET_HOTSPOT_DAMP_MUL;
+        seal *= WET_HOTSPOT_DAMP_MUL;
+        heat *= WET_HOTSPOT_DAMP_MUL;
+      }
+      if (warmUp) heat *= w.warmMul;
+      const blown = g.level.weather === 'gale' && blownByGale(it);
+      return { delta, seal, heat, dampHit, warmUp, blown, oos, cost, afford: cost <= g.budget };
+    }
+
+    // 「有效修補」：不是陷阱、沒缺貨、不會被狂風吹掉、不受潮氣打折
+    function isGoodCard(g, hsId, it, stage1) {
+      if (it.tier === 'trap') return false;
+      const e = effOf(g, hsId, it, stage1);
+      return !e.oos && !e.blown && !e.dampHit;
+    }
+
+    // 抽 3 張：至少 1 張有效修補、最多 1 張陷阱、不會三張全是豪華
+    function drawHand(g, hsId, stage1) {
+      const def = HOTSPOT_LIBRARY[hsId];
+      const pool = stage1 ? def.stage1Choices : def.choices;
+      const n = pool.length;
+      const valid = (hand) => {
+        const traps = hand.filter((c) => c.tier === 'trap').length;
+        const lux = hand.filter((c) => c.tier === 'luxury').length;
+        return traps <= 1 && lux < 3 && hand.some((c) => isGoodCard(g, hsId, c, stage1));
+      };
+      for (let tries = 0; tries < 400; tries++) {
+        const idx = [];
+        while (idx.length < 3) {
+          const k = Math.floor(g.rng() * n);
+          if (idx.indexOf(k) < 0) idx.push(k);
+        }
+        const hand = idx.map((k) => pool[k]);
+        if (valid(hand)) return hand;
+      }
+      // 保底 (理論上不會走到)：強制放入一張有效修補
+      const good = pool.find((c) => isGoodCard(g, hsId, c, stage1)) || pool[1];
+      const rest = pool.filter((c) => c !== good && c.tier !== 'trap').slice(0, 2);
+      return [good].concat(rest);
+    }
+
+    function ensureHand(g, hsId) {
+      const st = g.hotspotStates[hsId];
+      if (st.iced) {
+        if (!st.hand1) st.hand1 = drawHand(g, hsId, true);
+        return st.hand1;
+      }
+      if (!st.hand) st.hand = drawHand(g, hsId, false);
+      return st.hand;
+    }
+
+    function expandMul(g, st) {
+      const r = g.rule;
+      if (!r || r.type !== 'expand' || st.tier !== 'broken') return 1;
+      return Math.min(r.cap, 1 + r.rate * st.brokenSecs);
+    }
+
+    // 即時溫度變化速度 (每秒)
+    function tempRate(g) {
+      const lvl = g.level;
+      const w = levelWeather(lvl);
+      const sc = lvl.leakScale == null ? 1 : lvl.leakScale;
+      const galeMul = g.galePhase === 'gale' ? (w.galeLeakMul || 2.1) : 1.0;
+      let delta = -0.18 * sc * w.baseMul * galeMul;
+      lvl.hotspots.forEach((h) => {
+        const def = HOTSPOT_LIBRARY[h.id];
+        const st = g.hotspotStates[h.id];
+        if (!def || !st) return;
+        const leak = (def.leakPerSec || 0.3) * sc * w.leakMul * galeMul;
+        if (st.tier === 'broken') {
+          delta -= leak * expandMul(g, st);
+        } else {
+          delta -= leak * (1 - st.seal);
+          delta += st.heat;
+        }
+      });
+      return delta;
+    }
+
+    // 狂風循環。回傳事件陣列：{type:'warning'|'gale'|'galeEnd', ripped:[破洞id]}
+    function galeStep(g, dt, events) {
+      const lvl = g.level;
+      if (lvl.weather !== 'gale' || lvl.galeCycle <= 0) return;
+      g.galeTimer -= dt;
+      if (g.galePhase === 'calm' && g.galeTimer <= 3.0) {
+        g.galePhase = 'warning';
+        events.push({ type: 'warning' });
+      } else if (g.galePhase === 'warning' && g.galeTimer <= 0) {
+        g.galePhase = 'gale';
+        g.galeTimer = 5.0;
+        const ripped = [];
+        lvl.hotspots.forEach((h) => {
+          const st = g.hotspotStates[h.id];
+          if (st && st.item && blownByGale(st.item)) {
+            st.tier = 'broken'; st.item = null; st.seal = 0; st.heat = 0; st.pts = 0; st.rank = -1; st.brokenSecs = 0;
+            ripped.push(h.id);
+          }
+        });
+        events.push({ type: 'gale', ripped });
+      } else if (g.galePhase === 'gale' && g.galeTimer <= 0) {
+        g.galePhase = 'calm';
+        g.galeTimer = lvl.galeCycle;
+        events.push({ type: 'galeEnd' });
+      }
+    }
+
+    // 時間流逝 dt 秒：狂風 -> 破洞擴大計時 -> 溫度
+    function stepGame(g, dt) {
+      const events = [];
+      galeStep(g, dt, events);
+      g.level.hotspots.forEach((h) => {
+        const st = g.hotspotStates[h.id];
+        if (st && st.tier === 'broken') st.brokenSecs += dt;
+      });
+      const rate = tempRate(g);
+      g.temp = Math.max(0, Math.min(g.maxTemp, g.temp + rate * dt));
+      g.playTime += dt;
+      return events;
+    }
+
+    // 這張卡現在能不能選。回傳 null 代表可以，否則是原因
+    function blockReason(g, hsId, it) {
+      const st = g.hotspotStates[hsId];
+      if (!st) return 'none';
+      const stage1 = Boolean(st.iced);
+      if (!stage1 && st.rank >= 2) return 'maxed';
+      if (!stage1 && it.tier !== 'trap' && it.rank <= st.rank) return 'used';
+      const e = effOf(g, hsId, it, stage1);
+      if (e.oos) return 'oos';
+      if (!e.afford) return 'budget';
+      return null;
+    }
+
+    // 套用選擇。回傳事件 {ok, kind:'trap'|'deice'|'repair', delta, eff}
+    function applyChoice(g, hsId, it) {
+      const st = g.hotspotStates[hsId];
+      const why = blockReason(g, hsId, it);
+      if (why) return { ok: false, reason: why };
+      const stage1 = Boolean(st.iced);
+      const e = effOf(g, hsId, it, stage1);
+      g.budget -= e.cost;
+      g.spent += e.cost;
+      if (it.tier === 'trap') {
+        g.mistakes += 1;
+        g.temp = Math.max(0, g.temp + it.delta);
+        return { ok: true, kind: 'trap', delta: it.delta, eff: e };
+      }
+      if (stage1) {
+        st.iced = false;
+        st.wet = !hasTrait(it, 'dry');
+        g.temp = Math.min(g.maxTemp, g.temp + it.delta);
+        return { ok: true, kind: 'deice', delta: it.delta, eff: e };
+      }
+      st.tier = it.tier;
+      st.item = it;
+      st.seal = e.seal;
+      st.heat = e.heat;
+      st.pts = it.pts;
+      st.rank = it.rank;
+      st.brokenSecs = 0;
+      g.temp = Math.min(g.maxTemp, g.temp + e.delta);
+      return { ok: true, kind: 'repair', delta: e.delta, eff: e };
+    }
+
+    // 豪華改造度與星等
+    function calcProgress(g) {
+      const total = g.level.hotspots.length;
+      let points = 0;
+      let repairedCount = 0;
+      g.level.hotspots.forEach((h) => {
+        const st = g.hotspotStates[h.id];
+        if (!st || st.tier === 'broken') return;
+        points += st.pts || (st.tier === 'luxury' ? 1.0 : 0.45);
+        repairedCount += 1;
+      });
+      const pct = Math.round((points / Math.max(1, total)) * 100);
+      const th = g.level.stars || { two: 55, three: 85 };
+      let stars = 1;
+      if (pct >= th.three && g.mistakes <= 1) stars = 3;
+      else if (pct >= th.two) stars = 2;
+      return { pct, stars, repairedCount, total };
+    }
+
+    // 勝負判定：'win' | 'lose' | null
+    function endCheck(g) {
+      if (g.temp <= 0) return 'lose';
+      const lvl = g.level;
+      const allRepaired = lvl.hotspots.every((h) => {
+        const st = g.hotspotStates[h.id];
+        return st.tier !== 'broken' && !st.iced;
+      });
+      if (g.temp >= lvl.targetTemp || (allRepaired && g.temp >= lvl.targetTemp - 2.0)) return 'win';
+      return null;
+    }
+    // ==CORE-END==
+
+    /**
+     * ============================================================================
+     * 4. LocalStorage 存檔系統
+     * ============================================================================
+     */
+    const STORAGE_KEY = 'blizzard_cabin_fix_v1';
+    const LEGACY_STORAGE_KEY = 'gossip_harbor_ad_makeover_20_v5'; // 舊版進度：只讀取轉移，不刪除
+    let saveData = {
+      unlockedLevel: 1,
+      stars: {}
+    };
+
+    function loadSaveData() {
+      try {
+        let raw = localStorage.getItem(STORAGE_KEY);
+        let migrated = false;
+        // 新 key 沒資料、舊 key 有資料：把舊的星等與解鎖進度轉過來
+        if (!raw) {
+          raw = localStorage.getItem(LEGACY_STORAGE_KEY);
+          migrated = Boolean(raw);
+        }
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && typeof parsed.unlockedLevel === 'number') {
+            saveData.unlockedLevel = Math.min(LEVELS.length, Math.max(1, parsed.unlockedLevel));
+            saveData.stars = parsed.stars || {};
+            if (migrated) writeSaveData();
+          }
+        }
+      } catch (e) {}
+    }
+
+    function writeSaveData() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(saveData));
+      } catch (e) {}
+    }
+
+    function getTotalStars() {
+      return Object.values(saveData.stars).reduce((acc, s) => acc + (Number(s) || 0), 0);
+    }
+
+    /**
+     * ============================================================================
+     * 5. 遊戲狀態機與 DOM 參照
+     * ============================================================================
+     */
+    const state = {
+      status: 'map',
+      currentLevel: LEVELS[0],
+      // hotspotStates[id] = { id, tier: 'broken'|'makeshift'|'luxury', iced, wet, item, seal, heat, rank, brokenSecs, hand, hand1 }
+      // (欄位由核心規則 initLevel 建立；level / budget / spent / rule / shortageCat / playTime 也由核心維護)
+      level: LEVELS[0],
+      budget: LEVELS[0].budget,
+      spent: 0,
+      rule: null,
+      shortageCat: null,
+      playTime: 0,
+      warnedBudget: false,
+      hotspotStates: {},
+      selectedId: 'roof',
+      temp: 13.0,
+      maxTemp: 28.0,
+      mistakes: 0,
+      galePhase: 'calm', // 'calm' | 'warning' | 'gale' (只有狂風天氣會輪替)
+      galeTimer: 0,
+      bubble: {
+        text: '好冷啊！快點破洞選工具把屋子補好！',
+        mood: 'cold'
+      },
+      flyingTool: null,
+      snowParticles: [],
+      fxParticles: [],
+      floatingTexts: [],
+      time: 0,
+      lastFrameTime: 0
+    };
+
+    const dom = {
+      shell: document.getElementById('game-shell'),
+      canvas: document.getElementById('game-canvas'),
+      canvasWrapper: document.getElementById('canvas-wrapper'),
+      hudLevelBadge: document.getElementById('hud-level-badge'),
+      hudLevelName: document.getElementById('hud-level-name'),
+      galeHud: document.getElementById('gale-hud'),
+      galeIcon: document.getElementById('gale-icon'),
+      galeLabel: document.getElementById('gale-label'),
+      galeTimer: document.getElementById('gale-timer'),
+      tempEmoji: document.getElementById('temp-emoji'),
+      tempValue: document.getElementById('temp-value'),
+      leakBadge: document.getElementById('leak-badge'),
+      tempBar: document.getElementById('temp-bar'),
+      targetTempMarker: document.getElementById('target-temp-marker'),
+      targetTempText: document.getElementById('target-temp-text'),
+      luxuryStarsPreview: document.getElementById('luxury-stars-preview'),
+      luxuryBar: document.getElementById('luxury-bar'),
+      repairCountText: document.getElementById('repair-count-text'),
+      frostLayer: document.getElementById('frost-layer'),
+      feedbackToast: document.getElementById('feedback-toast'),
+      feedbackToastInner: document.getElementById('feedback-toast-inner'),
+      feedbackTitle: document.getElementById('feedback-title'),
+      feedbackDesc: document.getElementById('feedback-desc'),
+      flashLayer: document.getElementById('flash-layer'),
+      hotspotTabs: document.getElementById('hotspot-tabs'),
+      selectedHotspotDesc: document.getElementById('selected-hotspot-desc'),
+      selectedHotspotLeak: document.getElementById('selected-hotspot-leak'),
+      cardsContainer: document.getElementById('cards-container'),
+      mapOverlay: document.getElementById('map-overlay'),
+      mapListContainer: document.getElementById('map-list-container'),
+      totalStarsDisplay: document.getElementById('total-stars-display'),
+      btnContinueLatest: document.getElementById('btn-continue-latest'),
+      btnDevUnlock: document.getElementById('btn-dev-unlock'),
+      btnResetSave: document.getElementById('btn-reset-save'),
+      endOverlay: document.getElementById('end-overlay'),
+      endBadge: document.getElementById('end-badge'),
+      endStarsRow: document.getElementById('end-stars-row'),
+      endEmoji: document.getElementById('end-emoji'),
+      endTitle: document.getElementById('end-title'),
+      endSubtitle: document.getElementById('end-subtitle'),
+      statFinalTemp: document.getElementById('stat-final-temp'),
+      statLuxuryPct: document.getElementById('stat-luxury-pct'),
+      statMistakes: document.getElementById('stat-mistakes'),
+      btnEndMap: document.getElementById('btn-end-map'),
+      btnEndNext: document.getElementById('btn-end-next'),
+      btnOpenMap: document.getElementById('btn-open-map'),
+      btnQuickRestart: document.getElementById('btn-quick-restart'),
+      btnSound: document.getElementById('btn-sound'),
+      confirmModal: document.getElementById('confirm-modal'),
+      btnCancelReset: document.getElementById('btn-cancel-reset'),
+      btnConfirmReset: document.getElementById('btn-confirm-reset'),
+      budgetChip: document.getElementById('budget-chip'),
+      weatherChip: document.getElementById('weather-chip'),
+      ruleChip: document.getElementById('rule-chip'),
+      fallbackContainer: document.getElementById('fallback-container')
+    };
+
+    const ctx = dom.canvas.getContext('2d');
+    let canvasW = 420;
+    let canvasH = 440;
+    let toastTimeout = null;
+
+    /**
+     * ============================================================================
+     * 6. 20 關地圖渲染
+     * ============================================================================
+     */
+    function renderLevelMap() {
+      dom.totalStarsDisplay.textContent = `⭐ ${getTotalStars()} / ${LEVELS.length * 3}`;
+      dom.mapListContainer.innerHTML = '';
+
+      CHAPTERS.forEach((chap) => {
+        const chapLevels = LEVELS.filter((l) => l.chapter === chap.id);
+        const section = document.createElement('div');
+        section.className = 'space-y-2.5';
+
+        const colorMap = {
+          emerald: 'text-emerald-300 border-emerald-500/40 bg-emerald-950/60',
+          sky: 'text-sky-300 border-sky-500/40 bg-sky-950/60',
+          amber: 'text-amber-300 border-amber-500/40 bg-amber-950/60',
+          rose: 'text-rose-300 border-rose-500/40 bg-rose-950/60'
+        };
+
+        section.innerHTML = `
+          <div class="flex items-center justify-between px-3 py-1.5 rounded-xl border ${colorMap[chap.color]}">
+            <span class="text-xs font-black tracking-wide">${chap.name}</span>
+            <span class="text-[10px] font-bold opacity-90">${chap.badge}</span>
+          </div>
+          <div class="px-1 text-[10px] font-bold text-slate-300 leading-snug">📌 ${chap.rule.text}</div>
+          <div class="grid grid-cols-1 gap-2" id="chap-grid-${chap.id}"></div>
+        `;
+        dom.mapListContainer.appendChild(section);
+
+        const grid = section.querySelector(`#chap-grid-${chap.id}`);
+
+        chapLevels.forEach((lvl) => {
+          const isUnlocked = lvl.id <= saveData.unlockedLevel;
+          const earnedStars = saveData.stars[lvl.id] || 0;
+          const isCurrent = lvl.id === saveData.unlockedLevel;
+
+          const card = document.createElement('button');
+          card.type = 'button';
+          card.disabled = !isUnlocked;
+
+          if (!isUnlocked) {
+            card.className = 'w-full rounded-2xl p-3 bg-slate-900/60 border border-slate-800 flex items-center justify-between text-left opacity-50 cursor-not-allowed';
+            card.innerHTML = `
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-base">🔒</div>
+                <div>
+                  <div class="text-xs font-black text-slate-400">第 ${lvl.id} 關 • ${lvl.name}</div>
+                  <div class="text-[10px] text-slate-500 mt-0.5">通關上一關解鎖</div>
+                </div>
+              </div>
+              <span class="text-[10px] font-bold text-slate-600">未解鎖</span>
+            `;
+          } else {
+            card.className = `w-full rounded-2xl p-3 border-2 flex items-center justify-between text-left transition-transform active:scale-98 cursor-pointer ${
+              isCurrent
+                ? 'bg-gradient-to-r from-amber-950/85 to-slate-900 border-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.25)]'
+                : 'bg-slate-900 hover:bg-slate-800 border-slate-700'
+            }`;
+
+            const starStr = [1, 2, 3].map((n) => (n <= earnedStars ? '⭐' : '☆')).join('');
+            const wx = levelWeather(lvl);
+            const tags = [
+              `${wx.icon} ${wx.name}`,
+              `初始 ${lvl.startTemp}°C`,
+              `${lvl.hotspots.length} 處破損`,
+              `🧰 材料 ${lvl.budget}`
+            ];
+            if (lvl.hotspots.some((h) => h.iced)) tags.push('結冰');
+            const ruleType = chapterRule(lvl).type;
+            if (ruleType === 'expand') tags.push('破洞擴大');
+            if (ruleType === 'shortage') tags.push('缺料');
+
+            card.innerHTML = `
+              <div class="flex items-center gap-3 min-w-0 pr-2">
+                <div class="w-10 h-10 rounded-xl ${isCurrent ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 text-amber-300'} font-black text-sm flex items-center justify-center shrink-0">
+                  ${lvl.id}
+                </div>
+                <div class="min-w-0">
+                  <div class="flex items-center gap-1.5">
+                    <span class="text-sm font-black text-white truncate">${lvl.name}</span>
+                    ${isCurrent ? '<span class="text-[9px] px-1.5 py-0.5 rounded bg-amber-400 text-slate-950 font-black shrink-0">最新</span>' : ''}
+                  </div>
+                  <div class="text-[10px] text-slate-300 line-clamp-1 mt-0.5">${lvl.desc}</div>
+                  <div class="flex flex-wrap gap-1 mt-1">
+                    ${tags.map((t) => `<span class="text-[9px] px-1.5 py-0.2 rounded bg-slate-800 text-amber-200 border border-slate-700">${t}</span>`).join('')}
+                  </div>
+                </div>
+              </div>
+              <div class="flex flex-col items-end shrink-0">
+                <div class="text-xs tracking-tighter">${starStr}</div>
+                <span class="mt-1 px-2.5 py-1 rounded-lg text-[10px] font-black ${isCurrent ? 'bg-emerald-500 text-slate-950' : 'bg-slate-700 text-white'}">
+                  ${earnedStars > 0 ? '重玩' : '開始'}
+                </span>
+              </div>
+            `;
+
+            card.addEventListener('click', () => {
+              sound.init();
+              sound.playClick();
+              startLevel(lvl.id);
+            });
+          }
+
+          grid.appendChild(card);
+        });
+      });
+    }
+
+    function showMapOverlay() {
+      state.status = 'map';
+      dom.endOverlay.classList.add('hidden', 'pointer-events-none');
+      renderLevelMap();
+      dom.mapOverlay.classList.remove('hidden', 'pointer-events-none');
+      dom.mapOverlay.classList.add('pointer-events-auto');
+      sound.setWindIntensity(0.02, false);
+    }
+
+    /**
+     * ============================================================================
+     * 7. 關卡初始化與熱量/豪宅改造度計算
+     * ============================================================================
+     */
+    // 本關開場公告：天氣、章節規則、新機制提示
+    function ruleLineOf(g) {
+      const r = g.rule || { type: 'none' };
+      if (r.type === 'shortage') {
+        return g.shortageCat ? `缺料：本關「${CATEGORIES[g.shortageCat]}」缺貨，標示缺貨的卡不能用。` : r.text;
+      }
+      if (r.type === 'none') return '';
+      return r.text;
+    }
+
+    function renderInfoRow() {
+      const lvl = state.currentLevel;
+      const wx = levelWeather(lvl);
+      dom.weatherChip.textContent = `${wx.icon} ${weatherText(lvl)}`;
+      const rl = ruleLineOf(state);
+      if (rl) {
+        dom.ruleChip.textContent = `📌 ${rl}`;
+        dom.ruleChip.classList.remove('hidden');
+      } else {
+        dom.ruleChip.classList.add('hidden');
+      }
+    }
+
+    function announceLevel(lvl) {
+      const wx = levelWeather(lvl);
+      const parts = [weatherText(lvl)];
+      const rl = ruleLineOf(state);
+      if (rl) parts.push(rl);
+      if (lvl.hint) parts.push(`💡 ${lvl.hint}`);
+      showToast('info', `${wx.icon} 本關天氣：${wx.name}（材料 ${lvl.budget} 點）`, parts.join('　'), 7000);
+    }
+
+    function startLevel(levelId) {
+      const lvl = LEVELS.find((l) => l.id === levelId) || LEVELS[0];
+      state.currentLevel = lvl;
+      state.status = 'playing';
+      initLevel(state, lvl, Math.random); // 核心規則：溫度、點數、天氣、各破洞狀態都在這裡重置
+      state.warnedBudget = false;
+
+      state.flyingTool = null;
+      state.fxParticles = [];
+      state.floatingTexts = [];
+
+      state.selectedId = lvl.hotspots[0].id;
+
+      dom.hudLevelBadge.textContent = `第 ${lvl.id} 關`;
+      dom.hudLevelName.textContent = lvl.name;
+
+      dom.mapOverlay.classList.add('hidden', 'pointer-events-none');
+      dom.mapOverlay.classList.remove('pointer-events-auto');
+      dom.endOverlay.classList.add('hidden', 'pointer-events-none');
+      dom.endOverlay.classList.remove('pointer-events-auto');
+      hideToast();
+
+      resizeCanvas();
+      initSnowParticles();
+
+      const targetPct = Math.min(95, Math.max(10, (lvl.targetTemp / state.maxTemp) * 100));
+      dom.targetTempMarker.style.left = `${targetPct}%`;
+      dom.targetTempText.textContent = `目標 ${lvl.targetTemp.toFixed(0)}°C`;
+
+      setBubble('好冷！先看天氣與卡片標籤，再選最合適的材料！', 'cold');
+      sound.setWindIntensity(0.05, false);
+
+      renderInfoRow();
+      renderDecisionPanel();
+      updateHUD();
+      renderCanvasFrame();
+      announceLevel(lvl);
+    }
+
+    // 豪華改造度與星等 (計算在核心規則 calcProgress)
+    function getLuxuryProgress() {
+      return calcProgress(state);
+    }
+
+    // 即時溫度變化速度 (核心規則 tempRate)
+    function computeTempDeltaPerSec() {
+      return tempRate(state);
+    }
+
+    /**
+     * ============================================================================
+     * 8. HUD 與底部「道具三選一」面板渲染
+     * ============================================================================
+     */
+    function updateHUD() {
+      const clampedTemp = Math.max(0, Math.min(state.maxTemp, state.temp));
+      dom.tempValue.textContent = `${clampedTemp.toFixed(1)}°C`;
+
+      const rate = computeTempDeltaPerSec();
+      if (rate >= 0.35) {
+        dom.leakBadge.textContent = '🔥 溫暖升溫中';
+        dom.leakBadge.className = 'text-[10px] font-black px-1.5 py-0.5 rounded-md bg-emerald-950 text-emerald-300 border border-emerald-400';
+      } else if (rate >= -0.25) {
+        dom.leakBadge.textContent = '🌤️ 溫度漸穩';
+        dom.leakBadge.className = 'text-[10px] font-black px-1.5 py-0.5 rounded-md bg-amber-950 text-amber-300 border border-amber-400';
+      } else if (rate > -1.2) {
+        dom.leakBadge.textContent = '❄️ 冷風滲入中';
+        dom.leakBadge.className = 'text-[10px] font-black px-1.5 py-0.5 rounded-md bg-orange-950 text-orange-300 border border-orange-500';
+      } else {
+        dom.leakBadge.textContent = '🚨 寒流狂灌！';
+        dom.leakBadge.className = 'text-[10px] font-black px-1.5 py-0.5 rounded-md bg-red-950 text-red-300 border border-red-500 animate-pulse';
+      }
+
+      const pct = (clampedTemp / state.maxTemp) * 100;
+      dom.tempBar.style.width = `${pct}%`;
+
+      if (clampedTemp < 5.0 && state.status === 'playing') {
+        dom.frostLayer.style.opacity = String(Math.min(1, (5.0 - clampedTemp) / 3.8));
+      } else {
+        dom.frostLayer.style.opacity = '0';
+      }
+
+      if (clampedTemp <= 5.5) {
+        dom.tempEmoji.textContent = '🥶';
+        dom.tempValue.className = 'text-sm font-black text-red-400 tabular-nums animate-pulse';
+        dom.tempBar.className = 'h-full rounded-full transition-all duration-100 bg-gradient-to-r from-red-600 to-rose-400';
+      } else if (clampedTemp < state.currentLevel.targetTemp * 0.72) {
+        dom.tempEmoji.textContent = '😨';
+        dom.tempValue.className = 'text-sm font-black text-cyan-300 tabular-nums';
+        dom.tempBar.className = 'h-full rounded-full transition-all duration-100 bg-gradient-to-r from-cyan-500 to-sky-300';
+      } else if (clampedTemp < state.currentLevel.targetTemp) {
+        dom.tempEmoji.textContent = '😊';
+        dom.tempValue.className = 'text-sm font-black text-amber-300 tabular-nums';
+        dom.tempBar.className = 'h-full rounded-full transition-all duration-100 bg-gradient-to-r from-amber-500 to-yellow-300';
+      } else {
+        dom.tempEmoji.textContent = '🥰';
+        dom.tempValue.className = 'text-sm font-black text-emerald-300 tabular-nums';
+        dom.tempBar.className = 'h-full rounded-full transition-all duration-100 bg-gradient-to-r from-emerald-500 to-lime-300';
+      }
+
+      // 材料點數
+      dom.budgetChip.textContent = `🧰 材料 ${state.budget} / ${state.currentLevel.budget}`;
+      dom.budgetChip.className = `shrink-0 px-2 py-0.5 rounded-md text-[10px] font-black tabular-nums border ${
+        state.budget <= 0
+          ? 'bg-red-950 text-red-300 border-red-500'
+          : state.budget <= 3
+          ? 'bg-orange-950 text-orange-300 border-orange-500'
+          : 'bg-amber-950 text-amber-200 border-amber-500/70'
+      }`;
+
+      // 豪華改造度更新
+      const lux = getLuxuryProgress();
+      dom.luxuryBar.style.width = `${lux.pct}%`;
+      dom.repairCountText.textContent = `${lux.repairedCount} / ${lux.total} 處`;
+      dom.luxuryStarsPreview.textContent = [1, 2, 3].map((n) => (n <= lux.stars ? '⭐' : '☆')).join('');
+
+      // 狂風預警條
+      const hudWeather = levelWeather(state.currentLevel);
+      if (hudWeather.id !== 'gale') {
+        dom.galeHud.className = 'flex-1 bg-slate-900 border border-slate-700 rounded-xl px-2 py-1 flex items-center justify-between gap-1 min-w-0';
+        dom.galeIcon.textContent = hudWeather.icon;
+        dom.galeLabel.textContent = `本關天氣：${hudWeather.name}`;
+        dom.galeLabel.className = 'text-[10px] font-black text-slate-300 truncate';
+        dom.galeTimer.textContent = '無狂風';
+      } else if (state.galePhase === 'calm') {
+        dom.galeHud.className = 'flex-1 bg-slate-900 border border-slate-700 rounded-xl px-2 py-1 flex items-center justify-between gap-1 min-w-0';
+        dom.galeIcon.textContent = '🌨️';
+        dom.galeLabel.textContent = '下波狂風';
+        dom.galeLabel.className = 'text-[10px] font-black text-cyan-200 truncate';
+        dom.galeTimer.textContent = `${Math.ceil(state.galeTimer)}s`;
+      } else if (state.galePhase === 'warning') {
+        dom.galeHud.className = 'flex-1 bg-amber-950/90 border border-amber-400 rounded-xl px-2 py-1 flex items-center justify-between gap-1 min-w-0 animate-pulse';
+        dom.galeIcon.textContent = '⚠️';
+        dom.galeLabel.textContent = '狂風要吹飛不抗風的修補！';
+        dom.galeLabel.className = 'text-[10px] font-black text-amber-200 truncate';
+        dom.galeTimer.textContent = `${state.galeTimer.toFixed(1)}s`;
+      } else {
+        dom.galeHud.className = 'flex-1 bg-red-950/95 border border-red-400 rounded-xl px-2 py-1 flex items-center justify-between gap-1 min-w-0 animate-pulse';
+        dom.galeIcon.textContent = '🌪️';
+        dom.galeLabel.textContent = '狂風猛襲中！';
+        dom.galeLabel.className = 'text-[10px] font-black text-red-200 truncate';
+        dom.galeTimer.textContent = `${state.galeTimer.toFixed(1)}s`;
+      }
+    }
+
+    function selectHotspot(hotspotId) {
+      if (state.status !== 'playing') return;
+      sound.init();
+      sound.playClick();
+      state.selectedId = hotspotId;
+
+      const def = HOTSPOT_LIBRARY[hotspotId];
+      if (def) {
+        addFloatingText(def.pos.x * canvasW, def.pos.y * canvasH - 18, `👆 ${def.name}`, '#fde047');
+      }
+      renderDecisionPanel();
+    }
+
+    function renderDecisionPanel() {
+      const hotspots = state.currentLevel.hotspots;
+
+      // 1. 頂部快捷破損目標分頁
+      dom.hotspotTabs.innerHTML = '';
+      hotspots.forEach((hSpec) => {
+        const def = HOTSPOT_LIBRARY[hSpec.id];
+        const st = state.hotspotStates[hSpec.id];
+        if (!def || !st) return;
+
+        const isSelected = state.selectedId === hSpec.id;
+        const tab = document.createElement('button');
+        tab.type = 'button';
+        tab.addEventListener('click', () => selectHotspot(hSpec.id));
+
+        let statusIcon = st.iced ? '🧊' : '❗';
+        if (st.tier === 'luxury') statusIcon = '👑';
+        else if (st.tier === 'makeshift') statusIcon = '🩹';
+
+        tab.className = `shrink-0 px-2 py-1 rounded-lg text-[10px] font-black border transition-all cursor-pointer flex items-center gap-1 ${
+          isSelected
+            ? 'bg-amber-400 text-slate-950 border-yellow-100 shadow-md scale-105'
+            : st.tier === 'luxury'
+            ? 'bg-emerald-950/80 text-emerald-300 border-emerald-600/70'
+            : st.tier === 'makeshift'
+            ? 'bg-sky-950/80 text-sky-200 border-sky-500/70'
+            : 'bg-slate-800 text-slate-200 border-slate-600 hover:border-amber-400'
+        }`;
+        tab.innerHTML = `<span>${statusIcon}</span><span>${def.name}</span>`;
+        dom.hotspotTabs.appendChild(tab);
+      });
+
+      // 2. 當前選中破損描述
+      const curId = state.selectedId;
+      const curDef = HOTSPOT_LIBRARY[curId];
+      const curState = state.hotspotStates[curId];
+      if (!curDef || !curState) return;
+
+      if (curState.iced) {
+        dom.selectedHotspotDesc.textContent = curDef.icedDesc;
+        dom.selectedHotspotLeak.textContent = '🧊 需先除冰';
+        dom.selectedHotspotLeak.className = 'text-[10px] font-black px-1.5 py-0.5 rounded bg-cyan-950 text-cyan-200 border border-cyan-400 shrink-0 animate-pulse';
+      } else if (curState.tier === 'luxury') {
+        dom.selectedHotspotDesc.textContent = curDef.luxuryDesc;
+        dom.selectedHotspotLeak.textContent = '👑 豪宅級完成';
+        dom.selectedHotspotLeak.className = 'text-[10px] font-black px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-500 shrink-0';
+      } else if (curState.tier === 'makeshift') {
+        dom.selectedHotspotDesc.textContent = curDef.makeshiftDesc;
+        dom.selectedHotspotLeak.textContent = '🩹 可升級豪華版';
+        dom.selectedHotspotLeak.className = 'text-[10px] font-black px-1.5 py-0.5 rounded bg-sky-950 text-sky-200 border border-sky-400 shrink-0';
+      } else {
+        dom.selectedHotspotDesc.textContent = curDef.brokenDesc;
+        const snowIcons = '❄️'.repeat(curDef.coldLevel || 1);
+        dom.selectedHotspotLeak.textContent = `${snowIcons} 漏風中`;
+        dom.selectedHotspotLeak.className = 'text-[10px] font-black px-1.5 py-0.5 rounded bg-red-950 text-red-300 border border-red-500/70 shrink-0';
+      }
+
+      // 3. 道具卡片：每個破洞第一次打開時抽 3 張，之後維持同一組 (避免重開刷牌)
+      const stage1 = Boolean(curState.iced);
+      const hand = ensureHand(state, curId);
+      dom.cardsContainer.innerHTML = '';
+      hand.forEach((opt) => dom.cardsContainer.appendChild(buildToolCard(opt, curId, curState, stage1)));
+      renderFallbackButton(curId, curState, stage1);
+    }
+
+    const BLOCK_TEXT = { budget: '材料不足', oos: '缺貨', maxed: '已豪華改造', used: '已使用' };
+    const TRAIT_CHIP_CLASS = {
+      windproof: 'bg-sky-200 text-sky-900',
+      galefear: 'bg-rose-200 text-rose-900',
+      warm: 'bg-orange-200 text-orange-900',
+      damp: 'bg-slate-300 text-slate-800',
+      dry: 'bg-emerald-200 text-emerald-900'
+    };
+    const CHIP_WARN = 'bg-red-600 text-white';
+
+    function fmtSigned(v) {
+      return `${v >= 0 ? '+' : ''}${v.toFixed(1)}`;
+    }
+
+    // 組一張道具卡：標籤、當前天氣下的實際數值 (有變動就標色)、成本、不可選原因
+    function buildToolCard(opt, hsId, st, stage1) {
+      const eff = effOf(state, hsId, opt, stage1);
+      const reason = state.status !== 'playing' ? 'busy' : blockReason(state, hsId, opt);
+      const card = document.createElement('button');
+      card.type = 'button';
+      card.disabled = Boolean(reason);
+      card.className = 'tool-card rounded-2xl px-1 pt-1.5 pb-1 flex flex-col items-center justify-start text-center cursor-pointer';
+      card.title = opt.say || '';
+
+      // 標籤
+      const chips = [];
+      if (opt.tier === 'trap') {
+        chips.push([CHIP_WARN, opt.tag || '陷阱']);
+      } else {
+        (opt.traits || []).forEach((t) => {
+          let cls = TRAIT_CHIP_CLASS[t] || 'bg-amber-200 text-amber-900';
+          if (t === 'damp' && eff.dampHit) cls = CHIP_WARN;
+          if (t === 'galefear' && eff.blown) cls = CHIP_WARN;
+          chips.push([cls, TRAIT_INFO[t] ? TRAIT_INFO[t].label : t]);
+        });
+        if (eff.blown && !hasTrait(opt, 'galefear')) chips.push([CHIP_WARN, '會被吹掉']);
+        if (stage1 && !hasTrait(opt, 'dry')) chips.push(['bg-amber-300 text-amber-950', '留潮氣']);
+        if (opt.cost <= 1 && opt.cost > 0 && chips.length < 3) chips.push(['bg-lime-200 text-lime-900', '便宜']);
+      }
+      const chipHtml = chips
+        .map(([cls, txt]) => `<span class="px-1 rounded-full text-[9px] font-black leading-4 ${cls}">${txt}</span>`)
+        .join('');
+
+      // 實際效果數值
+      let stats;
+      if (opt.tier === 'trap') {
+        stats = `<span class="text-red-700">${fmtSigned(opt.delta)}°C・失誤</span>`;
+      } else if (stage1) {
+        stats = `<span class="text-slate-900">${fmtSigned(eff.delta)}°C</span>`;
+      } else {
+        const dCls = eff.dampHit ? 'text-red-700' : 'text-slate-900';
+        const arrow = eff.dampHit ? '▼' : '';
+        stats = `<span class="${dCls}">${arrow}${fmtSigned(eff.delta)}°C</span> <span class="${eff.dampHit ? 'text-red-700' : 'text-slate-700'}">封${Math.round(eff.seal * 100)}%</span>`;
+        if (eff.heat > 0) {
+          const hCls = eff.warmUp ? 'text-emerald-700' : eff.dampHit ? 'text-red-700' : 'text-slate-700';
+          stats += `<br><span class="${hCls}">${eff.warmUp ? '▲' : eff.dampHit ? '▼' : ''}暖 +${eff.heat.toFixed(2)}/s</span>`;
+        }
+      }
+
+      const costText = opt.cost > 0 ? `🧰${opt.cost}` : '免費';
+      const maxed = !stage1 && st.rank >= 2;
+      const icon = maxed && opt.tier === 'luxury' ? '👑' : opt.icon;
+      const reasonLine = BLOCK_TEXT[reason]
+        ? `<div class="text-[10px] font-black text-red-700 leading-tight mt-0.5 pointer-events-none">${BLOCK_TEXT[reason]}</div>`
+        : '';
+
+      card.innerHTML = `
+        <div class="absolute top-0.5 right-0.5 text-[9px] font-black px-1 rounded bg-amber-900 text-amber-100 pointer-events-none">${costText}</div>
+        <div class="w-10 h-10 rounded-xl bg-amber-100 border-2 border-amber-400 flex items-center justify-center text-2xl shadow-inner mb-0.5 pointer-events-none">${icon}</div>
+        <div class="text-[11px] font-black text-slate-900 leading-tight line-clamp-2 pointer-events-none">${opt.name}</div>
+        <div class="flex flex-wrap justify-center gap-0.5 mt-0.5 pointer-events-none">${chipHtml}</div>
+        <div class="text-[9.5px] font-black leading-tight mt-0.5 pointer-events-none">${stats}</div>
+        ${reasonLine}
+      `;
+
+      card.addEventListener('click', (e) => handleChoiceClick(opt, e.currentTarget));
+      return card;
+    }
+
+    // 免費保底：點數用完時的出路 (效果很小，但能撐住不卡死)
+    function renderFallbackButton(hsId, st, stage1) {
+      const box = dom.fallbackContainer;
+      box.innerHTML = '';
+      if (!stage1 && st.rank >= 0) return;
+      const it = stage1 ? FALLBACK_DEICE : FALLBACK_REPAIR;
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.disabled = state.status !== 'playing';
+      btn.className = 'w-full rounded-xl border border-dashed border-slate-500 bg-slate-900 text-slate-200 text-[10px] font-black py-1 cursor-pointer disabled:opacity-40';
+      btn.textContent = stage1
+        ? '🧤 徒手摳冰：免費保底（只能鬆動冰面）'
+        : '🧤 就地取材：免費保底（效果很小，點數用完時的出路）';
+      btn.addEventListener('click', (e) => handleChoiceClick(it, e.currentTarget));
+      box.appendChild(btn);
+    }
+
+    /**
+     * ============================================================================
+     * 9. 道具飛向破洞與結果結算 (雙結局 / 兩階段除冰 / 狂風吹飛)
+     * ============================================================================
+     */
+    function handleChoiceClick(option, cardEl) {
+      if (state.status !== 'playing') return;
+
+      sound.init();
+      sound.playClick();
+
+      const hotspotId = state.selectedId;
+      const def = HOTSPOT_LIBRARY[hotspotId];
+
+      // 點數不足 / 缺貨 / 已使用：不能選
+      const why = blockReason(state, hotspotId, option);
+      if (why) {
+        showToast('error', BLOCK_TEXT[why] || '這張卡現在不能用', why === 'budget' ? '材料點數不夠，改選便宜的卡，或用免費的「就地取材」。' : '換一張卡試試。');
+        return;
+      }
+
+      state.status = 'animating';
+      renderDecisionPanel();
+
+      const cardRect = cardEl.getBoundingClientRect();
+      const canvasRect = dom.canvas.getBoundingClientRect();
+      const startX = cardRect.left + cardRect.width / 2 - canvasRect.left;
+      const startY = cardRect.top + cardRect.height / 2 - canvasRect.top;
+      const targetX = def.pos.x * canvasW;
+      const targetY = def.pos.y * canvasH;
+
+      state.flyingTool = {
+        icon: option.icon,
+        startX,
+        startY,
+        targetX,
+        targetY,
+        progress: 0,
+        hotspotId,
+        option
+      };
+    }
+
+    function resolveChoiceImpact(hotspotId, option) {
+      const def = HOTSPOT_LIBRARY[hotspotId];
+      const tx = def.pos.x * canvasW;
+      const ty = def.pos.y * canvasH;
+
+      // 核心規則：扣點數、改溫度、改破洞狀態
+      const res = applyChoice(state, hotspotId, option);
+      if (!res.ok) {
+        state.status = 'playing';
+        renderDecisionPanel();
+        return;
+      }
+      const dStr = `${fmtSigned(res.delta)}°C`;
+
+      // 情況 A：選中陷阱！
+      if (res.kind === 'trap') {
+        sound.playFail();
+        triggerScreenShake();
+        triggerScreenFlash('bg-cyan-400/45');
+        showToast('error', `${option.icon} ${option.fail}`, `室溫 ${dStr}，失誤 +1`);
+        setBubble(option.say || '糟糕！選錯工具啦！', 'pain');
+        addFloatingText(tx, ty - 18, dStr, '#f87171');
+        spawnFxParticles(tx, ty, option.fx || 'ice_blast');
+      }
+      // 情況 B：結冰第一階段 -> 除冰成功
+      else if (res.kind === 'deice') {
+        const dry = hasTrait(option, 'dry');
+        if (option.tier === 'luxury') {
+          sound.playLuxurySuccess();
+          triggerScreenFlash('bg-amber-300/30');
+        } else {
+          sound.playMakeshiftSuccess();
+          triggerScreenFlash('bg-sky-300/25');
+        }
+        showToast('info', `${option.icon} 「${option.name}」除冰完成！`,
+          `${option.say}${dry ? '' : '（破洞濕濕的，怕潮的材料會打折）'}`);
+        setBubble(option.say || '冰塊清除了！快繼續把這裡修好！', 'happy');
+        addFloatingText(tx, ty - 18, `🧊 除冰完成 ${dStr}`, '#38bdf8');
+        spawnFxParticles(tx, ty, 'sparkles');
+      }
+      // 情況 C / D：修補 (湊合或豪華)
+      else {
+        const isLux = option.tier === 'luxury';
+        if (isLux) {
+          sound.playLuxurySuccess();
+          triggerScreenFlash('bg-amber-300/35');
+        } else {
+          sound.playMakeshiftSuccess();
+          triggerScreenFlash('bg-sky-400/25');
+        }
+        const notes = [];
+        if (res.eff.dampHit) notes.push('受潮打折');
+        if (res.eff.warmUp) notes.push('酷寒加倍保暖');
+        if (res.eff.blown) notes.push('狂風來時會被吹掉');
+        showToast(isLux ? 'success' : 'info', `${option.icon} 「${option.name}」${isLux ? '豪華完工！' : '補上了！'}`,
+          `${option.say}（${dStr}${notes.length ? '，' + notes.join('、') : ''}）`);
+        setBubble(option.say || (isLux ? '太豪華了！屋子變得又暖又漂亮！' : '勉強補上了！'), isLux ? 'happy' : 'cold');
+        addFloatingText(tx, ty - 18, `${isLux ? '👑 ' : ''}${dStr}`, isLux ? '#fde047' : '#7dd3fc');
+        spawnFxParticles(tx, ty, 'sparkles');
+        autoSelectNextBroken();
+      }
+
+      // 依據剩餘破損調整風聲大小
+      const openCount = state.currentLevel.hotspots.filter((h) => state.hotspotStates[h.id].tier === 'broken').length;
+      sound.setWindIntensity(Math.max(0.008, 0.015 + openCount * 0.012), state.galePhase === 'gale');
+
+      // 點數用完仍有破洞：提醒玩家還有免費保底
+      if (state.budget <= 0 && openCount > 0 && !state.warnedBudget && res.kind !== 'trap') {
+        state.warnedBudget = true;
+        setTimeout(() => {
+          if (state.status === 'playing') showToast('info', '🧰 材料點數用完了！', '剩下的破洞可以用免費的「就地取材」先頂著，溫度才撐得住。', 4200);
+        }, 700);
+      }
+
+      updateHUD();
+
+      setTimeout(() => {
+        const verdict = endCheck(state);
+        if (verdict === 'lose') {
+          finishLevel(false);
+          return;
+        }
+        if (verdict === 'win') {
+          finishLevel(true);
+          return;
+        }
+        state.status = 'playing';
+        renderDecisionPanel();
+      }, 620);
+    }
+
+    // 自動將遊標移往下一個尚未豪華升級的破洞，流暢度滿分！
+    function autoSelectNextBroken() {
+      const brokenNext = state.currentLevel.hotspots.find(
+        (h) => state.hotspotStates[h.id].tier === 'broken' || state.hotspotStates[h.id].iced
+      );
+      if (brokenNext) {
+        state.selectedId = brokenNext.id;
+        return;
+      }
+      const makeshiftNext = state.currentLevel.hotspots.find((h) => state.hotspotStates[h.id].tier === 'makeshift');
+      if (makeshiftNext) {
+        state.selectedId = makeshiftNext.id;
+      }
+    }
+
+    function showToast(type, title, desc, duration) {
+      if (toastTimeout) clearTimeout(toastTimeout);
+      dom.feedbackTitle.textContent = title;
+      dom.feedbackDesc.textContent = desc;
+
+      if (type === 'success') {
+        dom.feedbackToastInner.className = 'px-3.5 py-2 rounded-2xl border-2 text-center shadow-2xl backdrop-blur-md pointer-events-none bg-emerald-950/92 border-emerald-400 text-emerald-100';
+      } else if (type === 'info') {
+        dom.feedbackToastInner.className = 'px-3.5 py-2 rounded-2xl border-2 text-center shadow-2xl backdrop-blur-md pointer-events-none bg-sky-950/92 border-sky-400 text-sky-100';
+      } else {
+        dom.feedbackToastInner.className = 'px-3.5 py-2 rounded-2xl border-2 text-center shadow-2xl backdrop-blur-md pointer-events-none bg-red-950/92 border-red-400 text-red-100';
+      }
+
+      dom.feedbackToast.classList.remove('opacity-0', '-translate-y-2');
+      dom.feedbackToast.classList.add('opacity-100', 'translate-y-0');
+
+      toastTimeout = setTimeout(hideToast, duration || 2600);
+    }
+
+    function hideToast() {
+      dom.feedbackToast.classList.add('opacity-0', '-translate-y-2');
+      dom.feedbackToast.classList.remove('opacity-100', 'translate-y-0');
+    }
+
+    function triggerScreenFlash(colorClass) {
+      dom.flashLayer.className = `absolute inset-0 z-10 pointer-events-none flash-anim ${colorClass}`;
+      setTimeout(() => {
+        dom.flashLayer.className = 'hidden pointer-events-none';
+      }, 550);
+    }
+
+    function triggerScreenShake() {
+      dom.shell.classList.remove('shake');
+      void dom.shell.offsetWidth;
+      dom.shell.classList.add('shake');
+    }
+
+    function setBubble(text, mood) {
+      state.bubble.text = text;
+      state.bubble.mood = mood;
+    }
+
+    function addFloatingText(x, y, text, color) {
+      state.floatingTexts.push({ x, y, text, color, alpha: 1, vy: -1.3 });
+    }
+
+    function spawnFxParticles(x, y, type) {
+      for (let i = 0; i < 22; i++) {
+        const angle = (Math.PI * 2 * i) / 22 + (Math.random() - 0.5) * 0.4;
+        const speed = 1.6 + Math.random() * 4.0;
+        let color = '#fde047';
+        let char = null;
+
+        if (type === 'sparkles') {
+          color = i % 2 === 0 ? '#fde047' : '#34d399';
+          char = i % 3 === 0 ? '✨' : null;
+        } else if (type === 'snow_dump' || type === 'ice_blast') {
+          color = '#bae6fd';
+          char = i % 3 === 0 ? '❄️' : null;
+        } else if (type === 'paper_fly') {
+          color = '#e2e8f0';
+          char = i % 3 === 0 ? '📄' : null;
+        } else if (type === 'poison_cloud') {
+          color = '#86efac';
+          char = i % 3 === 0 ? '🌫️' : null;
+        } else {
+          color = '#fca5a5';
+          char = i % 3 === 0 ? '💥' : null;
+        }
+
+        state.fxParticles.push({
+          x, y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed - 1.1,
+          size: 4 + Math.random() * 4,
+          color, char, life: 1.0
+        });
+      }
+    }
+
+    /**
+     * ============================================================================
+     * 10. 雙結局結算 (1星勉強遮風屋 / 2星溫馨木屋 / 3星夢幻豪華別墅)
+     * ============================================================================
+     */
+    function finishLevel(isVictory) {
+      if (state.status === 'victory' || state.status === 'gameover') return;
+      state.status = isVictory ? 'victory' : 'gameover';
+      dom.frostLayer.style.opacity = '0';
+      updateHUD();
+
+      const lvl = state.currentLevel;
+      const lux = getLuxuryProgress();
+
+      if (isVictory) {
+        sound.playVictory();
+        const prevStars = saveData.stars[lvl.id] || 0;
+        saveData.stars[lvl.id] = Math.max(prevStars, lux.stars);
+        if (lvl.id < LEVELS.length && saveData.unlockedLevel <= lvl.id) {
+          saveData.unlockedLevel = lvl.id + 1;
+        }
+        writeSaveData();
+
+        dom.endStarsRow.textContent = [1, 2, 3].map((n) => (n <= lux.stars ? '⭐' : '☆')).join('');
+
+        if (lux.stars === 3) {
+          dom.endBadge.textContent = `👑 第 ${lvl.id} 關 夢幻豪宅完美結局！`;
+          dom.endBadge.className = 'px-4 py-1 rounded-full text-xs font-black tracking-widest mb-2 border bg-amber-950 border-amber-400 text-amber-300';
+          dom.endEmoji.textContent = '🏰';
+          dom.endTitle.textContent = '破屋奇蹟蛻變為夢幻豪華別墅！';
+          dom.endSubtitle.textContent = `在有限的材料點數下把全屋改造得又豪華又暖（豪華度 ${lux.pct}%，剩餘 ${state.budget} 點），母子三人換上新衣享用大餐！`;
+        } else if (lux.stars === 2) {
+          dom.endBadge.textContent = `🏡 第 ${lvl.id} 關 溫馨小木屋結局`;
+          dom.endBadge.className = 'px-4 py-1 rounded-full text-xs font-black tracking-widest mb-2 border bg-emerald-950 border-emerald-400 text-emerald-300';
+          dom.endEmoji.textContent = '🏡';
+          dom.endTitle.textContent = '成功打造溫暖避風港！';
+          dom.endSubtitle.textContent = `屋內暖呼呼的！剩餘 ${state.budget} 點。若點數允許，把湊合材料升級成豪華材料並少選錯，就能拿 3 星！`;
+        } else {
+          dom.endBadge.textContent = `🩹 第 ${lvl.id} 關 勉強遮風避雨結局`;
+          dom.endBadge.className = 'px-4 py-1 rounded-full text-xs font-black tracking-widest mb-2 border bg-sky-950 border-sky-400 text-sky-300';
+          dom.endEmoji.textContent = '🏚️';
+          dom.endTitle.textContent = '勉強撐過暴風雪之夜…';
+          dom.endSubtitle.textContent = `雖然保住了性命，但屋子只是勉強補上。重玩一次，看天氣挑對材料、多補幾個破洞衝擊更高星等吧！`;
+        }
+
+        dom.statFinalTemp.textContent = `${state.temp.toFixed(1)}°C`;
+        dom.statFinalTemp.className = 'text-sm font-black text-emerald-400 mt-0.5';
+
+        if (lvl.id < LEVELS.length) {
+          dom.btnEndNext.textContent = `➡️ 挑戰第 ${lvl.id + 1} 關`;
+          dom.btnEndNext.onclick = () => {
+            sound.playClick();
+            startLevel(lvl.id + 1);
+          };
+        } else {
+          dom.btnEndNext.textContent = '🔄 重玩最終關';
+          dom.btnEndNext.onclick = () => {
+            sound.playClick();
+            startLevel(lvl.id);
+          };
+        }
+      } else {
+        sound.playGameOver();
+        dom.endBadge.textContent = `💀 第 ${lvl.id} 關 救援失敗`;
+        dom.endBadge.className = 'px-4 py-1 rounded-full text-xs font-black tracking-widest mb-2 border bg-red-950 border-red-400 text-red-300';
+        dom.endStarsRow.textContent = '☆☆☆';
+        dom.endEmoji.textContent = '🥶';
+        dom.endTitle.textContent = '室內降至 0°C，母子被暴雪凍僵！';
+        dom.endSubtitle.textContent = state.budget <= 0
+          ? '材料點數用完了！下次挑便宜又合天氣的卡，別把點數花在陷阱與會被吹掉的材料上。'
+          : '提示：先補「❄️❄️❄️」最大的漏風口，再靠保暖材料與壁爐升溫；留意天氣標籤！';
+        dom.statFinalTemp.textContent = '0.0°C';
+        dom.statFinalTemp.className = 'text-sm font-black text-cyan-400 mt-0.5';
+
+        dom.btnEndNext.textContent = '🔄 重新挑戰本關';
+        dom.btnEndNext.onclick = () => {
+          sound.playClick();
+          startLevel(lvl.id);
+        };
+      }
+
+      dom.statLuxuryPct.textContent = `${lux.pct}%`;
+      dom.statMistakes.textContent = `${state.mistakes} 次`;
+      dom.endOverlay.classList.remove('hidden', 'pointer-events-none');
+      dom.endOverlay.classList.add('pointer-events-auto');
+    }
+
+    /**
+     * ============================================================================
+     * 11. HTML5 Canvas 2D 破屋變豪宅即時視覺繪圖引擎 + 場景直接點擊偵測
+     * ============================================================================
+     */
+    const THEME_PALETTES = {
+      cabin:      { coldTop: '#26354d', coldBot: '#3b4f6e', warmTop: '#92400e', warmBot: '#b45309', roof: '#5c2408' },
+      barn:       { coldTop: '#3a3330', coldBot: '#57534e', warmTop: '#991b1b', warmBot: '#b91c1c', roof: '#571111' },
+      train:      { coldTop: '#1e293b', coldBot: '#334155', warmTop: '#9a3412', warmBot: '#c2410c', roof: '#292524' },
+      mansion:    { coldTop: '#293548', coldBot: '#475569', warmTop: '#92400e', warmBot: '#d97706', roof: '#4c1d95' },
+      lighthouse: { coldTop: '#1e3a5f', coldBot: '#1d4ed8', warmTop: '#c2410c', warmBot: '#ea580c', roof: '#1e3a8a' },
+      church:     { coldTop: '#29384e', coldBot: '#475569', warmTop: '#854d0e', warmBot: '#ca8a04', roof: '#1e1b4b' },
+      glacier:    { coldTop: '#0e7490', coldBot: '#0284c7', warmTop: '#0369a1', warmBot: '#0ea5e9', roof: '#083344' },
+      ship:       { coldTop: '#1e293b', coldBot: '#334155', warmTop: '#475569', warmBot: '#64748b', roof: '#0f172a' },
+      station:    { coldTop: '#1e293b', coldBot: '#334155', warmTop: '#0284c7', warmBot: '#0ea5e9', roof: '#0c4a6e' },
+      clocktower: { coldTop: '#2e2a6b', coldBot: '#4c1d95', warmTop: '#92400e', warmBot: '#d97706', roof: '#1e1b4b' },
+      summit:     { coldTop: '#1e3a8a', coldBot: '#2563eb', warmTop: '#b45309', warmBot: '#d97706', roof: '#172554' },
+      palace:     { coldTop: '#312e81', coldBot: '#4338ca', warmTop: '#6d28d9', warmBot: '#86198f', roof: '#1e1b4b' }
+    };
+
+    function drawRoundRect(x, y, w, h, r) {
+      const radius = Math.max(0, Math.min(r, w / 2, h / 2));
+      ctx.beginPath();
+      ctx.moveTo(x + radius, y);
+      ctx.arcTo(x + w, y, x + w, y + h, radius);
+      ctx.arcTo(x + w, y + h, x, y + h, radius);
+      ctx.arcTo(x, y + h, x, y, radius);
+      ctx.arcTo(x, y, x + w, y, radius);
+      ctx.closePath();
+    }
+
+    function getHotspotState(id) {
+      return state.hotspotStates[id] || { tier: 'luxury', iced: false };
+    }
+
+    function drawScene() {
+      const w = Math.max(300, canvasW);
+      const h = Math.max(220, canvasH);
+      const pal = THEME_PALETTES[state.currentLevel.theme] || THEME_PALETTES.cabin;
+      const lux = getLuxuryProgress();
+      const isLuxuryRoom = lux.pct >= 55;
+
+      // 1. 室內背景牆壁 (隨著豪華改造度從冷暗藍灰蛻變為溫暖蜂蜜金木牆)
+      const wallGrad = ctx.createLinearGradient(0, 0, 0, h * 0.72);
+      if (!isLuxuryRoom) {
+        wallGrad.addColorStop(0, pal.coldTop);
+        wallGrad.addColorStop(1, pal.coldBot);
+      } else {
+        wallGrad.addColorStop(0, pal.warmTop);
+        wallGrad.addColorStop(1, pal.warmBot);
+      }
+      ctx.fillStyle = wallGrad;
+      ctx.fillRect(0, 0, w, h * 0.72);
+
+      // 木牆水平紋理
+      ctx.strokeStyle = isLuxuryRoom ? 'rgba(254, 243, 199, 0.25)' : 'rgba(148, 163, 184, 0.24)';
+      ctx.lineWidth = 2;
+      for (let y = 30; y < h * 0.72; y += 30) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(w, y);
+        ctx.stroke();
+      }
+
+      // 豪華度 >= 75% 時出現金色吊燈與節慶彩旗！
+      if (lux.pct >= 75) {
+        drawChandelierAndGarland(w, h);
+      }
+
+      // 2. 屋頂區域
+      drawRoofVisual(w, h, pal, getHotspotState('roof'));
+
+      // 3. 地板區域
+      const floorY = h * 0.70;
+      const floorSt = getHotspotState('floor');
+      const floorGrad = ctx.createLinearGradient(0, floorY, 0, h);
+      if (floorSt.tier === 'luxury' || isLuxuryRoom) {
+        floorGrad.addColorStop(0, '#b45309');
+        floorGrad.addColorStop(1, '#78350f');
+      } else {
+        floorGrad.addColorStop(0, '#475569');
+        floorGrad.addColorStop(1, '#1e293b');
+      }
+      ctx.fillStyle = floorGrad;
+      ctx.fillRect(0, floorY, w, h - floorY);
+
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(0, floorY - 3, w, 6);
+
+      // 地板狀態視覺：結冰 / 舊草蓆 / 豪華波斯紅絨地毯
+      if (floorSt.tier === 'broken') {
+        ctx.fillStyle = 'rgba(56, 189, 248, 0.45)';
+        ctx.beginPath();
+        ctx.ellipse(w * 0.48, h * 0.87, w * 0.35, 22, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(224, 242, 254, 0.9)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      } else if (floorSt.tier === 'makeshift') {
+        ctx.fillStyle = '#a16207';
+        drawRoundRect(w * 0.20, h * 0.81, w * 0.56, 26, 6);
+        ctx.fill();
+      } else if (floorSt.tier === 'luxury') {
+        ctx.fillStyle = '#dc2626';
+        ctx.beginPath();
+        ctx.ellipse(w * 0.48, h * 0.87, w * 0.38, 25, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#fbbf24';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+      }
+
+      // 4. 窗戶區域
+      drawWindowVisual(w * 0.08, h * 0.21, w * 0.23, h * 0.23, getHotspotState('window'));
+
+      // 5. 東側牆壁破洞區域
+      if (state.hotspotStates['wall']) {
+        drawWallVisual(w * 0.67, h * 0.22, w * 0.25, h * 0.25, getHotspotState('wall'));
+      }
+
+      // 6. 大門區域
+      if (state.hotspotStates['door']) {
+        drawDoorVisual(w * 0.87, h * 0.44, w * 0.11, h * 0.26, getHotspotState('door'));
+      }
+
+      // 7. 壁爐區域
+      drawFireplaceVisual(w * 0.72, h * 0.68, getHotspotState('fireplace'));
+
+      // 8. 暖床區域
+      drawBedVisual(w * 0.08, h * 0.63, w * 0.40, h * 0.22, getHotspotState('bed'));
+
+      // 9. 母子三人角色與對話框
+      drawFamilyVisual(w * 0.30, h * 0.73);
+
+      // 10. 餐桌區域
+      if (state.hotspotStates['feast']) {
+        drawFeastVisual(w * 0.54, h * 0.77, getHotspotState('feast'));
+      }
+
+      // 11. 場景上所有可點擊破損的互動圓形徽章 (直接點擊提示)
+      drawInteractiveHotspotPins(w, h);
+
+      // 12. 壁爐點燃後的溫暖金光氛圍
+      if (getHotspotState('fireplace').tier === 'luxury') {
+        const glow = ctx.createRadialGradient(w * 0.72, h * 0.65, 12, w * 0.58, h * 0.56, w * 0.82);
+        glow.addColorStop(0, 'rgba(251, 146, 60, 0.38)');
+        glow.addColorStop(0.55, 'rgba(245, 158, 11, 0.15)');
+        glow.addColorStop(1, 'rgba(245, 158, 11, 0)');
+        ctx.fillStyle = glow;
+        ctx.fillRect(0, 0, w, h);
+      }
+    }
+
+    function drawChandelierAndGarland(w, h) {
+      // 節慶彩帶
+      ctx.strokeStyle = '#fbbf24';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(0, h * 0.14);
+      ctx.quadraticCurveTo(w * 0.25, h * 0.21, w * 0.5, h * 0.13);
+      ctx.quadraticCurveTo(w * 0.75, h * 0.21, w, h * 0.14);
+      ctx.stroke();
+
+      // 金色吊燈
+      const cx = w * 0.5;
+      const cy = h * 0.18;
+      ctx.fillStyle = '#fbbf24';
+      ctx.fillRect(cx - 2, h * 0.08, 4, h * 0.10);
+      ctx.beginPath();
+      ctx.arc(cx, cy, 11, 0, Math.PI * 2);
+      ctx.fill();
+
+      const aura = ctx.createRadialGradient(cx, cy, 2, cx, cy, 65);
+      aura.addColorStop(0, 'rgba(254, 240, 138, 0.65)');
+      aura.addColorStop(1, 'rgba(254, 240, 138, 0)');
+      ctx.fillStyle = aura;
+      ctx.beginPath();
+      ctx.arc(cx, cy, 65, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function drawRoofVisual(w, h, pal, st) {
+      ctx.fillStyle = pal.roof;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(w, 0);
+      ctx.lineTo(w, h * 0.15);
+      ctx.lineTo(w * 0.5, h * 0.05);
+      ctx.lineTo(0, h * 0.15);
+      ctx.closePath();
+      ctx.fill();
+
+      if (st.tier === 'broken') {
+        ctx.fillStyle = '#0c4a6e';
+        ctx.beginPath();
+        ctx.ellipse(w * 0.50, h * 0.08, 46, 17, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#7dd3fc';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        drawWindStreaks(w * 0.50, h * 0.11, 0);
+      } else if (st.tier === 'makeshift') {
+        ctx.fillStyle = '#0284c7';
+        drawRoundRect(w * 0.36, h * 0.04, w * 0.28, 18, 5);
+        ctx.fill();
+        ctx.strokeStyle = '#bae6fd';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      } else {
+        ctx.fillStyle = '#d97706';
+        drawRoundRect(w * 0.34, h * 0.035, w * 0.32, 20, 6);
+        ctx.fill();
+        ctx.strokeStyle = '#fef3c7';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+    }
+
+    function drawWindowVisual(x, y, w, h, st) {
+      ctx.fillStyle = '#0c4a6e';
+      drawRoundRect(x, y, w, h, 8);
+      ctx.fill();
+
+      if (st.tier === 'luxury') {
+        ctx.fillStyle = 'rgba(254, 243, 199, 0.36)';
+        drawRoundRect(x, y, w, h, 8);
+        ctx.fill();
+
+        ctx.strokeStyle = '#f59e0b';
+        ctx.lineWidth = 5;
+        drawRoundRect(x, y, w, h, 8);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(x + w / 2, y);
+        ctx.lineTo(x + w / 2, y + h);
+        ctx.moveTo(x, y + h / 2);
+        ctx.lineTo(x + w, y + h / 2);
+        ctx.stroke();
+
+        // 紅絲絨窗簾
+        ctx.fillStyle = '#dc2626';
+        drawRoundRect(x - 6, y - 3, 14, h + 6, 4);
+        ctx.fill();
+        drawRoundRect(x + w - 8, y - 3, 14, h + 6, 4);
+        ctx.fill();
+      } else if (st.tier === 'makeshift') {
+        // 舊報紙＋膠帶封窗
+        ctx.fillStyle = '#cbd5e1';
+        drawRoundRect(x + 3, y + 3, w - 6, h - 6, 4);
+        ctx.fill();
+        ctx.strokeStyle = '#64748b';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(x + 6, y + 6);
+        ctx.lineTo(x + w - 6, y + h - 6);
+        ctx.moveTo(x + w - 6, y + 6);
+        ctx.lineTo(x + 6, y + h - 6);
+        ctx.stroke();
+      } else {
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 4;
+        drawRoundRect(x, y, w, h, 6);
+        ctx.stroke();
+
+        ctx.fillStyle = 'rgba(186, 230, 253, 0.85)';
+        ctx.beginPath();
+        ctx.moveTo(x + 3, y + 3);
+        ctx.lineTo(x + w * 0.42, y + 3);
+        ctx.lineTo(x + w * 0.14, y + h * 0.35);
+        ctx.closePath();
+        ctx.fill();
+
+        if (st.iced) {
+          // 結冰冰柱視覺
+          ctx.fillStyle = '#bae6fd';
+          for (let i = 0; i < 4; i++) {
+            const ix = x + 10 + i * (w * 0.22);
+            ctx.beginPath();
+            ctx.moveTo(ix, y);
+            ctx.lineTo(ix + 10, y);
+            ctx.lineTo(ix + 5, y + 24);
+            ctx.closePath();
+            ctx.fill();
+          }
+        }
+        drawWindStreaks(x + w * 0.5, y + h * 0.5, -1);
+      }
+    }
+
+    function drawWallVisual(x, y, w, h, st) {
+      if (st.tier === 'luxury') {
+        // 豪華木牆＋暖光壁燈
+        ctx.fillStyle = '#d97706';
+        drawRoundRect(x, y, w, h, 8);
+        ctx.fill();
+        ctx.strokeStyle = '#fef3c7';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        ctx.fillStyle = '#fef08a';
+        ctx.beginPath();
+        ctx.arc(x + w / 2, y + h / 2, 9, 0, Math.PI * 2);
+        ctx.fill();
+        return;
+      }
+
+      ctx.fillStyle = '#0c4a6e';
+      ctx.beginPath();
+      ctx.moveTo(x + w * 0.15, y);
+      ctx.lineTo(x + w * 0.85, y + h * 0.08);
+      ctx.lineTo(x + w, y + h * 0.55);
+      ctx.lineTo(x + w * 0.82, y + h);
+      ctx.lineTo(x + w * 0.1, y + h * 0.92);
+      ctx.lineTo(x, y + h * 0.45);
+      ctx.closePath();
+      ctx.fill();
+
+      if (st.tier === 'makeshift') {
+        ctx.fillStyle = '#b45309';
+        drawRoundRect(x + 2, y + 4, w - 4, h - 8, 5);
+        ctx.fill();
+        ctx.strokeStyle = '#fde68a';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      } else {
+        drawWindStreaks(x + w * 0.45, y + h * 0.5, 1);
+      }
+    }
+
+    function drawDoorVisual(x, y, w, h, st) {
+      if (st.tier === 'luxury') {
+        ctx.fillStyle = '#92400e';
+        drawRoundRect(x, y, w, h, 6);
+        ctx.fill();
+        ctx.strokeStyle = '#fbbf24';
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+        // 聖誕花圈
+        ctx.strokeStyle = '#22c55e';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(x + w / 2, y + h * 0.35, 10, 0, Math.PI * 2);
+        ctx.stroke();
+      } else if (st.tier === 'makeshift') {
+        ctx.fillStyle = '#64748b';
+        drawRoundRect(x, y, w, h, 4);
+        ctx.fill();
+      } else {
+        ctx.fillStyle = '#0c4a6e';
+        drawRoundRect(x, y, w, h, 4);
+        ctx.fill();
+        drawWindStreaks(x + w * 0.3, y + h * 0.5, 1);
+      }
+    }
+
+    function drawFireplaceVisual(cx, cy, st) {
+      ctx.fillStyle = st.iced ? '#38bdf8' : '#991b1b';
+      ctx.fillRect(cx - 18, cy - 92, 36, 38);
+
+      ctx.fillStyle = st.tier === 'luxury' ? '#b91c1c' : '#64748b';
+      drawRoundRect(cx - 46, cy - 56, 92, 64, 10);
+      ctx.fill();
+      ctx.strokeStyle = st.tier === 'luxury' ? '#fbbf24' : '#cbd5e1';
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+
+      ctx.fillStyle = '#1e293b';
+      drawRoundRect(cx - 31, cy - 40, 62, 46, 8);
+      ctx.fill();
+
+      if (st.iced) {
+        ctx.fillStyle = 'rgba(125, 211, 252, 0.85)';
+        drawRoundRect(cx - 35, cy - 44, 70, 52, 10);
+        ctx.fill();
+        ctx.strokeStyle = '#f0f9ff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      } else if (st.tier === 'luxury') {
+        const flicker = Math.sin(state.time * 15) * 4.5;
+        ctx.fillStyle = '#f97316';
+        ctx.beginPath();
+        ctx.moveTo(cx - 21, cy - 5);
+        ctx.quadraticCurveTo(cx - 24, cy - 32, cx + flicker, cy - 46);
+        ctx.quadraticCurveTo(cx + 24, cy - 32, cx + 21, cy - 5);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = '#fde047';
+        ctx.beginPath();
+        ctx.moveTo(cx - 11, cy - 5);
+        ctx.quadraticCurveTo(cx - 13, cy - 22, cx - flicker * 0.6, cy - 32);
+        ctx.quadraticCurveTo(cx + 13, cy - 22, cx + 11, cy - 5);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.font = '16px sans-serif';
+        ctx.fillText('🎄', cx - 26, cy - 64);
+        ctx.fillText('🧦', cx + 22, cy - 64);
+      } else if (st.tier === 'makeshift') {
+        // 微弱小火苗
+        ctx.fillStyle = '#fb923c';
+        ctx.beginPath();
+        ctx.arc(cx, cy - 12, 8, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        ctx.fillStyle = '#78350f';
+        drawRoundRect(cx - 18, cy - 12, 36, 8, 3);
+        ctx.fill();
+      }
+    }
+
+    function drawBedVisual(x, y, w, h, st) {
+      if (st.tier === 'luxury') {
+        ctx.fillStyle = '#92400e';
+        drawRoundRect(x - 6, y - 14, w * 0.78, 50, 8);
+        ctx.fill();
+
+        ctx.fillStyle = '#fef3c7';
+        drawRoundRect(x, y - 6, w * 0.70, 36, 10);
+        ctx.fill();
+
+        ctx.fillStyle = '#ef4444';
+        drawRoundRect(x + w * 0.18, y - 6, w * 0.48, 36, 10);
+        ctx.fill();
+        ctx.strokeStyle = '#fbbf24';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      } else if (st.tier === 'makeshift') {
+        ctx.fillStyle = '#64748b';
+        drawRoundRect(x + 6, y + 14, w * 0.68, 22, 8);
+        ctx.fill();
+      } else {
+        ctx.fillStyle = '#475569';
+        drawRoundRect(x + 10, y + 18, w * 0.62, 16, 6);
+        ctx.fill();
+      }
+    }
+
+    function drawFeastVisual(cx, cy, st) {
+      ctx.fillStyle = '#78350f';
+      ctx.fillRect(cx - 5, cy + 4, 10, 22);
+
+      if (st.tier === 'luxury') {
+        ctx.fillStyle = '#fef3c7';
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, 48, 15, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#f59e0b';
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+
+        ctx.font = '22px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('🍗', cx - 14, cy - 5);
+        ctx.fillText('☕', cx + 15, cy - 4);
+      } else if (st.tier === 'makeshift') {
+        ctx.fillStyle = '#92400e';
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, 38, 12, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.font = '18px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('🥔', cx, cy - 4);
+      } else {
+        ctx.fillStyle = '#64748b';
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, 34, 10, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    function drawFamilyVisual(baseX, baseY) {
+      const isWarm = state.temp >= 17.5 || getHotspotState('fireplace').tier === 'luxury';
+      const isLuxuryClothes = getHotspotState('bed').tier === 'luxury';
+      const shiverAmp = isWarm ? 0 : Math.max(1.4, (18 - state.temp) * 0.24);
+      const sx = Math.sin(state.time * 42) * shiverAmp;
+      const sy = Math.cos(state.time * 36) * (shiverAmp * 0.4);
+
+      ctx.save();
+      ctx.translate(baseX + sx, baseY + sy);
+
+      ctx.fillStyle = isLuxuryClothes ? '#ef4444' : '#64748b';
+      ctx.beginPath();
+      ctx.ellipse(0, 8, 50, 20, 0, Math.PI, Math.PI * 2);
+      ctx.fill();
+
+      drawPerson({ x: 0, y: -25, headR: 16, hairColor: '#713f12', coatColor: isLuxuryClothes ? '#f59e0b' : '#64748b', isWarm });
+      drawPerson({ x: -27, y: -11, headR: 12.5, hairColor: '#92400e', coatColor: isLuxuryClothes ? '#ec4899' : '#94a3b8', isWarm });
+      drawPerson({ x: 27, y: -9, headR: 12, hairColor: '#451a03', coatColor: isLuxuryClothes ? '#3b82f6' : '#94a3b8', isWarm });
+
+      ctx.restore();
+      drawSpeechBubble(baseX + 16, baseY - 78, state.bubble.text, state.bubble.mood);
+    }
+
+    function drawPerson({ x, y, headR, hairColor, coatColor, isWarm }) {
+      ctx.fillStyle = coatColor;
+      ctx.beginPath();
+      ctx.ellipse(x, y + headR + 13, headR * 1.15, headR * 1.25, 0, Math.PI, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = hairColor;
+      ctx.beginPath();
+      ctx.arc(x, y - 2, headR + 3, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = isWarm ? '#fed7aa' : '#e2e8f0';
+      ctx.beginPath();
+      ctx.arc(x, y, headR, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = hairColor;
+      ctx.beginPath();
+      ctx.arc(x, y - 3, headR, Math.PI * 1.05, Math.PI * 1.95);
+      ctx.fill();
+
+      ctx.fillStyle = '#0f172a';
+      const eyeOffset = headR * 0.36;
+      ctx.beginPath();
+      ctx.arc(x - eyeOffset, y + 1, 2, 0, Math.PI * 2);
+      ctx.arc(x + eyeOffset, y + 1, 2, 0, Math.PI * 2);
+      ctx.fill();
+
+      if (isWarm) {
+        ctx.strokeStyle = '#991b1b';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(x, y + 4, 4.2, 0.15 * Math.PI, 0.85 * Math.PI);
+        ctx.stroke();
+      } else {
+        ctx.strokeStyle = '#2563eb';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(x, y + 8, 3.8, 1.15 * Math.PI, 1.85 * Math.PI);
+        ctx.stroke();
+      }
+    }
+
+    function drawSpeechBubble(x, y, text, mood) {
+      ctx.save();
+      ctx.font = 'bold 11px "Noto Sans TC", sans-serif';
+      const textW = ctx.measureText(text).width;
+      const boxW = Math.min(canvasW - 22, textW + 20);
+      const boxH = 28;
+      const bx = Math.max(11, Math.min(canvasW - boxW - 11, x - boxW * 0.42));
+      const by = Math.max(10, y - boxH);
+
+      ctx.fillStyle = mood === 'happy' ? '#fef3c7' : mood === 'pain' ? '#fee2e2' : '#f8fafc';
+      ctx.strokeStyle = mood === 'happy' ? '#f59e0b' : mood === 'pain' ? '#ef4444' : '#38bdf8';
+      ctx.lineWidth = 2;
+      drawRoundRect(bx, by, boxW, boxH, 10);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = mood === 'pain' ? '#991b1b' : '#0f172a';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(text, bx + boxW / 2, by + boxH / 2 + 1, boxW - 10);
+      ctx.restore();
+    }
+
+    function drawWindStreaks(cx, cy, dir) {
+      ctx.save();
+      ctx.strokeStyle = state.galePhase === 'gale' ? 'rgba(224, 242, 254, 0.95)' : 'rgba(186, 230, 253, 0.65)';
+      ctx.lineWidth = state.galePhase === 'gale' ? 2.6 : 1.8;
+      for (let i = 0; i < 3; i++) {
+        const offset = ((state.time * 95 + i * 26) % 65);
+        const startX = dir === 0 ? cx - 14 + i * 14 : cx - dir * offset;
+        const startY = dir === 0 ? cy + offset : cy - 16 + i * 15;
+        ctx.beginPath();
+        ctx.moveTo(startX, startY);
+        ctx.lineTo(dir === 0 ? startX - 6 : startX - dir * 24, startY + 12);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    // 在畫布上直接繪製可點擊的破損圓形圖釘 (點擊畫布即可直接選中！)
+    function drawInteractiveHotspotPins(w, h) {
+      if (state.status !== 'playing') return;
+
+      state.currentLevel.hotspots.forEach((hSpec) => {
+        const def = HOTSPOT_LIBRARY[hSpec.id];
+        const st = state.hotspotStates[hSpec.id];
+        if (!def || !st) return;
+
+        // 已經豪華完成且非當前選中的點位縮小顯示小皇冠即可
+        const isSelected = state.selectedId === hSpec.id;
+        if (st.tier === 'luxury' && !isSelected) return;
+
+        const cx = def.pos.x * w;
+        const cy = def.pos.y * h;
+        const pulse = isSelected ? 21 + Math.sin(state.time * 7) * 3.5 : 16 + Math.sin(state.time * 4) * 2;
+
+        ctx.save();
+        // 外圈發光環
+        ctx.beginPath();
+        ctx.arc(cx, cy, pulse + 4, 0, Math.PI * 2);
+        ctx.fillStyle = isSelected ? 'rgba(251, 191, 36, 0.35)' : 'rgba(15, 23, 42, 0.45)';
+        ctx.fill();
+
+        // 圓形徽章底色
+        ctx.beginPath();
+        ctx.arc(cx, cy, pulse, 0, Math.PI * 2);
+        if (isSelected) {
+          ctx.fillStyle = '#f59e0b';
+          ctx.strokeStyle = '#fef08a';
+        } else if (st.iced) {
+          ctx.fillStyle = '#0284c7';
+          ctx.strokeStyle = '#bae6fd';
+        } else if (st.tier === 'makeshift') {
+          ctx.fillStyle = '#334155';
+          ctx.strokeStyle = '#38bdf8';
+        } else {
+          ctx.fillStyle = '#991b1b';
+          ctx.strokeStyle = '#fca5a5';
+        }
+        ctx.lineWidth = isSelected ? 3 : 2;
+        ctx.fill();
+        ctx.stroke();
+
+        // 徽章圖示
+        ctx.font = isSelected ? '18px sans-serif' : '14px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        const badgeIcon = st.iced ? '🧊' : st.tier === 'luxury' ? '👑' : st.tier === 'makeshift' ? '🩹' : def.icon;
+        ctx.fillText(badgeIcon, cx, cy);
+        ctx.restore();
+      });
+    }
+
+    /**
+     * ============================================================================
+     * 12. 畫布點擊互動偵測 (直接點破洞就能切換！)
+     * ============================================================================
+     */
+    dom.canvas.addEventListener('click', (e) => {
+      if (state.status !== 'playing') return;
+      const rect = dom.canvas.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const clickY = e.clientY - rect.top;
+
+      let closestId = null;
+      let minDist = 52; // 寬鬆好點的觸控半徑
+
+      state.currentLevel.hotspots.forEach((hSpec) => {
+        const def = HOTSPOT_LIBRARY[hSpec.id];
+        if (!def) return;
+        const hx = def.pos.x * canvasW;
+        const hy = def.pos.y * canvasH;
+        const dist = Math.hypot(clickX - hx, clickY - hy);
+        if (dist < minDist) {
+          minDist = dist;
+          closestId = hSpec.id;
+        }
+      });
+
+      if (closestId) {
+        selectHotspot(closestId);
+      }
+    });
+
+    /**
+     * ============================================================================
+     * 13. 主遊戲迴圈與暴風雪狂風週期
+     * ============================================================================
+     */
+    function resizeCanvas() {
+      if (!dom.canvasWrapper || !dom.canvas) return;
+      const rect = dom.canvasWrapper.getBoundingClientRect();
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvasW = Math.max(300, rect.width || dom.shell.clientWidth || 420);
+      canvasH = Math.max(240, rect.height || 440);
+      dom.canvas.width = Math.floor(canvasW * dpr);
+      dom.canvas.height = Math.floor(canvasH * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    function initSnowParticles() {
+      state.snowParticles = [];
+      for (let i = 0; i < 110; i++) {
+        state.snowParticles.push({
+          x: Math.random() * Math.max(400, canvasW),
+          y: Math.random() * Math.max(400, canvasH),
+          r: 1.5 + Math.random() * 2.6,
+          vx: -1.8 - Math.random() * 2.4,
+          vy: 1.5 + Math.random() * 2.5,
+          indoor: i < 38
+        });
+      }
+    }
+
+    // 處理核心規則回傳的狂風事件 (音效、提示、畫面)
+    function handleGameEvents(events) {
+      events.forEach((ev) => {
+        if (ev.type === 'warning') {
+          sound.playAlarm();
+          showToast('error', '⚠️ 暴雪狂風即將來襲！', '不抗風的修補會被吹飛，標示「抗風」或高級材料才撐得住！');
+        } else if (ev.type === 'gale') {
+          sound.setWindIntensity(0.085, true);
+          triggerScreenShake();
+          if (ev.ripped.length > 0) {
+            showToast('error', `🌪️ 狂風吹飛了 ${ev.ripped.length} 處修補！`, '修補被吹掉要重新花材料點數，下次挑「抗風」的材料。');
+            setBubble('哇啊！有的修補被狂風整片吹走了！', 'pain');
+            renderDecisionPanel();
+          }
+        } else if (ev.type === 'galeEnd') {
+          sound.setWindIntensity(0.035, false);
+        }
+      });
+    }
+
+    function renderCanvasFrame(dt = 0.016) {
+      try {
+        if (dom.canvas.width === 0 || dom.canvas.height === 0) {
+          resizeCanvas();
+        }
+
+        ctx.clearRect(0, 0, canvasW, canvasH);
+        drawScene();
+
+        const galeMult = state.galePhase === 'gale' ? 2.6 : 1.0;
+        state.snowParticles.forEach((p) => {
+          p.x += p.vx * galeMult;
+          p.y += p.vy * galeMult;
+          if (p.x < -10) p.x = canvasW + 10;
+          if (p.y > canvasH + 10) {
+            p.y = -10;
+            p.x = Math.random() * canvasW;
+          }
+          ctx.fillStyle = p.indoor ? 'rgba(224, 242, 254, 0.65)' : 'rgba(255, 255, 255, 0.45)';
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+          ctx.fill();
+        });
+
+        if (state.flyingTool) {
+          const ft = state.flyingTool;
+          ft.progress += dt * 2.9;
+          const t = Math.min(1, ft.progress);
+          const ease = 1 - Math.pow(1 - t, 3);
+          const curX = ft.startX + (ft.targetX - ft.startX) * ease;
+          const curY = ft.startY + (ft.targetY - ft.startY) * ease - Math.sin(t * Math.PI) * 65;
+          const scale = 1 + Math.sin(t * Math.PI) * 0.5;
+
+          ctx.save();
+          ctx.translate(curX, curY);
+          ctx.scale(scale, scale);
+          ctx.rotate(Math.sin(t * Math.PI * 4) * 0.22);
+          ctx.font = '42px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(ft.icon, 0, 0);
+          ctx.restore();
+
+          if (ft.progress >= 1) {
+            const { hotspotId, option } = ft;
+            state.flyingTool = null;
+            resolveChoiceImpact(hotspotId, option);
+          }
+        }
+
+        for (let i = state.fxParticles.length - 1; i >= 0; i--) {
+          const fp = state.fxParticles[i];
+          fp.x += fp.vx;
+          fp.y += fp.vy;
+          fp.vy += 0.12;
+          fp.life -= dt * 1.45;
+          if (fp.life <= 0) {
+            state.fxParticles.splice(i, 1);
+            continue;
+          }
+          ctx.save();
+          ctx.globalAlpha = Math.max(0, fp.life);
+          if (fp.char) {
+            ctx.font = '18px sans-serif';
+            ctx.fillText(fp.char, fp.x, fp.y);
+          } else {
+            ctx.fillStyle = fp.color;
+            ctx.beginPath();
+            ctx.arc(fp.x, fp.y, fp.size, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.restore();
+        }
+
+        for (let i = state.floatingTexts.length - 1; i >= 0; i--) {
+          const ft = state.floatingTexts[i];
+          ft.y += ft.vy;
+          ft.alpha -= dt * 0.85;
+          if (ft.alpha <= 0) {
+            state.floatingTexts.splice(i, 1);
+            continue;
+          }
+          ctx.save();
+          ctx.globalAlpha = Math.max(0, ft.alpha);
+          ctx.font = '900 18px "Noto Sans TC", sans-serif';
+          ctx.textAlign = 'center';
+          ctx.strokeStyle = '#090d16';
+          ctx.lineWidth = 4;
+          ctx.strokeText(ft.text, ft.x, ft.y);
+          ctx.fillStyle = ft.color;
+          ctx.fillText(ft.text, ft.x, ft.y);
+          ctx.restore();
+        }
+      } catch (err) {
+        console.error('Canvas render recovered:', err);
+      }
+    }
+
+    function gameLoop(timestamp) {
+      if (!state.lastFrameTime) state.lastFrameTime = timestamp;
+      const dt = Math.min((timestamp - state.lastFrameTime) / 1000, 0.1);
+      state.lastFrameTime = timestamp;
+      state.time += dt;
+
+      if (state.status === 'playing') {
+        handleGameEvents(stepGame(state, dt));
+        updateHUD();
+
+        const verdict = endCheck(state);
+        if (verdict === 'lose') {
+          finishLevel(false);
+        } else if (verdict === 'win') {
+          finishLevel(true);
+        }
+      }
+
+      renderCanvasFrame(dt);
+      requestAnimationFrame(gameLoop);
+    }
+
+    /**
+     * ============================================================================
+     * 14. 事件綁定與初始化啟動
+     * ============================================================================
+     */
+    window.addEventListener('resize', () => {
+      resizeCanvas();
+      renderCanvasFrame();
+    });
+
+    dom.btnContinueLatest.addEventListener('click', () => {
+      sound.init();
+      sound.playClick();
+      startLevel(saveData.unlockedLevel);
+    });
+
+    dom.btnOpenMap.addEventListener('click', () => {
+      sound.init();
+      sound.playClick();
+      showMapOverlay();
+    });
+
+    dom.btnEndMap.addEventListener('click', () => {
+      sound.init();
+      sound.playClick();
+      showMapOverlay();
+    });
+
+    dom.btnQuickRestart.addEventListener('click', () => {
+      sound.init();
+      sound.playClick();
+      startLevel(state.currentLevel.id);
+    });
+
+    dom.btnSound.addEventListener('click', () => {
+      sound.init();
+      const isOn = sound.toggle();
+      dom.btnSound.textContent = isOn ? '🔊' : '🔇';
+    });
+
+    dom.btnDevUnlock.addEventListener('click', () => {
+      sound.init();
+      sound.playVictory();
+      saveData.unlockedLevel = LEVELS.length;
+      writeSaveData();
+      renderLevelMap();
+    });
+
+    dom.btnResetSave.addEventListener('click', () => {
+      sound.init();
+      sound.playClick();
+      dom.confirmModal.classList.remove('hidden', 'pointer-events-none');
+      dom.confirmModal.classList.add('pointer-events-auto');
+    });
+
+    dom.btnCancelReset.addEventListener('click', () => {
+      sound.playClick();
+      dom.confirmModal.classList.add('hidden', 'pointer-events-none');
+      dom.confirmModal.classList.remove('pointer-events-auto');
+    });
+
+    dom.btnConfirmReset.addEventListener('click', () => {
+      sound.playClick();
+      saveData = { unlockedLevel: 1, stars: {} };
+      writeSaveData();
+      dom.confirmModal.classList.add('hidden', 'pointer-events-none');
+      dom.confirmModal.classList.remove('pointer-events-auto');
+      renderLevelMap();
+    });
+
+    window.onload = () => {
+      loadSaveData();
+      resizeCanvas();
+      initSnowParticles();
+      initLevel(state, LEVELS[0], Math.random);
+      renderCanvasFrame();
+      showMapOverlay();
+      requestAnimationFrame(gameLoop);
+    };
+  </script>
+</body>
+</html>
