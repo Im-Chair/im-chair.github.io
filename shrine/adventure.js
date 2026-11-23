@@ -202,6 +202,9 @@ const ASFX={
   get:()=>[659,784,988,1319].forEach((f,i)=>SFX.tone(f,{dur:.18,vol:.05,delay:i*.1}))
 };
 
+// 先試真實音效檔（SND 在 game.js），沒有才用上面的合成音
+sndWrap(ASFX,Object.keys(ASFX));
+
 /* ================= 動態加物件（裂牆後的寶箱、石塊獎勵寶箱）與碰撞體索引 ================= */
 function colCells(col){const cx=col.r!=null?col.x:(col.x0+col.x1)/2,cy=col.r!=null?col.y:(col.y0+col.y1)/2,ext=col.r!=null?col.r:Math.max(col.x1-col.x0,col.y1-col.y0)/2,out=[];
   for(let j=Math.floor((cy-ext)/2);j<=Math.floor((cy+ext)/2);j++)for(let i=Math.floor((cx-ext)/2);i<=Math.floor((cx+ext)/2);i++)out.push(i+','+j);return out}

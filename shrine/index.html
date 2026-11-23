@@ -171,7 +171,7 @@ body.touch #itemBtn:not(.on),body.touch #cycBtn:not(.on){display:none}
 </style>
 <script>
 /* 版號：改了 maps.js 或這個檔就 +1，破除瀏覽器快取 */
-const SHRINE_VER='21';
+const SHRINE_VER='23';
 document.write('<script src="maps.js?v='+SHRINE_VER+'"><\/script>');
 </script>
 </head>
@@ -183,6 +183,7 @@ document.write('<script src="maps.js?v='+SHRINE_VER+'"><\/script>');
     <button class="pri" id="btnCont" style="display:none">繼續</button>
     <button class="pri" id="btnStart">開始</button>
     <div class="ver" id="verTag">v1.0</div>
+    <div class="ver" style="font-size:11px;opacity:.7">音效：www.casper.tw/sound-effects</div>
     <div class="ver">移動：WASD／方向鍵　攻擊：J 或 Z（按住蓄力，放開旋轉斬）<br>翻滾：K 或 X　舉盾：L 或 C　互動：空白鍵　地圖：M<br>道具：I 或 V 使用，Q／E 或數字鍵 1～4 切換<br>背包：B 或 Tab　手機：左下搖桿移動，右下按鈕攻擊／翻滾／舉盾／道具（長按道具鈕切換）</div>
   </section>
   <section id="sEnd" class="screen center">
@@ -859,6 +860,7 @@ async function loadKeys(keys,ms,onProg){
 }
 // 換圖：新地圖的圖到齊才回來；超過 FADE_SLOW_MS 在黑幕上顯示小小的「載入中…」
 async function loadMap(id){
+  sfx('travel');   // 換地圖音（開新遊戲／讀檔的第一次載入走 start，不經過這裡）
   const tm=setTimeout(()=>fadeMsg('載入中…',true),FADE_SLOW_MS);
   const r=await loadKeys(mapArt(id),LOAD_MAX_MS);
   clearTimeout(tm);fadeMsg('');
@@ -897,6 +899,7 @@ function startPreload(){
 }
 
 /* ================= 對話（照珠界 say） ================= */
+const sfx=k=>{try{if(typeof SFX!=='undefined'&&SFX[k])SFX[k]()}catch(e){}};   // 音效集中入口（game.js 沒載到就靜音）
 function say(lines){
   return new Promise(res=>{
     const d=$('#dlg'),txt=$('#dlgText'),nm=$('#dlgName');
@@ -910,7 +913,7 @@ function say(lines){
     };
     const next=()=>{
       if(pos<full.length){clearInterval(timer);pos=full.length;txt.textContent=full;return}
-      i++;if(i>=lines.length){clearInterval(timer);d.classList.remove('on');d.onclick=null;removeEventListener('keydown',onKey);dlgOpen=false;res()}else showLine();
+      i++;if(i>=lines.length){clearInterval(timer);d.classList.remove('on');d.onclick=null;removeEventListener('keydown',onKey);dlgOpen=false;res()}else{sfx('talk');showLine()}
     };
     const onKey=e=>{if((e.key!=='Enter'&&e.key!==' ')||e.repeat)return;e.preventDefault();if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();next()};
     d.onclick=next;addEventListener('keydown',onKey);
@@ -936,7 +939,7 @@ function ask(lines,opts){
     const showLine=()=>{const L=lines[i],name=Array.isArray(L)?L[0]:'';full=Array.isArray(L)?L[1]:L;
       nm.style.display=name?'block':'none';nm.textContent=name;txt.style.color=name?'#fff':'#bfcaf5';pos=0;txt.textContent='';clearInterval(timer);
       timer=setInterval(()=>{pos++;txt.textContent=full.slice(0,pos);if(pos>=full.length){clearInterval(timer);if(i===lines.length-1)showOpts()}},18)};
-    const next=()=>{if(box.classList.contains('on'))return;if(pos<full.length){clearInterval(timer);pos=full.length;txt.textContent=full;if(i===lines.length-1)showOpts();return}if(i<lines.length-1){i++;showLine()}};
+    const next=()=>{if(box.classList.contains('on'))return;if(pos<full.length){clearInterval(timer);pos=full.length;txt.textContent=full;if(i===lines.length-1)showOpts();return}if(i<lines.length-1){i++;sfx('talk');showLine()}};
     const step=dir=>{for(let k=0;k<btns.length;k++){sel=(sel+dir+btns.length)%btns.length;if(!btns[sel].disabled)break}mark()};
     const onKey=e=>{if(e.repeat)return;const on=box.classList.contains('on');
       if(on&&(e.key==='ArrowDown'||e.key==='s'||e.key==='S')){e.preventDefault();step(1)}
@@ -962,8 +965,9 @@ let toastT=null;
 function toast(msg){const el=$('#toast');if(el.textContent!==msg)el.textContent=msg;el.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>el.classList.remove('on'),1800)}
 
 /* ================= 更新 ================= */
+let stepT=0;
 function update(dt){
-  if(lock||dlgOpen||worldOpen||panelOpen){P.moving=false;$('#hint').classList.remove('on');$('#actBtn').classList.remove('on');return}
+  if(lock||dlgOpen||worldOpen||panelOpen){P.moving=false;stepT=.2;$('#hint').classList.remove('on');$('#actBtn').classList.remove('on');return}
   let ix=(keys.ArrowRight||keys.d?1:0)-(keys.ArrowLeft||keys.a?1:0),iy=(keys.ArrowDown||keys.s?1:0)-(keys.ArrowUp||keys.w?1:0);
   ix+=joy.x;iy+=joy.y;
   const m=Math.hypot(ix,iy);if(m>1){ix/=m;iy/=m}
@@ -971,12 +975,13 @@ function update(dt){
   if(lock)return;
   if(m>.15&&sm>0){
     moveBy(ix*SPEED*sm*dt,iy*SPEED*sm*dt);P.moving=true;P.anim+=dt*Math.max(.5,sm);
+    if(typeof PS!=='undefined'&&!PS.act){stepT+=dt;if(stepT>=.32){stepT=0;sfx('step')}}else stepT=0;   // 腳步：地面上實際移動、沒在攻擊／翻滾時約每 0.32 秒一次
     const ax=Math.abs(ix),ay=Math.abs(iy);
     if(!HOOKS.faceLock()){
     if(ax>ay*1.15)P.face=ix<0?'left':'right';else if(ay>ax*1.15)P.face=iy<0?'up':'down';
     else{const h=ix<0?'left':'right',v=iy<0?'up':'down';if(P.face!==h&&P.face!==v)P.face=ax>=ay?h:v}
     }
-  }else P.moving=false;
+  }else{P.moving=false;stepT=.2}   // 停下後再起步，第一步稍早出聲
   // 出口
   const inside=C.exits.find(e=>inRect(e,P.x,P.y));
   if(!inside)P.exitLock=false;else if(!P.exitLock){useExit(inside);return}
@@ -1556,7 +1561,7 @@ Promise.all(['ui-btn','ui-btn-pri'].map(k=>new Promise((ok,no)=>{const im=new Im
 if(DEBUG){
   document.body.classList.add('debug');
   window.__shrine={go:(id,x,y,face)=>{const ok=go(id,x,y,face);if(ok&&running)render(performance.now());return ok},get state(){return {map:CURID,x:P.x,y:P.y,face:P.face,blocks:blk.size,built:stat.built,fps:stat.fps}},
-    stat,P,MAPS,PROGRESS,start,audit,get load(){return LASTLOAD},get art(){return {ART:Object.keys(ART).length,fail:Object.keys(artFail),pre:preQ?preQ.length:null,gating}},openWorld,ask,openPanel,closePanel,get panelOpen(){return panelOpen},
+    stat,P,MAPS,PROGRESS,start,audit,get load(){return LASTLOAD},get snd(){return typeof SND!=='undefined'?SND.stat:null},get art(){return {ART:Object.keys(ART).length,fail:Object.keys(artFail),pre:preQ?preQ.length:null,gating}},openWorld,ask,openPanel,closePanel,get panelOpen(){return panelOpen},
     keys,joy,tick:dt=>{update(dt);render(performance.now());return [CURID,P.x,P.y]},
     /* zoom：看全圖用，暫時改解析度讓視野變大 */
     zoom:z=>{dpr=z;tmpReset();buildTextures();for(const k in SPR)SPR[k]=null;clearBlocks();GEN++;forceFull=true;render(performance.now())},

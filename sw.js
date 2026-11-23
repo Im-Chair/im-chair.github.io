@@ -1,4 +1,4 @@
-const CACHE = 'arcade-v97';
+const CACHE = 'arcade-v98';
 // 珠界的圖獨立一個快取、不跟 CACHE 改版：改版時不必重抓，也不用每次打開都等網路
 const ART_CACHE = 'arcade-pokemo-art';
 // RPG 敵人圖示：檔名＝ENEMIES／首領／域限精英的 key。v385 起 50 隻全數有圖，已無 SVG 回落。
@@ -122,6 +122,15 @@ function fillCaches() {
       if (r.ok) {
         const list = await r.json();
         jobs.push([CACHE, '/shrine/art/index.json'], ...list.map(k => [CACHE, `/shrine/art/${k}.webp`]));
+      }
+    } catch (err) {}
+    // 聖林神廟的選配音效：同樣照 sfx/index.json 補（清單抓不到就略過）
+    try {
+      const r = await fetch('/shrine/sfx/index.json', { priority: 'low' });
+      if (r.ok) {
+        const o = await r.json();
+        const keys = o && o.sfx && typeof o.sfx === 'object' ? Object.keys(o.sfx) : [];
+        jobs.push([CACHE, '/shrine/sfx/index.json'], ...keys.map(k => [CACHE, `/shrine/sfx/${k}.mp3`]));
       }
     } catch (err) {}
     let failed = 0;

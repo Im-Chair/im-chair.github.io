@@ -265,10 +265,72 @@ const SFX=(()=>{
     hop:()=>tone(300,{dur:.1,vol:.03,slide:1.6}),
     rest:()=>[392,523,659].forEach((f,i)=>tone(f,{dur:.25,vol:.04,delay:i*.12})),
     death:()=>[392,330,262,196].forEach((f,i)=>tone(f,{dur:.2,vol:.06,delay:i*.14})),
-    tone,noise,   // adventure.js 用來合成道具、首領的音效
+    tone,noise,ctx,   // adventure.js 用來合成道具、首領的音效；ctx 給取樣播放器共用 AudioContext
     get created(){return !!ac}
   };
 })();
+
+/* ================= 真實音效檔（選配）：sfx/index.json 列出的 key 才有 mp3，載入前、沒有或失敗都退回上面的合成音 ================= */
+const SND=(()=>{
+  const GAIN=.8;                                        // 整體取樣音量（再乘上清單的 vol）
+  const JITTER=new Set(['hit','step','coin','pot']);    // 高頻音：±4% 隨機音高，聽起來不機械
+  const VER=typeof SHRINE_VER!=='undefined'?SHRINE_VER:'0';
+  const bufs={},vols={},last={};
+  let list=null,started=false,done=false,failed=0,idxOk=false;
+  const on=()=>{try{return localStorage.getItem('arcade-sound')!=='off'}catch(e){return true}};
+  // 清單：遊戲一啟動就抓（不需要 AudioContext）；抓不到或格式不對＝沒有音檔
+  const idx=fetch('sfx/index.json?v='+VER).then(r=>r.ok?r.json():null).then(o=>{
+    if(!o||typeof o!=='object'||!o.sfx||typeof o.sfx!=='object')return;
+    list=[];for(const k of Object.keys(o.sfx)){const v=o.sfx[k];list.push(k);vols[k]=Math.max(0,Math.min(1.5,v&&typeof v.vol==='number'?v.vol:1))}
+    idxOk=true;
+  }).catch(()=>{});
+  // AudioContext 建立後才開始，一個接一個抓＋解碼，失敗的 key 略過
+  async function loadAll(){
+    await idx;if(!list)return;
+    const a=SFX.ctx();if(!a)return;
+    for(const k of list){
+      try{
+        const r=await fetch('sfx/'+k+'.mp3?v='+VER);if(!r.ok)throw 0;
+        const ab=await r.arrayBuffer();
+        bufs[k]=await new Promise((ok,no)=>{const p=a.decodeAudioData(ab,ok,no);if(p&&p.catch)p.catch(no)});
+      }catch(e){failed++}
+      await new Promise(r=>setTimeout(r,30));
+    }
+    done=true;
+  }
+  function kick(){if(started||!SFX.created)return;started=true;loadAll().catch(()=>{done=true})}
+  // 第一次使用者操作後才建 AudioContext 並開始載入（之前不碰音訊）
+  const first=()=>{removeEventListener('pointerdown',first,true);removeEventListener('keydown',first,true);if(on()&&SFX.ctx())kick()};
+  addEventListener('pointerdown',first,true);addEventListener('keydown',first,true);
+  return {
+    // 回 true＝已處理（出聲，或總開關關著而靜音）；回 false＝沒有這個音檔，請改用合成音
+    play(key){
+      if(!on())return true;
+      kick();
+      const b=bufs[key];if(!b)return false;
+      const now=performance.now();if(last[key]!=null&&now-last[key]<40)return true;last[key]=now;
+      const a=SFX.ctx();if(!a)return false;
+      try{
+        const s=a.createBufferSource(),g=a.createGain();s.buffer=b;
+        if(JITTER.has(key))s.playbackRate.value=1+(Math.random()*.08-.04);
+        g.gain.value=GAIN*(vols[key]!=null?vols[key]:1);
+        s.connect(g);g.connect(a.destination);s.start();
+      }catch(e){return false}
+      return true;
+    },
+    has:k=>!!bufs[k],
+    // 除錯用：listed＝清單幾個、loaded＝已解碼幾個、failed＝失敗幾個、done＝全部試過一輪
+    get stat(){return {index:idxOk,listed:list?list.length:0,loaded:Object.keys(bufs).length,failed,started,done}}
+  };
+})();
+// 33 個既有事件＋5 個新事件（ui／talk／step／travel／bossdown 沒有合成音，沒檔就無聲）：先試取樣，沒有才跑原本的合成音
+function sndWrap(obj,keys){for(const k of keys){const f=typeof obj[k]==='function'?obj[k]:()=>{};obj[k]=function(){if(!SND.play(k))f()}}}
+sndWrap(SFX,['swing','spin','charged','hit','kill','block','hurt','coin','heart','drop','chest','pot','roll','arrow','hop','rest','death','ui','talk','step','travel','bossdown']);
+// 選單、背包、商店、鍛造、賞金板、標題畫面的按鈕點擊音（攻擊／翻滾／舉盾／道具與互動等遊戲內虛擬按鍵不出聲）；用 capture 才不會被 stopPropagation 擋掉
+document.addEventListener('click',e=>{
+  const b=e.target.closest&&e.target.closest('button');
+  if(b&&!b.disabled&&!b.classList.contains('tbtn')&&b.id!=='actBtn')SFX.ui();
+},true);
 
 /* ================= 存檔 ================= */
 function save(){
@@ -522,7 +584,7 @@ function damageEnemy(e,dmg,sx,sy){
 }
 function dropMats(tab,x,y){if(!tab)return;const m=dayNow().mat;for(const id in tab)if(Math.random()<tab[id]*m)spawnDrop('mat',id,x,y)}
 function killEnemy(e){
-  e.dead=true;e.dieT=e.dieMax||.45;e.hp=0;e.z=0;e.stun=0;SFX.kill();
+  e.dead=true;e.dieT=e.dieMax||.45;e.hp=0;e.z=0;e.stun=0;if(e.boss&&SND.has('bossdown'))SFX.bossdown();else SFX.kill();   // 首領：有倒下音檔就用它取代一般擊殺音，免得三個聲音疊在一起（fanfare 照舊）
   const D=e.D,v=Math.max(1,Math.round(rand(D.gold[0],D.gold[1]+.99)*e.gold*eqStat('gold')|0));
   spawnDrop('coin',v,e.x,e.y);
   if(!e.boss&&!e.minion)dropMats(MAT_DROP[e.k],e.x,e.y);
