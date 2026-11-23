@@ -1,4 +1,4 @@
-const CACHE = 'arcade-v104';
+const CACHE = 'arcade-v105';
 // 珠界的圖獨立一個快取、不跟 CACHE 改版：改版時不必重抓，也不用每次打開都等網路
 const ART_CACHE = 'arcade-pokemo-art';
 // RPG 敵人圖示：檔名＝ENEMIES／首領／域限精英的 key。v385 起 50 隻全數有圖，已無 SVG 回落。
@@ -184,8 +184,12 @@ self.addEventListener('fetch', e => {
     }));
     return;
   }
+  // v105：頁面自己發的請求（遊戲的圖、腳本）全部算進 pendingArt，背景補快取（fillCaches）要讓路。
+  // 原本只有珠界的圖會讓路；改版後整包重補的那幾分鐘，其他遊戲的圖會排在幾百個補快取請求後面出不來
+  pendingArt++;
   e.respondWith(
     fetch(e.request)
+      .finally(() => { pendingArt--; })
       .then(res => {
         // 只存成功的回應：部署中途的 404／5xx 不能蓋掉原本好的快取
         if (res.ok) {
