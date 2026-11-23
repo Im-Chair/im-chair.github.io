@@ -43,6 +43,8 @@
 │                       #   CSS 是 Tailwind v3.4.17 CLI 一次性產出後內嵌在 <style id="tailwind-static">（零 build，專案裡沒有 Tailwind 設定）；之後新增 Tailwind class 要手寫 CSS 或重跑一次 CLI（content 指向該 index.html）
 ├── blizzard-cabin/     # 暴雪求生：20關破屋大改造（單檔 index.html，修屋闖關；存檔 blizzard_cabin_fix_v1，會讀舊 key）。
 │                       #   純邏輯在檔內 CORE-BEGIN～CORE-END，可用 node 抽出來模擬；CSS 同樣是 Tailwind v3.4.17 CLI 一次性產出後內嵌（<style id="tailwind-static">）
+├── xiuxian/            # 凡骨補天（單檔 index.html，修仙養成；改名前叫「天裂問道」，存檔 key tianlie_xiuxian_v1 沿用不改）。
+│                       #   遊戲名集中在 `GAME_NAME`／`GAME_SUB` 常數（另有靜態 `<title>`，改名要改兩處）；劇情文本集中在 `STORY_TXT`（只有資料）；靈根常數 `ROOT_*`、流派相剋表 `CTR_RINGS`、秘境參數 `SR_MONTHS／SR_CD／SR_EXP_K`、靈液限購 `LIQ_CAP／LIQ_WIN`
 ├── covers/             # 首頁彩色封面 <遊戲>.webp（大作 900×600、小品 600×600；rpg-next 共用 rpg.webp；可缺，缺的退回 icons/ 再退回 emoji）
 ├── icons/              # 首頁卡片圖示 <遊戲>.webp（封面缺席時的退路，置中放在漸層色塊上；可缺，缺的沿用 emoji）
 └── tools/process_art.py  # 小遊戲美術後製（Pillow；不是網站的一部分）。流程見 美術需求_ChatGPT出圖.md

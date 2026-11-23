@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>凡骨補天</title><!-- 與 JS 的 GAME_NAME 同步（靜態標題，boot 時會再以 GAME_NAME 覆寫） -->
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:#0d1015;color:#dde2ea;font-family:-apple-system,"PingFang TC","Noto Sans TC",sans-serif;font-size:15px}
+#app{display:flex;flex-direction:column;height:100vh;height:100dvh;max-width:560px;margin:0 auto}
+#top{padding:8px 12px;background:#141922;border-bottom:1px solid #2a3140;font-size:13px;line-height:1.5}
+#top b{color:#e6c35a}
+#view{flex:1;overflow-y:auto;padding:10px 12px}
+#tabs{display:flex;background:#141922;border-top:1px solid #2a3140}
+#tabs button{flex:1;padding:12px 0;background:none;border:0;color:#8c96a8;font-size:14px}
+#tabs button.on{color:#e6c35a;border-top:2px solid #e6c35a;margin-top:-1px}
+button{font-family:inherit}
+.btn,#acts button,.grid button{background:#1f2633;color:#dde2ea;border:1px solid #394256;border-radius:8px;padding:10px 8px;font-size:14px}
+#acts button:active,.btn:active{background:#2c3646}
+button:disabled{opacity:.35}
+#log{height:38vh;overflow-y:auto;background:#10141b;border:1px solid #232a37;border-radius:8px;padding:8px 10px;margin-bottom:8px;line-height:1.6}
+#log p{margin:0 0 5px}
+#log p.sty{margin:8px 0 10px;padding:5px 0 5px 10px;border-left:3px solid #e6c35a;line-height:1.9;color:#f2e6b8;background:#1a1810}
+.sto{border-left:3px solid #e6c35a;line-height:1.8}
+.sto div{color:#d7cfae}
+.y{color:#e6c35a}.r{color:#e0735f}.g{color:#7fcf9a}.b{color:#7fb2e8}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.grid small{display:block;color:#8c96a8;font-size:11px;margin-top:2px}
+.card{background:#141922;border:1px solid #2a3140;border-radius:8px;padding:9px 10px;margin-bottom:8px}
+.bar{height:9px;background:#272e3b;border-radius:5px;overflow:hidden;margin:3px 0 6px}
+.bar i{display:block;height:100%}
+.hp{background:#d0584c}.mp{background:#4c8ed0}.xp{background:#d9b44a}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.dim{color:#7a8496;font-size:12px}
+h3{margin:12px 0 6px;font-size:15px;color:#e6c35a}
+select,input,textarea{background:#10141b;color:#dde2ea;border:1px solid #394256;border-radius:6px;padding:8px;font-size:14px;width:100%}
+.tag{display:inline-block;font-size:11px;padding:1px 6px;border-radius:9px;border:1px solid currentColor;margin-right:4px}
+.sm{padding:5px 10px!important;font-size:13px!important}
+#toast{display:none;position:fixed;left:50%;top:64px;transform:translateX(-50%);max-width:88%;background:#1d2533;border:1px solid #e6c35a;border-radius:10px;padding:9px 14px;font-size:14px;line-height:1.5;z-index:9;box-shadow:0 4px 18px #000a;pointer-events:none}
+</style>
+</head>
+<body>
+<div id="app">
+<div id="top"></div>
+<div id="view"></div>
+<div id="tabs"></div>
+</div>
+<script>
+'use strict';
+const $=s=>document.querySelector(s);
+const rnd=()=>Math.random();
+const R=(a,b)=>a+Math.floor(rnd()*(b-a+1));
+const pick=a=>a[Math.floor(rnd()*a.length)];
+const ch=x=>rnd()<x;
+const cl=(v,a,b)=>Math.max(a,Math.min(b,v));
+const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(rnd()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
+const pickW=w=>{let t=w.reduce((a,b)=>a+b,0),x=rnd()*t;for(let i=0;i<w.length;i++){x-=w[i];if(x<0)return i;}return w.length-1;};
+const S=lv=>10*Math.pow(1.22,lv);
+const P=lv=>Math.round(20*Math.pow(1.3,lv));
+const need=lv=>Math.floor(60*Math.pow(1.38,lv));
+const nf=n=>{n=Math.floor(n);if(n>=1e8)return(n/1e8).toFixed(1)+'億';if(n>=1e4)return(n/1e4).toFixed(1)+'萬';return String(n);};
+const fmt=n=>{n=Math.floor(n);if(n<100)return n+'下';const u=Math.floor(n/10000),m=Math.floor(n%10000/100),d=n%100;return(u?u+'上 ':'')+(m||u?m+'中 ':'')+d+'下';};
+
+/* 遊戲名稱集中在這裡，日後要換只改這一處（另 <title> 為靜態備份，boot 會以此覆寫） */
+const GAME_NAME='凡骨補天',GAME_SUB='偽靈根者，偏要問鼎蒼穹。';
+
+/* ===== 資料 ===== */
+const REALMS=['煉氣','築基','結丹','元嬰','化神','煉虛','合體','大乘','渡劫','真仙'];
+const STAGES=['初期','中期','後期','圓滿'];
+const LIFE=[100,160,260,420,700,1200,2000,3500,6000,99999];
+const lvName=lv=>REALMS[Math.floor(lv/4)]+STAGES[lv%4];
+const GR=['黃','玄','地','天'],TR=['下品','中品','上品'];
+const GCOL=['#d9b44a','#4fb58a','#5a93e0','#e0624f'];
+const rk=r=>GR[Math.floor(r/3)]+'階'+TR[r%3];
+const TYPES=['心法','攻擊','身法','攻擊','神識','心法','攻擊','身法','神識','心法','攻擊','攻擊'];
+const SCHOOLS=[
+{n:'劍修',e:'金',s:'atk',fx:'crit',names:'青鋒心訣 流雲劍法 踏雪無痕 斬星劍 劍心通明 玄鐵劍經 破曉劍訣 驚鴻劍遁 神念化劍 太乙劍典 萬劍歸宗 斬仙一劍'},
+{n:'體修',e:'土',s:'atk',fx:'hp',names:'煉體訣 崩山拳 縮地步 裂石掌 金剛怒目 不動明王身 搬山訣 踏浪虎步 龍象鎮魂 九轉金身 撼天一擊 破碎虛空拳'},
+{n:'音修',e:'風',s:'sense',fx:'stun',names:'清心音訣 裂帛音 御風步 十面埋伏曲 攝魂琴音 天籟心經 驚濤一曲 凌波音遁 亂魂嘯 九霄環佩 廣陵絕響 滅世梵音'},
+{n:'符修',e:'雷',s:'sense',fx:'burst',names:'引氣符經 火球符 神行符 五雷符 鎮魂符 太元符經 天雷符陣 縮地符 奪魄符 萬符真解 九天雷罰 敕令山河'},
+{n:'陣修',e:'水',s:'atk',fx:'def',names:'聚靈陣訣 困龍陣 挪移陣步 八門金鎖 迷魂陣 周天星斗經 九宮殺陣 縮地成寸陣 幻境天羅 洞天護道經 誅仙陣 大衍歸墟陣'},
+{n:'丹修',e:'木',s:'sense',fx:'heal',names:'養氣丹經 丹火焚心 百草輕身術 丹爆術 丹香惑神 九轉丹經 地火煉真 靈芝飛步 神農嘗魂 太上丹道 丹成雷劫 逆天丹爆'},
+{n:'器修',e:'火',s:'atk',fx:'burn',names:'煉器心法 御器術 機關步 烈焰錘 器靈共鳴 天工開物 神兵百煉 傀儡替身 本命祭煉 鑄天秘錄 法寶天降 混沌鼎壓'},
+{n:'御獸',e:'',s:'atk',fx:'multi',names:'馴靈訣 靈獸撲殺 騎獸疾行 群獸狂襲 獸魂共感 百獸真經 蛟龍出海 御風鵬翼 通靈萬獸 山海異獸錄 鳳凰涅槃擊 神獸降世'},
+{n:'魔修',e:'',s:'atk',fx:'drain',names:'血魔心經 魔爪 血遁術 噬魂掌 魔音攝心 天魔策 滅魂魔刀 魔影遁 心魔入夢 吞天魔功 魔神降臨 九幽滅世魔拳'},
+{n:'鬼修',e:'',s:'sense',fx:'drain',names:'養魂訣 鬼火 陰影遁 怨靈纏身 幽冥攝魂 黃泉心經 百鬼夜行 陰風步 奪舍秘術 九幽鬼典 閻羅索命 萬鬼噬天'},
+{n:'佛修',e:'',s:'atk',fx:'heal',names:'淨心咒 金剛掌 一葦渡江 獅子吼 般若智慧 大日如來經 降魔杵 縮地菩提 破妄金瞳 金身羅漢經 如來神掌 業火紅蓮'},
+{n:'毒蠱',e:'',s:'atk',fx:'poison',names:'養蠱訣 毒砂掌 蛇行步 蠱蟲噬心 蠱惑心神 萬毒真經 蝕骨毒霧 蜈蚣遁 子母蠱魂 五毒天書 萬蠱噬身 劇毒滅世'}
+];
+/* 交好流派：地階功法可共用 */
+const ALLY=[[3,6],[10,7],[10,5,9],[0,4],[3,6],[2,11],[0,4],[1,11],[9,11],[8,2],[1,2],[5,7,8]];
+/* 各流派的戰鬥特效（主、次、次） */
+const SCFX=[['crit','pierce','critd'],['hpd','shield','stun'],['stun','weaken','seek'],['burst','burn','critd'],['shield','curse','weaken'],['heal','poison','burst'],['burn','pierce','critd'],['multi','crit','stun'],['drain','selfdmg','curse'],['curse','drain','seek'],['heal','shield','weaken'],['poison','weaken','curse']];
+/* 各流派心法／身法／裝備的被動：[鍵, 每階數值, 名稱] */
+const SCX=[['crit',.012,'暴擊率'],['hpPct',.02,'氣血'],['senseP',.015,'神識'],['critd',.03,'暴擊傷害'],['defPct',.02,'防禦'],['exp',.03,'修煉速度'],['atkP',.015,'攻擊'],['spdP',.015,'速度'],['lifesteal',.008,'吸血'],['dodge',.01,'閃避'],['regen',.004,'戰鬥回氣血'],['dotUp',.04,'持續傷害']];
+/* 特效：[基礎值, 上限, 說明（#代表數值）] */
+const FXB={crit:[.08,.6,'暴擊率+#'],critd:[.12,.9,'暴擊傷害+#'],pierce:[.06,.7,'無視敵防禦#'],hpd:[.012,.2,'附加敵氣血上限#傷害'],stun:[.08,.55,'震懾機率#'],burst:[.08,1,'傷害+#'],shield:[.5,4,'護盾（防禦×#）'],heal:[.025,.3,'回復氣血上限#'],burn:[.12,.6,'灼燒3回合，每回合傷害的#'],poison:[.1,.5,'劇毒4回合（可疊加），每回合傷害的#'],multi:[.35,.9,'追擊，造成原傷害的#'],drain:[.12,.6,'吸血#'],weaken:[.05,.4,'削弱敵攻擊#（3回合）'],curse:[.05,.4,'削弱敵防禦#（3回合）'],selfdmg:[.12,1,'燃血4%，傷害+#'],seek:[1,1,'無視閃避']};
+const H=n=>{const x=Math.sin(n*127.1+311.7)*43758.5453;return x-Math.floor(x);};
+function buildFx(sc,rank,id){const l=SCFX[sc];const names=[l[0]];
+ if(rank>=3){if(rank>=6)names.push(l[1],l[2]);else names.push(l[1+Math.floor(H(id+3)*2)]);}
+ const f={};names.forEach((n,i)=>{const b=FXB[n];f[n]=n==='seek'?1:Math.min(b[1],b[0]*(1+0.22*rank)*(0.85+H(id*7+i)*0.35));});return f;}
+function buildGen(rank,id){const n=['burst','crit','pierce','stun'][Math.floor(H(id+9)*4)],b=FXB[n];return{[n]:Math.min(b[1],b[0]*(1+0.22*rank)*0.7)};}
+const TECHS=[];
+const mk=(sc,name,rank,type)=>{const id=TECHS.length,g=sc>=12;
+ const t={id,name,type,sc,school:g?'通用':SCHOOLS[sc].n,e:g?'':SCHOOLS[sc].e,rank,stat:g?'atk':SCHOOLS[sc].s,req:Math.floor(rank*0.75),pw:0.9+H(id*5)*0.25,cs:0.8+H(id*11)*0.5};
+ t.fxs=(type==='攻擊'||type==='神識')?(g?buildGen(rank,id):buildFx(sc,rank,id)):{};TECHS.push(t);};
+SCHOOLS.forEach((s,si)=>s.names.split(' ').forEach((n,r)=>mk(si,n,r,TYPES[r])));
+/* 擴充功法：每流派再 12 種（黃3、玄5、地4） */
+const EX=[[0,'攻擊'],[1,'身法'],[2,'神識'],[3,'攻擊'],[3,'神識'],[4,'攻擊'],[4,'身法'],[5,'心法'],[6,'攻擊'],[7,'神識'],[7,'攻擊'],[8,'身法']];
+const EXPRE=['青霜 寒光 流星 白虹 斷水 驚雷 迴風 落葉 玄影 赤霄 秋水 孤鴻','鐵骨 虎嘯 熊羆 蠻牛 崩雲 磐石 烈陽 龍筋 狂獅 金鐘 玄龜 怒濤','清商 流水 寒鴉 梅花 陽關 高山 平沙 漁歌 胡笳 霓裳 廣寒 鳳求','驅邪 鎮煞 風火 雷霆 玄冰 金光 太乙 六丁 青龍 白虎 朱雀 玄武','兩儀 三才 四象 五行 六合 七星 八卦 九宮 十方 周天 玄黃 太極','凝氣 培元 清心 回春 固本 養神 九轉 紫霞 金液 玉髓 還魂 造化','烈火 玄鐵 精金 赤銅 寒鋼 流火 天工 巨靈 鑄魂 熔岩 星辰 混鐵','靈狐 飛鷹 蒼狼 白虎 青鸞 玄龜 蛟龍 麒麟 朱雀 靈猿 雷豹 金蟬','血煞 噬魂 焚心 墮天 修羅 幽冥 屠龍 蝕骨 嗜血 亂神 九煞 魔焰','陰風 白骨 黃泉 冥火 勾魂 孤魂 夜叉 無常 奈何 森羅 血月 幽燐','大力 羅漢 菩提 般若 慈悲 禪定 破障 伏魔 如意 梵天 大悲 無量','赤練 蠍尾 蛇影 蜈蚣 蟾毒 蛛絲 金蠶 蝕心 腐骨 噬魂 斷腸 七步'];
+const EXSF=[['劍','遁','劍念','劍意經'],['拳','步','意','體經'],['曲','音遁','攝魂音','清音訣'],['符','神行符','鎮魂符','符經'],['陣','挪移陣','惑心陣','陣經'],['丹爆','丹遁','丹香','丹經'],['錘','機關步','器靈訣','煉器經'],['擊','騎行','通靈訣','馴獸經'],['魔爪','魔遁','魔念','魔經'],['鬼爪','鬼遁','攝魂訣','鬼經'],['掌','神行','心咒','禪經'],['毒','毒遁','蠱惑','蠱經']];
+const TSF={攻擊:0,身法:1,神識:2,心法:3};
+SCHOOLS.forEach((s,si)=>{const pre=EXPRE[si].split(' ');EX.forEach((e,j)=>mk(si,pre[j]+EXSF[si][TSF[e[1]]],e[0],e[1]));});
+/* 通用功法：人人可用，但比交好流派共用的功法弱 */
+[['吐納訣',0,'心法'],['輕身術',0,'身法'],['基礎拳腳',0,'攻擊'],['凝神術',1,'神識'],['靈力彈',1,'攻擊'],['御風術',1,'身法'],['五行訣',2,'心法'],['氣勁衝擊',2,'攻擊'],['靜心咒',2,'神識'],['周天運轉訣',3,'心法'],['燕子穿雲',3,'身法'],['真元斬',3,'攻擊'],['識海衝擊',4,'神識'],['兩儀訣',4,'攻擊'],['凌虛步',4,'身法'],['混元功',5,'心法'],['靈力爆',5,'攻擊'],['神念震',5,'神識']].forEach(g=>mk(12,g[0],g[1],g[2]));
+const pc=v=>(Math.round(v*1000)/10)+'%';
+const fxLine=f=>Object.keys(f).map(n=>{const b=FXB[n];return b[2].replace('#',n==='shield'?f[n].toFixed(1):pc(f[n]));}).join('；');
+const tMult=k=>(k.type==='神識'?1.1+0.28*k.rank:1.2+0.3*k.rank)*(k.pw||1);
+const tCost=k=>(0.05+0.01*k.rank)*(k.cs||1);
+function techEff(t){
+ if(t.type==='心法'){const k=SCX[t.sc];return'修煉速度+'+pc(0.1+0.08*t.rank)+(t.sc<12?'；'+k[2]+'+'+pc(k[1]*(t.rank+1)):'');}
+ if(t.type==='身法'){const k=SCX[t.sc];return'速度+'+(t.rank+1)*5+'%；閃避+'+pc(0.03+0.025*t.rank)+(t.sc<12?'；'+k[2]+'+'+pc(k[1]*(t.rank+1)*.5):'');}
+ return'威力×'+tMult(t).toFixed(2)+'，耗靈'+pc(tCost(t))+(t.type==='神識'?'，必中且無視70%防禦':'')+'；'+fxLine(t.fxs);}
+
+const PRE=['凡鐵','青罡','赤焰','玄冥','紫電','九幽','太清','混元','天罰','道源'];
+const SLOTS=['武器','衣甲','飾品','法寶'];
+const SNAME={武器:['劍','刀','槍','杖'],衣甲:['道袍','法衣','護甲'],飾品:['玉佩','戒指','項鍊'],法寶:['寶鐺','寶塔','玲瓏盤','幡']};
+const QN=['下品','中品','上品','極品'],QM=[1,1.25,1.55,2.0],QCOL=['#aab','#7fcf9a','#7fb2e8','#e0a14f'];
+const ESN=[
+{武器:['飛劍','靈劍'],衣甲:['劍袍'],飾品:['劍穗'],法寶:['劍匣']},
+{武器:['拳套','戰錘'],衣甲:['戰甲'],飾品:['護腕'],法寶:['龍象印']},
+{武器:['古琴','玉簫'],衣甲:['羽衣'],飾品:['音玉'],法寶:['編鐘']},
+{武器:['符筆','符劍'],衣甲:['符袍'],飾品:['符墜'],法寶:['符盤']},
+{武器:['陣旗','陣盤'],衣甲:['八卦袍'],飾品:['陣眼珠'],法寶:['陣樞']},
+{武器:['丹鼎','藥杵'],衣甲:['藥師袍'],飾品:['藥葫蘆'],法寶:['地火爐']},
+{武器:['神錘','機關匣'],衣甲:['玄鐵甲'],飾品:['齒輪墜'],法寶:['鑄鼎']},
+{武器:['馭獸笛','靈鞭'],衣甲:['獸皮甲'],飾品:['獸牙鍊'],法寶:['靈獸環']},
+{武器:['魔刀','血幡'],衣甲:['魔袍'],飾品:['魔骨飾'],法寶:['血魔珠']},
+{武器:['引魂幡','骨杖'],衣甲:['冥袍'],飾品:['鬼面'],法寶:['攝魂燈']},
+{武器:['禪杖','降魔杵'],衣甲:['袈裟'],飾品:['念珠'],法寶:['金缽']},
+{武器:['蠱盅','毒匕'],衣甲:['蠱衣'],飾品:['毒囊'],法寶:['萬蠱罐']}];
+const eqSc=q=>q.sc==null?12:q.sc;
+const mkEq=(tier,slot,q,sc)=>{tier=cl(tier,0,9);slot=slot||pick(SLOTS);if(q==null)q=pickW([55,28,13,4]);
+ if(sc==null){const pr=(slot==='武器'||slot==='法寶')?0.85:0.4;sc=ch(pr)?((p&&ch(0.4))?p.sc:R(0,11)):12;}
+ return{id:Date.now()+Math.floor(rnd()*1e9),slot,tier,q,sc,name:PRE[tier]+(sc<12?pick(ESN[sc][slot]):pick(SNAME[slot]))};};
+/* 流派裝備的額外被動 */
+const eqX=q=>{const sc=eqSc(q);if(sc>=12)return null;const k=SCX[sc];return[k[0],k[1]*(q.tier*0.6+1)*(0.8+q.q*0.15),k[2]];};
+const eqDesc=q=>{const v=S(q.tier*4+2)*QM[q.q];let d;if(q.slot==='武器')d='攻擊+'+nf(v*.5);else if(q.slot==='衣甲')d='防禦+'+nf(v*.4)+' 氣血+'+nf(v*2);else if(q.slot==='飾品')d='神識+'+nf(v*.4)+' 速度+'+(q.tier*2+2);else d='攻+'+nf(v*.2)+' 防+'+nf(v*.15)+' 神識+'+nf(v*.2)+' 血+'+nf(v);
+ const x=eqX(q);return d+(x?`<br><span class="b">〔${SCHOOLS[eqSc(q)].n}〕${x[2]}+${pc(x[1])}；${SCHOOLS[eqSc(q)].n}功法威力+10%${q.slot==='武器'||q.slot==='法寶'?'；可使用該流派跨派功法而不減傷':''}</span>`:'<br><span class="dim">〔通用〕無流派加成</span>');};
+const eqPrice=q=>Math.round(P(q.tier*4+2)*(3+q.q*3));
+
+const REG={
+'中州':{x:105,y:210,lv:[0,6],el:'土',qi:1.0,city:1,adj:['西漠','西南幽谷','北原','南疆','天裂淵'],boss:'天衍宗殘魂',beasts:['山貓妖','赤眼狼','毒牙蛇','青皮野豬'],desc:['宗門遺址的斷碑倒在荒草間。','市集炊煙裊裊，修士往來。','山道上殘留著劍氣的痕跡。'],col:'#9a7a3c'},
+'東荒古林':{x:310,y:280,lv:[6,12],el:'木',qi:1.15,city:0,adj:['南疆','東海','天裂淵'],boss:'萬年樹妖',beasts:['噬血藤','三眼猿','青鱗蟒','古林狼王'],desc:['古木參天，不見天日。','林間霧氣中藏著低沉的獸吼。','腐葉下有淡淡靈光流動。'],col:'#2f8052'},
+'東海':{x:310,y:130,lv:[8,16],el:'水',qi:1.1,city:1,adj:['東荒古林','北原','天裂淵'],boss:'東海蛟龍',beasts:['鐵甲蟹','碧海鮫','雷鰻','海蛇妖'],desc:['海風帶著濃濃靈氣，浪濤拍岸。','遠處島嶼上有修士鬥法的靈光。','潮汐退去，露出一片古老礁盤。'],col:'#2d70a8'},
+'南疆':{x:180,y:350,lv:[12,20],el:'火',qi:1.1,city:1,adj:['中州','西南幽谷','東荒古林','天裂淵'],boss:'蠱母',beasts:['五毒蛛','赤蠍','蠱蟲群','瘴氣蟾'],desc:['瘴氣瀰漫，空氣潮濕悶熱。','苗寨中傳來詭異的鈴聲。','毒花盛開，美得令人心悸。'],col:'#6f9a2d'},
+'西漠':{x:50,y:130,lv:[16,24],el:'土',qi:0.9,city:1,adj:['中州','北原','西南幽谷'],boss:'古佛金身',beasts:['沙蟲','黃沙狼','石像鬼','赤砂蠍'],desc:['黃沙漫天，古寺鐘聲遙遙傳來。','殘破的佛塔半埋在沙中。','烈日下，沙丘如金色浪潮。'],col:'#bc8c3c'},
+'北原':{x:180,y:70,lv:[20,28],el:'金',qi:1.0,city:1,adj:['東海','中州','西漠','天裂淵'],boss:'冰原劍魔',beasts:['雪狼','冰熊','寒霜蛟','雪原巨猿'],desc:['朔風如刀，冰原上劍意凜然。','冰層下隱約可見遠古修士的遺骸。','極光掠過天際，靈氣凝成霜花。'],col:'#7bb8d6'},
+'西南幽谷':{x:50,y:290,lv:[24,32],el:'木',qi:1.2,city:0,adj:['中州','西漠','南疆'],boss:'幽谷鬼王',beasts:['遊魂','吊死鬼','骨妖','怨靈'],desc:['陰風陣陣，谷中終年不見日光。','枯骨鋪成的小徑蜿蜒向前。','遠處亮起幽綠鬼火。'],col:'#6a4a8a'},
+'天裂淵':{x:180,y:210,lv:[32,39],el:'火',qi:1.5,city:0,adj:['中州','東荒古林','東海','北原','南疆','浮空仙域'],boss:'天道殘影',beasts:['裂隙魔','虛空獸','天道殘魂'],desc:['大地的裂口深不見底，天道氣息在此翻湧。','空間碎片在你身旁無聲飄過。'],col:'#c04a6a'},
+'浮空仙域':{x:300,y:40,lv:[35,39],el:'金',qi:2.0,city:1,adj:['天裂淵'],boss:'',beasts:['雲中劍靈','仙鶴靈','天宮衛士'],desc:['雲海之上，仙樂隱隱，靈氣濃得化為液。'],col:'#e0c46a'}
+};
+const SHARDREG=['中州','東荒古林','東海','南疆','西漠','北原','西南幽谷'];
+const SRN=['葬劍','天機','玄冰','赤炎','幻月','蒼梧','九幽','星隕','落霞','太虛'];
+const SURN=['李','王','張','陳','林','蕭','葉','沈','楚','顧','薛','墨','雲','冷','蘇','方'];
+const GIV=['青','玄','清','無','天','逸','寒','赤','紫','南','北','長','白','夜','凌','雲','塵','風','明','陽'];
+
+/* ===== 劇情文案（只有資料，邏輯在 story／storyMeet 等函式；原文出自《修仙劇情文案》）===== */
+const STORY_TXT={
+ /* A 序章：開新局時依序顯示 */
+ prologue:[
+  "青嵐派一夜染血，山門崩塌，昔日同門盡成劫灰。黑暗深處，有人正翻找著一卷不該存在的殘篇。",
+  "你在師門廢墟中拾起《納墟訣》，殘頁無字，觸手卻有微光流轉。遠處傳來陌生人的聲音：終於，等到有人能讀懂它了。",
+  "同門林晚照生死未卜，滅門真相更無從追尋。你將殘卷收入懷中，踏下青嵐山，身後只剩一地未冷的灰燼。"
+ ],
+ /* B 第一次抵達各地區時顯示一次（鍵＝地區名；中州在序章之後顯示） */
+ region:{
+  "中州":"中州宗門林立，香火鼎盛，卻無一處靈脈不見枯竭之象。城中流傳著古老傳聞，天衍宗曾收藏著天道崩裂前的記錄。",
+  "東荒古林":"古木遮天，藤蔓深處隱約傳來如人低語的聲音。林中萬物似乎都在守護著某個沉睡千年的秘密。",
+  "東海":"萬頃碧波之下，沉船與古城隨潮汐若隱若現。海面平靜得反常，彷彿有什麼龐然大物正在深處凝視你。",
+  "南疆":"瘴霧蔽日，蟲鳴如潮，山寨中流傳著以血肉供養靈脈的古老習俗。有人說，這片土地早已被某種意志寄生。",
+  "西漠":"黃沙埋盡千年古寺，殘破佛塔仍在風中低誦經文。沙海深處，一尊不朽金身靜候著闖入者。",
+  "北原":"冰雪封山，萬里寒風如刀，無數斷劍插在凍土之中。極北傳來一道劍意，彷彿連天地都曾被它斬開。",
+  "西南幽谷":"終年不散的陰霧籠罩山谷，枯骨之間仍有未散的執念。你聽見有人喚你的名字，聲音卻來自早已死去的人。",
+  "天裂淵":"七片碎片齊聚，沉寂千年的天裂淵終於向你敞開。裂縫彼端沒有仙宮，只有一片凝視眾生的蒼茫殘影。",
+  "浮空仙域":"塵封的仙域懸於天外，斷壁殘垣間盡是昔日登仙者留下的遺物。這裡沒有仙人，只有司天殿曾經存在過的證據。"
+ },
+ /* C 首次擊敗守關者（鍵＝守關者名，與 REG 的 boss 一致；天道殘影在 challengeFinal） */
+ boss:{
+  "天衍宗殘魂":"殘魂散去，一片天道碎片沒入你的體內。記憶隨之浮現：千年前，司天殿曾抽取九州靈脈，欲建登仙之梯。",
+  "萬年樹妖":"樹身轟然倒下，一片天道碎片融入你的神魂。枯木最後一次開口：天道並非被人擊碎，而是為了自保，親手裂成七片。",
+  "東海蛟龍":"蛟龍沉入海底，天道碎片映出遠古幻象。你終於看見，天道自裂之日，九州靈氣便被七道鎖鏈封存。",
+  "蠱母":"蠱母化作漫天飛灰，天道碎片在你體內震顫。她留下最後一句話：青嵐派世代守護的殘卷，正是補天匠留下的承載之法。",
+  "古佛金身":"金身崩解，天道碎片照亮你的識海。古佛留下的記憶揭示，《納墟訣》不辨靈根純濁，只尋能容納萬道衝突之人。",
+  "冰原劍魔":"劍魔長嘯而逝，天道碎片融入血脈。冰封記憶中，司天殿曾派人清除所有守卷宗門，青嵐派亦因此覆滅。",
+  "幽谷鬼王":"鬼王魂飛魄散，天道碎片歸入你身。你看見聞無咎曾是前代補天司，而裴玄機奉命追殺你，只因司天殿不容任何人觸碰天道。",
+  "天道殘影":"殘影緩緩睜眼，七片碎光在你身旁交織成天道本相。它不曾求你復原，也不曾求你毀滅，只將千年未竟的選擇，交還給你。"
+ },
+ /* D 三個結局，接在原結局文字之後（鍵＝結局名） */
+ end:{
+  "重鑄天道":"你將七片碎片歸於原位，以自身神魂重鑄天道，化作法則守望人間。聞無咎終於等到補天之日，在最後一縷壽元中含笑而逝。裴玄機放下執律之劍，從此守護九州秩序；林晚照則帶著你的名字，走遍重新復甦的山河。",
+  "自成一道":"你將七片碎片盡數吞下，以己身取代舊日天道。天地靈脈重開，萬物俯首於你的意志之下，世間再無人能違逆你的法則。聞無咎在你的威壓中閉上雙眼，裴玄機終於承認自己追隨了一生的秩序已然易主。林晚照獨自離去，從此再不喚你的名字。",
+  "斬斷天道":"你斬斷七片碎光，讓天道與九州徹底分離。從此再無天劫，也無飛升，眾生不必仰望天意，只能以自己的雙手走出前路。聞無咎帶著千年執念安然長眠，裴玄機卸下執律之職，隱入凡塵。你與林晚照重返故山，在青嵐派的舊址上，重新種下一株新苗。"
+ },
+ /* E 角色偶遇：n＝需要的碎片數；t＝敘述與台詞；c＝[[回應,收尾],[回應,收尾]]；fight＝1 表示收尾後開戰（裴玄機） */
+ meet:[
+  {"k":"聞無咎-0","who":"聞無咎","n":0,"fight":0,"t":"破廟殘燈搖曳，灰袍老者背對你枯坐，案上殘卷微微發光。他指尖輕叩桌面，目光如刀刮過你的經脈。聞無咎道：「殘卷擇主不看純度，只看你這副破口袋裝不裝得下天怒。」","c":[["晚輩定不負殘卷","聞無咎冷哼一聲：「負與不負，先看你活不活得到下一片。」"],["前輩可是等著收屍","聞無咎眼底閃過一絲意外：「若你真有那本事，老夫倒省了力氣。」"]]},
+  {"k":"聞無咎-2","who":"聞無咎","n":2,"fight":0,"t":"古道風沙漫捲，兩片碎片在你袖中隱隱發燙，經脈如針扎般刺痛。聞無咎佇立崖邊，白髮在狂風中亂舞。聞無咎道：「兩片便已撕扯氣海，你還敢往深處走，是嫌命太長還是太蠢？」","c":[["痛得起，便走得動","聞無咎眉頭微蹙：「嘴硬沒用，經脈斷了可接不回。」"],["前輩何不親手試探","聞無咎拂袖轉身：「還不到時候，別急著送死。」"]]},
+  {"k":"聞無咎-4","who":"聞無咎","n":4,"fight":0,"t":"斷碑林立的荒原上，四片碎片共鳴得你雙耳嗡鳴，氣息險些失控。聞無咎撐著枯枝現身，氣息比先前更虛弱。聞無咎道：「司天殿抽乾了地脈，天道裂開是自保，你真以為補得回那道傷？」","c":[["裂了便補，錯了便改","聞無咎低聲喃喃：「好一個改……只怕代價你未必算得清。」"],["這與前輩無關","聞無咎盯著你看了許久：「老夫守了千年，怎會無關。」"]]},
+  {"k":"聞無咎-6","who":"聞無咎","n":6,"fight":0,"t":"罡風如刀割面，六片碎片在體內橫衝直撞，幾乎撐爆丹田。聞無咎立於風口，身影淡得像隨時會散去。聞無咎道：「容器裝滿了天道，便再裝不下半點人心，你可想清楚了？」","c":[["我只問道，不問其他","聞無咎閉上眼：「執念太深，往往最先被吞噬。」"],["人心若在，天便難困","聞無咎嘴角微揚：「若真如此，老夫便賭你這一局。」"]]},
+  {"k":"林晚照-1","who":"林晚照","n":1,"fight":0,"t":"荒村夜雨敲窗，你體內的第一片碎片寒氣透骨。一道青影掠入屋簷，少女咳出黑血卻仍握緊斷劍。林晚照道：「青嵐派的火還沒滅完，你拿著這東西，是想替師門討債，還是找死？」","c":[["討債，也活下去","林晚照握緊劍柄：「那便別死在半路，我還要看清幕後之人。」"],["晚照，先顧好你的傷","林晚照別過臉去：「我的傷不用你管，顧好你自己的命。」"]]},
+  {"k":"林晚照-3","who":"林晚照","n":3,"fight":0,"t":"山道霧濃如墨，你體內碎片氣息隱隱外洩，引來幾波窺探。林晚照倚著古松等你，指尖染著未乾的血跡。林晚照道：「他們都在找能承載碎片的怪胎，原來竟是你這塊凡骨。」","c":[["怪胎也好，能贏便行","林晚照輕聲道：「只要能掀翻司天殿，做什麼都行。」"],["有你在，便不算孤身","林晚照眸光微動：「別把希望押在我這殘軀上。」"]]},
+  {"k":"林晚照-5","who":"林晚照","n":5,"fight":0,"t":"古戰場殘骸遍地，五片碎片讓你氣息沉重如山，步履維艱。林晚照走上前替你理了理凌亂衣襟，眼神卻沉得可怕。林晚照道：「我查到了，滅門那夜下令的人，與你懷裡的殘卷有關。」","c":[["無論真相如何，我扛","林晚照低聲道：「我陪你一起扛，直到最後一刻。」"],["先告訴我全部真相","林晚照望向遠方：「到了天裂淵，一切都會攤在眼前。」"]]},
+  {"k":"林晚照-7","who":"林晚照","n":7,"fight":0,"t":"七片碎片齊聚，遠方天裂淵上空風雲變色。林晚照站在你身側不遠處，衣袂在罡風中獵獵作響。林晚照道：「天道修好或斬斷都好，我只想知道，你還記不記得自己是誰？」","c":[["我仍是青嵐弟子","林晚照笑了笑：「好，那我便在這裡等你的答案。」"],["走完這步，我便回來","林晚照輕點下頷：「別讓我等太久。」"]]},
+  {"k":"裴玄機-2","who":"裴玄機","n":2,"fight":1,"t":"亂石坡殺意驟起，兩片碎片的氣息被執律羅盤精準鎖定。裴玄機踏空而降，白衣染塵，劍鋒直指你眉心。裴玄機道：「駁雜之身竊取天道碎片，便是褻瀆，今日我替天行道。」","c":[["天道若偏心，何須敬","裴玄機冷聲喝道：「狂妄之徒，拔劍受死！」"],["出手便是，少廢話","裴玄機劍勢一沉：「既然求死，我成全你。」"]]},
+  {"k":"裴玄機-4","who":"裴玄機","n":4,"fight":1,"t":"古祭壇斷柱傾頹，你剛平息四片碎片的反噬，劍氣已破空而至。裴玄機眼神冷冽，卻比先前多了一分審視。裴玄機道：「你竟能壓住四重異力不爆體，倒讓裴某意外，可惜仍是不配。」","c":[["配與不配，劍下見真章","裴玄機橫劍格擋：「那便看看你的凡骨能撐幾招！」"],["你們抽靈脈才叫褻瀆","裴玄機劍鋒微頓：「執律之責，容不得你置喙。」"]]},
+  {"k":"裴玄機-6","who":"裴玄機","n":6,"fight":0,"t":"霧氣翻湧，裴玄機攔在你身前，長劍垂落卻未出招。他看著你體內流轉的六片碎片，神色複雜難明。裴玄機道：「若司天殿真如你所見早已腐朽，我守的究竟是秩序，還是謊言？」","c":[["放下執念，自己看清","裴玄機收劍入鞘：「此戰不打，天裂淵裡見分曉。」"],["你我殊途，不必多言","裴玄機轉身離去：「前路兇險，好自為之。」"]]}
+ ],
+ /* F 大境界突破成功的心境：[一般, 偽靈根專屬]，索引＝REALMS 索引（結丹用原文「金丹」那句；真仙原文沒有，為補寫） */
+ brk:[
+  [null,"氣海初定，凡塵微火亦能照亮前路。","百脈歸一，凝得一顆不滅道心。","神識離體，方知天地廣闊無垠。","神遊太虛，一念可通萬物靈機。","窺破虛妄，真假之間皆為我用。","天人相印，身與道合無分彼此。","道果圓滿，一步踏在登仙門檻。","九霄雷落，以凡身硬撼天威。","凡骨已蛻，天地之間，再無可束你之物。"],
+  [null,"雜氣入爐，駁雜亦能築起萬丈基。","多元交融，斑斕金丹反生無盡變。","萬象同修，元嬰眉目盡是容納之量。","不拘一格，駁雜神識更能容萬道。","裂隙皆路，殘缺之身反見虛空真形。","百川匯海，衝突之力盡化合體底蘊。","雜而不亂，凡骨亦可承載大乘之重。","雷霆萬鈞，駁雜之軀偏能引劫淬鋒。","駁雜了一生，終成雜而不亂的真仙之身。"]
+ ],
+ /* G 殘卷《納墟訣》：碎片數 n 顯現前 n 行 */
+ scroll:["裂穹納殘響，","百脈承異氣，","衝突化熔爐，","萬象歸一器，","碎星補天缺，","逆道問長生，","器成之日，身亦為薪。"]
+};
+
+/* ===== 狀態 ===== */
+let p=null,B=null,mode='act',tab='act',ev=null,bt=null,selReg=null,intro=null,techF=-1,techUnk=false,showCode='',showSty=false;
+const KEY='tianlie_xiuxian_v1';
+const rIdx=()=>Math.floor(p.lv/4);
+const maxLv=()=>p.ending?39:35;
+let toastT=null;
+function toast(m,c){try{let el=document.getElementById('toast');if(!el){el=document.createElement('div');el.id='toast';document.body.appendChild(el);}
+ el.textContent=m;el.className=c||'';el.style.display='block';clearTimeout(toastT);toastT=setTimeout(()=>{el.style.display='none';},3200);}catch(e){}}
+const L=(m,c)=>{p.log.push({m,c:c||''});if(p.log.length>70)p.log.shift();if(tab!=='act'&&c!=='b')toast(m,c);};
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(p));}catch(e){}};
+/* 靈根參數（集中一處，方便調整）：修煉倍率／同屬攻擊加成倍率／心法同屬修煉加成／突破加成 */
+const ROOT_MUL={天:1.8,變異:1.8,真:1.3,偽:0.85};
+const ROOT_SAME={天:1.35,變異:1.35,真:1.2,偽:1.08};
+const ROOT_HEART={天:.2,變異:.2,真:.1,偽:.04};
+const ROOT_BRK={天:.08,變異:.08,真:.03,偽:0};
+const rootMultOf=t=>ROOT_MUL[t];
+const rootMult=()=>rootMultOf(p.root.type);
+const elNorm=e=>e==='冰'?'水':e;/* 變異靈根的「冰」視同「水」 */
+const hasRoot=e=>e&&p.root.els.map(elNorm).includes(e);
+/* 偽靈根當萬金油：跨流派功法威力折扣／心法身法效果折扣放寬 */
+const offPen=()=>p.root.type==='偽'?.8:.6;
+const offRel=()=>p.root.type==='偽'?.7:.5;
+/* 靈根白話說明與對照（開局與角色頁共用） */
+function rootLine(t){
+ const trait={天:'五行純粹',變異:'異種靈根（冰視同水）',真:'五行尚可',偽:'五行駁雜'}[t];
+ const brk=ROOT_BRK[t]?'突破成功率+'+Math.round(ROOT_BRK[t]*100)+'%':'突破無加成';
+ const same=Math.round((ROOT_SAME[t]-1)*100);
+ const off=t==='偽'?'學別派功法只打八折（其他靈根六折）':'學別派功法打六折（偽靈根為八折）';
+ return `${t}靈根：修煉 ×${ROOT_MUL[t]}、${brk}；${trait}，同屬加成${t==='偽'?'只有':''} ${same}%（心法同屬修煉另加 ${Math.round(ROOT_HEART[t]*100)}%），${off}`;}
+function rootCmp(t){
+ if(t==='天'||t==='變異')return `同樣閉關一年，你的修為約是偽靈根的 ${(rootMultOf(t)/rootMultOf('偽')).toFixed(1)} 倍`;
+ return `同樣閉關一年，天靈根的修為約是你的 ${(rootMultOf('天')/rootMultOf(t)).toFixed(1)} 倍`;}
+function rollRoot(){const x=rnd(),E=['金','木','水','火','土'];
+ if(x<.05)return{type:'天',els:[pick(E)]};
+ if(x<.10)return{type:'變異',els:[pick(['雷','冰','風'])]};
+ if(x<.40)return{type:'真',els:shuffle(E).slice(0,R(2,3))};
+ return{type:'偽',els:shuffle(E).slice(0,R(4,5))};}
+const rootTxt=r=>r.type+'靈根（'+r.els.join('')+'）';
+
+
+/* ===== 劇情邏輯（文案在 STORY_TXT；p.sty＝{seen:已看過的鍵, list:依解鎖順序的 [{k,t,m}]，供「問道紀事」重看}）===== */
+const STY_MEET_P=0.5,PEI_SC=0;/* 角色偶遇每次探索的觸發機率（碎片數 0 的那段改為第 2 次探索必出）；裴玄機的流派＝劍修 */
+function story(key,title,text,quiet){
+ if(!p.sty)p.sty={seen:{},list:[]};
+ if(p.sty.seen[key])return false;
+ p.sty.seen[key]=1;p.sty.list.push({k:key,t:title,m:text});
+ if(!quiet)L(`【${title}】${text}`,'sty');
+ return true;}
+const storyRegion=(k,quiet)=>STORY_TXT.region[k]?story('B:'+k,'初到・'+k,STORY_TXT.region[k],quiet):false;
+function storyBoss(reg,quiet){const b=reg==='天裂淵'?'天道殘影':REG[reg].boss;return STORY_TXT.boss[b]?story('C:'+b,'擊敗・'+b,STORY_TXT.boss[b],quiet):false;}
+const storyEnd=(n,quiet)=>STORY_TXT.end[n]?story('D:'+n,'結局・'+n,STORY_TXT.end[n],quiet):false;
+/* 探索時的角色偶遇：碎片數達到該段數字、尚未看過；每次探索最多一段，依碎片數由小到大補看。回傳 true＝已進入事件 */
+function storyMeet(){
+ const sh=p.shards.length,pend=STORY_TXT.meet.filter(e=>e.n<=sh&&!p.sty.seen['E:'+e.k]).sort((a,b)=>a.n-b.n);
+ if(!pend.length)return false;
+ const e=pend[0],cnt=Object.keys(p.explored).reduce((a,k)=>a+p.explored[k],0);
+ if(!(e.n===0?cnt>=2:ch(STY_MEET_P)))return false;
+ story('E:'+e.k,'偶遇・'+e.who,e.t);/* 先標記已看過（戰敗或逃跑也算看過） */
+ const ent=p.sty.list[p.sty.list.length-1];
+ showEv(e.t,e.c.map(c=>({l:c[0],f:()=>{L(c[1],'sty');ent.m+='\n你答：'+c[0]+'\n'+c[1];if(e.fight)meetPei();}})),true);
+ return true;}
+/* 裴玄機（執律使、劍修）：略強於玩家的修士，贏了的獎勵略高於一般修士（寶箱等級、加成 1 級） */
+function meetPei(){
+ const lv=cl(p.lv+1,0,39),e=mkRival(lv,PEI_SC);e.n='裴玄機';e.hp*=1.15;e.atk*=1.1;
+ L('裴玄機長劍出鞘，劍意鎖住了你！','r');
+ fight(e,{canFlee:true,win:()=>{p.pk++;give(mkBundle(lv,'box',2));}});}
+/* 舊存檔補欄位；沒有劇情欄位的舊檔：已到過的地區、已擊敗的守關者、已有的結局只靜默記為已看過（不補播），
+   角色偶遇則從目前碎片數對應的那段開始（碎片數更小的視為已看過） */
+function fixSave(){
+ if(p.srNext==null)p.srNext=0;
+ if(!p.liqBuy)p.liqBuy={m:0,n:0};
+ if(!p.sty){
+  p.sty={seen:{},list:[]};
+  const regs=['中州',p.reg];for(const k in p.explored)if(p.explored[k]>0)regs.push(k);
+  for(const k in p.bossDown)if(p.bossDown[k]&&REG[k]){regs.push(k);}
+  if(p.ending)regs.push('天裂淵');
+  REGKEYS.forEach(k=>{if(regs.includes(k))storyRegion(k,true);});
+  REGKEYS.forEach(k=>{if(p.bossDown[k]&&REG[k].boss)storyBoss(k,true);});
+  if(p.ending){storyBoss('天裂淵',true);storyEnd(p.ending,true);}
+  STORY_TXT.meet.forEach(e=>{if(p.ending||e.n<p.shards.length)p.sty.seen['E:'+e.k]=1;});
+ }}
+const REGKEYS=Object.keys(REG);
+/* 讀檔後的模式：壽元已盡就進入坐化（避免重新整理後回到可操作畫面）；有秘境進度回到秘境 */
+function resumeMode(){if(16+p.month/12>=LIFE[rIdx()]+p.extra){p.sr=null;return'dead';}return p.sr?'sr':'act';}
+
+function newGame(name,sc,root){
+ p={name:name||'無名道友',sc,root,lv:0,exp:0,month:0,reg:'中州',st:300,hp:1,mp:1,
+  eq:{武器:mkEq(0,'武器',0,sc),衣甲:null,飾品:null,法寶:null},bag:[],techs:[],mas:{},heart:null,foot:null,slots:[null,null,null,null],
+  inv:{liq:2,heal:3,mp:2,brk:0,life:0},shards:[],bossDown:{},explored:{},sr:null,pk:0,log:[],ending:null,extra:0,shop:null,srNext:0,liqBuy:{m:0,n:0},sty:{seen:{},list:[]}};
+ const base=sc*12;
+ learn(base);learn(base+1);p.heart=base;p.slots[0]=base+1;
+ const c=calc();p.hp=c.hp;p.mp=c.mp;
+ STORY_TXT.prologue.forEach((t,i)=>story('A-'+(i+1),'序章（'+'一二三'[i]+'）',t));storyRegion('中州');
+ L('天道崩裂已逾千年，九州靈氣日漸稀薄，傳說集齊七塊天道碎片，便可補全飛升之路。','y');
+ L(`你是${p.name}，${rootTxt(root)}，在宗門覆滅之夜撿到一卷殘破功法，從此踏上問道之路。`);
+ L('提示：先「閉關」修煉，再到中州附近探索歷練。');
+ mode='act';tab='act';selReg=p.reg;save();render();
+}
+function learn(id){if(!p.techs.includes(id))p.techs.push(id);if(!p.mas[id])p.mas[id]=1;}
+
+/* ===== 數值 ===== */
+function calc(){
+ const b=S(p.lv);const o={atk:b,def:b*.6,sense:b*.9,hp:b*6,mp:b*5,spd:10+p.lv*3,dodge:.03,crit:.08,exp:1};
+ for(const sl in p.eq){const q=p.eq[sl];if(!q)continue;const v=S(q.tier*4+2)*QM[q.q];
+  if(sl==='武器')o.atk+=v*.5;else if(sl==='衣甲'){o.def+=v*.4;o.hp+=v*2;}else if(sl==='飾品'){o.sense+=v*.4;o.spd+=q.tier*2+2;}else{o.atk+=v*.2;o.def+=v*.15;o.sense+=v*.2;o.hp+=v;}}
+ const X={crit:0,critd:0,hpPct:0,defPct:0,senseP:0,atkP:0,spdP:0,lifesteal:0,dodge:0,regen:0,dotUp:0,exp:0};
+ for(const sl in p.eq){const q=p.eq[sl];if(!q)continue;const x=eqX(q);if(x)X[x[0]]+=x[1];}
+ if(p.heart!=null){const h=TECHS[p.heart],m=1+0.1*((p.mas[h.id]||1)-1),f=relF(h);
+  o.exp+=(0.1+0.08*h.rank)*m*f+(hasRoot(h.e)?ROOT_HEART[p.root.type]:0);
+  if(h.sc<12)X[SCX[h.sc][0]]+=SCX[h.sc][1]*(h.rank+1)*m*f;}
+ if(p.foot!=null){const t=TECHS[p.foot],f=relF(t);o.spd*=1+0.05*(t.rank+1)*f;o.dodge+=(0.03+0.025*t.rank)*f;
+  if(t.sc<12)X[SCX[t.sc][0]]+=SCX[t.sc][1]*(t.rank+1)*.5*f;}
+ o.atk*=1+X.atkP;o.sense*=1+X.senseP;o.hp*=1+X.hpPct;o.def*=1+X.defPct;o.spd*=1+X.spdP;
+ o.crit+=X.crit;o.critd=X.critd;o.lifesteal=X.lifesteal;o.regen=X.regen;o.dotUp=X.dotUp;o.exp+=X.exp;o.dodge+=X.dodge;
+ o.dodge=Math.min(o.dodge,.5);return o;}
+/* ===== 流派規則：本流派／交好／武器共鳴／通用／跨流派 ===== */
+function wpnMatch(sc){return['武器','法寶'].some(s=>p.eq[s]&&eqSc(p.eq[s])===sc);}
+function rel(t){if(t.sc===12)return'gen';if(t.sc===p.sc)return'own';if(ALLY[p.sc].includes(t.sc))return'ally';if(wpnMatch(t.sc))return'wpn';return'off';}
+const RELTXT={gen:'通用',own:'本流派',ally:'交好流派',wpn:'武器共鳴',off:'跨流派'};
+const penOf=t=>({gen:.9,own:1,ally:1,wpn:1,off:offPen()})[rel(t)];
+const relF=t=>({gen:.9,own:1,ally:1,wpn:1,off:offRel()})[rel(t)];
+/* ===== 流派相剋（常數集中於此，方便調整）=====
+   兩個環，「A → B」表示 A 剋 B；每派剋下一個、被上一個剋。索引對應 SCHOOLS。
+   五行環：劍修(0)→丹修(5)→體修(1)→陣修(4)→器修(6)→劍修(0)
+   另一環：符修(3)→鬼修(9)→音修(2)→御獸(7)→毒蠱(11)→佛修(10)→魔修(8)→符修(3) */
+const CTR_RINGS=[[0,5,1,4,6],[3,9,2,7,11,10,8]];
+const CTR_UP=1.25,CTR_DOWN=0.8;/* 剋制 ×1.25、被剋 ×0.8 */
+const CTR_SUMMON=7,CTR_SUMMON_UP=1.15;/* 御獸流派功法打妖獸／首領的額外倍率 */
+const ELSC={金:0,木:5,土:1,水:4,火:6};/* 五行屬性 → 對應五行環的流派（妖獸屬性用） */
+const CTR_NEXT={};/* CTR_NEXT[a]＝a 所剋的流派 */
+CTR_RINGS.forEach(r=>r.forEach((a,i)=>{CTR_NEXT[a]=r[(i+1)%r.length];}));
+const CTR_PREV=s=>Object.keys(CTR_NEXT).map(Number).filter(a=>CTR_NEXT[a]===s);/* 剋 s 的流派 */
+function ctrOf(a,d){if(a==null||d==null||a>=12||d>=12)return 1;if(CTR_NEXT[a]===d)return CTR_UP;if(CTR_NEXT[d]===a)return CTR_DOWN;return 1;}
+const isBeastE=e=>e&&(e.kind==='beast'||e.kind==='boss');
+/* 玩家流派 asc 打敵人 t 的相剋倍率（御獸對妖獸另有加成；妖獸的 sc 是其五行屬性對應流派） */
+function ctrVs(asc,t){let m=ctrOf(asc,t.sc);if(asc===CTR_SUMMON&&isBeastE(t))m*=CTR_SUMMON_UP;return m;}
+const ctrTag=m=>m>1?'<span class="g">剋制</span>':m<1?'<span class="r">被剋</span>':'';
+function affOf(t){if(t.sc===12)return 0;let c=0;for(const s in p.eq){const q=p.eq[s];if(q&&eqSc(q)===t.sc)c++;}return Math.min(.4,c*.1);}
+function canUse(t){if(rIdx()<t.req)return`境界不足，需${REALMS[t.req]}期。`;
+ if(t.rank>=9&&t.sc!==12&&t.sc!==p.sc)return'天階功法只有本流派才能修煉。';
+ if(t.rank>=6&&t.rank<9&&rel(t)==='off')return'地階功法需本流派、交好流派，或裝備該流派的武器／法寶才能修煉。';return'';}
+function fixTechs(){const bad=id=>{const t=TECHS[id];return t.rank>=6&&t.rank<9&&rel(t)==='off';};
+ p.slots=p.slots.map(id=>{if(id!=null&&bad(id)){L(`失去條件，《${TECHS[id].name}》已自動卸下。`,'r');return null;}return id;});
+ if(p.heart!=null&&bad(p.heart)){L(`失去條件，心法《${TECHS[p.heart].name}》已自動卸下。`,'r');p.heart=null;}
+ if(p.foot!=null&&bad(p.foot)){L(`失去條件，身法《${TECHS[p.foot].name}》已自動卸下。`,'r');p.foot=null;}}
+const regen=f=>{const c=calc();p.hp=Math.min(c.hp,p.hp+c.hp*f);p.mp=Math.min(c.mp,p.mp+c.mp*f);};
+
+function gainExp(x){p.exp+=x;checkLevel();}
+function checkLevel(){
+ while(p.lv<maxLv()&&p.lv%4!==3&&p.exp>=need(p.lv)){p.exp-=need(p.lv);p.lv++;L('修為提升！你已達到「'+lvName(p.lv)+'」。','y');const c=calc();p.hp=c.hp;p.mp=c.mp;}
+ if(p.lv%4===3||p.lv>=maxLv()){if(p.exp>need(p.lv))p.exp=need(p.lv);}
+}
+const canBreak=()=>p.lv%4===3&&p.lv<maxLv()&&p.exp>=need(p.lv);
+function tick(m){p.month+=m;if(16+p.month/12>=LIFE[rIdx()]+p.extra){mode='dead';}}
+
+function cultivate(n){
+ if(mode!=='act')return;
+ const c=calc();let tot=0;
+ for(let i=0;i<n;i++){
+  if(p.lv>=maxLv()&&p.exp>=need(p.lv)){L('此境界修為已到瓶頸，需有所機緣方能再進。','r');break;}
+  if(p.lv%4===3&&p.exp>=need(p.lv)){L('修為圓滿，可以嘗試突破了！','y');break;}
+  const g=need(p.lv)/(6+p.lv*1.2)*c.exp*rootMult()*REG[p.reg].qi;
+  const before=p.lv;p.exp+=g;tot+=g;checkLevel();tick(1);regen(0.25);
+  if(mode==='dead')break;
+  if(p.lv!==before)c.exp=calc().exp;
+ }
+ if(mode!=='dead'){const mo=moToNext();L(`閉關${n>1?n+'個月':'一月'}，修為 +${nf(tot)}。`+(mo?`照目前速度約再 ${mo} 個月${p.lv%4===3?'修為圓滿':'升到下一階'}。`:''),'g');}
+ render();
+}
+/* 照目前速度，約再幾個月升到下一階（圓滿待突破或到瓶頸時回傳 0） */
+function moToNext(){
+ if(p.lv>=maxLv()||p.exp>=need(p.lv))return 0;
+ const g=need(p.lv)/(6+p.lv*1.2)*calc().exp*rootMult()*REG[p.reg].qi;
+ return g>0?Math.max(1,Math.ceil((need(p.lv)-p.exp)/g)):0;
+}
+/* 剩餘壽元（年）；真仙回傳 Infinity */
+function lifeLeft(){const m=LIFE[rIdx()]+p.extra;return m>9999?Infinity:m-(16+p.month/12);}
+function rest(){if(mode!=='act')return;tick(1);regen(0.6);L('你運功調息，傷勢與靈力恢復了不少。','g');render();}
+
+/* ===== 突破 ===== */
+const btRate=(liq,brk)=>{const r=rIdx();return cl(0.62-r*0.045+ROOT_BRK[p.root.type]+liq*0.08+(brk?0.15:0),0.05,0.95);};
+function doBreak(){
+ const rate=btRate(bt.liq,bt.brk);p.inv.liq-=bt.liq;if(bt.brk)p.inv.brk--;
+ const r=rIdx();
+ if(r>=3&&ch(0.5))L('天空雷雲匯聚，劫雷落下！','r');
+ if(ch(rate)){p.lv++;p.exp=0;const c=calc();p.hp=c.hp;p.mp=c.mp;L(`突破成功！你踏入了「${lvName(p.lv)}」！`,'y');const bl_=STORY_TXT.brk[p.root.type==='偽'?1:0][rIdx()];if(bl_)L(`【${REALMS[rIdx()]}】${bl_}`,'sty');}
+ else{p.exp=Math.floor(p.exp*0.6);p.hp=Math.max(1,Math.floor(calc().hp*0.4));L('突破失敗，靈力反噬，修為倒退了一些。','r');}
+ bt=null;mode='act';render();
+}
+
+/* ===== 技能 / 戰鬥 ===== */
+const cost=(a,k)=>Math.max(3,Math.round(a.mpMax*tCost(k)));
+const bl=m=>L(m,'b');
+function actorP(){const c=calc();return{n:p.name,pl:true,hp:Math.min(p.hp,c.hp),hpMax:c.hp,mp:Math.min(p.mp,c.mp),mpMax:c.mp,atk:c.atk,def:c.def,sense:c.sense,spd:c.spd,dodge:c.dodge,crit:c.crit,critd:c.critd,lifesteal:c.lifesteal,regen:c.regen,dotUp:c.dotUp,els:p.root.els.map(elNorm),rt:p.root.type,sc:p.sc,
+ skills:p.slots.filter(x=>x!=null).map(id=>{const t=TECHS[id];return Object.assign({},t,{pen:penOf(t),aff:affOf(t)});}),mas:p.mas,st:{stun:0,dot:0,dotT:0,sh:0,weak:0,weakV:0,curse:0,curseV:0}};}
+const pseudo=(name,rank,fx)=>{rank=cl(rank,0,11);const f={};if(fx)f[fx]=Math.min(FXB[fx][1],FXB[fx][0]*(1+0.22*rank));return{name,type:'攻擊',rank,stat:'atk',e:'',fxs:f,pw:1,cs:1};};
+function mkBeast(lv,reg){
+ const b=S(lv),j=()=>0.88+rnd()*0.24,nm=pick(REG[reg].beasts);
+ const r=Math.floor(lv/6);
+ return{n:nm,lv,kind:'beast',hp:b*5*j(),hpMax:0,mp:b*5,mpMax:b*5,atk:b*0.9*j(),def:b*0.5*j(),sense:b*0.4,spd:8+lv*3,dodge:.04,crit:.06,els:[],el:REG[reg].el,sc:ELSC[REG[reg].el],mas:{},
+  skills:[pseudo(pick(['撕咬','猛撲','衝撞','噴吐']),r),pseudo(pick(['嘶吼','妖氣衝擊','狂暴']),r+1,pick(['','stun','burn']))],st:{stun:0,dot:0,dotT:0,sh:0}};
+}
+function mkRival(lv,fixSc){
+ const si=fixSc==null?R(0,11):fixSc,sc=SCHOOLS[si],realm=Math.floor(lv/4),b=S(lv)*(0.92+rnd()*0.22);
+ const maxR=cl(Math.floor(realm*1.35)+2,0,11);
+ let pool=TECHS.filter(t=>t.sc===si&&t.type!=='心法'&&t.type!=='身法'&&t.rank<=maxR&&t.req<=realm);
+ pool=shuffle(pool).slice(0,3);
+ return{n:pick(SURN)+pick(GIV)+pick(GIV),school:sc.n,sc:si,el:sc.e,lv,kind:'cult',hp:b*6*1.1,mp:b*5,mpMax:b*5,atk:b*1.1,def:b*.65,sense:b,spd:10+lv*3,dodge:.06,crit:.08,els:sc.e?[sc.e]:[],mas:{},skills:pool,st:{stun:0,dot:0,dotT:0,sh:0}};
+}
+function mkBoss(lv,name,reg){
+ const e=mkBeast(lv,reg||'中州');e.n=name;e.kind='boss';e.hp*=1.9;e.atk*=1.2;e.def*=1.15;e.mp=e.mpMax=S(lv)*10;
+ const r=Math.floor(lv/4*1.35);e.skills=[pseudo('鎮壓',r,'burst'),pseudo('天罰',r+1,'stun'),pseudo('寂滅',r,'burn')];return e;
+}
+function startBattle(o){
+ const e=o.e;e.hpMax=e.hp;B={e,o,P:actorP(),over:false,fled:false};
+ B.P.st.stun=o.pst||0;e.st.stun=o.est||0;mode='battle';tab='act';render();
+}
+function attack(a,t,k){
+ const A=a.pl?'你':a.n,T=t.pl?'你':t.n;
+ if(a.st.stun>0){a.st.stun--;bl(`${A}被震懾，無法行動！`);return;}
+ const fx=(k&&k.fxs)||{},pen=k&&k.pen!=null?k.pen:1,aff=(k&&k.aff)||0,wk=a.st.weak>0?1-a.st.weakV:1;
+ let mult=1,nm='普攻',stat=a.atk*wk,defE=t.def*(t.st.curse>0?1-t.st.curseV:1),sense=false;
+ if(k){const m=1+0.1*((a.mas[k.id]||1)-1);sense=k.type==='神識';
+  mult=tMult(k)*m*pen*(1+aff);
+  stat=(sense||k.stat==='sense')?a.sense*wk:a.atk*wk;
+  if(sense)defE*=0.3;else if(k.stat==='sense')defE*=0.6;
+  if(fx.pierce)defE*=1-fx.pierce;
+  if(fx.selfdmg){a.hp=Math.max(1,a.hp-a.hpMax*0.04);mult*=1+fx.selfdmg;}
+  a.mp-=cost(a,k);nm=k.name;if(k.e&&a.els.includes(k.e))mult*=ROOT_SAME[a.rt||'真'];}
+ /* 流派相剋：玩家用功法所屬流派打敵人；敵人用自己的流派打玩家（通用功法不參與） */
+ const cm=a.pl?(k?ctrVs(k.sc,t):1):ctrOf(a.sc,p.sc);mult*=cm;const ctag=cm>1?'（剋制）':cm<1?'（被剋）':'';
+ if(!sense&&!fx.seek&&ch(t.dodge)){bl(`${A}${k?'施展「'+nm+'」':'出手'}，但${T}閃開了！`);return;}
+ let d=stat*mult*(0.9+rnd()*0.2)*stat/(stat+defE);
+ const crit=ch(a.crit+(fx.crit||0));if(crit)d*=1.6+(a.critd||0)+(fx.critd||0);
+ if(fx.burst)d*=1+fx.burst;
+ if(fx.hpd)d+=t.hpMax*fx.hpd;
+ if(t.st.sh>0){const ab=Math.min(t.st.sh,d);t.st.sh-=ab;d-=ab;}
+ d=Math.max(1,Math.floor(d));t.hp-=d;
+ bl(`${A}${k?'施展「'+nm+'」':'發動普攻'}${pen<1&&a.pl?'（跨流派，威力減弱）':''}${ctag}，${crit?'暴擊！':''}對${T}造成 ${nf(d)} 傷害。`);
+ const up=1+(a.dotUp||0);
+ if(fx.multi){const n=k.rank>=6?2:1;for(let i=0;i<n;i++){const d2=Math.max(1,Math.floor(d*fx.multi));t.hp-=d2;bl(`  追擊再造成 ${nf(d2)} 傷害。`);}}
+ if(fx.drain){const h=Math.floor(d*fx.drain);a.hp=Math.min(a.hpMax,a.hp+h);bl(`  ${A}吸取了 ${nf(h)} 氣血。`);}
+ if(a.lifesteal){a.hp=Math.min(a.hpMax,a.hp+Math.floor(d*a.lifesteal));}
+ if(fx.heal){const h=Math.floor(a.hpMax*fx.heal);a.hp=Math.min(a.hpMax,a.hp+h);bl(`  ${A}回復了 ${nf(h)} 氣血。`);}
+ if(fx.shield){a.st.sh+=a.def*fx.shield;bl(`  ${A}身周浮現護盾。`);}
+ if(fx.stun&&ch(fx.stun)){t.st.stun=1;bl(`  ${T}被震懾住了！`);}
+ if(fx.burn){t.st.dot=Math.floor(d*fx.burn*up);t.st.dotT=3;bl(`  ${T}被灼燒。`);}
+ if(fx.poison){t.st.dot=(t.st.dotT>0?t.st.dot:0)+Math.floor(d*fx.poison*up);t.st.dotT=4;bl(`  ${T}中了劇毒。`);}
+ if(fx.weaken){t.st.weak=3;t.st.weakV=fx.weaken;bl(`  ${T}的攻擊被削弱。`);}
+ if(fx.curse){t.st.curse=3;t.st.curseV=fx.curse;bl(`  ${T}的防禦被削弱。`);}
+}
+function dot(a){if(a.st.dotT>0){a.hp-=a.st.dot;a.st.dotT--;bl(`${a.pl?'你':a.n}受到持續傷害 ${nf(a.st.dot)}。`);}
+ if(a.st.weak>0)a.st.weak--;if(a.st.curse>0)a.st.curse--;
+ if(a.regen&&a.hp>0)a.hp=Math.min(a.hpMax,a.hp+a.hpMax*a.regen);}
+function enemyTurn(){const E=B.e,Pl=B.P,av=E.skills.filter(k=>E.mp>=cost(E,k));attack(E,Pl,av.length&&ch(0.65)?pick(av):null);}
+function checkEnd(){if(B.e.hp<=0){endBattle(true);return true;}if(B.P.hp<=0){endBattle(false);return true;}return false;}
+function syncP(){p.hp=Math.max(1,Math.min(B.P.hp,calc().hp));p.mp=Math.max(0,B.P.mp);}
+function endBattle(w){
+ B.over=true;syncP();const o=B.o,E=B.e;B=null;mode=p.sr?'sr':'act';
+ if(w){L(`你擊敗了${E.n}！`,'y');if(o.win)o.win(E);}
+ else{L(`你被${E.n}擊敗……`,'r');if(o.lose)o.lose(E);else defLose();}
+ render();
+}
+function defLose(){
+ if(p.sr){L('你在秘境中重傷，被傳送出去，所有暫存的收穫都丟失了。','r');p.hp=1;p.sr=null;mode='act';return;}
+ const pen=Math.floor(p.st*0.15);p.st-=pen;p.hp=Math.max(1,Math.floor(calc().hp*0.1));L(`你狼狽逃回，損失靈石 ${fmt(pen)}。`,'r');mode='act';
+}
+function useHeal(){if(p.inv.heal<=0){L('沒有療傷丹了。');return false;}p.inv.heal--;return true;}
+const G={};
+G.bt=(k,i)=>{
+ if(!B||B.over)return;const Pl=B.P,E=B.e;let act;
+ if(k==='atk')act=()=>attack(Pl,E,null);
+ else if(k==='sk'){const s=Pl.skills[i];act=()=>attack(Pl,E,s);}
+ else if(k==='heal'){if(p.inv.heal<=0){L('沒有療傷丹了。');render();return;}p.inv.heal--;act=()=>{Pl.hp=Math.min(Pl.hpMax,Pl.hp+Pl.hpMax*0.5);L('你服下療傷丹，恢復了氣血。','g');};}
+ else if(k==='mp'){if(p.inv.mp<=0){L('沒有回靈丹了。');render();return;}p.inv.mp--;act=()=>{Pl.mp=Math.min(Pl.mpMax,Pl.mp+Pl.mpMax*0.6);L('你服下回靈丹，靈力回復。','g');};}
+ else if(k==='flee'){const c=cl(0.45+(Pl.spd-E.spd)/(Pl.spd+E.spd),0.1,0.9);act=()=>{if(ch(c)){B.fled=true;L('你成功脫身。');}else L('你沒能逃走！','r');};}
+ const pf=Pl.spd*(0.9+rnd()*0.2)>=E.spd*(0.9+rnd()*0.2);
+ const seq=(pf||k==='heal'||k==='mp')?[act,enemyTurn]:[enemyTurn,act];
+ for(const f of seq){f();
+  if(B.fled){syncP();const o=B.o;B=null;mode=p.sr?'sr':'act';if(o.onFlee)o.onFlee();render();return;}
+  if(checkEnd())return;}
+ dot(Pl);dot(E);if(checkEnd())return;render();
+};
+
+/* ===== 掉落 ===== */
+function rollTech(lv,bias){
+ const maxR=cl(Math.floor(lv/4*1.35)+2+bias,0,11);let r=maxR;
+ for(let i=0;i<8;i++){const x=pickW([55,30,12,3])*3+pickW([50,35,15]);if(x<=maxR){r=x;break;}}
+ let pool=TECHS.filter(t=>t.rank===r);
+ if(r>=9)pool=pool.filter(t=>t.sc===p.sc);
+ else if(ch(r>=6?0.75:0.5)){const q=pool.filter(t=>t.sc===12||t.sc===p.sc||ALLY[p.sc].includes(t.sc));if(q.length)pool=q;}
+ return pick(pool).id;
+}
+const qroll=b=>pickW([Math.max(10,55-b*12),28,13+b*5,4+b*3]);
+const newInv=()=>({liq:0,heal:0,mp:0,brk:0,life:0});
+function mkBundle(lv,kind,bias){
+ bias=bias||0;const m={beast:1,cult:2.2,boss:6,box:3}[kind]||1;
+ const b={st:Math.round(P(lv)*(0.5+rnd())*m),exp:Math.round(need(lv)*0.04*m*(0.8+rnd()*0.4)),inv:newInv(),eq:[],techs:[]};
+ if(ch(0.2*m))b.inv.liq+=R(1,2);if(ch(0.18*m))b.inv.heal++;if(ch(0.12*m))b.inv.mp++;if(ch(0.04*m))b.inv.brk++;if(ch(0.015*m))b.inv.life++;
+ const realm=Math.floor(lv/4);
+ if(ch(kind==='boss'?1:0.1*m))b.eq.push(mkEq(realm,null,kind==='boss'?Math.max(2,qroll(bias)):qroll(bias)));
+ if(ch(kind==='boss'?0.85:0.05*m*(1+bias*0.5)))b.techs.push(rollTech(lv,bias+(kind==='boss'?2:0)));
+ return b;
+}
+function mergeB(a,b){a.st+=b.st;a.exp+=b.exp;for(const k in b.inv)a.inv[k]+=b.inv[k];a.eq.push(...b.eq);a.techs.push(...b.techs);}
+function addTech(id){
+ const t=TECHS[id];
+ if(p.techs.includes(id)){if(p.mas[id]<5){p.mas[id]++;return`獲得《${t.name}》殘卷，熟練度提升至 ${p.mas[id]}。`;}const s=Math.round(P(t.req*4)*(t.rank+1)*.5);p.st+=s;return`獲得《${t.name}》殘卷（已圓滿），折成靈石 ${fmt(s)}。`;}
+ learn(id);return`領悟新功法《${t.name}》（${rk(t.rank)}${t.school}${t.type}）！`;
+}
+function commit(b){p.st+=b.st;if(b.exp)gainExp(b.exp);for(const k in b.inv)p.inv[k]+=b.inv[k];b.eq.forEach(e=>p.bag.push(e));const ms=b.techs.map(addTech);return ms;}
+function bText(b){const a=[`靈石 +${fmt(b.st)}`,`修為 +${nf(b.exp)}`];const N={liq:'靈液',heal:'療傷丹',mp:'回靈丹',brk:'破境丹',life:'延壽丹'};for(const k in b.inv)if(b.inv[k])a.push(`${N[k]}×${b.inv[k]}`);b.eq.forEach(e=>a.push(`【${QN[e.q]}${e.name}】`));return a.join('、');}
+function give(b){
+ if(p.sr){b.exp=Math.round(b.exp*srExpScale());/* 秘境修為縮水（唯一入口，見 srExpScale） */mergeB(p.sr.loot,b);L('（暫存於秘境）'+bText(b)+(b.techs.length?'、功法殘卷×'+b.techs.length:''),'g');}
+ else{L('獲得：'+bText(b),'g');commit(b).forEach(m=>L(m,'y'));}
+}
+
+/* ===== 探索 / 事件 ===== */
+function showEv(text,choices,quiet){ev={text,ch:choices};mode='ev';if(!quiet)L(text);}
+G.ev=i=>{const c=ev.ch[i];ev=null;mode=p.sr?'sr':'act';c.f();render();};
+function fight(e,o){o=o||{};o.e=e;startBattle(o);}
+function fightBeast(lv,reg){const e=mkBeast(lv,reg||p.reg);L(`遭遇「${e.n}」（${lvName(lv)}）！`,'r');fight(e,{canFlee:true,win:()=>give(mkBundle(lv,'beast',p.sr?1:0))});}
+function rivalWin(e){return()=>{p.pk++;give(mkBundle(e.lv,'cult',1));if(ch(0.25)&&e.skills.length){const t=pick(e.skills);if(t.id!=null)L('從他身上搜得：'+addTech(t.id),'y');}};}
+function meetCult(lv){
+ const e=mkRival(lv);
+ showEv(`你遇見一名${e.school}修士「${e.n}」（${lvName(lv)}），他警惕地打量著你。`,[
+  {l:'出手切磋',f:()=>fight(e,{canFlee:true,win:rivalWin(e)})},
+  {l:'偷襲',f:()=>{if(ch(0.6)){L('你出其不意，他一時失神！','g');fight(e,{canFlee:true,est:1,win:rivalWin(e)});}else{L('偷襲被識破，他反手搶攻！','r');fight(e,{canFlee:true,pst:1,win:rivalWin(e)});}}},
+  {l:'拱手而別',f:()=>{if(p.sr&&ch(0.3)){L('對方不放心，追了上來！','r');fight(e,{canFlee:true,win:rivalWin(e)});}else L('你們互相點頭，各走各路。');}}
+ ]);
+}
+function herb(lv){const b={st:0,exp:0,inv:newInv(),eq:[],techs:[]};
+ if(ch(0.5)){b.inv.liq=R(1,2);L('你在靈脈邊採到幾滴凝聚的靈液。','g');}else{b.inv.heal=R(1,2);b.inv.mp=ch(.5)?1:0;L('你發現一叢年份不淺的靈草，順手煉成丹藥。','g');}
+ b.st=Math.round(P(lv)*0.3);give(b);}
+function relic(lv){L('你發現一處殘破的遺跡，石室中有一只落滿塵埃的儲物箱。');
+ if(ch(0.3)){const d=Math.floor(calc().hp*R(8,18)/100);p.hp=Math.max(1,p.hp-d);L(`禁制突然觸發，你受傷 ${nf(d)}！`,'r');}
+ give(mkBundle(lv,'box',p.sr?1:0));}
+function insight(){const x=Math.round(need(p.lv)*0.08);L('靈台一片清明，你頓悟了天地至理！','y');gainExp(x);L(`修為 +${nf(x)}`,'g');}
+function trap(lv){const d=Math.floor(calc().hp*R(10,25)/100);p.hp=Math.max(1,p.hp-d);L(`你誤觸陷阱，損失氣血 ${nf(d)}。`,'r');}
+const STORY=[
+ lv=>showEv('一名衣衫襤褸的老乞丐攔住你，伸出顫抖的手：「道友，行行好……」',[
+  {l:`施捨靈石（${fmt(P(lv)*2)}）`,f:()=>{const c=P(lv)*2;if(p.st<c){L('你的靈石不夠。');return;}p.st-=c;if(ch(0.4)){L('老乞丐哈哈大笑，隨手遞來一卷舊書：「有緣之人！」','y');L(addTech(rollTech(lv,1)),'y');}else{L('老乞丐道謝離去，你心安了不少，修為略有精進。');gainExp(Math.round(need(p.lv)*0.03));}}},
+  {l:'視而不見',f:()=>L('你繞道而行。')},
+  {l:'出手搶奪',f:()=>{L('你搶走了他的破布袋，裡面只有一些碎靈石。','r');p.st+=Math.round(P(lv)*0.5);}}]),
+ lv=>showEv('山谷中有一口靈泉，泉水冒著淡淡白霧，靈氣濃郁，卻隱隱有一絲怪味。',[
+  {l:'直接飲用',f:()=>{if(ch(0.65)){const x=Math.round(need(p.lv)*0.1);L('泉水入腹，周身靈力翻湧！','y');gainExp(x);}else{const d=Math.floor(calc().hp*0.3);p.hp=Math.max(1,p.hp-d);L(`泉水含毒，你損失氣血 ${nf(d)}。`,'r');}}},
+  {l:'取水煉製',f:()=>{p.inv.liq+=ch(0.6)?2:1;L('你取了一些泉水，凝為靈液。','g');}},
+  {l:'不予理會',f:()=>L('你覺得有蹊蹺，沒有動它。')}]),
+ lv=>showEv('路邊倒著一名重傷的散修，氣息微弱，身上的儲物袋鼓鼓囊囊。',[
+  {l:'餵他一顆療傷丹',f:()=>{if(!useHeal())return;L('散修醒來，感激涕零，贈你一件傍身之物。','y');const b=mkBundle(lv,'box',1);give(b);}},
+  {l:'搜刮儲物袋',f:()=>{const b=mkBundle(lv,'beast',0);b.st*=3;L('你搜走了他的財物，但心頭微微有些不安。','r');give(b);}},
+  {l:'離開',f:()=>L('你默默走開，生死有命。')}]),
+ lv=>showEv('一座古老石碑立於荒野，上面刻著殘缺的神識法門，需要神識參悟。',[
+  {l:'嘗試參悟',f:()=>{const c=calc();if(ch(cl(0.3+c.sense/(c.sense+S(lv)*0.9)*0.4,0.2,0.8))){L('你領會了碑文要義，神識大漲！','y');gainExp(Math.round(need(p.lv)*0.12));if(ch(0.2))L(addTech(rollTech(lv,0)),'y');}else{const d=Math.floor(c.hp*0.2);p.hp=Math.max(1,p.hp-d);L(`神識受創，氣血損失 ${nf(d)}。`,'r');}}},
+  {l:'拓印帶走',f:()=>{give({st:Math.round(P(lv)*1.5),exp:0,inv:newInv(),eq:[],techs:[]});}}]),
+];
+function explore(){
+ if(mode!=='act')return;
+ const rg=REG[p.reg];p.explored[p.reg]=(p.explored[p.reg]||0)+1;tick(1);if(mode==='dead'){render();return;}
+ regen(0.08);const lv=R(rg.lv[0],rg.lv[1]),x=rnd();L(pick(rg.desc));
+ if(storyMeet()){render();return;}
+ if(x<0.34)fightBeast(lv);else if(x<0.44)meetCult(lv);else if(x<0.58)herb(lv);else if(x<0.68)relic(lv);
+ else if(x<0.80)pick(STORY)(lv);else if(x<0.88)insight();else if(x<0.95)trap(lv);else L('此地一片寧靜，你吐納片刻。');
+ render();
+}
+function challengeBoss(){
+ const rg=REG[p.reg],lv=rg.lv[1],e=mkBoss(lv,rg.boss,p.reg);
+ L(`守關者「${e.n}」現身，殺氣逼人！`,'r');
+ fight(e,{canFlee:false,win:()=>{p.bossDown[p.reg]=1;const b=mkBundle(lv,'boss',2);if(SHARDREG.includes(p.reg)&&!p.shards.includes(p.reg)){p.shards.push(p.reg);L(`你取得了一塊天道碎片（${p.shards.length}/7）！`,'y');}storyBoss(p.reg);give(b);}});
+}
+function challengeFinal(){
+ const e=mkBoss(38,'天道殘影','天裂淵');e.hp*=1.8;L('天道殘影在深淵中凝聚成形，冷漠地俯視著你。','r');
+ fight(e,{canFlee:false,win:()=>{
+  storyBoss('天裂淵');
+  showEv('天道殘影崩散，七塊碎片在你面前旋轉，等待你的決定。',[
+   {l:'重鑄天道',f:()=>ending('重鑄天道','你以七塊碎片為薪，重鑄天道。靈氣復甦，後世修士再無飛升之苦，而你化為新的法則，守望人間。')},
+   {l:'自己成道',f:()=>ending('自成一道','你吞下碎片，以己身為道，天地以你之名運轉。你是第一個，也是唯一一個。')},
+   {l:'斬斷天道',f:()=>ending('斬斷天道','你一劍斬斷天道，世間從此再無天劫，亦無飛升。眾生各憑本事求生，一切由人自己決定。')}]);}});
+}
+function ending(n,t){p.ending=n;L('【結局：'+n+'】'+t,'y');storyEnd(n);L('你可繼續修煉，突破至「真仙」境界，並前往浮空仙域。','y');}
+
+/* ===== 坊市 ===== */
+function genShop(){
+ if(p.shop&&p.shop.reg===p.reg&&p.month-p.shop.m<3)return p.shop;
+ const r=rIdx(),lv=p.lv;
+ const eq=[0,1,2].map((_,i)=>mkEq(clamp0(r+R(-1,1)),i===0?pick(['武器','法寶']):null,pickW([50,32,15,3]),i===0?p.sc:undefined));
+ const maxR=cl(Math.floor(r*1.2)+3,0,5);
+ const techs=[];for(let i=0;i<4;i++){const t=pick(TECHS.filter(t=>t.rank<=maxR&&(t.sc===12||t.sc===p.sc||ALLY[p.sc].includes(t.sc)||ch(0.12))));if(!techs.includes(t.id))techs.push(t.id);}
+ p.shop={reg:p.reg,m:p.month,eq,techs};return p.shop;
+}
+const clamp0=v=>cl(v,0,9);
+const POTS=[['liq','靈液',4,'修煉或突破用'],['heal','療傷丹',0.8,'回復50%氣血'],['mp','回靈丹',0.6,'回復60%靈力'],['brk','破境丹',8,'突破成功率+15%'],['life','延壽丹',30,'壽元+20年']];
+G.shop=()=>{if(mode!=='act')return;genShop();mode='shop';render();};
+G.leaveShop=()=>{mode='act';render();};
+/* 靈液進貨上限：全角色共用（不隨坊市／地區重置，避免來回跑坊市洗貨）。每 LIQ_WIN 個月最多買 LIQ_CAP 瓶，
+   否則秘境賺來的靈石可無限換成靈液（每瓶 need×0.1），比閉關划算很多 */
+const LIQ_CAP=2,LIQ_WIN=12;
+const liqLeft=()=>{const b=p.liqBuy;if(!b||p.month-b.m>=LIQ_WIN)return LIQ_CAP;return Math.max(0,LIQ_CAP-b.n);};
+G.buyPot=k=>{const d=POTS.find(x=>x[0]===k),c=Math.round(P(p.lv)*d[2]);
+ if(k==='liq'&&!liqLeft()){L(`靈液進貨有限，每 ${LIQ_WIN} 個月最多買 ${LIQ_CAP} 瓶，約 ${LIQ_WIN-(p.month-p.liqBuy.m)} 個月後再來。`,'r');render();return;}
+ if(p.st<c){L('靈石不足。','r');render();return;}p.st-=c;p.inv[k]++;
+ if(k==='liq'){if(!p.liqBuy||p.month-p.liqBuy.m>=LIQ_WIN)p.liqBuy={m:p.month,n:0};p.liqBuy.n++;}L(`購買了${d[1]}。`,'g');render();};
+G.buyEq=i=>{const q=p.shop.eq[i];if(!q)return;const c=eqPrice(q);if(p.st<c){L('靈石不足。','r');render();return;}p.st-=c;p.bag.push(q);p.shop.eq[i]=null;L(`購買了【${QN[q.q]}${q.name}】。`,'g');render();};
+G.buyTech=i=>{const id=p.shop.techs[i];if(id==null)return;const t=TECHS[id],c=Math.round(P(t.req*4)*(2+t.rank*3));if(p.st<c){L('靈石不足。','r');render();return;}p.st-=c;L(addTech(id),'y');p.shop.techs[i]=null;render();};
+G.sell=i=>{const q=p.bag[i];if(!q)return;const v=Math.round(eqPrice(q)*0.4);p.st+=v;p.bag.splice(i,1);L(`賣出【${q.name}】，得靈石 ${fmt(v)}。`,'g');render();};
+
+/* ===== 秘境 ===== */
+/* 秘境的時間與修為參數（集中一處）：
+   耗時＝入場 1 個月＋每通過一層 1 個月（5 層共約 6 個月）；冷卻自入場那個月起算 12 個月。
+   修為縮水：秘境內所有「修為」收穫統一乘 srExpScale＝SR_EXP_K/(6+境界*1.2)×靈根倍率。
+   6+境界*1.2 正是閉關每月修為公式的分母，所以縮水後約等於「同等級閉關 SR_EXP_K×(原修為/need) 個月」，且與境界無關；
+   靈石、功法、法器、丹藥不受影響（秘境的定位是拿東西，修為只是順帶）。 */
+const SR_MONTHS=6,SR_CD=12,SR_EXP_K=2.8,SR_VAULT_LIQ=2;/* SR_VAULT_LIQ：寶庫「靈液」選項的瓶數（原 5 瓶＝need×0.5，高境界時比整趟縮水後的修為還多，故降為 2） */
+const srExpScale=()=>SR_EXP_K/(6+p.lv*1.2)*rootMult();
+const srCdLeft=()=>Math.max(0,(p.srNext||0)-p.month);
+function srFee(){return P(p.lv)*3;}
+/* 秘境中過一個月；壽元耗盡就坐化（暫存收穫全丟，p.sr 清掉避免卡死），回傳 true */
+function srTick(){tick(1);if(mode==='dead'){p.sr=null;L('你在秘境中耗盡了壽元……','r');return true;}return false;}
+G.enterSR=()=>{if(mode!=='act')return;
+ const cd=srCdLeft();if(cd>0){L(`秘境封閉中，約 ${cd} 個月後重開。`,'r');render();return;}
+ const f=srFee();if(p.st<f){L(`入場需要靈石 ${fmt(f)}。`,'r');render();return;}p.st-=f;
+ const m0=p.month;p.srNext=m0+SR_CD;tick(1);
+ if(mode==='dead'){L('你還沒踏入秘境，壽元就已耗盡……','r');render();return;}
+ p.sr={floor:1,step:0,m0,tier:rIdx(),name:pick(SRN)+'秘境',loot:{st:0,exp:0,inv:newInv(),eq:[],techs:[]}};
+ L(`你繳納靈石，踏入「${p.sr.name}」。此處只允許${REALMS[p.sr.tier]}期修士進入，裡面的其他修士都與你同境，寶物與危險並存。收穫須「撤離」才能帶出，戰敗則全部丟失。全程約 ${SR_MONTHS} 個月（入場與每通過一層各耗 1 個月），秘境內的修為收穫會折損，主要是來拿功法、法器與靈石。`,'y');mode='sr';render();};
+const srLv=()=>{const s=p.sr,lo=s.tier*4,hi=s.tier*4+3;return cl(p.lv+R(-1,1)+(s.floor>3?1:0),lo,hi);};
+G.srGo=()=>{
+ if(mode!=='sr')return;const s=p.sr;s.step++;const lv=srLv();
+ if(s.step>=4){const e=mkBoss(Math.min(lv+1,s.tier*4+3),pick(['秘境守衛','上古傀儡','護寶靈獸','殘魂劍靈']),pick(['中州','東荒古林','東海']));e.hp*=0.8;L(`第 ${s.floor} 層的守護者擋住了去路！`,'r');
+  fight(e,{canFlee:false,win:()=>{give(mkBundle(lv,'boss',2));s.floor++;s.step=0;if(srTick())return;if(s.floor>5)vault();}});render();return;}
+ const x=rnd();
+ if(x<0.40)meetCult(lv);else if(x<0.70)fightBeast(lv,pick(['中州','東荒古林','東海','南疆']));
+ else if(x<0.90)relic(lv);else{regen(0.3);L('你找到一處靈泉，稍作休整。','g');}
+ render();
+};
+function vault(){
+ const lv=p.sr.tier*4+3;
+ showEv('你穿過最後一道禁制，來到秘境核心。三件寶物懸於半空，你只能取走一件。',[
+  {l:`靈液×${SR_VAULT_LIQ} 與大量靈石`,f:()=>{const b={st:P(lv)*8,exp:Math.round(need(lv)*0.2),inv:newInv(),eq:[],techs:[]};b.inv.liq=SR_VAULT_LIQ;give(b);srLeave();}},
+  {l:'一卷高階功法',f:()=>{const b={st:0,exp:0,inv:newInv(),eq:[],techs:[rollTech(lv,3)]};give(b);srLeave();}},
+  {l:'一件上品法器',f:()=>{const b={st:0,exp:0,inv:newInv(),eq:[mkEq(p.sr.tier,null,Math.max(2,qroll(2)))],techs:[]};give(b);srLeave();}}]);
+}
+function srLeave(){
+ const lt=p.sr.loot,mo=p.month-(p.sr.m0==null?p.month:p.sr.m0);p.sr=null;mode='act';
+ L(`你撤離秘境，歷時 ${mo} 個月，實得修為 +${nf(lt.exp)}（已折損並計入靈根倍率）。帶出了收穫：`+bText(lt),'y');commit(lt).forEach(m=>L(m,'y'));
+}
+G.srOut=()=>{if(mode!=='sr')return;srLeave();render();};
+
+/* ===== 其他操作 ===== */
+G.cult=n=>cultivate(n);G.rest=rest;G.explore=explore;G.boss=()=>{if(mode==='act')challengeBoss();};G.final=()=>{if(mode==='act')challengeFinal();};
+G.openBt=()=>{if(mode!=='act'||!canBreak())return;bt={liq:0,brk:0};mode='bt';render();};
+G.btLiq=d=>{bt.liq=cl(bt.liq+d,0,Math.min(3,p.inv.liq));render();};
+G.btBrk=()=>{if(p.inv.brk>0)bt.brk=bt.brk?0:1;render();};
+G.doBt=doBreak;G.cancelBt=()=>{bt=null;mode='act';render();};
+G.tab=t=>{if(mode==='battle'||mode==='ev'){return;}tab=t;render();};
+G.use=k=>{if(mode==='battle')return;const c=calc();
+ if(k==='heal'&&p.inv.heal>0){p.inv.heal--;p.hp=Math.min(c.hp,p.hp+c.hp*.5);L('服下療傷丹，氣血恢復。','g');}
+ else if(k==='mp'&&p.inv.mp>0){p.inv.mp--;p.mp=Math.min(c.mp,p.mp+c.mp*.6);L('服下回靈丹，靈力恢復。','g');}
+ else if(k==='liq'&&p.inv.liq>0){p.inv.liq--;const x=Math.round(need(p.lv)*0.1);gainExp(x);L(`煉化靈液，修為 +${nf(x)}。`,'g');}
+ else if(k==='life'&&p.inv.life>0){p.inv.life--;p.extra+=20;L('服下延壽丹，壽元增加二十年。','y');}
+ render();};
+G.equip=i=>{const q=p.bag[i];if(!q)return;if(rIdx()<q.tier){L(`境界不足，需${REALMS[q.tier]}期才能使用。`,'r');render();return;}
+ const old=p.eq[q.slot];p.eq[q.slot]=q;p.bag.splice(i,1);if(old)p.bag.push(old);L(`裝備了【${QN[q.q]}${q.name}】。`);fixTechs();render();};
+G.unequip=s=>{if(p.eq[s]){p.bag.push(p.eq[s]);p.eq[s]=null;fixTechs();}render();};
+G.eqTech=id=>{const t=TECHS[id];const bad=canUse(t);if(bad){L(bad,'r');render();return;}
+ if(t.type==='心法')p.heart=p.heart===id?null:id;
+ else if(t.type==='身法')p.foot=p.foot===id?null:id;
+ else{const i=p.slots.indexOf(id);if(i>=0)p.slots[i]=null;else{const j=p.slots.indexOf(null);if(j<0)L('戰鬥技能欄已滿（最多4個），請先卸下一個。','r');else p.slots[j]=id;}}
+ render();};
+G.techF=v=>{techF=+v;render();};
+G.techUnk=()=>{techUnk=!techUnk;render();};
+G.selReg=k=>{selReg=k;render();};
+const isLocked=k=>(k==='天裂淵'&&p.shards.length<7)||(k==='浮空仙域'&&!p.ending);
+G.travel=k=>{if(mode!=='act')return;if(!REG[p.reg].adj.includes(k))return;
+ if(isLocked(k)){L(k==='天裂淵'?'天裂淵結界封鎖，需集齊七塊天道碎片才能進入。':'浮空仙域尚未開啟。','r');tab='act';render();return;}
+ p.reg=k;tick(1);L(`你抵達了「${k}」。`,'b');tab='act';if(mode==='dead'){render();return;}
+ storyRegion(k);
+ if(ch(0.3)){const rg=REG[k];fightBeast(R(rg.lv[0],rg.lv[1]));}render();};
+G.restart=()=>{localStorage.removeItem(KEY);p=null;intro=null;render();};
+G.exp=()=>{showCode=btoa(unescape(encodeURIComponent(JSON.stringify(p))));render();};
+G.imp=()=>{const t=prompt('貼上存檔文字：');if(!t)return;try{p=JSON.parse(decodeURIComponent(escape(atob(t.trim()))));fixSave();mode=resumeMode();selReg=p.reg;save();render();}catch(e){alert('存檔格式錯誤');}};
+G.hideCode=()=>{showCode='';render();};
+G.sty=()=>{showSty=!showSty;render();};
+G.setName=v=>{intro.name=v;};G.setSc=v=>{intro.sc=+v;};
+G.reroll=()=>{intro.root=rollRoot();render();};
+G.start=()=>newGame(intro.name,intro.sc,intro.root);
+G._s=()=>({p,B,mode,ev});
+
+/* ===== 畫面 ===== */
+function bar(v,m,c){return`<div class="bar"><i class="${c}" style="width:${cl(v/m*100,0,100)}%"></i></div>`;}
+function topHTML(){
+ const age=Math.floor(16+p.month/12);
+ return`<div class="row"><span><b>${p.name}</b> ${lvName(p.lv)}</span><span>靈石 <b>${fmt(p.st)}</b></span></div>
+ <div class="row dim"><span>${p.reg}｜修行第${Math.floor(p.month/12)+1}年${p.month%12+1}月｜壽元 ${age}/${LIFE[rIdx()]+p.extra>9999?'∞':LIFE[rIdx()]+p.extra}</span><span>靈液 ${p.inv.liq}</span></div>`;
+}
+function expBar(){const n=need(p.lv);return`<div class="dim">修為 ${nf(p.exp)} / ${nf(n)}${p.lv%4===3&&p.lv<maxLv()?(p.exp>=n?'（可突破！）':'（圓滿）'):''}</div>${bar(p.exp,n,'xp')}`;}
+function actHTML(){
+ let h='';
+ if(mode==='shop')return shopHTML();
+ const c=calc();
+ if(mode==='battle'){const E=B.e,Pl=B.P;
+  h+=`<div class="card"><div class="row"><span><b>${E.n}</b> <span class="dim">${E.kind==='cult'?E.school+(E.el?'・'+E.el:''):E.el+'屬性'}</span> ${ctrTag(ctrVs(p.sc,E))}</span><span class="dim">${lvName(E.lv)}</span></div>${bar(E.hp,E.hpMax,'hp')}
+  <div class="row"><b>你</b><span class="dim">氣血 ${nf(Pl.hp)}/${nf(Pl.hpMax)}　靈力 ${nf(Pl.mp)}/${nf(Pl.mpMax)}</span></div>${bar(Pl.hp,Pl.hpMax,'hp')}${bar(Pl.mp,Pl.mpMax,'mp')}</div>`;
+ }else{
+  const ll=lifeLeft();
+  h+=`<div class="card"><div class="dim">氣血 ${nf(p.hp)}/${nf(c.hp)}　靈力 ${nf(p.mp)}/${nf(c.mp)}</div>${bar(p.hp,c.hp,'hp')}${bar(p.mp,c.mp,'mp')}${expBar()}<div class="${ll<10?'r':'dim'}">${ll===Infinity?'壽元：無盡':'剩餘壽元 約 '+Math.max(0,Math.floor(ll))+' 年'+(ll<10?'！壽元將盡，盡快突破或服延壽丹':'')}</div></div>`;
+ }
+ if(p.sr&&mode!=='battle')h+=`<div class="card y">「${p.sr.name}」第 ${p.sr.floor}/5 層，探索進度 ${p.sr.step}/4　已耗時 ${p.month-(p.sr.m0==null?p.month:p.sr.m0)} 個月<br>暫存修為 <b>+${nf(p.sr.loot.exp)}</b>（已折損）　暫存收穫：${bText(p.sr.loot)}</div>`;
+ h+='<div id="log">'+p.log.slice(-40).map(x=>`<p class="${x.c}">${x.m}</p>`).join('')+'</div>';
+ h+='<div id="acts">';
+ if(mode==='battle'){
+  h+='<div class="grid"><button onclick="G.bt(\'atk\')">普攻</button>';
+  B.P.skills.forEach((k,i)=>{const cs=cost(B.P,k);h+=`<button ${B.P.mp<cs?'disabled':''} onclick="G.bt('sk',${i})"><span style="color:${GCOL[Math.floor(k.rank/3)]}">${k.name}</span><small>${rk(k.rank)}・耗靈${nf(cs)}${k.pen<1?'・<span class="r">跨派×'+k.pen+'</span>':''}${(()=>{const m=k.sc<12?ctrVs(k.sc,B.e):1;return m>1?'・<span class="g">剋</span>':m<1?'・<span class="r">被剋</span>':'';})()}</small></button>`;});
+  h+=`<button onclick="G.bt('heal')">療傷丹(${p.inv.heal})</button><button onclick="G.bt('mp')">回靈丹(${p.inv.mp})</button>`;
+  if(B.o.canFlee)h+='<button onclick="G.bt(\'flee\')">逃跑</button>';
+  h+='</div>';
+ }else if(mode==='ev'){
+  h+='<div class="grid">'+ev.ch.map((c,i)=>`<button onclick="G.ev(${i})" style="grid-column:1/3">${c.l}</button>`).join('')+'</div>';
+ }else if(mode==='bt'){
+  const r=btRate(bt.liq,bt.brk);
+  h+=`<div class="card">突破「${lvName(p.lv+1)}」成功率：<b class="y">${Math.round(r*100)}%</b><div class="dim">失敗會損失部分修為並受傷。靈液最多用3瓶，每瓶+8%。</div></div>
+  <div class="grid"><button onclick="G.btLiq(-1)">靈液 −</button><button onclick="G.btLiq(1)">靈液 ＋（已選 ${bt.liq}／持有 ${p.inv.liq}）</button>
+  <button onclick="G.btBrk()" style="grid-column:1/3">${bt.brk?'✔ ':''}使用破境丹（持有 ${p.inv.brk}）</button>
+  <button onclick="G.doBt()">開始突破</button><button onclick="G.cancelBt()">取消</button></div>`;
+ }else if(mode==='sr'){
+  h+=`<div class="grid"><button onclick="G.srGo()" style="grid-column:1/3">深入探索</button>
+  <button onclick="G.use('heal')">療傷丹(${p.inv.heal})</button><button onclick="G.use('mp')">回靈丹(${p.inv.mp})</button>
+  <button onclick="G.srOut()" style="grid-column:1/3">撤離秘境（帶走暫存收穫）</button></div>`;
+ }else{
+  const rg=REG[p.reg];
+  h+='<div class="grid">';
+  h+=`<button onclick="G.cult(1)">閉關（1月）</button><button onclick="G.cult(12)">閉關（1年）</button>`;
+  h+=`<button onclick="G.explore()">探索${p.reg}</button><button onclick="G.rest()">調息療傷</button>`;
+  if(canBreak())h+='<button onclick="G.openBt()" style="grid-column:1/3;border-color:#e6c35a;color:#e6c35a">突破境界</button>';
+  if(rg.boss&&!p.bossDown[p.reg]&&p.reg!=='天裂淵'&&(p.explored[p.reg]||0)>=3)h+=`<button onclick="G.boss()" style="grid-column:1/3;border-color:#e0735f">挑戰守關者「${rg.boss}」（建議${lvName(rg.lv[1])}）</button>`;
+  if(p.reg==='天裂淵'&&!p.ending)h+='<button onclick="G.final()" style="grid-column:1/3;border-color:#e0735f">直面天道殘影</button>';
+  if(rg.city){const cd=srCdLeft();h+=`<button onclick="G.shop()">坊市</button>`+(cd>0?`<button disabled>秘境封閉中，約 ${cd} 個月後重開</button>`:`<button onclick="G.enterSR()">闖秘境<small>入場 ${fmt(srFee())}｜耗時約 ${SR_MONTHS} 個月</small></button>`);}
+  h+='</div>';
+ }
+ return h+'</div>';
+}
+function shopHTML(){
+ const s=p.shop,c=n=>fmt(n);
+ const left=3-(p.month-s.m);
+ let h='<h3>坊市</h3><div class="dim">目前：修行第'+(Math.floor(p.month/12)+1)+'年'+(p.month%12+1)+'月｜貨物每3個月更新，'+(left>0?'距下次更新還有 '+left+' 個月':'下次進入坊市時更新')+'</div>';
+ POTS.forEach(d=>{const lq=d[0]==='liq',ll=lq?liqLeft():1;
+  h+=`<div class="card row"><span>${d[1]}<span class="dim">　${d[3]}（持有${p.inv[d[0]]}）${lq?`<br>進貨有限：每 ${LIQ_WIN} 個月最多 ${LIQ_CAP} 瓶，目前還可買 ${ll} 瓶`:''}</span></span><button class="btn sm" ${ll?'':'disabled'} onclick="G.buyPot('${d[0]}')">${c(P(p.lv)*d[2])}</button></div>`;});
+ h+='<h3>裝備（每3個月更新）</h3>';
+ s.eq.forEach((q,i)=>{if(!q)return;h+=`<div class="card"><div class="row"><span style="color:${QCOL[q.q]}">【${QN[q.q]}】${q.name}</span><button class="btn sm" onclick="G.buyEq(${i})">${c(eqPrice(q))}</button></div><div class="dim">需${REALMS[q.tier]}期　${eqDesc(q)}</div></div>`;});
+ h+='<h3>功法卷軸</h3>';
+ s.techs.forEach((id,i)=>{if(id==null)return;const t=TECHS[id];h+=`<div class="card"><div class="row"><span style="color:${GCOL[Math.floor(t.rank/3)]}">《${t.name}》</span><button class="btn sm" onclick="G.buyTech(${i})">${c(Math.round(P(t.req*4)*(2+t.rank*3)))}</button></div><div class="dim">${rk(t.rank)}｜${t.school}｜${t.type}｜需${REALMS[t.req]}期${p.techs.includes(id)?'｜已學（買入為殘卷）':''}</div></div>`;});
+ h+='<h3>出售背包裝備</h3>';
+ if(!p.bag.length)h+='<div class="dim">背包是空的。</div>';
+ p.bag.forEach((q,i)=>{h+=`<div class="card row"><span style="color:${QCOL[q.q]}">${q.name}<span class="dim">（需${REALMS[q.tier]}期）</span></span><button class="btn sm" onclick="G.sell(${i})">賣 ${c(Math.round(eqPrice(q)*0.4))}</button></div>`;});
+ return h+'<button class="btn" style="width:100%;margin-top:6px" onclick="G.leaveShop()">離開</button>';
+}
+function mapHTML(){
+ const k=selReg||p.reg,r=REG[k],adj=REG[p.reg].adj.includes(k);
+ let h='<canvas id="map" width="360" height="400" style="width:100%;border-radius:8px;border:1px solid #2a3140"></canvas>';
+ h+=`<div class="card"><div class="row"><b>${k}</b><span class="dim">靈氣 ×${r.qi}</span></div>
+ <div class="dim">妖獸屬性：${r.el}（對應${SCHOOLS[ELSC[r.el]].n}）</div>
+ <div class="dim">建議境界：${lvName(r.lv[0])} ～ ${lvName(r.lv[1])}${r.city?'｜有坊市與秘境入口':''}${r.boss&&k!=='天裂淵'?'｜守關者：'+r.boss+(p.bossDown[k]?'（已擊敗）':''):''}</div>
+ <div class="dim">${isLocked(k)?'🔒 '+(k==='天裂淵'?'需集齊七塊天道碎片':'完成主線結局後開啟'):(k===p.reg?'你目前所在地':adj?'相鄰，可前往（耗時1個月）':'不相鄰，需先前往中間區域')}</div>
+ ${k!==p.reg&&adj&&!isLocked(k)?`<button class="btn" style="width:100%;margin-top:6px" onclick="G.travel('${k}')">前往${k}</button>`:''}</div>`;
+ return h;
+}
+function drawMap(){
+ const cv=$('#map');if(!cv)return;const c=cv.getContext('2d'),W=360,H=400;
+ const g=c.createLinearGradient(0,0,0,H);g.addColorStop(0,'#0b1020');g.addColorStop(1,'#16101e');c.fillStyle=g;c.fillRect(0,0,W,H);
+ c.fillStyle='#ffffff30';for(let i=0;i<50;i++)c.fillRect((i*97)%W,(i*53)%H,1.5,1.5);
+ c.strokeStyle='#3a4358';c.setLineDash([4,4]);
+ for(const k in REG)REG[k].adj.forEach(a=>{if(k<a){c.beginPath();c.moveTo(REG[k].x,REG[k].y);c.lineTo(REG[a].x,REG[a].y);c.stroke();}});
+ c.setLineDash([]);
+ for(const k in REG){const r=REG[k],lk=isLocked(k),rad=k==='天裂淵'?36:30;
+  const rg=c.createRadialGradient(r.x,r.y,4,r.x,r.y,rad);rg.addColorStop(0,r.col);rg.addColorStop(1,r.col+'33');
+  c.globalAlpha=lk?0.45:1;c.fillStyle=rg;c.beginPath();c.arc(r.x,r.y,rad,0,7);c.fill();c.globalAlpha=1;
+  c.lineWidth=k===p.reg?3:1;c.strokeStyle=k===p.reg?'#e6c35a':'#555f73';c.stroke();
+  if(k===(selReg||p.reg)){c.lineWidth=2;c.strokeStyle='#ffffff';c.beginPath();c.arc(r.x,r.y,rad+5,0,7);c.stroke();}
+  c.fillStyle='#e8ecf2';c.font='13px sans-serif';c.textAlign='center';c.fillText((lk?'🔒':'')+k,r.x,r.y+rad+15);
+  if(k===p.reg){c.fillStyle='#e6c35a';c.font='15px sans-serif';c.fillText('★',r.x,r.y+5);}
+  if(p.bossDown[k]){c.fillStyle='#7fcf9a';c.font='12px sans-serif';c.fillText('✔',r.x+rad-8,r.y-rad+12);}
+ }
+ cv.onclick=e=>{const rc=cv.getBoundingClientRect(),x=(e.clientX-rc.left)*W/rc.width,y=(e.clientY-rc.top)*H/rc.height;let best=null,bd=1e9;
+  for(const k in REG){const d=Math.hypot(REG[k].x-x,REG[k].y-y);if(d<bd){bd=d;best=k;}}if(bd<45){selReg=best;render();}};
+}
+function techHTML(){
+ const own=p.techs.length;
+ let h=`<div class="dim">已領悟 ${own}/${TECHS.length} 種。你的流派：<b class="y">${SCHOOLS[p.sc].n}</b>，交好：${ALLY[p.sc].map(i=>SCHOOLS[i].n).join('、')}。<br>天階只有本流派能修；地階限本流派、交好流派或有該流派武器／法寶；玄黃階可跨流派但威力×${offPen()}（心法身法×${offRel()}）${p.root.type==='偽'?'（偽靈根萬金油）':''}；通用功法威力×0.9。</div>`;
+ h+=`<div class="card"><b>相剋一覽</b><div class="dim">你是${SCHOOLS[p.sc].n}：剋 <span class="g">${CTR_NEXT[p.sc]!=null?SCHOOLS[CTR_NEXT[p.sc]].n:'—'}</span>（傷害×${CTR_UP}），被 <span class="r">${CTR_PREV(p.sc).map(i=>SCHOOLS[i].n).join('、')||'—'}</span> 剋（傷害×${CTR_DOWN}）。以功法所屬流派判定，通用功法不參與。</div>
+ ${CTR_RINGS.map(r=>`<div class="dim">${r.concat(r[0]).map(i=>SCHOOLS[i].n).join('→')}</div>`).join('')}
+ <div class="dim">「A→B」＝A 剋 B。妖獸與首領依地區有五行屬性（金＝劍修、木＝丹修、土＝體修、水＝陣修、火＝器修），只與五行環互剋；御獸功法打妖獸另有×${CTR_SUMMON_UP}。</div></div>`;
+ h+=`<div class="card"><b>當前配置</b><div class="dim">心法：${p.heart!=null?TECHS[p.heart].name:'無'}　身法：${p.foot!=null?TECHS[p.foot].name:'無'}</div><div class="dim">技能：${p.slots.map(i=>i!=null?TECHS[i].name:'—').join('｜')}</div></div>`;
+ h+=`<div class="row"><select onchange="G.techF(this.value)"><option value="-1">全部流派</option>${SCHOOLS.map((s,i)=>`<option value="${i}" ${techF===i?'selected':''}>${s.n}</option>`).join('')}<option value="12" ${techF===12?'selected':''}>通用</option></select><button class="btn sm" style="white-space:nowrap" onclick="G.techUnk()">${techUnk?'隱藏未習得':'顯示未習得'}</button></div><div style="height:6px"></div>`;
+ const list=TECHS.filter(t=>(techF<0||t.sc===techF)&&(techUnk||p.techs.includes(t.id))).sort((a,b)=>b.rank-a.rank||a.id-b.id);
+ if(!list.length)h+='<div class="dim">這個分類還沒有領悟的功法。</div>';
+ list.forEach(t=>{
+  const has=p.techs.includes(t.id),col=GCOL[Math.floor(t.rank/3)];
+  if(!has){h+=`<div class="card dim row"><span>？？？？　<span style="color:${col}">${rk(t.rank)}</span>・${t.school}${t.type}</span></div>`;return;}
+  const on=p.heart===t.id||p.foot===t.id||p.slots.includes(t.id),r=rel(t),bad=canUse(t);
+  const rc=bad?'r':r==='off'?'r':r==='gen'?'dim':'g';
+  h+=`<div class="card"><div class="row"><span><b style="color:${col}">《${t.name}》</b> <span class="tag" style="color:${col}">${rk(t.rank)}</span></span><button class="btn sm" onclick="G.eqTech(${t.id})">${on?'卸下':'裝備'}</button></div>
+  <div class="dim">${t.school}${t.e?'（'+t.e+'屬性）':''}・${t.type}｜需${REALMS[t.req]}期｜熟練 ${p.mas[t.id]}/5｜<span class="${rc}">${bad&&rIdx()>=t.req?'無法修煉':RELTXT[r]}</span></div><div class="dim">${techEff(t)}</div></div>`;});
+ return h;
+}
+function bagHTML(){
+ let h='<h3>身上裝備</h3>';
+ SLOTS.forEach(s=>{const q=p.eq[s];h+=`<div class="card row"><span>${s}：${q?`<span style="color:${QCOL[q.q]}">${q.name}</span><div class="dim">${QN[q.q]}・${eqDesc(q)}</div>`:'<span class="dim">空</span>'}</span>${q?`<button class="btn sm" onclick="G.unequip('${s}')">卸下</button>`:''}</div>`;});
+ h+='<h3>背包裝備</h3>';
+ if(!p.bag.length)h+='<div class="dim">背包是空的。</div>';
+ p.bag.forEach((q,i)=>{h+=`<div class="card row"><span><span style="color:${QCOL[q.q]}">${q.name}</span> <span class="dim">${q.slot}・${QN[q.q]}・需${REALMS[q.tier]}期<br>${eqDesc(q)}</span></span><button class="btn sm" onclick="G.equip(${i})">裝備</button></div>`;});
+ h+='<h3>道具</h3>';
+ [['liq','靈液','直接煉化，獲得修為；突破時也可增加成功率'],['heal','療傷丹','回復50%氣血'],['mp','回靈丹','回復60%靈力'],['brk','破境丹','突破時使用'],['life','延壽丹','壽元+20年']].forEach(d=>{
+  h+=`<div class="card row"><span>${d[1]} ×${p.inv[d[0]]}<div class="dim">${d[2]}</div></span>${d[0]!=='brk'&&mode!=='battle'?`<button class="btn sm" onclick="G.use('${d[0]}')">使用</button>`:''}</div>`;});
+ h+=`<div class="card">靈石：${fmt(p.st)}<div class="dim">（100下品＝1中品，100中品＝1上品）</div></div>`;
+ return h;
+}
+/* 殘卷《納墟訣》：依碎片數顯現前 n 行，未顯現的以「……」表示 */
+function scrollHTML(){const n=p.shards.length,ls=STORY_TXT.scroll;
+ return`<div class="card"><b>殘卷《納墟訣》</b><span class="dim">　顯現 ${n}/${ls.length}</span><div style="line-height:1.9;margin-top:4px">`+ls.map((x,i)=>i<n?`<div class="y">${x}</div>`:'<div class="dim">……</div>').join('')+'</div></div>';}
+/* 問道紀事：可展開重看已解鎖的劇情（依解鎖順序） */
+function styHTML(){const ls=(p.sty&&p.sty.list)||[];
+ let h=`<button class="btn" style="width:100%;margin:2px 0 8px" onclick="G.sty()">問道紀事（${ls.length}）${showSty?'　▲ 收合':'　▼ 展開'}</button>`;
+ if(showSty)h+=ls.length?ls.map(e=>`<div class="card sto"><b class="y">${e.t}</b><div>${e.m.replace(/\n/g,'<br>')}</div></div>`).join(''):'<div class="dim">尚無紀事。</div>';
+ return h;}
+function roleHTML(){
+ const c=calc();
+ let h=`<div class="card"><b>${p.name}</b>　${lvName(p.lv)}<div class="dim">${rootTxt(p.root)}</div><div class="dim">${rootLine(p.root.type)}</div><div class="dim">${rootCmp(p.root.type)}</div>
+ <div class="dim">修煉速度：靈根 ×${rootMult()}　心法加成 ×${c.exp.toFixed(2)}　地區靈氣 ×${REG[p.reg].qi}　＝ 總 ×${(rootMult()*c.exp*REG[p.reg].qi).toFixed(2)}</div>${expBar()}</div>
+ <div class="card"><div class="grid" style="gap:4px 10px;grid-template-columns:1fr 1fr">
+ <span>氣血 ${nf(c.hp)}</span><span>靈力 ${nf(c.mp)}</span><span>攻擊 ${nf(c.atk)}</span><span>防禦 ${nf(c.def)}</span><span>神識 ${nf(c.sense)}</span><span>速度 ${nf(c.spd)}</span><span>閃避 ${Math.round(c.dodge*100)}%</span><span>暴擊 ${Math.round(c.crit*100)}%</span></div></div>
+ <div class="card">歲數：${Math.floor(16+p.month/12)}　壽元上限：${LIFE[rIdx()]+p.extra>9999?'∞':LIFE[rIdx()]+p.extra}<div class="dim">秘境擊敗修士：${p.pk} 人</div>
+ <div class="dim">天道碎片：${p.shards.length}/7（${p.shards.join('、')||'尚無'}）</div>${p.ending?`<div class="y">結局：${p.ending}</div>`:''}</div>
+ ${scrollHTML()}${styHTML()}
+ <h3>存檔</h3><div class="grid"><button class="btn" onclick="G.exp()">匯出存檔文字</button><button class="btn" onclick="G.imp()">匯入存檔</button></div>`;
+ if(showCode)h+=`<textarea rows="5" readonly onclick="this.select()">${showCode}</textarea><button class="btn sm" onclick="G.hideCode()">關閉</button>`;
+ h+='<div class="dim" style="margin-top:8px">遊戲會自動存在這個瀏覽器中。</div><button class="btn sm" style="margin-top:10px" onclick="if(confirm(\'確定重新開始？\'))G.restart()">重新開始</button>';
+ return h;
+}
+function deadHTML(){return`<div class="card"><h3>坐化</h3><p>你的壽元已盡，於${p.reg}盤膝坐化，一生修至「${lvName(p.lv)}」，擊敗秘境修士 ${p.pk} 人，集得天道碎片 ${p.shards.length} 塊。</p><button class="btn" onclick="G.restart()">轉世重修</button></div>`;}
+function introHTML(){
+ if(!intro)intro={name:'',sc:0,root:rollRoot()};
+ return`<a href="../" style="display:inline-block;color:#e6c35a;font-size:13px;text-decoration:none;opacity:.8;margin-bottom:6px">← ARCADE</a><h3 style="font-size:20px">${GAME_NAME}</h3><p class="y" style="margin:2px 0 6px">${GAME_SUB}</p><p class="dim">天道崩裂，九州分裂。集齊七塊碎片，補全飛升之路——或者另做選擇。</p>
+ <div class="card"><div class="dim">道號</div><input placeholder="輸入道號" value="${intro.name}" oninput="G.setName(this.value)"></div>
+ <div class="card"><div class="dim">起始流派（贈送一本心法與一本攻擊功法）</div><select onchange="G.setSc(this.value)">${SCHOOLS.map((s,i)=>`<option value="${i}" ${intro.sc===i?'selected':''}>${s.n}（${TECHS[i*12].name}、${TECHS[i*12+1].name}）</option>`).join('')}</select></div>
+ <div class="card"><div class="dim">靈根</div><div style="font-size:17px" class="y">${rootTxt(intro.root)}</div><div class="dim">${rootLine(intro.root.type)}</div><div class="dim">${rootCmp(intro.root.type)}</div><button class="btn sm" style="margin-top:6px" onclick="G.reroll()">重擲靈根</button></div>
+ <button class="btn" style="width:100%;padding:14px" onclick="G.start()">踏上仙途</button>`;
+}
+function render(){
+ if(!p){$('#top').innerHTML='';$('#view').innerHTML=introHTML();$('#tabs').innerHTML='';return;}
+ if(mode==='battle'||mode==='ev'||mode==='shop'&&tab!=='act')tab='act';
+ $('#top').innerHTML=topHTML();
+ const T=[['act','行動'],['map','地圖'],['tech','功法'],['bag','裝備'],['role','角色']];
+ $('#tabs').innerHTML=T.map(x=>`<button class="${tab===x[0]?'on':''}" onclick="G.tab('${x[0]}')">${x[1]}</button>`).join('');
+ let v;
+ if(mode==='dead')v=deadHTML();else if(tab==='act')v=actHTML();else if(tab==='map')v=mapHTML();else if(tab==='tech')v=techHTML();else if(tab==='bag')v=bagHTML();else v=roleHTML();
+ $('#view').innerHTML=v;
+ if(tab==='map'&&mode!=='dead')drawMap();
+ const lg=$('#log');if(lg)lg.scrollTop=lg.scrollHeight;
+ save();
+}
+(function boot(){
+ try{const raw=localStorage.getItem(KEY);if(raw){p=JSON.parse(raw);selReg=p.reg;for(const k in p.eq)if(p.eq[k]&&p.eq[k].sc==null)p.eq[k].sc=12;p.bag.forEach(q=>{if(q.sc==null)q.sc=12;});fixSave();mode=resumeMode();}}catch(e){p=null;}
+ try{document.title=GAME_NAME;}catch(e){}
+ render();
+})();
+</script>
+</body>
+</html>

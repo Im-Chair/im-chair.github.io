@@ -168,7 +168,7 @@ RG_ART = {
 COVER_DIR = 'covers'
 COVER_QUALITY = 82
 COVER_SIZE = {
-    (900, 600): ['pokemo', 'shrine', 'rpg', 'tower-orbs', 'drift-ark', 'outpost', 'sky-frontier', 'border-lord'],   # 深掘礦工已併入天穹拓荒
+    (900, 600): ['pokemo', 'shrine', 'rpg', 'tower-orbs', 'drift-ark', 'outpost', 'sky-frontier', 'border-lord', 'xiuxian'],   # 深掘礦工已併入天穹拓荒
     (600, 600): ['sudoku', 'minesweeper', 'bulls-cows', 'solitaire', 'tetris', 'neon-danmaku', 'blizzard-cabin'],
 }
 
