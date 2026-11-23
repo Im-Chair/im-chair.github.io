@@ -184,6 +184,20 @@ self.addEventListener('fetch', e => {
     }));
     return;
   }
+  // 其他圖片（首頁封面、各遊戲的圖）：快取裡有就先給快取的，背景再更新（下次打開才是新圖）。
+  // 原本一律先等網路，連到 GitHub 慢的時候封面與遊戲圖會排隊排到出不來。
+  // 先找目前版本的快取（帶 ?v= 的網址要完全相同才算命中，升版號就會重抓），再退到舊版快取
+  if (url.origin === location.origin && e.request.destination === 'image') {
+    e.respondWith(caches.open(CACHE).then(async c => {
+      const hit = (await c.match(e.request)) || (await caches.match(e.request));
+      const net = fetch(e.request, hit ? { priority: 'low' } : {}).then(res => { if (res.ok) c.put(e.request, res.clone()); return res; });
+      if (hit) { e.waitUntil(net.catch(() => {})); return hit; }
+      pendingArt++;
+      return net.finally(() => { pendingArt--; })
+        .catch(() => caches.match(e.request, { ignoreSearch: true }).then(m => m || Response.error()));
+    }));
+    return;
+  }
   // v105：頁面自己發的請求（遊戲的圖、腳本）全部算進 pendingArt，背景補快取（fillCaches）要讓路。
   // 原本只有珠界的圖會讓路；改版後整包重補的那幾分鐘，其他遊戲的圖會排在幾百個補快取請求後面出不來
   pendingArt++;
