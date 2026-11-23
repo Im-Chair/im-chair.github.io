@@ -585,6 +585,7 @@
 | 冒險大作（橫幅 3:2） | pokemo、shrine、rpg、tower-orbs、drift-ark、outpost、sky-frontier、deep-miner | 900×600 | `covers/<遊戲>.webp` |
 | 輕鬆小品（方形 1:1） | sudoku、minesweeper、bulls-cows、solitaire、tetris、neon-danmaku | 600×600 | `covers/<遊戲>.webp` |
 
+- 2026-11-23 追加三張（ChatGPT 出圖，已上線）：xiuxian（凡骨補天，橫幅）、border-lord（邊境領主，橫幅）、blizzard-cabin（暴雪求生，方形）。
 - 原圖放 `output/imagegen/arcade/cover-<遊戲>.png`（.jpg／.webp 也可），缺的略過，可一張一張補。
 - 大作原圖建議 3:2 橫幅（例如 1536×1024），小品建議正方形（1024×1024）；比例不對時腳本會從中央裁切，所以重點放在畫面中央、四邊留一點餘裕。
 - 腳本執行 `python tools/process_art.py`，品質約 82。
