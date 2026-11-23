@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>暴雪求生：20關破屋大改造</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@500;700;900&display=swap');
@@ -12,6 +12,19 @@
       user-select: none;
       -webkit-user-select: none;
       touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-touch-callout: none;
+    }
+
+    [hidden] { display: none !important; }
+
+    /* 避免下拉重新整理／整頁回彈 */
+    html, body { overscroll-behavior: none; }
+
+    /* 通用按下回饋（放最前面，後面各自的 :active 規則會蓋過它） */
+    :where(button):not(:disabled):active {
+      filter: brightness(1.18);
+      transform: scale(0.96);
     }
 
     body {
@@ -36,6 +49,8 @@
       flex-direction: column;
       position: relative;
       overflow: hidden;
+      /* 瀏海／圓角／手勢列的安全區（配合 viewport-fit=cover） */
+      padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
       box-shadow: 0 25px 70px rgba(0, 0, 0, 0.92), 0 0 0 2px rgba(251, 191, 36, 0.25);
     }
 
@@ -57,10 +72,13 @@
       pointer-events: auto;
     }
 
-    .tool-card:hover:not(:disabled) {
-      transform: translateY(-3px) scale(1.02);
-      border-color: #fbbf24;
-      box-shadow: 0 7px 0 #b45309, 0 0 20px rgba(251, 191, 36, 0.65);
+    /* 只有真的有滑鼠 hover 的裝置才套用，避免手機點完卡片後一直停在「浮起」狀態 */
+    @media (hover: hover) {
+      .tool-card:hover:not(:disabled) {
+        transform: translateY(-3px) scale(1.02);
+        border-color: #fbbf24;
+        box-shadow: 0 7px 0 #b45309, 0 0 20px rgba(251, 191, 36, 0.65);
+      }
     }
 
     .tool-card:active:not(:disabled) {
@@ -118,6 +136,222 @@
     .map-scroll::-webkit-scrollbar { width: 5px; }
     .map-scroll::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.6); }
     .map-scroll::-webkit-scrollbar-thumb { background: rgba(245, 158, 11, 0.65); border-radius: 999px; }
+
+    /* ==========================================================================
+       手機觸控優化（bz- 前綴為自訂 class）
+       Tailwind 是一次性產出的靜態 CSS，新 class 不會自動生成，所以尺寸一律寫在這裡。
+       觸控目標至少 44px、相鄰間距至少 6px；遊戲中會讀的字最小 12px。
+       ========================================================================== */
+
+    /* --- 頂部 HUD --- */
+    .bz-header { padding: 8px 12px 8px; }
+    .bz-top-row { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 6px; }
+    .bz-map-btn { min-height: 44px; padding: 4px 10px; }
+    .bz-lvname { max-width: 84px; }
+    .bz-top-btns { display: flex; align-items: center; gap: 6px; }
+    .bz-icon-btn { width: 44px; height: 44px; font-size: 18px; line-height: 1; padding: 0; }
+    .bz-meter-row { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 6px; align-items: stretch; }
+    .bz-meter { padding: 6px 10px; min-width: 0; }
+    #leak-badge, #selected-hotspot-leak { white-space: nowrap; }
+    .bz-info-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; }
+    .bz-chip {
+      position: relative; display: inline-flex; align-items: center; min-height: 30px;
+      padding: 2px 8px; border-radius: 8px; font-size: 12px; font-weight: 800; line-height: 1.2; white-space: nowrap;
+    }
+    .bz-chip-btn { cursor: pointer; text-align: left; }
+    /* 把可點範圍上下各擴 7px，達 44px（視覺高度仍是 30px） */
+    .bz-chip-btn::after { content: ''; position: absolute; left: 0; right: 0; top: -7px; bottom: -7px; }
+
+    /* --- 中央舞台：Canvas 絕對定位填滿，不影響 flex 版面計算 --- */
+    .bz-stage { min-height: 200px; }
+    #game-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
+    /* --- 提示 toast：畫面底部、可點掉、不穿透 --- */
+    .bz-toast {
+      position: absolute; left: 50%; bottom: 8px; z-index: 20; width: 94%; max-width: 28rem;
+      opacity: 0; transform: translate(-50%, 8px); transition: opacity 0.2s ease, transform 0.2s ease;
+      pointer-events: none;
+    }
+    .bz-toast.bz-on { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; cursor: pointer; }
+    .bz-toast-inner { padding: 8px 14px; border-radius: 16px; border: 2px solid; text-align: center; box-shadow: 0 12px 28px rgba(0, 0, 0, 0.55); backdrop-filter: blur(6px); }
+    .bz-toast-title { font-size: 13px; font-weight: 900; line-height: 1.3; }
+    .bz-toast-desc { font-size: 12px; font-weight: 700; margin-top: 2px; line-height: 1.35; }
+    .bz-t-success { background: rgba(2, 44, 34, 0.94); border-color: #34d399; color: #d1fae5; }
+    .bz-t-info { background: rgba(8, 47, 73, 0.94); border-color: #38bdf8; color: #e0f2fe; }
+    .bz-t-error { background: rgba(69, 10, 10, 0.94); border-color: #f87171; color: #fee2e2; }
+
+    /* --- 底部操作面板 --- */
+    .bz-panel { padding: 8px 10px 10px; }
+    .bz-tabs-row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+    .bz-tabs-label { font-size: 12px; font-weight: 900; color: #fbbf24; flex-shrink: 0; }
+    .bz-tabs {
+      --fade-l: 0px; --fade-r: 0px;
+      position: relative; display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0;
+      overflow-x: auto; padding: 3px 2px; overscroll-behavior-x: contain;
+      -webkit-mask-image: linear-gradient(to right, transparent 0, #000 var(--fade-l), #000 calc(100% - var(--fade-r)), transparent 100%);
+      mask-image: linear-gradient(to right, transparent 0, #000 var(--fade-l), #000 calc(100% - var(--fade-r)), transparent 100%);
+    }
+    .bz-tab {
+      flex-shrink: 0; min-height: 44px; padding: 0 12px; border-radius: 12px; font-size: 12px; font-weight: 900;
+      display: flex; align-items: center; gap: 4px; white-space: nowrap; cursor: pointer;
+    }
+    .bz-tab-on { box-shadow: 0 0 0 2px rgba(254, 240, 138, 0.9); }
+    .bz-desc-bar {
+      display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 32px;
+      padding: 4px 10px; margin-bottom: 8px; background: #0f172a; border: 1px solid rgba(51, 65, 85, 0.9); border-radius: 12px;
+    }
+    .bz-desc { flex: 1; min-width: 0; font-size: 12px; font-weight: 700; line-height: 1.35; color: #f1f5f9; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .bz-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+    .bz-fallback { margin-top: 6px; min-height: 44px; }
+    .bz-fallback-btn {
+      width: 100%; min-height: 44px; padding: 4px 8px; border-radius: 12px; border: 1px dashed #64748b;
+      background: #0f172a; color: #e2e8f0; font-size: 12px; font-weight: 900; cursor: pointer;
+    }
+    .bz-fallback-btn:disabled { opacity: 0.4; }
+
+    /* --- 道具卡內容 --- */
+    .tool-card { padding: 6px 4px; border-radius: 16px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; text-align: center; cursor: pointer; }
+    .bz-card-top { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; width: 100%; pointer-events: none; }
+    .bz-card-cost { justify-self: start; padding: 0 3px; border-radius: 6px; background: #78350f; color: #fef3c7; font-size: 12px; font-weight: 900; line-height: 16px; white-space: nowrap; }
+    .bz-card-warnico { justify-self: end; font-size: 14px; font-weight: 900; line-height: 16px; color: #b91c1c; }
+    .bz-card-main { display: flex; flex-wrap: wrap; justify-content: center; align-items: baseline; column-gap: 4px; margin-top: 1px; pointer-events: none; }
+    .bz-big { font-size: 15px; font-weight: 900; line-height: 18px; color: #0f172a; }
+    .bz-seal { font-size: 12px; font-weight: 900; line-height: 18px; color: #334155; }
+    .bz-card-sub { font-size: 12px; font-weight: 900; line-height: 14px; color: #334155; pointer-events: none; }
+    .bz-bad { color: #b91c1c; }
+    .bz-up { color: #047857; }
+    .bz-card-icon { width: 38px; height: 38px; margin-bottom: 2px; display: flex; align-items: center; justify-content: center; font-size: 22px; border-radius: 12px; background: #fef3c7; border: 2px solid #fbbf24; pointer-events: none; }
+    .bz-card-name { font-size: 12px; font-weight: 900; line-height: 1.2; color: #0f172a; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; pointer-events: none; }
+    .bz-card-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px; margin-top: 2px; pointer-events: none; }
+    .bz-card-chip { padding: 0 5px; border-radius: 999px; font-size: 12px; font-weight: 900; line-height: 16px; }
+    .bz-chip-warn { background: #b91c1c; color: #fff; }
+    .bz-card-reason { margin-top: 2px; font-size: 12px; font-weight: 900; line-height: 1.2; color: #b91c1c; pointer-events: none; }
+
+    /* --- 本關簡報、確認視窗、結算、地圖頁 --- */
+    .bz-brief-overlay {
+      position: absolute; inset: 0; z-index: 45; display: flex; flex-direction: column; padding: 16px;
+      overflow-y: auto; background: rgba(2, 6, 23, 0.88); backdrop-filter: blur(4px);
+    }
+    .bz-brief { width: 100%; max-width: 360px; margin: auto; padding: 16px; background: #0f172a; border: 2px solid rgba(251, 191, 36, 0.7); border-radius: 24px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7); }
+    .bz-brief-kicker { font-size: 12px; font-weight: 900; letter-spacing: 0.1em; color: #fbbf24; }
+    .bz-brief h2 { margin: 2px 0 10px; font-size: 20px; font-weight: 900; line-height: 1.25; color: #fff; }
+    .bz-brief-row { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 6px; padding: 8px 10px; border-radius: 12px; background: #1e293b; color: #e2e8f0; font-size: 13px; font-weight: 700; line-height: 1.4; }
+    .bz-brief-row .bz-brief-ico { flex-shrink: 0; font-size: 16px; line-height: 1.3; }
+    .bz-brief-row b { display: block; font-size: 12px; font-weight: 900; color: #fde68a; }
+    .bz-brief-actions { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+    .bz-btn-big { width: 100%; min-height: 48px; border-radius: 16px; font-size: 16px; font-weight: 900; color: #fff; cursor: pointer; }
+    .bz-btn-sub { width: 100%; min-height: 44px; border-radius: 12px; border: 1px solid #475569; background: transparent; color: #cbd5e1; font-size: 13px; font-weight: 800; cursor: pointer; }
+
+    #end-overlay { justify-content: flex-start; overflow-y: auto; }
+    #end-overlay > #end-badge { margin-top: auto; }
+    #end-overlay > .bz-end-btns { margin-bottom: auto; }
+    #end-overlay > *:not(.bz-end-fx) { position: relative; z-index: 1; }
+    #btn-end-map, #btn-end-next { min-height: 48px; font-size: 14px; }
+    #btn-cancel-reset, #btn-confirm-reset { min-height: 48px; font-size: 14px; }
+    #confirm-desc { font-size: 13px; }
+
+    #map-overlay { padding-top: env(safe-area-inset-top, 0px); }
+    .bz-arcade-link { display: inline-flex; align-items: center; min-height: 44px; margin-bottom: 0; padding-right: 12px; font-size: 13px; font-weight: 700; color: #94a3b8; text-decoration: none; }
+    #btn-continue-latest, #btn-dev-unlock, #btn-reset-save { min-height: 44px; }
+
+    /* 其餘殘留的 9~10px 小字一律拉到 11px（純裝飾／次要註記的下限） */
+    html body .text-\[9px\], html body .text-\[10px\] { font-size: 11px; }
+
+    /* --- 矮螢幕（360×640、375×667 等）：把頭部壓緊、卡片縮小，讓整個遊戲留在一屏內 --- */
+    @media (max-height: 700px) {
+      .bz-header { padding: 4px 10px 4px; }
+      .bz-top-row { margin-bottom: 4px; }
+      .bz-meter { padding: 4px 8px; }
+      .bz-info-row { margin-top: 4px; flex-wrap: nowrap; }
+      .bz-chip { min-height: 28px; padding: 2px 6px; }
+      .bz-chip-btn::after { top: -8px; bottom: -8px; }
+      .bz-panel { padding: 6px 8px 8px; }
+      .bz-tabs-label { display: none; }
+      .bz-tabs-row { margin-bottom: 4px; }
+      .bz-desc-bar { min-height: 28px; padding: 2px 8px; margin-bottom: 6px; }
+      .bz-desc { display: block; white-space: nowrap; text-overflow: ellipsis; -webkit-line-clamp: unset; }
+      .bz-card-icon { width: 30px; height: 30px; font-size: 18px; border-radius: 10px; }
+      .bz-fallback { margin-top: 6px; }
+      .bz-brief-overlay { padding: 10px; }
+    }
+
+    /* ==========================================================================
+       畫面美化（天氣、溫度回饋、卡片、結算、地圖）。尊重 prefers-reduced-motion（見最後一段）
+       ========================================================================== */
+    @keyframes bzFade { from { opacity: 0; } to { opacity: 1; } }
+
+    /* --- 天氣／預警覆蓋層（在 Canvas 之上、提示之下，不擋操作） --- */
+    .bz-wx { position: absolute; inset: 0; z-index: 9; pointer-events: none; transition: background-color 0.6s ease, box-shadow 0.5s ease; }
+    .bz-wx-wet { background-color: rgba(71, 98, 128, 0.2); }
+    .bz-wx-cold { background-color: rgba(8, 20, 48, 0.14); box-shadow: inset 0 0 46px 10px rgba(147, 197, 253, 0.42), inset 0 0 14px 2px rgba(224, 242, 254, 0.3); }
+    .bz-wx-gale { box-shadow: inset 0 0 34px 6px rgba(224, 242, 254, 0.32); }
+    .bz-wx-warn { animation: bzWarnEdge 0.45s ease-in-out infinite alternate; }
+    @keyframes bzWarnEdge {
+      from { box-shadow: inset 0 0 20px 2px rgba(251, 191, 36, 0.15); }
+      to { box-shadow: inset 0 0 46px 12px rgba(251, 191, 36, 0.8), inset 0 0 12px 3px rgba(254, 243, 199, 0.7); }
+    }
+
+    /* --- 頂列：狂風倒數（預警 3 秒變色＋跳動）、溫度危險、光澤、得星彈跳 --- */
+    @keyframes bzJump { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-2px) scale(1.14); } }
+    .bz-gt-warn { background: #f59e0b; color: #1c1917; animation: bzJump 0.4s ease-in-out infinite; }
+    .bz-gt-gale { background: #dc2626; color: #fff; }
+    @keyframes bzDangerPulse { 0%, 100% { transform: scale(1); text-shadow: 0 0 0 rgba(248, 113, 113, 0); } 50% { transform: scale(1.14); text-shadow: 0 0 8px rgba(248, 113, 113, 0.9); } }
+    .bz-danger-val { color: #f87171; display: inline-block; animation: bzDangerPulse 0.7s ease-in-out infinite; }
+    @keyframes bzDangerBar { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.45); } }
+    .bz-danger-bar { animation: bzDangerBar 0.7s ease-in-out infinite; }
+    .bz-shine { position: relative; overflow: hidden; }
+    .bz-shine::after { content: ''; position: absolute; top: 0; bottom: 0; left: -45%; width: 45%; background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0)); animation: bzShine 1.5s linear infinite; }
+    @keyframes bzShine { from { transform: translateX(0); } to { transform: translateX(340%); } }
+    @keyframes bzPop { 0% { transform: scale(1); } 40% { transform: scale(1.55); } 70% { transform: scale(0.92); } 100% { transform: scale(1); } }
+    .bz-pop { display: inline-block; animation: bzPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); }
+
+    /* --- 提示 toast：選中的破洞在下半部時改顯示在畫布上緣 --- */
+    .bz-toast.bz-top { bottom: auto; top: 8px; transform: translate(-50%, -8px); }
+    .bz-toast.bz-top.bz-on { transform: translate(-50%, 0); }
+
+    /* --- 閃光：陷阱紅閃 --- */
+    .bz-fl-red { background: rgba(239, 68, 68, 0.42); }
+
+    /* --- 道具卡：新一手牌依序淡入上浮（總長 ≤250ms，卡片隨時可點）、被選中的卡飛出 --- */
+    @keyframes bzCardIn { from { opacity: 0; transform: translateY(10px) scale(0.96); } to { opacity: 1; transform: none; } }
+    .bz-card-in { animation: bzCardIn 0.16s ease-out backwards; }
+    .tool-card.bz-card-gone { opacity: 0.12; transform: scale(0.8) translateY(-14px); filter: none; }
+
+    /* --- 結算：星星逐顆彈出、三星暖光與金色雪花、失敗結霜 --- */
+    .bz-star { display: inline-block; }
+    .bz-star-off { opacity: 0.5; }
+    @keyframes bzStarPop { 0% { transform: scale(0) rotate(-40deg); opacity: 0; } 60% { transform: scale(1.5) rotate(8deg); opacity: 1; } 100% { transform: scale(1) rotate(0); opacity: 1; } }
+    .bz-star-on { animation: bzStarPop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) backwards; }
+    .bz-end-fx { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; }
+    .bz-end-3 .bz-end-fx::before { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at 50% 36%, rgba(251, 191, 36, 0.34), rgba(251, 146, 60, 0.12) 42%, rgba(0, 0, 0, 0) 72%); animation: bzGlow 2.8s ease-in-out infinite alternate; }
+    @keyframes bzGlow { from { opacity: 0.55; } to { opacity: 1; } }
+    .bz-gold { position: absolute; top: -14px; border-radius: 50%; background: radial-gradient(circle, #fef3c7, #f59e0b); opacity: 0; animation: bzGoldFall linear infinite; }
+    @keyframes bzGoldFall { 0% { transform: translate3d(0, 0, 0); opacity: 0; } 8% { opacity: 0.95; } 100% { transform: translate3d(var(--dx, 24px), 760px, 0); opacity: 0.2; } }
+    #end-overlay.bz-end-lose { box-shadow: inset 0 0 70px 24px rgba(125, 211, 252, 0.6), inset 0 0 18px 5px rgba(255, 255, 255, 0.7); background-image: radial-gradient(circle at 50% 50%, rgba(2, 6, 23, 0) 38%, rgba(186, 230, 253, 0.22) 100%); animation: bzFade 0.8s ease-out; }
+
+    /* --- 關卡地圖 --- */
+    .bz-chap-stars { font-size: 12px; font-weight: 900; color: #fde047; white-space: nowrap; }
+    .bz-chap-badge { padding: 0 4px; font-size: 12px; font-weight: 700; color: #94a3b8; }
+    .bz-lvl-card { position: relative; }
+    .bz-lvl-crown { position: absolute; top: -9px; right: 12px; font-size: 16px; line-height: 1; pointer-events: none; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.7)); }
+    @keyframes bzBreath { 0%, 100% { box-shadow: 0 0 6px rgba(245, 158, 11, 0.25); } 50% { box-shadow: 0 0 22px 3px rgba(251, 191, 36, 0.6); } }
+    .bz-breath { animation: bzBreath 2.4s ease-in-out infinite; }
+    .bz-locked { opacity: 1; cursor: not-allowed; background: rgba(15, 23, 42, 0.78); border: 1px solid #334155; }
+    .bz-lk-name { font-size: 12px; font-weight: 900; color: #cbd5e1; }
+    .bz-lk-sub { margin-top: 2px; font-size: 12px; color: #94a3b8; }
+    .bz-lk-tag { font-size: 12px; font-weight: 700; color: #94a3b8; }
+    .bz-lk-ico { filter: saturate(0.6); }
+
+    /* --- 減少動態：關掉抖動／脈動／光澤／飄落，動畫改成淡入 --- */
+    @media (prefers-reduced-motion: reduce) {
+      .shake, .animate-pulse, .bz-wx-warn, .bz-gt-warn, .bz-danger-val, .bz-danger-bar, .bz-shine::after, .bz-pop, .bz-breath, .bz-end-3 .bz-end-fx::before { animation: none !important; }
+      .bz-wx-warn { box-shadow: inset 0 0 40px 10px rgba(251, 191, 36, 0.55); }
+      .bz-card-in { animation-name: bzFade; }
+      .bz-star-on { animation-name: bzFade; }
+      .bz-gold { display: none; }
+      .bz-end-3 .bz-end-fx::before { opacity: 0.9; }
+      .bz-wx, .bz-toast { transition: none; }
+    }
   </style>
 <style id="tailwind-static">
 /* Tailwind CSS v3.4.17 CLI 一次性產出（取代執行期 Tailwind CDN，讓遊戲能離線玩）。新增 class 要手寫 CSS 或重跑一次 CLI */
@@ -129,14 +363,14 @@
     <!-- ========================================================================
          1. 頂部狀態儀表板 (室溫生命線 + 豪華改造度 + 狂風預警)
          ======================================================================== -->
-    <header class="relative z-20 px-3 pt-2.5 pb-2 bg-slate-950 border-b border-slate-800 shrink-0">
-      <div class="flex items-center justify-between gap-1.5 mb-2">
+    <header class="bz-header relative z-20 bg-slate-950 border-b border-slate-800 shrink-0">
+      <div class="bz-top-row">
         <!-- 返回 20 關地圖按鈕 -->
-        <button id="btn-open-map" type="button" class="bg-gradient-to-r from-amber-500 to-orange-600 border border-amber-200 px-2.5 py-1 rounded-xl flex items-center gap-1.5 shrink-0 shadow cursor-pointer active:translate-y-0.5">
-          <span class="text-xs">🗺️</span>
+        <button id="btn-open-map" type="button" aria-label="回關卡地圖" class="bz-map-btn bg-gradient-to-r from-amber-500 to-orange-600 border border-amber-200 rounded-xl flex items-center gap-1.5 shrink-0 shadow cursor-pointer">
+          <span class="text-sm">🗺️</span>
           <div class="leading-none text-left">
-            <div id="hud-level-badge" class="text-[10px] font-black text-amber-100">第 1 關</div>
-            <div id="hud-level-name" class="text-[11px] font-black text-white max-w-[88px] truncate">漏風破木屋</div>
+            <div id="hud-level-badge" class="text-xs font-black text-amber-100">第 1 關</div>
+            <div id="hud-level-name" class="text-xs font-black text-white bz-lvname truncate">漏風破木屋</div>
           </div>
         </button>
 
@@ -144,32 +378,28 @@
         <div id="gale-hud" class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-2 py-1 flex items-center justify-between gap-1 min-w-0">
           <div class="flex items-center gap-1 min-w-0">
             <span id="gale-icon" class="text-xs shrink-0">🌨️</span>
-            <span id="gale-label" class="text-[10px] font-black text-slate-300 truncate">暴風雪平穩</span>
+            <span id="gale-label" class="text-xs font-black text-slate-300 truncate">平穩</span>
           </div>
-          <span id="gale-timer" class="text-[10px] font-black px-1.5 py-0.5 rounded bg-slate-800 text-cyan-300 tabular-nums shrink-0">無狂風</span>
+          <span id="gale-timer" class="text-xs font-black px-1.5 py-0.5 rounded bg-slate-800 text-cyan-300 tabular-nums shrink-0">無狂風</span>
         </div>
 
         <!-- 音效與重來按鈕 -->
-        <div class="flex items-center gap-1 shrink-0">
-          <button id="btn-sound" type="button" title="音效開關" class="w-8 h-8 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 flex items-center justify-center text-xs text-white cursor-pointer">
-            🔊
-          </button>
-          <button id="btn-quick-restart" type="button" title="重玩本關" class="w-8 h-8 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 flex items-center justify-center text-xs text-white cursor-pointer">
-            🔄
-          </button>
+        <div class="bz-top-btns shrink-0">
+          <button id="btn-sound" type="button" title="音效開關" aria-label="音效開關" class="bz-icon-btn rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 flex items-center justify-center text-white cursor-pointer">🔊</button>
+          <button id="btn-quick-restart" type="button" title="重玩本關" aria-label="重玩本關" class="bz-icon-btn rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 flex items-center justify-center text-white cursor-pointer">🔄</button>
         </div>
       </div>
 
       <!-- 室溫生命線 & 豪華改造進度 -->
-      <div class="grid grid-cols-12 gap-1.5 items-stretch">
+      <div class="bz-meter-row">
         <!-- 左側：室內溫度計 (降到 0°C 凍死，升到目標溫度過關) -->
-        <div class="col-span-7 bg-slate-900 border border-slate-700/90 rounded-2xl px-2.5 py-1.5 flex flex-col justify-between">
+        <div class="bz-meter bg-slate-900 border border-slate-700/90 rounded-2xl flex flex-col justify-between">
           <div class="flex items-center justify-between gap-1 mb-1">
             <div class="flex items-center gap-1">
               <span id="temp-emoji" class="text-base leading-none">🥶</span>
               <span id="temp-value" class="text-sm font-black text-cyan-300 tabular-nums">12.0°C</span>
             </div>
-            <span id="leak-badge" class="text-[10px] font-black px-1.5 py-0.5 rounded-md bg-red-950 text-red-300 border border-red-500/70">
+            <span id="leak-badge" class="text-xs font-black px-1.5 py-0.5 rounded-md bg-red-950 text-red-300 border border-red-500/70">
               冷風滲入中
             </span>
           </div>
@@ -177,52 +407,53 @@
             <div id="temp-bar" class="h-full rounded-full transition-all duration-100 bg-gradient-to-r from-cyan-500 to-sky-300" style="width: 45%;"></div>
             <div id="target-temp-marker" class="absolute top-0 bottom-0 w-0.5 bg-emerald-400 shadow-[0_0_6px_#34d399]" style="left: 78%;"></div>
           </div>
-          <div class="flex justify-between text-[9px] font-bold text-slate-400 mt-0.5">
+          <div class="flex justify-between text-xs font-bold text-slate-400 mt-0.5 gap-1">
             <span>0°C 凍僵</span>
             <span id="target-temp-text" class="text-emerald-400">目標 22°C</span>
           </div>
         </div>
 
         <!-- 右側：破屋變豪宅星級進度 -->
-        <div class="col-span-5 bg-slate-900 border border-slate-700/90 rounded-2xl px-2.5 py-1.5 flex flex-col justify-between">
+        <div class="bz-meter bg-slate-900 border border-slate-700/90 rounded-2xl flex flex-col justify-between">
           <div class="flex items-center justify-between">
-            <span class="text-[10px] font-bold text-amber-300">豪宅改造度</span>
-            <span id="luxury-stars-preview" class="text-[11px] tracking-tighter">☆☆☆</span>
+            <span class="text-xs font-bold text-amber-300">豪宅改造度</span>
+            <span id="luxury-stars-preview" class="text-xs tracking-tighter">☆☆☆</span>
           </div>
           <div class="w-full h-2.5 bg-slate-950 rounded-full overflow-hidden p-0.5 border border-slate-700 my-0.5">
             <div id="luxury-bar" class="h-full rounded-full transition-all duration-200 bg-gradient-to-r from-amber-500 via-yellow-400 to-emerald-400" style="width: 0%;"></div>
           </div>
-          <div class="flex items-center justify-between text-[9px] font-bold">
+          <div class="flex items-center justify-between text-xs font-bold">
             <span class="text-slate-400">已修繕</span>
             <span id="repair-count-text" class="text-amber-300 font-black">0 / 6 處</span>
           </div>
         </div>
       </div>
 
-      <!-- 材料點數 / 本關天氣 / 章節規則 -->
-      <div id="info-row" class="mt-1.5 flex flex-col gap-1">
-        <div class="flex items-start gap-1.5">
-          <span id="budget-chip" class="shrink-0 px-2 py-0.5 rounded-md text-[10px] font-black tabular-nums bg-amber-950 text-amber-200 border border-amber-500/70">🧰 材料 0 / 0</span>
-          <span id="weather-chip" class="flex-1 min-w-0 px-2 py-0.5 rounded-md text-[10px] font-bold leading-tight bg-slate-900 text-sky-200 border border-sky-600/60"></span>
-        </div>
-        <div id="rule-chip" class="hidden px-2 py-0.5 rounded-md text-[10px] font-bold leading-tight bg-slate-900 text-amber-200 border border-amber-600/50"></div>
+      <!-- 材料點數 / 本關天氣 / 章節規則（天氣與規則點一下可再看完整說明） -->
+      <div id="info-row" class="bz-info-row">
+        <span id="budget-chip" class="bz-chip tabular-nums bg-amber-950 text-amber-200 border border-amber-500/70">🧰 材料 0 / 0</span>
+        <button id="weather-chip" type="button" aria-label="查看本關天氣說明" class="bz-chip bz-chip-btn bg-slate-900 text-sky-200 border border-sky-600/60"></button>
+        <button id="rule-chip" type="button" aria-label="查看章節規則說明" class="bz-chip bz-chip-btn hidden bg-slate-900 text-amber-200 border border-amber-600/50"></button>
       </div>
     </header>
 
     <!-- ========================================================================
          2. 中央 Canvas 互動舞台 (可直接點擊場景破洞 + 破屋變豪宅即時演變)
          ======================================================================== -->
-    <main id="canvas-wrapper" class="relative flex-1 w-full min-h-[240px] overflow-hidden bg-slate-800">
-      <canvas id="game-canvas" class="block w-full h-full cursor-pointer"></canvas>
+    <main id="canvas-wrapper" class="bz-stage relative flex-1 w-full overflow-hidden bg-slate-800">
+      <canvas id="game-canvas" class="cursor-pointer"></canvas>
+
+      <!-- 天氣色調／冷暈／狂風預警邊緣閃光（純 CSS，不擋操作） -->
+      <div id="wx-layer" class="bz-wx" aria-hidden="true"></div>
 
       <!-- 低於 5°C 結霜邊框 -->
       <div id="frost-layer" class="pointer-events-none absolute inset-0 z-10 frost-vignette opacity-0"></div>
 
-      <!-- 浮動事件反饋提示 -->
-      <div id="feedback-toast" class="pointer-events-none absolute top-2.5 left-1/2 -translate-x-1/2 z-20 w-[93%] max-w-md opacity-0 transition-all duration-200 transform -translate-y-2">
-        <div id="feedback-toast-inner" class="px-3.5 py-2 rounded-2xl border-2 text-center shadow-2xl backdrop-blur-md pointer-events-none">
-          <div id="feedback-title" class="text-xs sm:text-sm font-black"></div>
-          <div id="feedback-desc" class="text-[11px] font-bold mt-0.5 leading-snug"></div>
+      <!-- 浮動事件反饋提示：在畫面底部、不遮破洞；點一下可關掉（只關提示，不會穿透去點破洞） -->
+      <div id="feedback-toast" class="bz-toast" role="status" aria-live="polite">
+        <div id="feedback-toast-inner" class="bz-toast-inner bz-t-info">
+          <div id="feedback-title" class="bz-toast-title"></div>
+          <div id="feedback-desc" class="bz-toast-desc"></div>
         </div>
       </div>
 
@@ -233,45 +464,45 @@
     <!-- ========================================================================
          3. 底部「道具三選一」操作面板 (每個破洞抽 3 張，點數不足的卡變灰)
          ======================================================================== -->
-    <section id="bottom-control-panel" class="relative z-30 bg-slate-950 border-t-2 border-amber-500/40 px-2.5 pt-2 pb-3 shrink-0 pointer-events-auto">
-      <!-- 快捷破損目標切換列 (與畫布點擊完全同步) -->
-      <div class="flex items-center justify-between gap-1 mb-1.5">
-        <span class="text-[10px] font-black text-amber-400 shrink-0">👆 點破洞或選項目：</span>
-        <div id="hotspot-tabs" class="flex items-center gap-1 overflow-x-auto no-scrollbar flex-1 justify-end"></div>
+    <section id="bottom-control-panel" class="bz-panel relative z-30 bg-slate-950 border-t-2 border-amber-500/40 shrink-0 pointer-events-auto">
+      <!-- 快捷破損目標切換列 (與畫布點擊完全同步；項目多時可左右捲動，兩側淡出提示) -->
+      <div class="bz-tabs-row">
+        <span class="bz-tabs-label">👆 點破洞或選項目：</span>
+        <div id="hotspot-tabs" class="bz-tabs no-scrollbar"></div>
       </div>
 
       <!-- 當前選中破洞的提示說明條 -->
-      <div class="bg-slate-900 border border-slate-700/90 rounded-xl px-2.5 py-1 mb-2 flex items-center justify-between gap-2">
-        <div id="selected-hotspot-desc" class="text-[11px] font-bold text-slate-100 truncate">
+      <div class="bz-desc-bar">
+        <div id="selected-hotspot-desc" class="bz-desc">
           屋頂大破洞：寒風與暴雪正從頭頂灌入！
         </div>
-        <span id="selected-hotspot-leak" class="text-[10px] font-black px-1.5 py-0.5 rounded bg-red-950 text-red-300 border border-red-500/60 shrink-0">
+        <span id="selected-hotspot-leak" class="text-xs font-black px-1.5 py-0.5 rounded bg-red-950 text-red-300 border border-red-500/60 shrink-0">
           ❄️❄️❄️ 極寒漏風
         </span>
       </div>
 
       <!-- 經典道具三選一大卡片 -->
-      <div id="cards-container" class="grid grid-cols-3 gap-1.5"></div>
-      <!-- 免費保底道具：點數用完時的出路 -->
-      <div id="fallback-container" class="mt-1.5"></div>
+      <div id="cards-container" class="bz-cards"></div>
+      <!-- 免費保底道具：點數用完時的出路（容器固定保留高度，避免版面跳動） -->
+      <div id="fallback-container" class="bz-fallback"></div>
     </section>
 
     <!-- ========================================================================
          4. 20 關地圖選擇覆蓋層
          ======================================================================== -->
     <div id="map-overlay" class="absolute inset-0 z-40 bg-slate-950/96 backdrop-blur-md flex flex-col">
-      <div class="px-4 pt-4 pb-3 bg-gradient-to-b from-slate-900 to-slate-950 border-b border-slate-800 shrink-0">
-        <a href="../" style="display:inline-block;margin-bottom:6px;font-size:11px;font-weight:700;color:#94a3b8;text-decoration:none" aria-label="回 ARCADE 首頁">← ARCADE</a>
-        <div class="flex items-center justify-between mb-2">
-          <div class="flex items-center gap-2">
+      <div class="px-4 pt-2 pb-3 bg-gradient-to-b from-slate-900 to-slate-950 border-b border-slate-800 shrink-0">
+        <a href="../" class="bz-arcade-link" aria-label="回 ARCADE 首頁">← ARCADE</a>
+        <div class="flex items-center justify-between mb-2 gap-2">
+          <div class="flex items-center gap-2 min-w-0">
             <span class="text-2xl">🏡</span>
-            <div>
+            <div class="min-w-0">
               <h1 class="text-base sm:text-lg font-black text-white leading-tight">暴雪求生：20關破屋大改造</h1>
               <p class="text-[11px] text-slate-400">點選破洞 • 抽三選一 • 看天氣與材料點數 • 破屋蛻變豪宅</p>
             </div>
           </div>
           <div class="bg-amber-950/85 border border-amber-400/70 rounded-2xl px-3 py-1 text-right shrink-0">
-            <div class="text-[9px] font-bold text-amber-300">總收集星數</div>
+            <div class="text-[11px] font-bold text-amber-300">總收集星數</div>
             <div id="total-stars-display" class="text-sm font-black text-yellow-300">⭐ 0 / 60</div>
           </div>
         </div>
@@ -280,10 +511,10 @@
           <button id="btn-continue-latest" type="button" class="flex-1 cta-btn py-2 px-3 rounded-xl text-xs font-black text-white flex items-center justify-center gap-1.5 cursor-pointer">
             <span>▶️ 開始挑戰最新關卡</span>
           </button>
-          <button id="btn-dev-unlock" type="button" title="一鍵解鎖全部 20 關" class="px-2.5 py-2 rounded-xl bg-slate-900 hover:bg-amber-950 border border-amber-500/70 text-[10px] font-black text-amber-300 cursor-pointer transition-colors">
+          <button id="btn-dev-unlock" type="button" title="一鍵解鎖全部 20 關" class="px-2.5 py-2 rounded-xl bg-slate-900 hover:bg-amber-950 border border-amber-500/70 text-xs font-black text-amber-300 cursor-pointer transition-colors">
             🔓 全關解鎖
           </button>
-          <button id="btn-reset-save" type="button" class="px-2.5 py-2 rounded-xl bg-slate-900 hover:bg-red-950 border border-slate-700 hover:border-red-500 text-[10px] font-bold text-slate-400 hover:text-red-300 cursor-pointer transition-colors">
+          <button id="btn-reset-save" type="button" class="px-2.5 py-2 rounded-xl bg-slate-900 hover:bg-red-950 border border-slate-700 hover:border-red-500 text-xs font-bold text-slate-400 hover:text-red-300 cursor-pointer transition-colors">
             重置
           </button>
         </div>
@@ -293,9 +524,25 @@
     </div>
 
     <!-- ========================================================================
+         4b. 本關簡報：開場先看天氣／材料／規則，按「開始修補」才開始計時
+         ======================================================================== -->
+    <div id="brief-overlay" class="bz-brief-overlay" role="dialog" aria-modal="true" aria-labelledby="brief-title" hidden>
+      <div class="bz-brief">
+        <div id="brief-kicker" class="bz-brief-kicker">本關簡報</div>
+        <h2 id="brief-title">第 1 關</h2>
+        <div id="brief-rows"></div>
+        <div class="bz-brief-actions">
+          <button id="btn-brief-start" type="button" class="cta-btn bz-btn-big">🔨 開始修補</button>
+          <button id="btn-brief-map" type="button" class="bz-btn-sub">🗺️ 回關卡地圖</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================================================================
          5. 單關結算覆蓋層 (雙結局展示：勉強破屋 vs 夢幻豪華別墅)
          ======================================================================== -->
     <div id="end-overlay" class="hidden pointer-events-none absolute inset-0 z-50 bg-slate-950/92 backdrop-blur-md flex flex-col items-center justify-center p-5 text-center">
+      <div id="end-fx" class="bz-end-fx" aria-hidden="true"></div>
       <div id="end-badge" class="px-4 py-1 rounded-full text-xs font-black tracking-widest mb-2 border"></div>
       <div id="end-stars-row" class="text-4xl mb-1.5 tracking-widest">⭐⭐⭐</div>
       <div id="end-emoji" class="text-5xl mb-2">🏰</div>
@@ -304,20 +551,20 @@
 
       <div class="w-full max-w-xs bg-slate-900 border border-slate-700 rounded-2xl p-3 mb-5 grid grid-cols-3 gap-2">
         <div class="bg-slate-800/80 rounded-xl p-2">
-          <div class="text-[9px] text-slate-400 font-bold">室內溫度</div>
+          <div class="text-xs text-slate-400 font-bold">室內溫度</div>
           <div id="stat-final-temp" class="text-sm font-black text-amber-400 mt-0.5">24.0°C</div>
         </div>
         <div class="bg-slate-800/80 rounded-xl p-2">
-          <div class="text-[9px] text-slate-400 font-bold">豪宅改造度</div>
+          <div class="text-xs text-slate-400 font-bold">豪宅改造度</div>
           <div id="stat-luxury-pct" class="text-sm font-black text-emerald-300 mt-0.5">100%</div>
         </div>
         <div class="bg-slate-800/80 rounded-xl p-2">
-          <div class="text-[9px] text-slate-400 font-bold">選錯次數</div>
+          <div class="text-xs text-slate-400 font-bold">選錯次數</div>
           <div id="stat-mistakes" class="text-sm font-black text-rose-400 mt-0.5">0 次</div>
         </div>
       </div>
 
-      <div class="flex items-center gap-2.5 w-full max-w-xs">
+      <div class="bz-end-btns flex items-center gap-2.5 w-full max-w-xs">
         <button id="btn-end-map" type="button" class="flex-1 px-4 py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-xs font-black text-white cursor-pointer">
           🗺️ 關卡地圖
         </button>
@@ -327,12 +574,12 @@
       </div>
     </div>
 
-    <!-- 自訂確認重置彈窗 -->
+    <!-- 自訂確認彈窗（清除進度、關卡中重來共用） -->
     <div id="confirm-modal" class="hidden pointer-events-none absolute inset-0 z-50 bg-slate-950/85 backdrop-blur-sm flex items-center justify-center p-6">
       <div class="bg-slate-900 border-2 border-red-500/70 rounded-3xl p-5 max-w-xs w-full text-center shadow-2xl">
         <div class="text-3xl mb-2">⚠️</div>
-        <h3 class="text-base font-black text-white mb-1">確定要清除所有關卡進度？</h3>
-        <p class="text-xs text-slate-300 mb-4">所有星級評價與已解鎖地圖將重置回第 1 關。</p>
+        <h3 id="confirm-title" class="text-base font-black text-white mb-1">確定要清除所有關卡進度？</h3>
+        <p id="confirm-desc" class="text-xs text-slate-300 mb-4">所有星級評價與已解鎖地圖將重置回第 1 關。</p>
         <div class="grid grid-cols-2 gap-2">
           <button id="btn-cancel-reset" type="button" class="py-2.5 rounded-xl bg-slate-800 border border-slate-600 text-xs font-black text-slate-200 cursor-pointer">取消</button>
           <button id="btn-confirm-reset" type="button" class="py-2.5 rounded-xl bg-red-600 border border-red-400 text-xs font-black text-white cursor-pointer">確定重置</button>
@@ -1325,14 +1572,26 @@
       galeTimer: 0,
       bubble: {
         text: '好冷啊！快點破洞選工具把屋子補好！',
-        mood: 'cold'
+        mood: 'cold',
+        t: 0,          // 出現時間（state.time），約 3 秒後淡出
+        key: '',       // 位置快取鍵
+        toasted: false
       },
       flyingTool: null,
       snowParticles: [],
       fxParticles: [],
       floatingTexts: [],
       time: 0,
-      lastFrameTime: 0
+      lastFrameTime: 0,
+      // 畫面美化用的暫存（都有上限，見 *_MAX）
+      rings: [],
+      drips: [],
+      windParticles: [],
+      streaks: [],
+      lastHandRef: null,   // 上一次畫出的那手牌（換牌才播淡入）
+      pickedOpt: null,     // 剛按下、正在飛出的那張卡
+      starsSeen: 1,
+      lastToastAt: -99
     };
 
     const dom = {
@@ -1371,6 +1630,8 @@
       btnDevUnlock: document.getElementById('btn-dev-unlock'),
       btnResetSave: document.getElementById('btn-reset-save'),
       endOverlay: document.getElementById('end-overlay'),
+      endFx: document.getElementById('end-fx'),
+      wxLayer: document.getElementById('wx-layer'),
       endBadge: document.getElementById('end-badge'),
       endStarsRow: document.getElementById('end-stars-row'),
       endEmoji: document.getElementById('end-emoji'),
@@ -1390,13 +1651,85 @@
       budgetChip: document.getElementById('budget-chip'),
       weatherChip: document.getElementById('weather-chip'),
       ruleChip: document.getElementById('rule-chip'),
-      fallbackContainer: document.getElementById('fallback-container')
+      fallbackContainer: document.getElementById('fallback-container'),
+      briefOverlay: document.getElementById('brief-overlay'),
+      briefKicker: document.getElementById('brief-kicker'),
+      briefTitle: document.getElementById('brief-title'),
+      briefRows: document.getElementById('brief-rows'),
+      btnBriefStart: document.getElementById('btn-brief-start'),
+      btnBriefMap: document.getElementById('btn-brief-map'),
+      confirmTitle: document.getElementById('confirm-title'),
+      confirmDesc: document.getElementById('confirm-desc')
     };
 
     const ctx = dom.canvas.getContext('2d');
     let canvasW = 420;
     let canvasH = 440;
     let toastTimeout = null;
+
+    // ---- 手機觸控 / 節奏常數（集中在這裡，方便調整手感） ----
+    const CHOICE_FLY_SPEED = 4.2;     // 道具飛行進度每秒（1 / 速度 = 飛行秒數，約 0.24 秒）
+    const CHOICE_SETTLE_MS = 450;     // 道具命中後，到可以選下一張卡的等待（連同飛行共約 0.7 秒）
+    const PIN_R = 22;                 // 破洞圖釘半徑（未選中）
+    const PIN_R_SEL = 26;             // 破洞圖釘半徑（選中）
+    const PIN_PAD = 34;               // 圖釘離畫布邊緣的最小距離（避免矮畫布時被擠出邊緣）
+    const PIN_HIT_R = 52;             // 點擊命中半徑，取最近者
+    const PIN_PRESS_SEC = 0.22;       // 按下當下圖釘放大回彈的時間
+    const POINTER_CLICK_GUARD_MS = 600; // pointerdown 處理過後，這段時間內的 click 視為同一次點擊而略過
+    const HAPTIC_OK = 12;             // 選卡成功輕震（毫秒）
+    const HAPTIC_TRAP = [20, 40, 20]; // 陷阱卡震兩下
+    let runToken = 0;                 // 每次開新局／回地圖就 +1，讓舊的延遲回呼失效
+    let uiPaused = false;             // 確認視窗開著時暫停計時
+    let pageHidden = false;           // 分頁在背景時暫停計時與動畫
+    let lastPointerAt = -1e9;         // 最近一次由 pointerdown 處理的畫布點擊時間
+    let pendingConfirm = null;        // 確認視窗按「確定」時要執行的動作
+
+    // ---- 畫面美化：動態偏好、粒子上限、emoji 相容 ----
+    // 使用者設定「減少動態」：關掉抖動／脈動／發抖／呼氣，粒子減量（執行中隨時可切換）
+    let REDUCED = false;
+    try {
+      const rmq = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)');
+      if (rmq) {
+        REDUCED = Boolean(rmq.matches);
+        const onRmq = (e) => { REDUCED = Boolean(e.matches); initSnowParticles(); };
+        if (rmq.addEventListener) rmq.addEventListener('change', onRmq);
+        else if (rmq.addListener) rmq.addListener(onRmq);
+      }
+    } catch (e) {}
+
+    // 各類粒子的數量上限（陣列只會在這些範圍內，不會無限成長）
+    const SNOW_MAX = 110;     // 雪花
+    const WIND_MAX = 40;      // 狂風吹進屋內的雪（物件池，重複使用）
+    const STREAK_MAX = 16;    // 狂風橫向風痕（物件池）
+    const FX_MAX = 150;       // 修補／陷阱的一次性粒子
+    const RING_MAX = 8;       // 修補成功的擴散光環
+    const DRIP_MAX = 6;       // 怕潮修補處的滴水
+    const FLOAT_MAX = 12;     // 飄字
+    const BUBBLE_SHOW_SEC = 2.6;   // 泡泡完整顯示秒數
+    const BUBBLE_FADE_SEC = 0.6;   // 之後淡出秒數（合計約 3 秒）
+    const BUBBLE_MIN_H = 260;      // Canvas 低於這個高度時，泡泡要避開圖釘
+
+    // 新版 emoji（Emoji 12 以後，2019 年起）在舊手機會顯示成方塊「□」：顯示時換成更早期就有的
+    // （道具資料在 CORE 區段不能改，所以統一在「顯示時」用 safeIcon／safeText 換）
+    const SAFE_ICON = {
+      '🪨': '⛰️', '🪵': '🌳', '🪟': '🏠', '🫖': '☕', '🪢': '➰', '🪣': '🚿',
+      '🧊': '❄️', '🟫': '🔶', '🩹': '📎'
+    };
+    const SAFE_ICON_RE = new RegExp(Object.keys(SAFE_ICON).join('|'), 'g');
+    function safeIcon(icon) { return SAFE_ICON[icon] || icon; }
+    function safeText(s) { return String(s == null ? '' : s).replace(SAFE_ICON_RE, (m) => SAFE_ICON[m]); }
+
+    // 小工具：值沒變就不寫 DOM（updateHUD 每幀都會跑）
+    function setCls(el, cls) { if (el.className !== cls) el.className = cls; }
+    function setTxt(el, s) { if (el.textContent !== s) el.textContent = s; }
+    // 彈一下（重新觸發動畫）
+    function popEl(el) {
+      if (!el) return;
+      el.classList.remove('bz-pop');
+      void el.offsetWidth;
+      el.classList.add('bz-pop');
+      setTimeout(() => el.classList.remove('bz-pop'), 600);
+    }
 
     /**
      * ============================================================================
@@ -1411,6 +1744,8 @@
         const chapLevels = LEVELS.filter((l) => l.chapter === chap.id);
         const section = document.createElement('div');
         section.className = 'space-y-2.5';
+        const chapGot = chapLevels.reduce((a, l) => a + (Number(saveData.stars[l.id]) || 0), 0);
+        const chapTot = chapLevels.length * 3;
 
         const colorMap = {
           emerald: 'text-emerald-300 border-emerald-500/40 bg-emerald-950/60',
@@ -1422,9 +1757,10 @@
         section.innerHTML = `
           <div class="flex items-center justify-between px-3 py-1.5 rounded-xl border ${colorMap[chap.color]}">
             <span class="text-xs font-black tracking-wide">${chap.name}</span>
-            <span class="text-[10px] font-bold opacity-90">${chap.badge}</span>
+            <span class="bz-chap-stars" aria-label="本章星數">⭐ ${chapGot} / ${chapTot}</span>
           </div>
-          <div class="px-1 text-[10px] font-bold text-slate-300 leading-snug">📌 ${chap.rule.text}</div>
+          <div class="bz-chap-badge">${chap.badge}</div>
+          <div class="px-1 text-xs font-bold text-slate-300 leading-snug">📌 ${chap.rule.text}</div>
           <div class="grid grid-cols-1 gap-2" id="chap-grid-${chap.id}"></div>
         `;
         dom.mapListContainer.appendChild(section);
@@ -1441,21 +1777,21 @@
           card.disabled = !isUnlocked;
 
           if (!isUnlocked) {
-            card.className = 'w-full rounded-2xl p-3 bg-slate-900/60 border border-slate-800 flex items-center justify-between text-left opacity-50 cursor-not-allowed';
+            card.className = 'bz-locked w-full rounded-2xl p-3 flex items-center justify-between text-left';
             card.innerHTML = `
               <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-base">🔒</div>
+                <div class="bz-lk-ico w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-base">🔒</div>
                 <div>
-                  <div class="text-xs font-black text-slate-400">第 ${lvl.id} 關 • ${lvl.name}</div>
-                  <div class="text-[10px] text-slate-500 mt-0.5">通關上一關解鎖</div>
+                  <div class="bz-lk-name">第 ${lvl.id} 關 • ${lvl.name}</div>
+                  <div class="bz-lk-sub">通關上一關解鎖</div>
                 </div>
               </div>
-              <span class="text-[10px] font-bold text-slate-600">未解鎖</span>
+              <span class="bz-lk-tag">未解鎖</span>
             `;
           } else {
-            card.className = `w-full rounded-2xl p-3 border-2 flex items-center justify-between text-left transition-transform active:scale-98 cursor-pointer ${
+            card.className = `bz-lvl-card w-full rounded-2xl p-3 border-2 flex items-center justify-between text-left transition-transform active:scale-98 cursor-pointer ${
               isCurrent
-                ? 'bg-gradient-to-r from-amber-950/85 to-slate-900 border-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.25)]'
+                ? 'bz-breath bg-gradient-to-r from-amber-950/85 to-slate-900 border-amber-400'
                 : 'bg-slate-900 hover:bg-slate-800 border-slate-700'
             }`;
 
@@ -1473,6 +1809,7 @@
             if (ruleType === 'shortage') tags.push('缺料');
 
             card.innerHTML = `
+              ${earnedStars >= 3 ? '<span class="bz-lvl-crown" title="三星">👑</span>' : ''}
               <div class="flex items-center gap-3 min-w-0 pr-2">
                 <div class="w-10 h-10 rounded-xl ${isCurrent ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 text-amber-300'} font-black text-sm flex items-center justify-center shrink-0">
                   ${lvl.id}
@@ -1482,7 +1819,7 @@
                     <span class="text-sm font-black text-white truncate">${lvl.name}</span>
                     ${isCurrent ? '<span class="text-[9px] px-1.5 py-0.5 rounded bg-amber-400 text-slate-950 font-black shrink-0">最新</span>' : ''}
                   </div>
-                  <div class="text-[10px] text-slate-300 line-clamp-1 mt-0.5">${lvl.desc}</div>
+                  <div class="text-xs text-slate-300 line-clamp-1 mt-0.5">${lvl.desc}</div>
                   <div class="flex flex-wrap gap-1 mt-1">
                     ${tags.map((t) => `<span class="text-[9px] px-1.5 py-0.2 rounded bg-slate-800 text-amber-200 border border-slate-700">${t}</span>`).join('')}
                   </div>
@@ -1490,7 +1827,7 @@
               </div>
               <div class="flex flex-col items-end shrink-0">
                 <div class="text-xs tracking-tighter">${starStr}</div>
-                <span class="mt-1 px-2.5 py-1 rounded-lg text-[10px] font-black ${isCurrent ? 'bg-emerald-500 text-slate-950' : 'bg-slate-700 text-white'}">
+                <span class="mt-1 px-2.5 py-1 rounded-lg text-xs font-black ${isCurrent ? 'bg-emerald-500 text-slate-950' : 'bg-slate-700 text-white'}">
                   ${earnedStars > 0 ? '重玩' : '開始'}
                 </span>
               </div>
@@ -1510,6 +1847,10 @@
 
     function showMapOverlay() {
       state.status = 'map';
+      runToken++;
+      closeConfirm();
+      dom.briefOverlay.hidden = true;
+      hideToast();
       dom.endOverlay.classList.add('hidden', 'pointer-events-none');
       renderLevelMap();
       dom.mapOverlay.classList.remove('hidden', 'pointer-events-none');
@@ -1532,40 +1873,96 @@
       return r.text;
     }
 
+    // HUD 上的規則 chip 只放短名稱（完整說明點 chip 再看）
+    function ruleShortOf(g) {
+      const r = g.rule || { type: 'none' };
+      if (r.type === 'none') return '';
+      if (r.type === 'ice') return '結冰';
+      if (r.type === 'expand') return '破洞擴大';
+      if (r.type === 'shortage') return g.shortageCat ? `缺料：${CATEGORIES[g.shortageCat]}` : '缺料';
+      return '章節規則';
+    }
+
     function renderInfoRow() {
       const lvl = state.currentLevel;
       const wx = levelWeather(lvl);
-      dom.weatherChip.textContent = `${wx.icon} ${weatherText(lvl)}`;
-      const rl = ruleLineOf(state);
-      if (rl) {
-        dom.ruleChip.textContent = `📌 ${rl}`;
+      dom.weatherChip.textContent = `${wx.icon} ${wx.name} ⓘ`;
+      const rs = ruleShortOf(state);
+      if (rs) {
+        dom.ruleChip.textContent = `📌 ${rs} ⓘ`;
         dom.ruleChip.classList.remove('hidden');
       } else {
         dom.ruleChip.classList.add('hidden');
       }
     }
 
-    function announceLevel(lvl) {
+    // 本關簡報：天氣、材料、章節規則、提示都放在一張卡上，按「開始修補」才開始計時
+    function showBriefing(lvl) {
       const wx = levelWeather(lvl);
-      const parts = [weatherText(lvl)];
+      dom.briefKicker.textContent = `第 ${lvl.id} 關・本關簡報`;
+      dom.briefTitle.textContent = lvl.name;
+      const rows = [
+        ['🎯', '目標', `室溫升到 ${lvl.targetTemp.toFixed(0)}°C（起始 ${lvl.startTemp}°C），別讓室溫掉到 0°C。`],
+        [wx.icon, `本關天氣：${wx.name}`, weatherText(lvl)],
+        ['🧰', `材料點數：${lvl.budget} 點`, '每張卡會花掉標示的點數；點數用完還有免費的保底選項。']
+      ];
       const rl = ruleLineOf(state);
-      if (rl) parts.push(rl);
-      if (lvl.hint) parts.push(`💡 ${lvl.hint}`);
-      showToast('info', `${wx.icon} 本關天氣：${wx.name}（材料 ${lvl.budget} 點）`, parts.join('　'), 7000);
+      if (rl) rows.push(['📌', '章節規則', rl]);
+      if (lvl.hint) rows.push(['💡', '提示', lvl.hint]);
+      dom.briefRows.textContent = '';
+      rows.forEach(([ico, label, text]) => {
+        const row = document.createElement('div');
+        row.className = 'bz-brief-row';
+        const i = document.createElement('span');
+        i.className = 'bz-brief-ico';
+        i.textContent = ico;
+        const d = document.createElement('div');
+        const b = document.createElement('b');
+        b.textContent = label;
+        d.appendChild(b);
+        d.appendChild(document.createTextNode(text));
+        row.appendChild(i);
+        row.appendChild(d);
+        dom.briefRows.appendChild(row);
+      });
+      dom.briefOverlay.hidden = false;
+      dom.briefOverlay.scrollTop = 0;
+    }
+
+    // 按下「開始修補」：這時才開始計時（簡報期間 status = 'briefing'，gameLoop 不會推進溫度）
+    function beginPlaying() {
+      if (state.status !== 'briefing') return;
+      dom.briefOverlay.hidden = true;
+      state.status = 'playing';
+      state.lastFrameTime = 0;
+      state.bubble.t = state.time; // 簡報期間不算，泡泡從開始修補才計 3 秒
+      state.bubble.toasted = false;
+      renderDecisionPanel();
+      updateHUD();
     }
 
     function startLevel(levelId) {
       const lvl = LEVELS.find((l) => l.id === levelId) || LEVELS[0];
       state.currentLevel = lvl;
-      state.status = 'playing';
+      state.status = 'briefing'; // 先看簡報，按「開始修補」才變 playing
+      runToken++;
+      uiPaused = false;
+      state.pinPress = null;
       initLevel(state, lvl, Math.random); // 核心規則：溫度、點數、天氣、各破洞狀態都在這裡重置
       state.warnedBudget = false;
 
       state.flyingTool = null;
       state.fxParticles = [];
       state.floatingTexts = [];
+      state.rings = [];
+      state.drips = [];
+      state.lastHandRef = null;
+      state.pickedOpt = null;
+      state.lastToastAt = -99;
+      state.bubble.key = '';
 
       state.selectedId = lvl.hotspots[0].id;
+      state.starsSeen = getLuxuryProgress().stars;
 
       dom.hudLevelBadge.textContent = `第 ${lvl.id} 關`;
       dom.hudLevelName.textContent = lvl.name;
@@ -1590,7 +1987,7 @@
       renderDecisionPanel();
       updateHUD();
       renderCanvasFrame();
-      announceLevel(lvl);
+      showBriefing(lvl);
     }
 
     // 豪華改造度與星等 (計算在核心規則 calcProgress)
@@ -1614,17 +2011,17 @@
 
       const rate = computeTempDeltaPerSec();
       if (rate >= 0.35) {
-        dom.leakBadge.textContent = '🔥 溫暖升溫中';
-        dom.leakBadge.className = 'text-[10px] font-black px-1.5 py-0.5 rounded-md bg-emerald-950 text-emerald-300 border border-emerald-400';
+        dom.leakBadge.textContent = '🔥 升溫中';
+        dom.leakBadge.className = 'text-xs font-black px-1.5 py-0.5 rounded-md bg-emerald-950 text-emerald-300 border border-emerald-400';
       } else if (rate >= -0.25) {
-        dom.leakBadge.textContent = '🌤️ 溫度漸穩';
-        dom.leakBadge.className = 'text-[10px] font-black px-1.5 py-0.5 rounded-md bg-amber-950 text-amber-300 border border-amber-400';
+        dom.leakBadge.textContent = '🌤️ 漸穩';
+        dom.leakBadge.className = 'text-xs font-black px-1.5 py-0.5 rounded-md bg-amber-950 text-amber-300 border border-amber-400';
       } else if (rate > -1.2) {
-        dom.leakBadge.textContent = '❄️ 冷風滲入中';
-        dom.leakBadge.className = 'text-[10px] font-black px-1.5 py-0.5 rounded-md bg-orange-950 text-orange-300 border border-orange-500';
+        dom.leakBadge.textContent = '❄️ 漏風中';
+        dom.leakBadge.className = 'text-xs font-black px-1.5 py-0.5 rounded-md bg-orange-950 text-orange-300 border border-orange-500';
       } else {
-        dom.leakBadge.textContent = '🚨 寒流狂灌！';
-        dom.leakBadge.className = 'text-[10px] font-black px-1.5 py-0.5 rounded-md bg-red-950 text-red-300 border border-red-500 animate-pulse';
+        dom.leakBadge.textContent = '🚨 寒流狂灌';
+        dom.leakBadge.className = 'text-xs font-black px-1.5 py-0.5 rounded-md bg-red-950 text-red-300 border border-red-500 animate-pulse';
       }
 
       const pct = (clampedTemp / state.maxTemp) * 100;
@@ -1636,27 +2033,38 @@
         dom.frostLayer.style.opacity = '0';
       }
 
-      if (clampedTemp <= 5.5) {
-        dom.tempEmoji.textContent = '🥶';
-        dom.tempValue.className = 'text-sm font-black text-red-400 tabular-nums animate-pulse';
-        dom.tempBar.className = 'h-full rounded-full transition-all duration-100 bg-gradient-to-r from-red-600 to-rose-400';
-      } else if (clampedTemp < state.currentLevel.targetTemp * 0.72) {
-        dom.tempEmoji.textContent = '😨';
-        dom.tempValue.className = 'text-sm font-black text-cyan-300 tabular-nums';
-        dom.tempBar.className = 'h-full rounded-full transition-all duration-100 bg-gradient-to-r from-cyan-500 to-sky-300';
-      } else if (clampedTemp < state.currentLevel.targetTemp) {
-        dom.tempEmoji.textContent = '😊';
-        dom.tempValue.className = 'text-sm font-black text-amber-300 tabular-nums';
-        dom.tempBar.className = 'h-full rounded-full transition-all duration-100 bg-gradient-to-r from-amber-500 to-yellow-300';
+      // 溫度：<5°C 危險（變紅＋脈動）、接近目標時溫度條有光澤流過
+      const tgt = state.currentLevel.targetTemp;
+      let tEmoji, tValCls, tBarCls;
+      const BAR = 'h-full rounded-full transition-all duration-100 bg-gradient-to-r ';
+      if (clampedTemp < 5.0) {
+        tEmoji = '🥶';
+        tValCls = 'text-sm font-black tabular-nums bz-danger-val';
+        tBarCls = BAR + 'from-red-600 to-rose-400 bz-danger-bar';
+      } else if (clampedTemp < tgt * 0.72) {
+        tEmoji = '😨';
+        tValCls = 'text-sm font-black text-cyan-300 tabular-nums';
+        tBarCls = BAR + 'from-cyan-500 to-sky-300';
+      } else if (clampedTemp < tgt) {
+        tEmoji = '😊';
+        tValCls = 'text-sm font-black text-amber-300 tabular-nums';
+        tBarCls = BAR + 'from-amber-500 to-yellow-300';
       } else {
-        dom.tempEmoji.textContent = '🥰';
-        dom.tempValue.className = 'text-sm font-black text-emerald-300 tabular-nums';
-        dom.tempBar.className = 'h-full rounded-full transition-all duration-100 bg-gradient-to-r from-emerald-500 to-lime-300';
+        tEmoji = '🥰';
+        tValCls = 'text-sm font-black text-emerald-300 tabular-nums';
+        tBarCls = BAR + 'from-emerald-500 to-lime-300';
       }
+      if (clampedTemp >= 5.0 && clampedTemp >= tgt * 0.85) tBarCls += ' bz-shine';
+      if (dom.tempEmoji.textContent !== tEmoji) {
+        dom.tempEmoji.textContent = tEmoji;
+        if (state.status === 'playing' || state.status === 'animating') popEl(dom.tempEmoji);
+      }
+      setCls(dom.tempValue, tValCls);
+      setCls(dom.tempBar, tBarCls);
 
       // 材料點數
       dom.budgetChip.textContent = `🧰 材料 ${state.budget} / ${state.currentLevel.budget}`;
-      dom.budgetChip.className = `shrink-0 px-2 py-0.5 rounded-md text-[10px] font-black tabular-nums border ${
+      dom.budgetChip.className = `bz-chip tabular-nums border ${
         state.budget <= 0
           ? 'bg-red-950 text-red-300 border-red-500'
           : state.budget <= 3
@@ -1669,34 +2077,53 @@
       dom.luxuryBar.style.width = `${lux.pct}%`;
       dom.repairCountText.textContent = `${lux.repairedCount} / ${lux.total} 處`;
       dom.luxuryStarsPreview.textContent = [1, 2, 3].map((n) => (n <= lux.stars ? '⭐' : '☆')).join('');
+      if (lux.stars > state.starsSeen && (state.status === 'playing' || state.status === 'animating')) popEl(dom.luxuryStarsPreview);
+      state.starsSeen = lux.stars;
 
-      // 狂風預警條
+      // 狂風預警條（標籤只留兩個字，360 寬也不會被截斷；預警 3 秒倒數變色跳動）
       const hudWeather = levelWeather(state.currentLevel);
+      const GH = 'flex-1 border rounded-xl px-2 py-1 flex items-center justify-between gap-1 min-w-0 ';
+      const GT = 'text-xs font-black px-1.5 py-0.5 rounded tabular-nums shrink-0 ';
       if (hudWeather.id !== 'gale') {
-        dom.galeHud.className = 'flex-1 bg-slate-900 border border-slate-700 rounded-xl px-2 py-1 flex items-center justify-between gap-1 min-w-0';
-        dom.galeIcon.textContent = hudWeather.icon;
-        dom.galeLabel.textContent = `本關天氣：${hudWeather.name}`;
-        dom.galeLabel.className = 'text-[10px] font-black text-slate-300 truncate';
-        dom.galeTimer.textContent = '無狂風';
+        setCls(dom.galeHud, GH + 'bg-slate-900 border-slate-700');
+        setTxt(dom.galeIcon, hudWeather.icon);
+        setTxt(dom.galeLabel, hudWeather.name);
+        setCls(dom.galeLabel, 'text-xs font-black text-slate-300 truncate');
+        setTxt(dom.galeTimer, '無狂風');
+        setCls(dom.galeTimer, GT + 'bg-slate-800 text-cyan-300');
       } else if (state.galePhase === 'calm') {
-        dom.galeHud.className = 'flex-1 bg-slate-900 border border-slate-700 rounded-xl px-2 py-1 flex items-center justify-between gap-1 min-w-0';
-        dom.galeIcon.textContent = '🌨️';
-        dom.galeLabel.textContent = '下波狂風';
-        dom.galeLabel.className = 'text-[10px] font-black text-cyan-200 truncate';
-        dom.galeTimer.textContent = `${Math.ceil(state.galeTimer)}s`;
+        setCls(dom.galeHud, GH + 'bg-slate-900 border-slate-700');
+        setTxt(dom.galeIcon, '🌨️');
+        setTxt(dom.galeLabel, '下波');
+        setCls(dom.galeLabel, 'text-xs font-black text-cyan-200 truncate');
+        setTxt(dom.galeTimer, `${Math.ceil(state.galeTimer)}s`);
+        setCls(dom.galeTimer, GT + 'bg-slate-800 text-cyan-300');
       } else if (state.galePhase === 'warning') {
-        dom.galeHud.className = 'flex-1 bg-amber-950/90 border border-amber-400 rounded-xl px-2 py-1 flex items-center justify-between gap-1 min-w-0 animate-pulse';
-        dom.galeIcon.textContent = '⚠️';
-        dom.galeLabel.textContent = '狂風要吹飛不抗風的修補！';
-        dom.galeLabel.className = 'text-[10px] font-black text-amber-200 truncate';
-        dom.galeTimer.textContent = `${state.galeTimer.toFixed(1)}s`;
+        setCls(dom.galeHud, GH + 'bg-amber-950/90 border-amber-400');
+        setTxt(dom.galeIcon, '⚠️');
+        setTxt(dom.galeLabel, '預警');
+        setCls(dom.galeLabel, 'text-xs font-black text-amber-200 truncate');
+        setTxt(dom.galeTimer, `${Math.max(0, state.galeTimer).toFixed(1)}s`);
+        setCls(dom.galeTimer, GT + 'bz-gt-warn');
       } else {
-        dom.galeHud.className = 'flex-1 bg-red-950/95 border border-red-400 rounded-xl px-2 py-1 flex items-center justify-between gap-1 min-w-0 animate-pulse';
-        dom.galeIcon.textContent = '🌪️';
-        dom.galeLabel.textContent = '狂風猛襲中！';
-        dom.galeLabel.className = 'text-[10px] font-black text-red-200 truncate';
-        dom.galeTimer.textContent = `${state.galeTimer.toFixed(1)}s`;
+        setCls(dom.galeHud, GH + 'bg-red-950/95 border-red-400');
+        setTxt(dom.galeIcon, '🌪️');
+        setTxt(dom.galeLabel, '狂風');
+        setCls(dom.galeLabel, 'text-xs font-black text-red-200 truncate');
+        setTxt(dom.galeTimer, `${Math.max(0, state.galeTimer).toFixed(1)}s`);
+        setCls(dom.galeTimer, GT + 'bz-gt-gale');
       }
+
+      // 天氣覆蓋層：濕雪偏灰藍、酷寒冷暈、狂風預警邊緣閃光
+      let wxCls = 'bz-wx';
+      const wid = state.currentLevel.weather;
+      if (wid === 'wet') wxCls += ' bz-wx-wet';
+      else if (wid === 'cold') wxCls += ' bz-wx-cold';
+      if (state.status !== 'victory' && state.status !== 'gameover') {
+        if (state.galePhase === 'warning') wxCls += ' bz-wx-warn';
+        else if (state.galePhase === 'gale') wxCls += ' bz-wx-gale';
+      }
+      setCls(dom.wxLayer, wxCls);
     }
 
     function selectHotspot(hotspotId) {
@@ -1707,7 +2134,8 @@
 
       const def = HOTSPOT_LIBRARY[hotspotId];
       if (def) {
-        addFloatingText(def.pos.x * canvasW, def.pos.y * canvasH - 18, `👆 ${def.name}`, '#fde047');
+        const pp = pinPos(def);
+        addFloatingText(pp.x, pp.y - 18, `👆 ${def.name}`, '#fde047');
       }
       renderDecisionPanel();
     }
@@ -1715,7 +2143,9 @@
     function renderDecisionPanel() {
       const hotspots = state.currentLevel.hotspots;
 
-      // 1. 頂部快捷破損目標分頁
+      // 1. 頂部快捷破損目標分頁（重畫前記住捲動位置，畫完再把選中的那顆捲到中間）
+      const prevScroll = dom.hotspotTabs.scrollLeft;
+      let selectedTab = null;
       dom.hotspotTabs.innerHTML = '';
       hotspots.forEach((hSpec) => {
         const def = HOTSPOT_LIBRARY[hSpec.id];
@@ -1727,22 +2157,27 @@
         tab.type = 'button';
         tab.addEventListener('click', () => selectHotspot(hSpec.id));
 
-        let statusIcon = st.iced ? '🧊' : '❗';
+        let statusIcon = st.iced ? '❄️' : '❗';
         if (st.tier === 'luxury') statusIcon = '👑';
-        else if (st.tier === 'makeshift') statusIcon = '🩹';
+        else if (st.tier === 'makeshift') statusIcon = '📎';
 
-        tab.className = `shrink-0 px-2 py-1 rounded-lg text-[10px] font-black border transition-all cursor-pointer flex items-center gap-1 ${
+        tab.className = `bz-tab border transition-all cursor-pointer ${
           isSelected
-            ? 'bg-amber-400 text-slate-950 border-yellow-100 shadow-md scale-105'
+            ? 'bg-amber-400 text-slate-950 border-yellow-100 bz-tab-on'
             : st.tier === 'luxury'
             ? 'bg-emerald-950/80 text-emerald-300 border-emerald-600/70'
             : st.tier === 'makeshift'
             ? 'bg-sky-950/80 text-sky-200 border-sky-500/70'
             : 'bg-slate-800 text-slate-200 border-slate-600 hover:border-amber-400'
         }`;
+        tab.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
         tab.innerHTML = `<span>${statusIcon}</span><span>${def.name}</span>`;
         dom.hotspotTabs.appendChild(tab);
+        if (isSelected) selectedTab = tab;
       });
+      dom.hotspotTabs.scrollLeft = prevScroll;
+      centerSelectedTab(selectedTab);
+      updateTabFade();
 
       // 2. 當前選中破損描述
       const curId = state.selectedId;
@@ -1752,29 +2187,65 @@
 
       if (curState.iced) {
         dom.selectedHotspotDesc.textContent = curDef.icedDesc;
-        dom.selectedHotspotLeak.textContent = '🧊 需先除冰';
-        dom.selectedHotspotLeak.className = 'text-[10px] font-black px-1.5 py-0.5 rounded bg-cyan-950 text-cyan-200 border border-cyan-400 shrink-0 animate-pulse';
+        dom.selectedHotspotLeak.textContent = '❄️ 需先除冰';
+        dom.selectedHotspotLeak.className = 'text-xs font-black px-1.5 py-0.5 rounded bg-cyan-950 text-cyan-200 border border-cyan-400 shrink-0 animate-pulse';
       } else if (curState.tier === 'luxury') {
         dom.selectedHotspotDesc.textContent = curDef.luxuryDesc;
         dom.selectedHotspotLeak.textContent = '👑 豪宅級完成';
-        dom.selectedHotspotLeak.className = 'text-[10px] font-black px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-500 shrink-0';
+        dom.selectedHotspotLeak.className = 'text-xs font-black px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-500 shrink-0';
       } else if (curState.tier === 'makeshift') {
         dom.selectedHotspotDesc.textContent = curDef.makeshiftDesc;
-        dom.selectedHotspotLeak.textContent = '🩹 可升級豪華版';
-        dom.selectedHotspotLeak.className = 'text-[10px] font-black px-1.5 py-0.5 rounded bg-sky-950 text-sky-200 border border-sky-400 shrink-0';
+        dom.selectedHotspotLeak.textContent = '📎 可升級豪華版';
+        dom.selectedHotspotLeak.className = 'text-xs font-black px-1.5 py-0.5 rounded bg-sky-950 text-sky-200 border border-sky-400 shrink-0';
       } else {
         dom.selectedHotspotDesc.textContent = curDef.brokenDesc;
         const snowIcons = '❄️'.repeat(curDef.coldLevel || 1);
         dom.selectedHotspotLeak.textContent = `${snowIcons} 漏風中`;
-        dom.selectedHotspotLeak.className = 'text-[10px] font-black px-1.5 py-0.5 rounded bg-red-950 text-red-300 border border-red-500/70 shrink-0';
+        dom.selectedHotspotLeak.className = 'text-xs font-black px-1.5 py-0.5 rounded bg-red-950 text-red-300 border border-red-500/70 shrink-0';
       }
 
       // 3. 道具卡片：每個破洞第一次打開時抽 3 張，之後維持同一組 (避免重開刷牌)
       const stage1 = Boolean(curState.iced);
       const hand = ensureHand(state, curId);
       dom.cardsContainer.innerHTML = '';
-      hand.forEach((opt) => dom.cardsContainer.appendChild(buildToolCard(opt, curId, curState, stage1)));
+      // 新的一手牌出現（換破洞／除冰後換階段）：三張依序淡入上浮，總長 ≤250ms，不影響點擊
+      const isNewHand = hand !== state.lastHandRef;
+      state.lastHandRef = hand;
+      hand.forEach((opt, i) => {
+        const card = buildToolCard(opt, curId, curState, stage1);
+        if (isNewHand) {
+          card.classList.add('bz-card-in');
+          card.style.animationDelay = `${i * 40}ms`;
+        }
+        dom.cardsContainer.appendChild(card);
+      });
       renderFallbackButton(curId, curState, stage1);
+    }
+
+    // 左右邊緣淡出遮罩：左邊／右邊還有東西可捲時才淡出
+    function updateTabFade() {
+      const box = dom.hotspotTabs;
+      const l = box.scrollLeft > 2 ? 22 : 0;
+      const r = box.scrollLeft + box.clientWidth < box.scrollWidth - 2 ? 22 : 0;
+      box.style.setProperty('--fade-l', `${l}px`);
+      box.style.setProperty('--fade-r', `${r}px`);
+    }
+
+    // 把選中的按鈕捲到可見處（置中）；用容器自己的 scrollBy，不會牽動整個頁面
+    function centerSelectedTab(tab) {
+      if (!tab) return;
+      requestAnimationFrame(() => {
+        const box = dom.hotspotTabs;
+        if (!tab.isConnected || !box.clientWidth) return;
+        const bRect = box.getBoundingClientRect();
+        const tRect = tab.getBoundingClientRect();
+        const delta = tRect.left + tRect.width / 2 - (bRect.left + bRect.width / 2);
+        if (Math.abs(delta) > 1) {
+          if (box.scrollBy) box.scrollBy({ left: delta, behavior: 'smooth' });
+          else box.scrollLeft += delta;
+        }
+        updateTabFade();
+      });
     }
 
     const BLOCK_TEXT = { budget: '材料不足', oos: '缺貨', maxed: '已豪華改造', used: '已使用' };
@@ -1791,64 +2262,72 @@
       return `${v >= 0 ? '+' : ''}${v.toFixed(1)}`;
     }
 
-    // 組一張道具卡：標籤、當前天氣下的實際數值 (有變動就標色)、成本、不可選原因
+    // 組一張道具卡。資訊層次：效果數值最大 → 名稱 → 次要數值 → 特性標籤；
+    // 當前天氣下的警示（會被吹掉／怕潮打折）統一用紅色警示標籤＋右上角 ⚠；成本在左上角，不壓圖示；
+    // 三張卡底色一致（陷阱不靠顏色露餡，差異只在標籤與數值）
     function buildToolCard(opt, hsId, st, stage1) {
       const eff = effOf(state, hsId, opt, stage1);
       const reason = state.status !== 'playing' ? 'busy' : blockReason(state, hsId, opt);
       const card = document.createElement('button');
       card.type = 'button';
       card.disabled = Boolean(reason);
-      card.className = 'tool-card rounded-2xl px-1 pt-1.5 pb-1 flex flex-col items-center justify-start text-center cursor-pointer';
+      card.className = 'tool-card';
       card.title = opt.say || '';
+      if (state.pickedOpt === opt) card.classList.add('bz-card-gone');
 
-      // 標籤
+      // 標籤：[樣式, 文字, 是否警示]
       const chips = [];
+      let warn = false;
       if (opt.tier === 'trap') {
-        chips.push([CHIP_WARN, opt.tag || '陷阱']);
+        chips.push(['bg-amber-200 text-amber-900', opt.tag || '特殊', false]);
       } else {
-        (opt.traits || []).forEach((t) => {
-          let cls = TRAIT_CHIP_CLASS[t] || 'bg-amber-200 text-amber-900';
-          if (t === 'damp' && eff.dampHit) cls = CHIP_WARN;
-          if (t === 'galefear' && eff.blown) cls = CHIP_WARN;
-          chips.push([cls, TRAIT_INFO[t] ? TRAIT_INFO[t].label : t]);
+        (opt.traits || []).forEach((tr) => {
+          let cls = TRAIT_CHIP_CLASS[tr] || 'bg-amber-200 text-amber-900';
+          let w = false;
+          if (tr === 'damp' && eff.dampHit) w = true;
+          if (tr === 'galefear' && eff.blown) w = true;
+          chips.push([cls, TRAIT_INFO[tr] ? TRAIT_INFO[tr].label : tr, w]);
         });
-        if (eff.blown && !hasTrait(opt, 'galefear')) chips.push([CHIP_WARN, '會被吹掉']);
-        if (stage1 && !hasTrait(opt, 'dry')) chips.push(['bg-amber-300 text-amber-950', '留潮氣']);
-        if (opt.cost <= 1 && opt.cost > 0 && chips.length < 3) chips.push(['bg-lime-200 text-lime-900', '便宜']);
+        if (eff.blown && !hasTrait(opt, 'galefear')) chips.push(['', '會被吹掉', true]);
+        if (stage1 && !hasTrait(opt, 'dry')) chips.push(['bg-amber-300 text-amber-950', '留潮氣', false]);
+        if (opt.cost <= 1 && opt.cost > 0 && chips.length < 2) chips.push(['bg-lime-200 text-lime-900', '便宜', false]);
       }
-      const chipHtml = chips
-        .map(([cls, txt]) => `<span class="px-1 rounded-full text-[9px] font-black leading-4 ${cls}">${txt}</span>`)
+      chips.forEach((c) => { if (c[2]) warn = true; });
+      const chipHtml = chips.slice(0, 3)
+        .map(([cls, txt, w]) => `<span class="bz-card-chip ${w ? 'bz-chip-warn' : cls}">${txt}</span>`)
         .join('');
 
-      // 實際效果數值
-      let stats;
-      if (opt.tier === 'trap') {
-        stats = `<span class="text-red-700">${fmtSigned(opt.delta)}°C・失誤</span>`;
-      } else if (stage1) {
-        stats = `<span class="text-slate-900">${fmtSigned(eff.delta)}°C</span>`;
+      // 數值：最醒目的是這張卡「現在」的升溫量
+      let main;
+      let sub = '';
+      if (opt.tier === 'trap' || stage1) {
+        main = `<span class="bz-big">${fmtSigned(opt.tier === 'trap' ? opt.delta : eff.delta)}°C</span>`;
       } else {
-        const dCls = eff.dampHit ? 'text-red-700' : 'text-slate-900';
-        const arrow = eff.dampHit ? '▼' : '';
-        stats = `<span class="${dCls}">${arrow}${fmtSigned(eff.delta)}°C</span> <span class="${eff.dampHit ? 'text-red-700' : 'text-slate-700'}">封${Math.round(eff.seal * 100)}%</span>`;
+        main = `<span class="bz-big ${eff.dampHit ? 'bz-bad' : ''}">${eff.dampHit ? '▼' : ''}${fmtSigned(eff.delta)}°C</span>` +
+          `<span class="bz-seal ${eff.dampHit ? 'bz-bad' : ''}">封${Math.round(eff.seal * 100)}%</span>`;
         if (eff.heat > 0) {
-          const hCls = eff.warmUp ? 'text-emerald-700' : eff.dampHit ? 'text-red-700' : 'text-slate-700';
-          stats += `<br><span class="${hCls}">${eff.warmUp ? '▲' : eff.dampHit ? '▼' : ''}暖 +${eff.heat.toFixed(2)}/s</span>`;
+          const hCls = eff.warmUp ? 'bz-up' : eff.dampHit ? 'bz-bad' : '';
+          sub = `<div class="bz-card-sub ${hCls}">${eff.warmUp ? '▲' : eff.dampHit ? '▼' : ''}暖 +${eff.heat.toFixed(2)}/s</div>`;
         }
       }
 
       const costText = opt.cost > 0 ? `🧰${opt.cost}` : '免費';
       const maxed = !stage1 && st.rank >= 2;
-      const icon = maxed && opt.tier === 'luxury' ? '👑' : opt.icon;
+      const icon = safeIcon(maxed && opt.tier === 'luxury' ? '👑' : opt.icon);
       const reasonLine = BLOCK_TEXT[reason]
-        ? `<div class="text-[10px] font-black text-red-700 leading-tight mt-0.5 pointer-events-none">${BLOCK_TEXT[reason]}</div>`
+        ? `<div class="bz-card-reason">${BLOCK_TEXT[reason]}</div>`
         : '';
 
       card.innerHTML = `
-        <div class="absolute top-0.5 right-0.5 text-[9px] font-black px-1 rounded bg-amber-900 text-amber-100 pointer-events-none">${costText}</div>
-        <div class="w-10 h-10 rounded-xl bg-amber-100 border-2 border-amber-400 flex items-center justify-center text-2xl shadow-inner mb-0.5 pointer-events-none">${icon}</div>
-        <div class="text-[11px] font-black text-slate-900 leading-tight line-clamp-2 pointer-events-none">${opt.name}</div>
-        <div class="flex flex-wrap justify-center gap-0.5 mt-0.5 pointer-events-none">${chipHtml}</div>
-        <div class="text-[9.5px] font-black leading-tight mt-0.5 pointer-events-none">${stats}</div>
+        <div class="bz-card-top">
+          <div class="bz-card-cost">${costText}</div>
+          <div class="bz-card-icon">${icon}</div>
+          <div class="bz-card-warnico">${warn ? '⚠' : ''}</div>
+        </div>
+        <div class="bz-card-name">${opt.name}</div>
+        <div class="bz-card-main">${main}</div>
+        ${sub}
+        <div class="bz-card-chips">${chipHtml}</div>
         ${reasonLine}
       `;
 
@@ -1865,10 +2344,10 @@
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.disabled = state.status !== 'playing';
-      btn.className = 'w-full rounded-xl border border-dashed border-slate-500 bg-slate-900 text-slate-200 text-[10px] font-black py-1 cursor-pointer disabled:opacity-40';
+      btn.className = 'bz-fallback-btn';
       btn.textContent = stage1
         ? '🧤 徒手摳冰：免費保底（只能鬆動冰面）'
-        : '🧤 就地取材：免費保底（效果很小，點數用完時的出路）';
+        : '🧤 就地取材：免費保底（效果很小）';
       btn.addEventListener('click', (e) => handleChoiceClick(it, e.currentTarget));
       box.appendChild(btn);
     }
@@ -1894,18 +2373,21 @@
         return;
       }
 
-      state.status = 'animating';
-      renderDecisionPanel();
-
+      // 先量卡片位置再重畫面板（重畫會把這張卡從 DOM 移掉，量出來會是 0）
       const cardRect = cardEl.getBoundingClientRect();
       const canvasRect = dom.canvas.getBoundingClientRect();
+      state.status = 'animating';
+      state.pickedOpt = option; // 重畫後這張卡呈「已飛出」的淡出樣子
+      renderDecisionPanel();
+
       const startX = cardRect.left + cardRect.width / 2 - canvasRect.left;
       const startY = cardRect.top + cardRect.height / 2 - canvasRect.top;
-      const targetX = def.pos.x * canvasW;
-      const targetY = def.pos.y * canvasH;
+      const tp = pinPos(def);
+      const targetX = tp.x;
+      const targetY = tp.y;
 
       state.flyingTool = {
-        icon: option.icon,
+        icon: safeIcon(option.icon),
         startX,
         startY,
         targetX,
@@ -1918,8 +2400,11 @@
 
     function resolveChoiceImpact(hotspotId, option) {
       const def = HOTSPOT_LIBRARY[hotspotId];
-      const tx = def.pos.x * canvasW;
-      const ty = def.pos.y * canvasH;
+      const pp = pinPos(def);
+      const tx = pp.x;
+      const ty = pp.y;
+      const token = runToken; // 延遲回呼執行時若已換局，就不要動狀態
+      state.pickedOpt = null;
 
       // 核心規則：扣點數、改溫度、改破洞狀態
       const res = applyChoice(state, hotspotId, option);
@@ -1928,17 +2413,20 @@
         renderDecisionPanel();
         return;
       }
+      haptic(res.kind === 'trap' ? HAPTIC_TRAP : HAPTIC_OK);
       const dStr = `${fmtSigned(res.delta)}°C`;
 
       // 情況 A：選中陷阱！
       if (res.kind === 'trap') {
         sound.playFail();
         triggerScreenShake();
-        triggerScreenFlash('bg-cyan-400/45');
+        triggerScreenFlash('bz-fl-red');
         showToast('error', `${option.icon} ${option.fail}`, `室溫 ${dStr}，失誤 +1`);
         setBubble(option.say || '糟糕！選錯工具啦！', 'pain');
         addFloatingText(tx, ty - 18, dStr, '#f87171');
         spawnFxParticles(tx, ty, option.fx || 'ice_blast');
+        spawnFxParticles(tx, ty, 'cold_wind');
+        addRing(tx, ty, '#f87171');
       }
       // 情況 B：結冰第一階段 -> 除冰成功
       else if (res.kind === 'deice') {
@@ -1953,8 +2441,9 @@
         showToast('info', `${option.icon} 「${option.name}」除冰完成！`,
           `${option.say}${dry ? '' : '（破洞濕濕的，怕潮的材料會打折）'}`);
         setBubble(option.say || '冰塊清除了！快繼續把這裡修好！', 'happy');
-        addFloatingText(tx, ty - 18, `🧊 除冰完成 ${dStr}`, '#38bdf8');
-        spawnFxParticles(tx, ty, 'sparkles');
+        addFloatingText(tx, ty - 18, `❄️ 除冰完成 ${dStr}`, '#38bdf8');
+        spawnFxParticles(tx, ty, 'sparkles', 8);
+        addRing(tx, ty, '#7dd3fc');
       }
       // 情況 C / D：修補 (湊合或豪華)
       else {
@@ -1974,9 +2463,14 @@
           `${option.say}（${dStr}${notes.length ? '，' + notes.join('、') : ''}）`);
         setBubble(option.say || (isLux ? '太豪華了！屋子變得又暖又漂亮！' : '勉強補上了！'), isLux ? 'happy' : 'cold');
         addFloatingText(tx, ty - 18, `${isLux ? '👑 ' : ''}${dStr}`, isLux ? '#fde047' : '#7dd3fc');
-        spawnFxParticles(tx, ty, 'sparkles');
-        autoSelectNextBroken();
+        spawnFxParticles(tx, ty, 'sparkles', isLux ? 16 : 10);
+        addRing(tx, ty, isLux ? '#fde047' : '#7dd3fc');
+        if (isLux) addRing(tx, ty, '#fef3c7');
       }
+
+      // 不論成功、除冰或陷阱，都把游標移到下一個還沒修好的破洞（自己還沒修好就留在原處）
+      autoSelectNextBroken(hotspotId);
+      renderDecisionPanel();
 
       // 依據剩餘破損調整風聲大小
       const openCount = state.currentLevel.hotspots.filter((h) => state.hotspotStates[h.id].tier === 'broken').length;
@@ -1986,13 +2480,14 @@
       if (state.budget <= 0 && openCount > 0 && !state.warnedBudget && res.kind !== 'trap') {
         state.warnedBudget = true;
         setTimeout(() => {
-          if (state.status === 'playing') showToast('info', '🧰 材料點數用完了！', '剩下的破洞可以用免費的「就地取材」先頂著，溫度才撐得住。', 4200);
+          if (token === runToken && state.status === 'playing') showToast('info', '🧰 材料點數用完了！', '剩下的破洞可以用免費的「就地取材」先頂著，溫度才撐得住。', 4200);
         }, 700);
       }
 
       updateHUD();
 
       setTimeout(() => {
+        if (token !== runToken) return; // 期間已重來或回地圖
         const verdict = endCheck(state);
         if (verdict === 'lose') {
           finishLevel(false);
@@ -2004,46 +2499,68 @@
         }
         state.status = 'playing';
         renderDecisionPanel();
-      }, 620);
+      }, CHOICE_SETTLE_MS);
     }
 
-    // 自動將遊標移往下一個尚未豪華升級的破洞，流暢度滿分！
-    function autoSelectNextBroken() {
-      const brokenNext = state.currentLevel.hotspots.find(
-        (h) => state.hotspotStates[h.id].tier === 'broken' || state.hotspotStates[h.id].iced
-      );
+    // 輕震動：遵守音效開關（關音效時也不震），裝置不支援就略過
+    function haptic(pattern) {
+      try {
+        if (!sound.enabled) return;
+        if (navigator.vibrate) navigator.vibrate(pattern);
+      } catch (e) {}
+    }
+
+    // 自動將遊標移往下一個尚未修好的破洞：fromId 自己還沒修好（除冰後、陷阱後）就留在原處，
+    // 否則從 fromId 往後找（繞一圈），先找破損／結冰的，再找只有湊合修補的
+    function autoSelectNextBroken(fromId) {
+      const list = state.currentLevel.hotspots;
+      const needsFix = (h) => state.hotspotStates[h.id].tier === 'broken' || state.hotspotStates[h.id].iced;
+      const idx = list.findIndex((h) => h.id === fromId);
+      if (idx >= 0 && needsFix(list[idx])) {
+        state.selectedId = fromId;
+        return;
+      }
+      const ordered = idx >= 0 ? list.slice(idx + 1).concat(list.slice(0, idx + 1)) : list;
+      const brokenNext = ordered.find(needsFix);
       if (brokenNext) {
         state.selectedId = brokenNext.id;
         return;
       }
-      const makeshiftNext = state.currentLevel.hotspots.find((h) => state.hotspotStates[h.id].tier === 'makeshift');
+      const makeshiftNext = ordered.find((h) => state.hotspotStates[h.id].tier === 'makeshift');
       if (makeshiftNext) {
         state.selectedId = makeshiftNext.id;
       }
     }
 
+    // 提示：新訊息直接取代舊的；點一下可關掉。
+    // 目前選中的破洞在畫布下半部 → toast 顯示在畫布上緣，反之顯示在下緣（不蓋住要修的洞）
     function showToast(type, title, desc, duration) {
       if (toastTimeout) clearTimeout(toastTimeout);
-      dom.feedbackTitle.textContent = title;
-      dom.feedbackDesc.textContent = desc;
+      dom.feedbackTitle.textContent = safeText(title);
+      dom.feedbackDesc.textContent = safeText(desc);
+      dom.feedbackDesc.style.display = desc ? '' : 'none';
 
-      if (type === 'success') {
-        dom.feedbackToastInner.className = 'px-3.5 py-2 rounded-2xl border-2 text-center shadow-2xl backdrop-blur-md pointer-events-none bg-emerald-950/92 border-emerald-400 text-emerald-100';
-      } else if (type === 'info') {
-        dom.feedbackToastInner.className = 'px-3.5 py-2 rounded-2xl border-2 text-center shadow-2xl backdrop-blur-md pointer-events-none bg-sky-950/92 border-sky-400 text-sky-100';
-      } else {
-        dom.feedbackToastInner.className = 'px-3.5 py-2 rounded-2xl border-2 text-center shadow-2xl backdrop-blur-md pointer-events-none bg-red-950/92 border-red-400 text-red-100';
+      const tone = type === 'success' ? 'bz-t-success' : type === 'info' ? 'bz-t-info' : 'bz-t-error';
+      dom.feedbackToastInner.className = `bz-toast-inner ${tone}`;
+      let onTop = false;
+      const sdef = HOTSPOT_LIBRARY[state.selectedId];
+      if (sdef && state.hotspotStates[state.selectedId] && (state.status === 'playing' || state.status === 'animating')) {
+        onTop = pinPos(sdef).y > canvasH * 0.5;
       }
-
-      dom.feedbackToast.classList.remove('opacity-0', '-translate-y-2');
-      dom.feedbackToast.classList.add('opacity-100', 'translate-y-0');
+      if (onTop) dom.feedbackToast.classList.add('bz-top');
+      else dom.feedbackToast.classList.remove('bz-top');
+      dom.feedbackToast.classList.add('bz-on');
+      state.lastToastAt = state.time;
 
       toastTimeout = setTimeout(hideToast, duration || 2600);
     }
 
     function hideToast() {
-      dom.feedbackToast.classList.add('opacity-0', '-translate-y-2');
-      dom.feedbackToast.classList.remove('opacity-100', 'translate-y-0');
+      if (toastTimeout) {
+        clearTimeout(toastTimeout);
+        toastTimeout = null;
+      }
+      dom.feedbackToast.classList.remove('bz-on');
     }
 
     function triggerScreenFlash(colorClass) {
@@ -2054,6 +2571,7 @@
     }
 
     function triggerScreenShake() {
+      if (REDUCED) return; // 減少動態：不抖動
       dom.shell.classList.remove('shake');
       void dom.shell.offsetWidth;
       dom.shell.classList.add('shake');
@@ -2062,22 +2580,52 @@
     function setBubble(text, mood) {
       state.bubble.text = text;
       state.bubble.mood = mood;
+      state.bubble.t = state.time;
+      state.bubble.key = '';
+      state.bubble.toasted = false;
     }
 
     function addFloatingText(x, y, text, color) {
-      state.floatingTexts.push({ x, y, text, color, alpha: 1, vy: -1.3 });
+      if (state.floatingTexts.length >= FLOAT_MAX) state.floatingTexts.shift();
+      state.floatingTexts.push({ x, y, text: safeText(text), color, alpha: 1, vy: -1.3 });
     }
 
-    function spawnFxParticles(x, y, type) {
-      for (let i = 0; i < 22; i++) {
-        const angle = (Math.PI * 2 * i) / 22 + (Math.random() - 0.5) * 0.4;
+    // 擴散光環（修補成功／陷阱）：數量有上限
+    function addRing(x, y, color) {
+      if (state.rings.length >= RING_MAX) state.rings.shift();
+      state.rings.push({ x, y, color, life: 1 });
+    }
+
+    function spawnFxParticles(x, y, type, count) {
+      let n = count || 22;
+      if (REDUCED) n = Math.ceil(n / 2);
+      // 總量上限：超過就丟掉最舊的
+      const room = FX_MAX - state.fxParticles.length;
+      if (room < n) state.fxParticles.splice(0, n - room);
+
+      // 冷風：陷阱時從洞口往屋內橫向吹出的白藍細粒（有方向、拖尾）
+      if (type === 'cold_wind') {
+        const dir = x < canvasW * 0.5 ? 1 : -1;
+        for (let i = 0; i < n; i++) {
+          state.fxParticles.push({
+            x, y: y + (Math.random() - 0.5) * 26,
+            vx: dir * (3 + Math.random() * 4.5), vy: (Math.random() - 0.5) * 1.4,
+            size: 1.6 + Math.random() * 1.6, color: '#e0f2fe', char: null, life: 0.9, streak: true, star: false
+          });
+        }
+        return;
+      }
+
+      for (let i = 0; i < n; i++) {
+        const angle = (Math.PI * 2 * i) / n + (Math.random() - 0.5) * 0.4;
         const speed = 1.6 + Math.random() * 4.0;
         let color = '#fde047';
         let char = null;
+        let star = false;
 
         if (type === 'sparkles') {
-          color = i % 2 === 0 ? '#fde047' : '#34d399';
-          char = i % 3 === 0 ? '✨' : null;
+          color = i % 2 === 0 ? '#fde047' : '#fef3c7';
+          star = i % 2 === 0; // 一半畫成四角星屑
         } else if (type === 'snow_dump' || type === 'ice_blast') {
           color = '#bae6fd';
           char = i % 3 === 0 ? '❄️' : null;
@@ -2096,8 +2644,8 @@
           x, y,
           vx: Math.cos(angle) * speed,
           vy: Math.sin(angle) * speed - 1.1,
-          size: 4 + Math.random() * 4,
-          color, char, life: 1.0
+          size: star ? 5 + Math.random() * 3 : 4 + Math.random() * 4,
+          color, char, life: 1.0, streak: false, star
         });
       }
     }
@@ -2107,11 +2655,31 @@
      * 10. 雙結局結算 (1星勉強遮風屋 / 2星溫馨木屋 / 3星夢幻豪華別墅)
      * ============================================================================
      */
+    // 三星結算：十四片金色雪花（純 CSS 動畫，DOM 節點數固定）
+    function buildGoldSnow() {
+      dom.endFx.textContent = '';
+      const n = REDUCED ? 0 : 14;
+      for (let i = 0; i < n; i++) {
+        const f = document.createElement('span');
+        f.className = 'bz-gold';
+        const size = 4 + Math.round(((i * 7) % 5) * 1.2);
+        f.style.left = `${(i * 37 + 8) % 96}%`;
+        f.style.width = `${size}px`;
+        f.style.height = `${size}px`;
+        f.style.animationDuration = `${(4.2 + ((i * 13) % 7) * 0.45).toFixed(2)}s`;
+        f.style.animationDelay = `${((i * 29) % 40) / 10}s`;
+        f.style.setProperty('--dx', `${((i % 2) ? 1 : -1) * (14 + (i % 4) * 8)}px`);
+        dom.endFx.appendChild(f);
+      }
+    }
+
     function finishLevel(isVictory) {
       if (state.status === 'victory' || state.status === 'gameover') return;
       state.status = isVictory ? 'victory' : 'gameover';
       dom.frostLayer.style.opacity = '0';
       updateHUD();
+      dom.endOverlay.classList.remove('bz-end-3', 'bz-end-lose');
+      dom.endFx.textContent = '';
 
       const lvl = state.currentLevel;
       const lux = getLuxuryProgress();
@@ -2125,7 +2693,14 @@
         }
         writeSaveData();
 
-        dom.endStarsRow.textContent = [1, 2, 3].map((n) => (n <= lux.stars ? '⭐' : '☆')).join('');
+        // 星星逐顆彈出（已得的依序延遲 0.28 秒）；三星時加暖光與飄落金色雪花
+        dom.endStarsRow.innerHTML = [1, 2, 3].map((n) => (n <= lux.stars
+          ? `<span class="bz-star bz-star-on" style="animation-delay:${(0.2 + n * 0.28).toFixed(2)}s">⭐</span>`
+          : '<span class="bz-star bz-star-off">☆</span>')).join('');
+        if (lux.stars === 3) {
+          dom.endOverlay.classList.add('bz-end-3');
+          buildGoldSnow();
+        }
 
         if (lux.stars === 3) {
           dom.endBadge.textContent = `👑 第 ${lvl.id} 關 夢幻豪宅完美結局！`;
@@ -2140,7 +2715,7 @@
           dom.endTitle.textContent = '成功打造溫暖避風港！';
           dom.endSubtitle.textContent = `屋內暖呼呼的！剩餘 ${state.budget} 點。若點數允許，把湊合材料升級成豪華材料並少選錯，就能拿 3 星！`;
         } else {
-          dom.endBadge.textContent = `🩹 第 ${lvl.id} 關 勉強遮風避雨結局`;
+          dom.endBadge.textContent = `📎 第 ${lvl.id} 關 勉強遮風避雨結局`;
           dom.endBadge.className = 'px-4 py-1 rounded-full text-xs font-black tracking-widest mb-2 border bg-sky-950 border-sky-400 text-sky-300';
           dom.endEmoji.textContent = '🏚️';
           dom.endTitle.textContent = '勉強撐過暴風雪之夜…';
@@ -2167,7 +2742,8 @@
         sound.playGameOver();
         dom.endBadge.textContent = `💀 第 ${lvl.id} 關 救援失敗`;
         dom.endBadge.className = 'px-4 py-1 rounded-full text-xs font-black tracking-widest mb-2 border bg-red-950 border-red-400 text-red-300';
-        dom.endStarsRow.textContent = '☆☆☆';
+        dom.endStarsRow.innerHTML = '<span class="bz-star bz-star-off">☆</span><span class="bz-star bz-star-off">☆</span><span class="bz-star bz-star-off">☆</span>';
+        dom.endOverlay.classList.add('bz-end-lose'); // 失敗：畫面結霜
         dom.endEmoji.textContent = '🥶';
         dom.endTitle.textContent = '室內降至 0°C，母子被暴雪凍僵！';
         dom.endSubtitle.textContent = state.budget <= 0
@@ -2225,8 +2801,8 @@
     }
 
     function drawScene() {
-      const w = Math.max(300, canvasW);
-      const h = Math.max(220, canvasH);
+      const w = Math.max(240, canvasW);
+      const h = Math.max(120, canvasH);
       const pal = THEME_PALETTES[state.currentLevel.theme] || THEME_PALETTES.cabin;
       const lux = getLuxuryProgress();
       const isLuxuryRoom = lux.pct >= 55;
@@ -2328,18 +2904,163 @@
         drawFeastVisual(w * 0.54, h * 0.77, getHotspotState('feast'));
       }
 
+      // 10b. 室內環境光（隨室溫：冷藍灰 → 暖橘）＋壁爐火光
+      drawAmbientAndFire(w, h);
+
+      // 10c. 對話泡泡（約 3 秒後淡出；矮畫布時避開圖釘，放不下就改用 toast）
+      drawBubbleLayer(w * 0.30, h * 0.73);
+
+      // 10d. 修補完成狀態：湊合＝虛線補丁環、豪華＝柔光＋閃星、已除冰＝水光
+      drawStateMarks();
+
       // 11. 場景上所有可點擊破損的互動圓形徽章 (直接點擊提示)
       drawInteractiveHotspotPins(w, h);
+    }
 
-      // 12. 壁爐點燃後的溫暖金光氛圍
-      if (getHotspotState('fireplace').tier === 'luxury') {
-        const glow = ctx.createRadialGradient(w * 0.72, h * 0.65, 12, w * 0.58, h * 0.56, w * 0.82);
-        glow.addColorStop(0, 'rgba(251, 146, 60, 0.38)');
-        glow.addColorStop(0.55, 'rgba(245, 158, 11, 0.15)');
-        glow.addColorStop(1, 'rgba(245, 158, 11, 0)');
-        ctx.fillStyle = glow;
+    // 屋外天空色（破洞／窗外看到的顏色）：酷寒更暗、濕雪灰藍、狂風偏深
+    function skyColor() {
+      const wid = state.currentLevel.weather;
+      if (wid === 'cold') return '#06243a';
+      if (wid === 'wet') return '#2b4a63';
+      if (wid === 'gale') return '#0a3b5c';
+      return '#0c4a6e';
+    }
+
+    // 四角星（星屑、豪華閃星）：只建路徑，呼叫端自己 fill
+    function drawStar4(x, y, r) {
+      const q = r * 0.32;
+      ctx.beginPath();
+      ctx.moveTo(x, y - r);
+      ctx.lineTo(x + q, y - q);
+      ctx.lineTo(x + r, y);
+      ctx.lineTo(x + q, y + q);
+      ctx.lineTo(x, y + r);
+      ctx.lineTo(x - q, y + q);
+      ctx.lineTo(x - r, y);
+      ctx.lineTo(x - q, y - q);
+      ctx.closePath();
+    }
+
+    // 湊合補丁：虛線邊（和豪華的實線金邊區隔）
+    function dashedOutline(x, y, w, h, r) {
+      ctx.save();
+      ctx.setLineDash([6, 4]);
+      ctx.strokeStyle = 'rgba(254, 243, 199, 0.95)';
+      ctx.lineWidth = 1.6;
+      drawRoundRect(x + 2, y + 2, w - 4, h - 4, r);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // 豪華：外圈柔光（三層半透明描邊，不用漸層物件）
+    function softGlow(x, y, w, h, r) {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(254, 240, 138, 0.14)';
+      for (let k = 3; k >= 1; k--) {
+        ctx.lineWidth = k * 5;
+        drawRoundRect(x - k * 2, y - k * 2, w + k * 4, h + k * 4, r + k * 2);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    // 漸層快取：只在畫布尺寸改變時重建（不要每幀 createRadialGradient）
+    const gradCache = { key: '', fire: null };
+    function fireGradient(w, h) {
+      const key = `${Math.round(w)}x${Math.round(h)}`;
+      if (gradCache.key !== key) {
+        gradCache.key = key;
+        const g = ctx.createRadialGradient(w * 0.72, h * 0.62, 6, w * 0.72, h * 0.62, w * 0.62);
+        g.addColorStop(0, 'rgba(255, 176, 72, 0.55)');
+        g.addColorStop(0.5, 'rgba(251, 146, 60, 0.2)');
+        g.addColorStop(1, 'rgba(251, 146, 60, 0)');
+        gradCache.fire = g;
+      }
+      return gradCache.fire;
+    }
+
+    // 室內環境光：冷時藍灰、接近目標時暖橘（一層半透明覆蓋）；壁爐修好後有搖曳火光
+    function drawAmbientAndFire(w, h) {
+      const tgt = state.currentLevel.targetTemp;
+      const k = Math.max(0, Math.min(1, (state.temp - 4) / Math.max(4, tgt - 4)));
+      let r, g, b, a;
+      if (k < 0.55) {
+        r = 40; g = 74; b = 128; a = 0.3 * (1 - k / 0.55);
+      } else {
+        r = 251; g = 146; b = 60; a = 0.17 * ((k - 0.55) / 0.45);
+      }
+      if (a > 0.004) {
+        ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${a.toFixed(3)})`;
         ctx.fillRect(0, 0, w, h);
       }
+
+      const fp = state.hotspotStates['fireplace'];
+      if (fp && !fp.iced && (fp.tier === 'luxury' || fp.tier === 'makeshift')) {
+        const base = fp.tier === 'luxury' ? 1 : 0.55;
+        const fl = REDUCED ? 1 : 0.86 + 0.14 * Math.sin(state.time * 13) * Math.sin(state.time * 5.3 + 1);
+        ctx.save();
+        ctx.globalAlpha = Math.min(1, base * fl);
+        ctx.fillStyle = fireGradient(w, h);
+        ctx.fillRect(0, 0, w, h);
+        ctx.restore();
+      }
+    }
+
+    // 各破洞的完成狀態標記（畫在圖釘底下；豪華的圖釘會收起來，所以靠這圈柔光看得出來）
+    function drawStateMarks() {
+      if (state.status !== 'playing' && state.status !== 'animating') return;
+      const tm = REDUCED ? 0 : state.time;
+      state.currentLevel.hotspots.forEach((hs) => {
+        const def = HOTSPOT_LIBRARY[hs.id];
+        const st = state.hotspotStates[hs.id];
+        if (!def || !st) return;
+        const p = pinPos(def);
+        if (st.tier === 'makeshift') {
+          ctx.save();
+          ctx.setLineDash([5, 4]);
+          ctx.strokeStyle = 'rgba(186, 230, 253, 0.9)';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, PIN_R + 9, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          for (let k = 0; k < 4; k++) {
+            const an = k * Math.PI / 2 + Math.PI / 4;
+            ctx.moveTo(p.x + Math.cos(an) * (PIN_R + 4), p.y + Math.sin(an) * (PIN_R + 4));
+            ctx.lineTo(p.x + Math.cos(an) * (PIN_R + 12), p.y + Math.sin(an) * (PIN_R + 12));
+          }
+          ctx.stroke();
+          ctx.restore();
+        } else if (st.tier === 'luxury') {
+          const pulse = 0.75 + 0.25 * Math.sin(tm * 3 + p.x);
+          ctx.save();
+          ctx.fillStyle = `rgba(254, 240, 138, ${(0.1 * pulse).toFixed(3)})`;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, 42, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = `rgba(254, 240, 138, ${(0.16 * pulse).toFixed(3)})`;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, 32, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = REDUCED ? 0.9 : 0.5 + 0.5 * Math.sin(tm * 4 + p.y);
+          ctx.fillStyle = '#fef9c3';
+          drawStar4(p.x + 24, p.y - 22, 6);
+          ctx.fill();
+          ctx.restore();
+        } else if (!st.iced && st.wet) {
+          ctx.save();
+          ctx.fillStyle = 'rgba(56, 189, 248, 0.3)';
+          ctx.strokeStyle = 'rgba(125, 211, 252, 0.9)';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.ellipse(p.x, p.y + PIN_R + 6, 22, 6, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+          ctx.restore();
+        }
+      });
     }
 
     function drawChandelierAndGarland(w, h) {
@@ -2382,7 +3103,7 @@
       ctx.fill();
 
       if (st.tier === 'broken') {
-        ctx.fillStyle = '#0c4a6e';
+        ctx.fillStyle = skyColor();
         ctx.beginPath();
         ctx.ellipse(w * 0.50, h * 0.08, 46, 17, 0, 0, Math.PI * 2);
         ctx.fill();
@@ -2397,7 +3118,9 @@
         ctx.strokeStyle = '#bae6fd';
         ctx.lineWidth = 1.5;
         ctx.stroke();
+        dashedOutline(w * 0.36, h * 0.04, w * 0.28, 18, 5);
       } else {
+        softGlow(w * 0.34, h * 0.035, w * 0.32, 20, 6);
         ctx.fillStyle = '#d97706';
         drawRoundRect(w * 0.34, h * 0.035, w * 0.32, 20, 6);
         ctx.fill();
@@ -2408,11 +3131,12 @@
     }
 
     function drawWindowVisual(x, y, w, h, st) {
-      ctx.fillStyle = '#0c4a6e';
+      ctx.fillStyle = skyColor();
       drawRoundRect(x, y, w, h, 8);
       ctx.fill();
 
       if (st.tier === 'luxury') {
+        softGlow(x, y, w, h, 8);
         ctx.fillStyle = 'rgba(254, 243, 199, 0.36)';
         drawRoundRect(x, y, w, h, 8);
         ctx.fill();
@@ -2448,6 +3172,7 @@
         ctx.moveTo(x + w - 6, y + 6);
         ctx.lineTo(x + 6, y + h - 6);
         ctx.stroke();
+        dashedOutline(x + 3, y + 3, w - 6, h - 6, 4);
       } else {
         ctx.strokeStyle = '#94a3b8';
         ctx.lineWidth = 4;
@@ -2482,6 +3207,7 @@
     function drawWallVisual(x, y, w, h, st) {
       if (st.tier === 'luxury') {
         // 豪華木牆＋暖光壁燈
+        softGlow(x, y, w, h, 8);
         ctx.fillStyle = '#d97706';
         drawRoundRect(x, y, w, h, 8);
         ctx.fill();
@@ -2496,7 +3222,7 @@
         return;
       }
 
-      ctx.fillStyle = '#0c4a6e';
+      ctx.fillStyle = skyColor();
       ctx.beginPath();
       ctx.moveTo(x + w * 0.15, y);
       ctx.lineTo(x + w * 0.85, y + h * 0.08);
@@ -2514,6 +3240,7 @@
         ctx.strokeStyle = '#fde68a';
         ctx.lineWidth = 2;
         ctx.stroke();
+        dashedOutline(x + 2, y + 4, w - 4, h - 8, 5);
       } else {
         drawWindStreaks(x + w * 0.45, y + h * 0.5, 1);
       }
@@ -2521,6 +3248,7 @@
 
     function drawDoorVisual(x, y, w, h, st) {
       if (st.tier === 'luxury') {
+        softGlow(x, y, w, h, 6);
         ctx.fillStyle = '#92400e';
         drawRoundRect(x, y, w, h, 6);
         ctx.fill();
@@ -2537,8 +3265,9 @@
         ctx.fillStyle = '#64748b';
         drawRoundRect(x, y, w, h, 4);
         ctx.fill();
+        dashedOutline(x, y, w, h, 4);
       } else {
-        ctx.fillStyle = '#0c4a6e';
+        ctx.fillStyle = skyColor();
         drawRoundRect(x, y, w, h, 4);
         ctx.fill();
         drawWindStreaks(x + w * 0.3, y + h * 0.5, 1);
@@ -2568,7 +3297,7 @@
         ctx.lineWidth = 2;
         ctx.stroke();
       } else if (st.tier === 'luxury') {
-        const flicker = Math.sin(state.time * 15) * 4.5;
+        const flicker = REDUCED ? 0 : Math.sin(state.time * 15) * 4.5;
         ctx.fillStyle = '#f97316';
         ctx.beginPath();
         ctx.moveTo(cx - 21, cy - 5);
@@ -2590,9 +3319,14 @@
         ctx.fillText('🧦', cx + 22, cy - 64);
       } else if (st.tier === 'makeshift') {
         // 微弱小火苗
+        const wob = REDUCED ? 0 : Math.sin(state.time * 11);
         ctx.fillStyle = '#fb923c';
         ctx.beginPath();
-        ctx.arc(cx, cy - 12, 8, 0, Math.PI * 2);
+        ctx.arc(cx, cy - 12, 8 + wob * 1.2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#fde047';
+        ctx.beginPath();
+        ctx.arc(cx, cy - 10, 4 + wob * 0.6, 0, Math.PI * 2);
         ctx.fill();
       } else {
         ctx.fillStyle = '#78350f';
@@ -2663,12 +3397,25 @@
       }
     }
 
+    // 心情四段：0 凍僵發抖（<5°C）／1 冷／2 還行／3 溫暖開心（接近目標）
+    function moodLevel() {
+      const tgt = state.currentLevel.targetTemp;
+      const tm = state.temp;
+      let m = tm < 5.0 ? 0 : tm < tgt * 0.62 ? 1 : tm < tgt * 0.86 ? 2 : 3;
+      if (m < 2 && getHotspotState('fireplace').tier === 'luxury') m = 2; // 壁爐旺，至少不會太慘
+      return m;
+    }
+
     function drawFamilyVisual(baseX, baseY) {
-      const isWarm = state.temp >= 17.5 || getHotspotState('fireplace').tier === 'luxury';
+      const mood = moodLevel();
       const isLuxuryClothes = getHotspotState('bed').tier === 'luxury';
-      const shiverAmp = isWarm ? 0 : Math.max(1.4, (18 - state.temp) * 0.24);
+      // 發抖：小幅位移（減少動態時不抖）
+      let shiverAmp = mood === 0 ? 2.4 + (5 - Math.max(0, state.temp)) * 0.3 : mood === 1 ? 1.1 : 0;
+      if (REDUCED) shiverAmp = 0;
       const sx = Math.sin(state.time * 42) * shiverAmp;
       const sy = Math.cos(state.time * 36) * (shiverAmp * 0.4);
+      // 呼出白氣：很冷、或酷寒天氣且還沒暖起來
+      const breath = !REDUCED && (mood <= 1 || (state.currentLevel.weather === 'cold' && mood < 3));
 
       ctx.save();
       ctx.translate(baseX + sx, baseY + sy);
@@ -2678,15 +3425,14 @@
       ctx.ellipse(0, 8, 50, 20, 0, Math.PI, Math.PI * 2);
       ctx.fill();
 
-      drawPerson({ x: 0, y: -25, headR: 16, hairColor: '#713f12', coatColor: isLuxuryClothes ? '#f59e0b' : '#64748b', isWarm });
-      drawPerson({ x: -27, y: -11, headR: 12.5, hairColor: '#92400e', coatColor: isLuxuryClothes ? '#ec4899' : '#94a3b8', isWarm });
-      drawPerson({ x: 27, y: -9, headR: 12, hairColor: '#451a03', coatColor: isLuxuryClothes ? '#3b82f6' : '#94a3b8', isWarm });
+      drawPerson({ x: 0, y: -25, headR: 16, hairColor: '#713f12', coatColor: isLuxuryClothes ? '#f59e0b' : '#64748b', mood, breath, seed: 0 });
+      drawPerson({ x: -27, y: -11, headR: 12.5, hairColor: '#92400e', coatColor: isLuxuryClothes ? '#ec4899' : '#94a3b8', mood, breath, seed: 1 });
+      drawPerson({ x: 27, y: -9, headR: 12, hairColor: '#451a03', coatColor: isLuxuryClothes ? '#3b82f6' : '#94a3b8', mood, breath, seed: 2 });
 
       ctx.restore();
-      drawSpeechBubble(baseX + 16, baseY - 78, state.bubble.text, state.bubble.mood);
     }
 
-    function drawPerson({ x, y, headR, hairColor, coatColor, isWarm }) {
+    function drawPerson({ x, y, headR, hairColor, coatColor, mood, breath, seed }) {
       ctx.fillStyle = coatColor;
       ctx.beginPath();
       ctx.ellipse(x, y + headR + 13, headR * 1.15, headR * 1.25, 0, Math.PI, Math.PI * 2);
@@ -2697,7 +3443,7 @@
       ctx.arc(x, y - 2, headR + 3, 0, Math.PI * 2);
       ctx.fill();
 
-      ctx.fillStyle = isWarm ? '#fed7aa' : '#e2e8f0';
+      ctx.fillStyle = mood >= 2 ? '#fed7aa' : mood === 1 ? '#e2e8f0' : '#c7d9ee';
       ctx.beginPath();
       ctx.arc(x, y, headR, 0, Math.PI * 2);
       ctx.fill();
@@ -2707,37 +3453,102 @@
       ctx.arc(x, y - 3, headR, Math.PI * 1.05, Math.PI * 1.95);
       ctx.fill();
 
+      const eo = headR * 0.36;
+      ctx.strokeStyle = '#0f172a';
       ctx.fillStyle = '#0f172a';
-      const eyeOffset = headR * 0.36;
-      ctx.beginPath();
-      ctx.arc(x - eyeOffset, y + 1, 2, 0, Math.PI * 2);
-      ctx.arc(x + eyeOffset, y + 1, 2, 0, Math.PI * 2);
-      ctx.fill();
-
-      if (isWarm) {
-        ctx.strokeStyle = '#991b1b';
-        ctx.lineWidth = 2;
+      ctx.lineWidth = 1.8;
+      if (mood === 0) {
+        // 凍僵：眼睛擠成 > <
         ctx.beginPath();
-        ctx.arc(x, y + 4, 4.2, 0.15 * Math.PI, 0.85 * Math.PI);
+        ctx.moveTo(x - eo - 2.5, y - 1);
+        ctx.lineTo(x - eo + 1.5, y + 1);
+        ctx.lineTo(x - eo - 2.5, y + 3);
+        ctx.moveTo(x + eo + 2.5, y - 1);
+        ctx.lineTo(x + eo - 1.5, y + 1);
+        ctx.lineTo(x + eo + 2.5, y + 3);
+        ctx.stroke();
+      } else if (mood === 3) {
+        // 開心：笑瞇瞇的弧形眼
+        ctx.beginPath();
+        ctx.arc(x - eo, y + 2, 2.6, Math.PI * 1.1, Math.PI * 1.9);
+        ctx.moveTo(x + eo + 2.6, y + 2);
+        ctx.arc(x + eo, y + 2, 2.6, Math.PI * 1.1, Math.PI * 1.9);
         ctx.stroke();
       } else {
+        ctx.beginPath();
+        ctx.arc(x - eo, y + 1, 2, 0, Math.PI * 2);
+        ctx.arc(x + eo, y + 1, 2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.lineWidth = 2;
+      if (mood === 0) {
+        // 牙齒打顫：鋸齒嘴
+        ctx.strokeStyle = '#1d4ed8';
+        ctx.beginPath();
+        ctx.moveTo(x - 5, y + 8);
+        ctx.lineTo(x - 2.5, y + 6);
+        ctx.lineTo(x, y + 8);
+        ctx.lineTo(x + 2.5, y + 6);
+        ctx.lineTo(x + 5, y + 8);
+        ctx.stroke();
+      } else if (mood === 1) {
         ctx.strokeStyle = '#2563eb';
-        ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.arc(x, y + 8, 3.8, 1.15 * Math.PI, 1.85 * Math.PI);
         ctx.stroke();
+      } else if (mood === 2) {
+        ctx.strokeStyle = '#7c2d12';
+        ctx.beginPath();
+        ctx.moveTo(x - 3.5, y + 6);
+        ctx.lineTo(x + 3.5, y + 6);
+        ctx.stroke();
+      } else {
+        ctx.strokeStyle = '#991b1b';
+        ctx.beginPath();
+        ctx.arc(x, y + 4, 4.2, 0.15 * Math.PI, 0.85 * Math.PI);
+        ctx.stroke();
+        ctx.fillStyle = 'rgba(251, 113, 133, 0.5)';
+        ctx.beginPath();
+        ctx.arc(x - headR * 0.62, y + 4, 2.6, 0, Math.PI * 2);
+        ctx.arc(x + headR * 0.62 + 2.6, y + 4, 2.6, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      if (breath) {
+        // 呼出白氣：從嘴邊飄起、擴大、淡出
+        const ph = (state.time * 0.6 + seed * 0.37) % 1;
+        if (ph < 0.75) {
+          const k = ph / 0.75;
+          ctx.save();
+          ctx.globalAlpha = (1 - k) * 0.6;
+          ctx.fillStyle = '#f1f5f9';
+          ctx.beginPath();
+          ctx.arc(x + headR * 0.8 + k * 16, y + 6 - k * 14, 2 + k * 6, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
       }
     }
 
-    function drawSpeechBubble(x, y, text, mood) {
+    // ---- 對話泡泡：約 3 秒後淡出；矮畫布時避開圖釘 ----
+    function bubbleBox(x, y, text) {
       ctx.save();
       ctx.font = 'bold 11px "Noto Sans TC", sans-serif';
       const textW = ctx.measureText(text).width;
+      ctx.restore();
       const boxW = Math.min(canvasW - 22, textW + 20);
       const boxH = 28;
-      const bx = Math.max(11, Math.min(canvasW - boxW - 11, x - boxW * 0.42));
-      const by = Math.max(10, y - boxH);
+      return {
+        boxW, boxH,
+        bx: Math.max(11, Math.min(canvasW - boxW - 11, x - boxW * 0.42)),
+        by: Math.max(10, y - boxH)
+      };
+    }
 
+    function drawBubbleBox(bx, by, boxW, boxH, text, mood) {
+      ctx.save();
+      ctx.font = 'bold 11px "Noto Sans TC", sans-serif';
       ctx.fillStyle = mood === 'happy' ? '#fef3c7' : mood === 'pain' ? '#fee2e2' : '#f8fafc';
       ctx.strokeStyle = mood === 'happy' ? '#f59e0b' : mood === 'pain' ? '#ef4444' : '#38bdf8';
       ctx.lineWidth = 2;
@@ -2752,38 +3563,238 @@
       ctx.restore();
     }
 
-    function drawWindStreaks(cx, cy, dir) {
+    function drawSpeechBubble(x, y, text, mood) {
+      const bb = bubbleBox(x, y, text);
+      drawBubbleBox(bb.bx, bb.by, bb.boxW, bb.boxH, text, mood);
+    }
+
+    // 決定泡泡位置（有快取：文字、畫布尺寸、可見圖釘沒變就不重算）。
+    // 畫布高度 <260px 時，位置若壓到圖釘就找一塊不重疊的地方；找不到就不畫（b.none），改由 toast 顯示
+    function layoutBubble(ax, ay) {
+      const b = state.bubble;
+      const small = canvasH < BUBBLE_MIN_H;
+      let vis = [];
+      if (small) {
+        vis = state.currentLevel.hotspots.filter((h) => {
+          const st = state.hotspotStates[h.id];
+          return st && HOTSPOT_LIBRARY[h.id] && (st.tier !== 'luxury' || h.id === state.selectedId);
+        });
+      }
+      const key = `${canvasW}x${canvasH}|${state.currentLevel.id}|${b.text}|${vis.map((h) => h.id).join(',')}`;
+      if (b.key === key) return;
+      b.key = key;
+      const bb = bubbleBox(ax, ay, b.text);
+      b.w = bb.boxW; b.h = bb.boxH; b.x = bb.bx; b.y = bb.by; b.none = false;
+      if (!small) return;
+
+      const pins = vis.map((h) => pinPos(HOTSPOT_LIBRARY[h.id]));
+      const R = PIN_R_SEL + 8;
+      const hits = (x, y) => pins.some((p) => {
+        const dx = Math.max(x - p.x, 0, p.x - (x + b.w));
+        const dy = Math.max(y - p.y, 0, p.y - (y + b.h));
+        return dx * dx + dy * dy < R * R;
+      });
+      if (!hits(b.x, b.y)) return;
+      const cands = [];
+      for (let yy = 6; yy <= canvasH - b.h - 4; yy += 8) {
+        [11, (canvasW - b.w) / 2, canvasW - b.w - 11].forEach((xx) => cands.push([xx, yy]));
+      }
+      cands.sort((p, q) => (Math.abs(p[0] - b.x) + Math.abs(p[1] - b.y)) - (Math.abs(q[0] - b.x) + Math.abs(q[1] - b.y)));
+      const ok = cands.find((c) => !hits(c[0], c[1]));
+      if (ok) { b.x = ok[0]; b.y = ok[1]; } else { b.none = true; }
+    }
+
+    function drawBubbleLayer(baseX, baseY) {
+      const b = state.bubble;
+      if (!b.text || state.status === 'map' || state.status === 'briefing') return;
+      const age = state.time - b.t;
+      if (age >= BUBBLE_SHOW_SEC + BUBBLE_FADE_SEC) return;
+      layoutBubble(baseX + 16, baseY - 78);
+      if (b.none) {
+        // 放不下：不畫泡泡；若近 3 秒內沒有別的提示，就改用 toast 顯示這句話
+        if (!b.toasted) {
+          b.toasted = true;
+          if (state.time - state.lastToastAt > 3) showToast('info', b.text, '', 2400);
+        }
+        return;
+      }
+      const alpha = age <= BUBBLE_SHOW_SEC ? 1 : 1 - (age - BUBBLE_SHOW_SEC) / BUBBLE_FADE_SEC;
       ctx.save();
-      ctx.strokeStyle = state.galePhase === 'gale' ? 'rgba(224, 242, 254, 0.95)' : 'rgba(186, 230, 253, 0.65)';
-      ctx.lineWidth = state.galePhase === 'gale' ? 2.6 : 1.8;
+      ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
+      drawBubbleBox(b.x, b.y, b.w, b.h, b.text, b.mood);
+      ctx.restore();
+    }
+
+    // 狂風來襲／預警時，破洞周圍的風痕。狂風 5 秒內畫橫向長風痕；平時是斜斜的短風痕
+    function drawWindStreaks(cx, cy, dir) {
+      const gale = state.galePhase === 'gale';
+      const tm = REDUCED ? 0 : state.time;
+      ctx.save();
+      ctx.strokeStyle = gale ? 'rgba(224, 242, 254, 0.95)'
+        : state.galePhase === 'warning' ? 'rgba(254, 243, 199, 0.8)' : 'rgba(186, 230, 253, 0.55)';
+      ctx.lineWidth = gale ? 2.6 : 1.6;
+      const spd = gale ? 220 : 90;
+      const len = gale ? 48 : 24;
+      ctx.beginPath();
       for (let i = 0; i < 3; i++) {
-        const offset = ((state.time * 95 + i * 26) % 65);
+        const offset = ((tm * spd + i * 26) % 65);
         const startX = dir === 0 ? cx - 14 + i * 14 : cx - dir * offset;
         const startY = dir === 0 ? cy + offset : cy - 16 + i * 15;
-        ctx.beginPath();
         ctx.moveTo(startX, startY);
-        ctx.lineTo(dir === 0 ? startX - 6 : startX - dir * 24, startY + 12);
-        ctx.stroke();
+        ctx.lineTo(dir === 0 ? startX - 6 : startX - dir * len, startY + (gale && dir !== 0 ? 2 : 12));
+      }
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // 狂風來襲那 5 秒：整個畫面的橫向風痕（物件池，重複使用，不配置新陣列）
+    function drawGaleStreaks(dt) {
+      const pool = state.streaks;
+      if (!pool.length) return;
+      ctx.save();
+      ctx.strokeStyle = 'rgba(224, 242, 254, 0.55)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      for (let i = 0; i < pool.length; i++) {
+        const s = pool[i];
+        s.x -= s.sp * dt;
+        if (s.x + s.len < 0) {
+          s.x = canvasW + Math.random() * 80;
+          s.y = Math.random() * canvasH;
+          s.len = 50 + Math.random() * 90;
+          s.sp = 900 + Math.random() * 700;
+        }
+        ctx.moveTo(s.x, s.y);
+        ctx.lineTo(s.x + s.len, s.y + s.len * 0.04);
+      }
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // 狂風時，未修的破洞把雪吹進屋內（物件池：只重複使用死掉的格子，總數不會超過 WIND_MAX）
+    function emitWind(dt) {
+      const pool = state.windParticles;
+      const rate = dt * (REDUCED ? 5 : 11);
+      state.currentLevel.hotspots.forEach((hs) => {
+        const st = state.hotspotStates[hs.id];
+        const def = HOTSPOT_LIBRARY[hs.id];
+        if (!st || !def || st.tier !== 'broken') return;
+        if (Math.random() > rate) return;
+        for (let i = 0; i < pool.length; i++) {
+          if (pool[i].life > 0) continue;
+          const p = pool[i];
+          const pp = pinPos(def);
+          const dirX = pp.x < canvasW * 0.5 ? 1 : -1;
+          p.x = pp.x;
+          p.y = pp.y + (Math.random() - 0.5) * 16;
+          if (def.id === 'roof') {
+            p.vx = (Math.random() - 0.5) * 90;
+            p.vy = 130 + Math.random() * 120;
+          } else {
+            p.vx = dirX * (240 + Math.random() * 220);
+            p.vy = (Math.random() - 0.5) * 80 + 20;
+          }
+          p.r = 1.4 + Math.random() * 1.8;
+          p.life = 0.8 + Math.random() * 0.7;
+          return;
+        }
+      });
+    }
+
+    function drawWindParticles(dt) {
+      const pool = state.windParticles;
+      ctx.save();
+      ctx.fillStyle = 'rgba(240, 249, 255, 0.85)';
+      ctx.beginPath();
+      for (let i = 0; i < pool.length; i++) {
+        const p = pool[i];
+        if (p.life <= 0) continue;
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        p.life -= dt;
+        if (p.life <= 0) continue;
+        ctx.moveTo(p.x + p.r, p.y);
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      }
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // 怕潮的修補處（濕雪天、或剛除冰還潮濕）偶爾滴水
+    function emitDrips(dt) {
+      const lim = REDUCED ? 2 : DRIP_MAX;
+      if (state.drips.length >= lim) return;
+      if (Math.random() > dt * 0.5) return;
+      const wetAll = state.currentLevel.weather === 'wet';
+      const cands = state.currentLevel.hotspots.filter((h) => {
+        const st = state.hotspotStates[h.id];
+        return st && HOTSPOT_LIBRARY[h.id] && st.item && hasTrait(st.item, 'damp') && (wetAll || st.wet);
+      });
+      if (!cands.length) return;
+      const pp = pinPos(HOTSPOT_LIBRARY[cands[Math.floor(Math.random() * cands.length)].id]);
+      state.drips.push({ x: pp.x + (Math.random() - 0.5) * 14, y: pp.y + 12, vy: 0, end: pp.y + 38 + Math.random() * 10, splash: 0 });
+    }
+
+    function drawDrips(dt) {
+      const arr = state.drips;
+      if (!arr.length) return;
+      ctx.save();
+      for (let i = arr.length - 1; i >= 0; i--) {
+        const d = arr[i];
+        if (d.splash > 0) {
+          d.splash -= dt * 3.2;
+          if (d.splash <= 0) { arr.splice(i, 1); continue; }
+          ctx.strokeStyle = `rgba(186, 230, 253, ${(d.splash * 0.8).toFixed(2)})`;
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.ellipse(d.x, d.end, 3 + (1 - d.splash) * 6, 1.5 + (1 - d.splash) * 2, 0, 0, Math.PI * 2);
+          ctx.stroke();
+          continue;
+        }
+        d.vy += 520 * dt;
+        d.y += d.vy * dt;
+        if (d.y >= d.end) { d.splash = 1; continue; }
+        ctx.fillStyle = 'rgba(147, 197, 253, 0.9)';
+        ctx.beginPath();
+        ctx.ellipse(d.x, d.y, 2, 3.4, 0, 0, Math.PI * 2);
+        ctx.fill();
       }
       ctx.restore();
     }
 
+    // 圖釘的實際位置：依比例換算後夾在邊緣內側，矮畫布也不會被擠出邊緣（繪製、命中、飛行目標共用）
+    function pinPos(def) {
+      const x = def.pos.x * canvasW;
+      const y = def.pos.y * canvasH;
+      return {
+        x: Math.max(PIN_PAD, Math.min(canvasW - PIN_PAD, x)),
+        y: Math.max(PIN_PAD, Math.min(canvasH - PIN_PAD, y))
+      };
+    }
+
     // 在畫布上直接繪製可點擊的破損圓形圖釘 (點擊畫布即可直接選中！)
     function drawInteractiveHotspotPins(w, h) {
-      if (state.status !== 'playing') return;
+      if (state.status !== 'playing' && state.status !== 'animating') return;
+      const warning = state.galePhase === 'warning';
 
       state.currentLevel.hotspots.forEach((hSpec) => {
         const def = HOTSPOT_LIBRARY[hSpec.id];
         const st = state.hotspotStates[hSpec.id];
         if (!def || !st) return;
 
-        // 已經豪華完成且非當前選中的點位縮小顯示小皇冠即可
+        // 狂風預警：會被吹掉的修補（不抗風）圖釘輕微晃動＋警示環，讓玩家看出哪裡有危險
+        const atRisk = warning && Boolean(st.item) && blownByGale(st.item);
+        // 已經豪華完成且非當前選中的點位收起來（但預警時有危險的要顯示）
         const isSelected = state.selectedId === hSpec.id;
-        if (st.tier === 'luxury' && !isSelected) return;
+        if (st.tier === 'luxury' && !isSelected && !atRisk) return;
 
-        const cx = def.pos.x * w;
-        const cy = def.pos.y * h;
-        const pulse = isSelected ? 21 + Math.sin(state.time * 7) * 3.5 : 16 + Math.sin(state.time * 4) * 2;
+        const pp = pinPos(def);
+        const cx = pp.x + (atRisk && !REDUCED ? Math.sin(state.time * 40 + pp.y) * 3 : 0);
+        const cy = pp.y;
+        // 按下當下：圖釘瞬間放大再回彈
+        const pr = state.pinPress;
+        const press = pr && pr.id === hSpec.id ? Math.max(0, 1 - (state.time - pr.t) / PIN_PRESS_SEC) : 0;
+        const pulse = (isSelected ? PIN_R_SEL + Math.sin(state.time * 7) * 2.5 : PIN_R + Math.sin(state.time * 4) * 2) + press * 7;
 
         ctx.save();
         // 外圈發光環
@@ -2804,6 +3815,9 @@
         } else if (st.tier === 'makeshift') {
           ctx.fillStyle = '#334155';
           ctx.strokeStyle = '#38bdf8';
+        } else if (st.tier === 'luxury') {
+          ctx.fillStyle = '#065f46';
+          ctx.strokeStyle = '#6ee7b7';
         } else {
           ctx.fillStyle = '#991b1b';
           ctx.strokeStyle = '#fca5a5';
@@ -2812,12 +3826,27 @@
         ctx.fill();
         ctx.stroke();
 
-        // 徽章圖示
-        ctx.font = isSelected ? '18px sans-serif' : '14px sans-serif';
+        if (atRisk) {
+          ctx.setLineDash([4, 3]);
+          ctx.strokeStyle = 'rgba(251, 191, 36, 0.95)';
+          ctx.lineWidth = 2.5;
+          ctx.beginPath();
+          ctx.arc(cx, cy, pulse + 8, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+
+        // 徽章圖示（新版 emoji 換成舊手機也有的）
+        ctx.font = `${(isSelected ? 22 : 18) + Math.round(press * 4)}px sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        const badgeIcon = st.iced ? '🧊' : st.tier === 'luxury' ? '👑' : st.tier === 'makeshift' ? '🩹' : def.icon;
+        const badgeIcon = st.iced ? '❄️' : st.tier === 'luxury' ? '👑' : st.tier === 'makeshift' ? '📎' : safeIcon(def.icon);
         ctx.fillText(badgeIcon, cx, cy);
+        if (atRisk) {
+          ctx.font = 'bold 15px sans-serif';
+          ctx.fillStyle = '#fbbf24';
+          ctx.fillText('⚠', cx + pulse * 0.75, cy - pulse * 0.8);
+        }
         ctx.restore();
       });
     }
@@ -2827,30 +3856,46 @@
      * 12. 畫布點擊互動偵測 (直接點破洞就能切換！)
      * ============================================================================
      */
-    dom.canvas.addEventListener('click', (e) => {
-      if (state.status !== 'playing') return;
+    // 命中判定：取最近的破洞（兩個很近時也只會選到較近的那個），沒命中回傳 null
+    function hitTestHotspot(clientX, clientY) {
       const rect = dom.canvas.getBoundingClientRect();
-      const clickX = e.clientX - rect.left;
-      const clickY = e.clientY - rect.top;
+      if (!rect.width || !rect.height) return null;
+      const px = (clientX - rect.left) * (canvasW / rect.width);
+      const py = (clientY - rect.top) * (canvasH / rect.height);
 
       let closestId = null;
-      let minDist = 52; // 寬鬆好點的觸控半徑
+      let minDist = PIN_HIT_R; // 寬鬆好點的觸控半徑
 
       state.currentLevel.hotspots.forEach((hSpec) => {
         const def = HOTSPOT_LIBRARY[hSpec.id];
         if (!def) return;
-        const hx = def.pos.x * canvasW;
-        const hy = def.pos.y * canvasH;
-        const dist = Math.hypot(clickX - hx, clickY - hy);
+        const pp = pinPos(def);
+        const dist = Math.hypot(px - pp.x, py - pp.y);
         if (dist < minDist) {
           minDist = dist;
           closestId = hSpec.id;
         }
       });
+      return closestId;
+    }
 
-      if (closestId) {
-        selectHotspot(closestId);
-      }
+    // 手指一按下就選取並有回饋（不用等放開）
+    dom.canvas.addEventListener('pointerdown', (e) => {
+      if (e.button > 0) return; // 滑鼠右鍵／中鍵不處理
+      if (state.status !== 'playing' || uiPaused) return;
+      const id = hitTestHotspot(e.clientX, e.clientY);
+      if (!id) return; // 點在沒有破洞的地方：什麼都不做
+      lastPointerAt = performance.now();
+      state.pinPress = { id, t: state.time };
+      selectHotspot(id);
+    });
+
+    // click 保留給鍵盤／滑鼠相容；剛由 pointerdown 處理過的同一次點擊會略過，避免重複觸發
+    dom.canvas.addEventListener('click', (e) => {
+      if (performance.now() - lastPointerAt < POINTER_CLICK_GUARD_MS) return;
+      if (state.status !== 'playing' || uiPaused) return;
+      const id = hitTestHotspot(e.clientX, e.clientY);
+      if (id) selectHotspot(id);
     });
 
     /**
@@ -2862,23 +3907,52 @@
       if (!dom.canvasWrapper || !dom.canvas) return;
       const rect = dom.canvasWrapper.getBoundingClientRect();
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      canvasW = Math.max(300, rect.width || dom.shell.clientWidth || 420);
-      canvasH = Math.max(240, rect.height || 440);
+      // 下限只是保險：實際高度由版面決定（最少約 200px），別讓下限比真實尺寸大，否則畫面會被壓扁
+      canvasW = Math.max(240, rect.width || dom.shell.clientWidth || 420);
+      canvasH = Math.max(120, rect.height || 440);
       dom.canvas.width = Math.floor(canvasW * dpr);
       dom.canvas.height = Math.floor(canvasH * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     }
 
+    // 各天氣的雪花：一般（稍微柔化）／狂風（斜飛）／濕雪（大而重、帶水滴感）／酷寒（少而細）
+    function snowProfile(wid) {
+      switch (wid) {
+        case 'gale': return { n: 110, r0: 1.3, r1: 3.4, vx0: -3.0, vx1: -6.0, vy0: 1.2, vy1: 2.8, indoor: 0.3, out: 'rgba(255, 255, 255, 0.5)', inn: 'rgba(224, 242, 254, 0.5)', kind: 'flake' };
+        case 'wet': return { n: 64, r0: 2.6, r1: 4.8, vx0: -0.9, vx1: -2.0, vy0: 2.6, vy1: 4.4, indoor: 0.3, out: 'rgba(190, 215, 240, 0.55)', inn: 'rgba(186, 230, 253, 0.5)', kind: 'wet' };
+        case 'cold': return { n: 52, r0: 0.8, r1: 1.7, vx0: -1.2, vx1: -2.4, vy0: 1.0, vy1: 2.0, indoor: 0.2, out: 'rgba(255, 255, 255, 0.62)', inn: 'rgba(224, 242, 254, 0.55)', kind: 'flake' };
+        default: return { n: 110, r0: 1.3, r1: 3.4, vx0: -1.4, vx1: -3.0, vy0: 1.3, vy1: 2.8, indoor: 0.35, out: 'rgba(255, 255, 255, 0.34)', inn: 'rgba(224, 242, 254, 0.5)', kind: 'flake' };
+      }
+    }
+
     function initSnowParticles() {
+      const prof = snowProfile(state.currentLevel ? state.currentLevel.weather : 'normal');
+      const n = Math.min(SNOW_MAX, Math.max(8, Math.round(prof.n * (REDUCED ? 0.5 : 1))));
+      const sp = REDUCED ? 0.6 : 1;
       state.snowParticles = [];
-      for (let i = 0; i < 110; i++) {
+      for (let i = 0; i < n; i++) {
         state.snowParticles.push({
           x: Math.random() * Math.max(400, canvasW),
           y: Math.random() * Math.max(400, canvasH),
-          r: 1.5 + Math.random() * 2.6,
-          vx: -1.8 - Math.random() * 2.4,
-          vy: 1.5 + Math.random() * 2.5,
-          indoor: i < 38
+          r: prof.r0 + Math.random() * (prof.r1 - prof.r0),
+          vx: (prof.vx0 + Math.random() * (prof.vx1 - prof.vx0)) * sp,
+          vy: (prof.vy0 + Math.random() * (prof.vy1 - prof.vy0)) * sp,
+          indoor: i < n * prof.indoor
+        });
+      }
+      state.snowKind = prof.kind;
+      state.snowCol = [prof.out, prof.inn];
+
+      // 物件池：固定長度，之後只重複使用
+      state.windParticles = [];
+      const wn = REDUCED ? 12 : WIND_MAX;
+      for (let i = 0; i < wn; i++) state.windParticles.push({ x: 0, y: 0, vx: 0, vy: 0, r: 2, life: 0 });
+      state.streaks = [];
+      const sn = REDUCED ? 6 : STREAK_MAX;
+      for (let i = 0; i < sn; i++) {
+        state.streaks.push({
+          x: Math.random() * Math.max(400, canvasW), y: Math.random() * Math.max(200, canvasH),
+          len: 50 + Math.random() * 90, sp: 900 + Math.random() * 700
         });
       }
     }
@@ -2892,6 +3966,13 @@
         } else if (ev.type === 'gale') {
           sound.setWindIntensity(0.085, true);
           triggerScreenShake();
+          ev.ripped.forEach((rid) => {
+            const rdef = HOTSPOT_LIBRARY[rid];
+            if (!rdef) return;
+            const rp = pinPos(rdef);
+            spawnFxParticles(rp.x, rp.y, 'cold_wind', 10);
+            addRing(rp.x, rp.y, '#f87171');
+          });
           if (ev.ripped.length > 0) {
             showToast('error', `🌪️ 狂風吹飛了 ${ev.ripped.length} 處修補！`, '修補被吹掉要重新花材料點數，下次挑「抗風」的材料。');
             setBubble('哇啊！有的修補被狂風整片吹走了！', 'pain');
@@ -2912,24 +3993,55 @@
         ctx.clearRect(0, 0, canvasW, canvasH);
         drawScene();
 
-        const galeMult = state.galePhase === 'gale' ? 2.6 : 1.0;
-        state.snowParticles.forEach((p) => {
-          p.x += p.vx * galeMult;
-          p.y += p.vy * galeMult;
-          if (p.x < -10) p.x = canvasW + 10;
-          if (p.y > canvasH + 10) {
-            p.y = -10;
-            p.x = Math.random() * canvasW;
-          }
-          ctx.fillStyle = p.indoor ? 'rgba(224, 242, 254, 0.65)' : 'rgba(255, 255, 255, 0.45)';
+        const gale = state.galePhase === 'gale';
+        const live = dt > 0 && !uiPaused && (state.status === 'playing' || state.status === 'animating');
+        if (live) {
+          if (gale) emitWind(dt);
+          emitDrips(dt);
+        }
+
+        // 雪花（兩批次畫：屋外／屋內，每批只一次 fill）
+        const mx = gale ? 2.6 : 1.0;
+        const my = gale ? 1.15 : 1.0;
+        const sn = state.snowParticles;
+        const wet = state.snowKind === 'wet';
+        for (let i = 0; i < sn.length; i++) {
+          const p = sn[i];
+          p.x += p.vx * mx;
+          p.y += p.vy * my;
+          if (p.x < -10) { p.x = canvasW + 10; p.y = Math.random() * canvasH; }
+          if (p.y > canvasH + 10) { p.y = -10; p.x = Math.random() * (canvasW + 40); }
+        }
+        for (let pass = 0; pass < 2; pass++) {
+          ctx.fillStyle = state.snowCol[pass];
           ctx.beginPath();
-          ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+          for (let i = 0; i < sn.length; i++) {
+            const p = sn[i];
+            if ((p.indoor ? 1 : 0) !== pass) continue;
+            if (wet) {
+              ctx.moveTo(p.x + p.r * 0.8, p.y);
+              ctx.ellipse(p.x, p.y, p.r * 0.8, p.r * 1.2, 0, 0, Math.PI * 2);
+            } else {
+              ctx.moveTo(p.x + p.r, p.y);
+              ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+            }
+          }
           ctx.fill();
-        });
+        }
+
+        if (gale) {
+          drawGaleStreaks(dt);
+          drawWindParticles(dt);
+        } else {
+          // 狂風結束後還飛著的雪粒讓它自然落完
+          const wp = state.windParticles;
+          for (let i = 0; i < wp.length; i++) { if (wp[i].life > 0) { drawWindParticles(dt); break; } }
+        }
+        drawDrips(dt);
 
         if (state.flyingTool) {
           const ft = state.flyingTool;
-          ft.progress += dt * 2.9;
+          ft.progress += dt * CHOICE_FLY_SPEED;
           const t = Math.min(1, ft.progress);
           const ease = 1 - Math.pow(1 - t, 3);
           const curX = ft.startX + (ft.targetX - ft.startX) * ease;
@@ -2953,21 +4065,47 @@
           }
         }
 
+        // 修補成功／陷阱的擴散光環
+        for (let i = state.rings.length - 1; i >= 0; i--) {
+          const rg = state.rings[i];
+          rg.life -= dt * 1.7;
+          if (rg.life <= 0) { state.rings.splice(i, 1); continue; }
+          ctx.save();
+          ctx.globalAlpha = Math.min(1, rg.life * 0.9);
+          ctx.strokeStyle = rg.color;
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.arc(rg.x, rg.y, REDUCED ? 34 : 8 + (1 - rg.life) * 44, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.restore();
+        }
+
         for (let i = state.fxParticles.length - 1; i >= 0; i--) {
           const fp = state.fxParticles[i];
           fp.x += fp.vx;
           fp.y += fp.vy;
-          fp.vy += 0.12;
+          fp.vy += fp.streak ? 0.02 : 0.12;
           fp.life -= dt * 1.45;
           if (fp.life <= 0) {
             state.fxParticles.splice(i, 1);
             continue;
           }
           ctx.save();
-          ctx.globalAlpha = Math.max(0, fp.life);
+          ctx.globalAlpha = Math.max(0, Math.min(1, fp.life));
           if (fp.char) {
             ctx.font = '18px sans-serif';
             ctx.fillText(fp.char, fp.x, fp.y);
+          } else if (fp.streak) {
+            ctx.strokeStyle = fp.color;
+            ctx.lineWidth = fp.size;
+            ctx.beginPath();
+            ctx.moveTo(fp.x, fp.y);
+            ctx.lineTo(fp.x - fp.vx * 3.5, fp.y - fp.vy * 3.5);
+            ctx.stroke();
+          } else if (fp.star) {
+            ctx.fillStyle = fp.color;
+            drawStar4(fp.x, fp.y, fp.size * 1.3);
+            ctx.fill();
           } else {
             ctx.fillStyle = fp.color;
             ctx.beginPath();
@@ -3002,12 +4140,18 @@
     }
 
     function gameLoop(timestamp) {
+      // 分頁在背景：不推進計時與動畫，回來時重設時間基準，避免一口氣補扣溫度
+      if (pageHidden) {
+        state.lastFrameTime = 0;
+        requestAnimationFrame(gameLoop);
+        return;
+      }
       if (!state.lastFrameTime) state.lastFrameTime = timestamp;
       const dt = Math.min((timestamp - state.lastFrameTime) / 1000, 0.1);
       state.lastFrameTime = timestamp;
       state.time += dt;
 
-      if (state.status === 'playing') {
+      if (state.status === 'playing' && !uiPaused) {
         handleGameEvents(stepGame(state, dt));
         updateHUD();
 
@@ -3031,7 +4175,98 @@
     window.addEventListener('resize', () => {
       resizeCanvas();
       renderCanvasFrame();
+      updateTabFade();
     });
+
+    // 版面高度會因 chip 換行、保底鈕出現等改變，舞台尺寸變了就重算 Canvas
+    if (window.ResizeObserver) {
+      new ResizeObserver(() => {
+        resizeCanvas();
+        renderCanvasFrame(0);
+      }).observe(dom.canvasWrapper);
+    }
+
+    // 切到背景：暫停計時與動畫（同時暫停聲音）；回來：重設時間基準
+    document.addEventListener('visibilitychange', () => {
+      pageHidden = document.hidden;
+      state.lastFrameTime = 0;
+      try {
+        if (sound.ctx) {
+          if (pageHidden) sound.ctx.suspend();
+          else sound.ctx.resume();
+        }
+      } catch (e) {}
+    });
+
+    dom.hotspotTabs.addEventListener('scroll', updateTabFade, { passive: true });
+
+    // 提示點一下就關掉（只關提示；提示不在 Canvas 裡，不會穿透去點到破洞）
+    // 點在 toast 上時：關掉提示，並用同一個座標對破洞做命中判定（被 toast 蓋住的圖釘一點就選到）
+    dom.feedbackToast.addEventListener('click', (e) => {
+      e.stopPropagation();
+      hideToast();
+      if (state.status !== 'playing' || uiPaused) return;
+      const id = hitTestHotspot(e.clientX, e.clientY);
+      if (!id) return;
+      lastPointerAt = performance.now(); // 同一次點擊不會再被 canvas 的 click 重複處理
+      state.pinPress = { id, t: state.time };
+      selectHotspot(id);
+    });
+
+    // 天氣／章節規則 chip：點一下再看完整說明
+    dom.weatherChip.addEventListener('click', () => {
+      if (state.status !== 'playing' && state.status !== 'animating') return;
+      sound.init();
+      sound.playClick();
+      const lvl = state.currentLevel;
+      const wx = levelWeather(lvl);
+      showToast('info', `${wx.icon} 本關天氣：${wx.name}`, weatherText(lvl), 6000);
+    });
+
+    dom.ruleChip.addEventListener('click', () => {
+      if (state.status !== 'playing' && state.status !== 'animating') return;
+      const rl = ruleLineOf(state);
+      if (!rl) return;
+      sound.init();
+      sound.playClick();
+      showToast('info', '📌 章節規則', rl, 6000);
+    });
+
+    dom.btnBriefStart.addEventListener('click', () => {
+      sound.init();
+      sound.playClick();
+      beginPlaying();
+    });
+
+    dom.btnBriefMap.addEventListener('click', () => {
+      sound.init();
+      sound.playClick();
+      showMapOverlay();
+    });
+
+    // 確認視窗（清除進度、關卡中重來共用）；開著的時候暫停計時
+    function openConfirm(opts) {
+      dom.confirmTitle.textContent = opts.title;
+      dom.confirmDesc.textContent = opts.desc;
+      dom.btnConfirmReset.textContent = opts.okText;
+      pendingConfirm = opts.onOk;
+      uiPaused = true;
+      dom.confirmModal.classList.remove('hidden', 'pointer-events-none');
+      dom.confirmModal.classList.add('pointer-events-auto');
+    }
+
+    function closeConfirm() {
+      pendingConfirm = null;
+      uiPaused = false;
+      dom.confirmModal.classList.add('hidden', 'pointer-events-none');
+      dom.confirmModal.classList.remove('pointer-events-auto');
+    }
+
+    // 關卡進行中、而且已經修過至少一個破洞，才算有進度
+    function hasRepairProgress() {
+      if (state.status !== 'playing' && state.status !== 'animating') return false;
+      return Object.keys(state.hotspotStates).some((id) => state.hotspotStates[id].tier !== 'broken');
+    }
 
     dom.btnContinueLatest.addEventListener('click', () => {
       sound.init();
@@ -3054,7 +4289,18 @@
     dom.btnQuickRestart.addEventListener('click', () => {
       sound.init();
       sound.playClick();
-      startLevel(state.currentLevel.id);
+      const lvlId = state.currentLevel.id;
+      if (hasRepairProgress()) {
+        // 防手滑：已經修過破洞再按「重來」要先確認
+        openConfirm({
+          title: '要重玩本關嗎？',
+          desc: '目前的修補進度與材料點數會全部清掉，從頭開始。',
+          okText: '確定重來',
+          onOk: () => startLevel(lvlId)
+        });
+      } else {
+        startLevel(lvlId);
+      }
     });
 
     dom.btnSound.addEventListener('click', () => {
@@ -3074,23 +4320,28 @@
     dom.btnResetSave.addEventListener('click', () => {
       sound.init();
       sound.playClick();
-      dom.confirmModal.classList.remove('hidden', 'pointer-events-none');
-      dom.confirmModal.classList.add('pointer-events-auto');
+      openConfirm({
+        title: '確定要清除所有關卡進度？',
+        desc: '所有星級評價與已解鎖地圖將重置回第 1 關。',
+        okText: '確定重置',
+        onOk: () => {
+          saveData = { unlockedLevel: 1, stars: {} };
+          writeSaveData();
+          renderLevelMap();
+        }
+      });
     });
 
     dom.btnCancelReset.addEventListener('click', () => {
       sound.playClick();
-      dom.confirmModal.classList.add('hidden', 'pointer-events-none');
-      dom.confirmModal.classList.remove('pointer-events-auto');
+      closeConfirm();
     });
 
     dom.btnConfirmReset.addEventListener('click', () => {
       sound.playClick();
-      saveData = { unlockedLevel: 1, stars: {} };
-      writeSaveData();
-      dom.confirmModal.classList.add('hidden', 'pointer-events-none');
-      dom.confirmModal.classList.remove('pointer-events-auto');
-      renderLevelMap();
+      const fn = pendingConfirm;
+      closeConfirm();
+      if (fn) fn();
     });
 
     window.onload = () => {
