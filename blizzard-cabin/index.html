@@ -319,6 +319,12 @@
 
     /* --- 結算：星星逐顆彈出、三星暖光與金色雪花、失敗結霜 --- */
     .bz-star { display: inline-block; }
+    /* 選配美術圖示：一律固定寬高（行內小圖約 1.2em），載入前後版面不跳動 */
+    .bz-art { display: inline-block; object-fit: contain; vertical-align: middle; -webkit-user-drag: none; user-select: none; pointer-events: none; flex-shrink: 0; }
+    .bz-card-icon.bz-has-art { background: none; border: 0; border-radius: 0; font-size: 0; overflow: visible; width: 46px; height: 46px; }
+    /* 有美術圖時圖示放大（剪紙圖是主角）；矮螢幕縮一點，卡片總高不超過原本 */
+    @media (max-height: 700px) { .bz-card-icon.bz-has-art { width: 38px; height: 38px; } }
+    .bz-card-icon .bz-art { width: 100%; height: 100%; }
     .bz-star-off { opacity: 0.5; }
     @keyframes bzStarPop { 0% { transform: scale(0) rotate(-40deg); opacity: 0; } 60% { transform: scale(1.5) rotate(8deg); opacity: 1; } 100% { transform: scale(1) rotate(0); opacity: 1; } }
     .bz-star-on { animation: bzStarPop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) backwards; }
@@ -367,7 +373,7 @@
       <div class="bz-top-row">
         <!-- 返回 20 關地圖按鈕 -->
         <button id="btn-open-map" type="button" aria-label="回關卡地圖" class="bz-map-btn bg-gradient-to-r from-amber-500 to-orange-600 border border-amber-200 rounded-xl flex items-center gap-1.5 shrink-0 shadow cursor-pointer">
-          <span class="text-sm">🗺️</span>
+          <span class="text-sm" data-art="ui_map" data-emoji="🗺️" data-size="18">🗺️</span>
           <div class="leading-none text-left">
             <div id="hud-level-badge" class="text-xs font-black text-amber-100">第 1 關</div>
             <div id="hud-level-name" class="text-xs font-black text-white bz-lvname truncate">漏風破木屋</div>
@@ -533,7 +539,7 @@
         <div id="brief-rows"></div>
         <div class="bz-brief-actions">
           <button id="btn-brief-start" type="button" class="cta-btn bz-btn-big">🔨 開始修補</button>
-          <button id="btn-brief-map" type="button" class="bz-btn-sub">🗺️ 回關卡地圖</button>
+          <button id="btn-brief-map" type="button" class="bz-btn-sub"><span data-art="ui_map" data-emoji="🗺️" data-size="18">🗺️</span> 回關卡地圖</button>
         </div>
       </div>
     </div>
@@ -545,7 +551,7 @@
       <div id="end-fx" class="bz-end-fx" aria-hidden="true"></div>
       <div id="end-badge" class="px-4 py-1 rounded-full text-xs font-black tracking-widest mb-2 border"></div>
       <div id="end-stars-row" class="text-4xl mb-1.5 tracking-widest">⭐⭐⭐</div>
-      <div id="end-emoji" class="text-5xl mb-2">🏰</div>
+      <div id="end-emoji" class="text-5xl mb-2" style="min-height:48px">🏰</div>
       <h2 id="end-title" class="text-xl sm:text-2xl font-black text-white mb-1.5"></h2>
       <p id="end-subtitle" class="text-xs text-slate-300 max-w-xs mb-4 leading-relaxed"></p>
 
@@ -566,7 +572,7 @@
 
       <div class="bz-end-btns flex items-center gap-2.5 w-full max-w-xs">
         <button id="btn-end-map" type="button" class="flex-1 px-4 py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-xs font-black text-white cursor-pointer">
-          🗺️ 關卡地圖
+          <span data-art="ui_map" data-emoji="🗺️" data-size="18">🗺️</span> 關卡地圖
         </button>
         <button id="btn-end-next" type="button" class="flex-1 cta-btn px-4 py-3 rounded-2xl text-xs font-black text-white cursor-pointer">
           ➡️ 下一關
@@ -577,7 +583,7 @@
     <!-- 自訂確認彈窗（清除進度、關卡中重來共用） -->
     <div id="confirm-modal" class="hidden pointer-events-none absolute inset-0 z-50 bg-slate-950/85 backdrop-blur-sm flex items-center justify-center p-6">
       <div class="bg-slate-900 border-2 border-red-500/70 rounded-3xl p-5 max-w-xs w-full text-center shadow-2xl">
-        <div class="text-3xl mb-2">⚠️</div>
+        <div class="text-3xl mb-2" data-art="ui_warn" data-emoji="⚠️" data-size="36">⚠️</div>
         <h3 id="confirm-title" class="text-base font-black text-white mb-1">確定要清除所有關卡進度？</h3>
         <p id="confirm-desc" class="text-xs text-slate-300 mb-4">所有星級評價與已解鎖地圖將重置回第 1 關。</p>
         <div class="grid grid-cols-2 gap-2">
@@ -1719,6 +1725,85 @@
     function safeIcon(icon) { return SAFE_ICON[icon] || icon; }
     function safeText(s) { return String(s == null ? '' : s).replace(SAFE_ICON_RE, (m) => SAFE_ICON[m]); }
 
+    // ---- 選配美術（剪紙圖示）：art/index.json 有列、且載入成功的 id 才用圖，其餘維持 emoji ----
+    // 更新圖檔時把 ART_VER 加一，瀏覽器才會重抓
+    const ART_VER = '1';
+    const ART_IMGS = {};   // id → 已載入完成的 Image
+    function artHas(id) { return Boolean(id && ART_IMGS[id]); }
+    function artImg(id) { return (id && ART_IMGS[id]) || null; }
+    function escHTML(s) {
+      return String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    }
+    // 文字行內／容器內的圖示 HTML：有圖回傳固定寬高的 <img>，沒圖回傳原本的 emoji（經 safeText 換成舊手機也有的）
+    // size：數字＝px；字串＝CSS 長度（例如 '1.2em'）
+    function iconHTML(id, emoji, size) {
+      if (artHas(id)) {
+        const z = typeof size === 'number' ? `${size}px` : (size || '1.2em');
+        return `<img class="bz-art" src="art/${id}.webp?v=${ART_VER}" alt="" draggable="false" style="width:${z};height:${z}">`;
+      }
+      return safeText(emoji);
+    }
+    // Canvas 版：以 (x, y) 為中心；有圖畫 size×size 的圖，沒圖照原本的字級 emojiSize（預設同 size）畫 emoji
+    function drawIcon(c, id, emoji, x, y, size, emojiSize) {
+      const im = artImg(id);
+      if (im) {
+        c.drawImage(im, x - size / 2, y - size / 2, size, size);
+        return;
+      }
+      c.font = `${emojiSize || size}px sans-serif`;
+      c.textAlign = 'center';
+      c.textBaseline = 'middle';
+      c.fillText(safeText(emoji), x, y);
+    }
+    function starsHTML(n, size) {
+      let h = '';
+      for (let i = 1; i <= 3; i++) h += i <= n ? iconHTML('ui_star', '⭐', size) : iconHTML('ui_star_empty', '☆', size);
+      return h;
+    }
+    // 值沒變就不寫 DOM（每幀會跑的 HUD 用）
+    function setHTML(el, html) { if (el._bzh !== html) { el._bzh = html; el.innerHTML = html; } }
+    // 圖示載入後：靜態標記的圖示換上（<span data-art="id" data-emoji="…" data-size="px">）
+    function applyStaticArt() {
+      try {
+        if (!document.querySelectorAll) return;
+        document.querySelectorAll('[data-art]').forEach((el) => {
+          const id = el.getAttribute('data-art');
+          if (artHas(id)) el.innerHTML = iconHTML(id, el.getAttribute('data-emoji') || '', Number(el.getAttribute('data-size')) || '1.2em');
+        });
+      } catch (e) {}
+    }
+    // 圖示載入完成後重畫一次，讓已經畫出來的畫面換上圖
+    function refreshArt() {
+      try {
+        applyStaticArt();
+        [dom.leakBadge, dom.tempEmoji, dom.budgetChip, dom.galeIcon, dom.luxuryStarsPreview].forEach((el) => { el._bzh = null; el._bzk = null; });
+        if (!dom.mapOverlay.classList.contains('hidden')) renderLevelMap();
+        if (state.status !== 'map') {
+          renderInfoRow();
+          renderDecisionPanel();
+          updateHUD();
+          if (dom.briefOverlay && !dom.briefOverlay.hidden) showBriefing(state.currentLevel);
+        }
+      } catch (e) {}
+    }
+    // 啟動時讀清單並預先載入；抓不到清單（離線、還沒出圖、假環境）就當沒有圖，不報錯
+    function loadArt() {
+      if (typeof fetch !== 'function' || typeof Image !== 'function') return;
+      fetch('art/index.json')
+        .then((r) => (r.ok ? r.json() : []))
+        .then((list) => {
+          if (!Array.isArray(list) || !list.length) return;
+          return Promise.all(list.map((id) => new Promise((resolve) => {
+            if (typeof id !== 'string' || !/^[a-z0-9_]+$/.test(id)) { resolve(); return; }
+            const im = new Image();
+            im.onload = () => { ART_IMGS[id] = im; resolve(); };
+            im.onerror = () => resolve();
+            im.src = `art/${id}.webp?v=${ART_VER}`;
+          }))).then(() => { if (Object.keys(ART_IMGS).length) refreshArt(); });
+        })
+        .catch(() => {});
+    }
+
     // 小工具：值沒變就不寫 DOM（updateHUD 每幀都會跑）
     function setCls(el, cls) { if (el.className !== cls) el.className = cls; }
     function setTxt(el, s) { if (el.textContent !== s) el.textContent = s; }
@@ -1737,7 +1822,7 @@
      * ============================================================================
      */
     function renderLevelMap() {
-      dom.totalStarsDisplay.textContent = `⭐ ${getTotalStars()} / ${LEVELS.length * 3}`;
+      dom.totalStarsDisplay.innerHTML = `${iconHTML('ui_star', '⭐', '1.2em')} ${getTotalStars()} / ${LEVELS.length * 3}`;
       dom.mapListContainer.innerHTML = '';
 
       CHAPTERS.forEach((chap) => {
@@ -1757,10 +1842,10 @@
         section.innerHTML = `
           <div class="flex items-center justify-between px-3 py-1.5 rounded-xl border ${colorMap[chap.color]}">
             <span class="text-xs font-black tracking-wide">${chap.name}</span>
-            <span class="bz-chap-stars" aria-label="本章星數">⭐ ${chapGot} / ${chapTot}</span>
+            <span class="bz-chap-stars" aria-label="本章星數">${iconHTML('ui_star', '⭐', 14)} ${chapGot} / ${chapTot}</span>
           </div>
           <div class="bz-chap-badge">${chap.badge}</div>
-          <div class="px-1 text-xs font-bold text-slate-300 leading-snug">📌 ${chap.rule.text}</div>
+          <div class="px-1 text-xs font-bold text-slate-300 leading-snug">${iconHTML('ui_rule', '📌', '1.2em')} ${chap.rule.text}</div>
           <div class="grid grid-cols-1 gap-2" id="chap-grid-${chap.id}"></div>
         `;
         dom.mapListContainer.appendChild(section);
@@ -1780,7 +1865,7 @@
             card.className = 'bz-locked w-full rounded-2xl p-3 flex items-center justify-between text-left';
             card.innerHTML = `
               <div class="flex items-center gap-3">
-                <div class="bz-lk-ico w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-base">🔒</div>
+                <div class="bz-lk-ico w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-base">${iconHTML('ui_lock', '🔒', 26)}</div>
                 <div>
                   <div class="bz-lk-name">第 ${lvl.id} 關 • ${lvl.name}</div>
                   <div class="bz-lk-sub">通關上一關解鎖</div>
@@ -1795,13 +1880,13 @@
                 : 'bg-slate-900 hover:bg-slate-800 border-slate-700'
             }`;
 
-            const starStr = [1, 2, 3].map((n) => (n <= earnedStars ? '⭐' : '☆')).join('');
+            const starStr = starsHTML(earnedStars, 14);
             const wx = levelWeather(lvl);
             const tags = [
-              `${wx.icon} ${wx.name}`,
+              `${iconHTML('wx_' + wx.id, wx.icon, 12)} ${wx.name}`,
               `初始 ${lvl.startTemp}°C`,
               `${lvl.hotspots.length} 處破損`,
-              `🧰 材料 ${lvl.budget}`
+              `${iconHTML('ui_material', '🧰', 12)} 材料 ${lvl.budget}`
             ];
             if (lvl.hotspots.some((h) => h.iced)) tags.push('結冰');
             const ruleType = chapterRule(lvl).type;
@@ -1886,10 +1971,10 @@
     function renderInfoRow() {
       const lvl = state.currentLevel;
       const wx = levelWeather(lvl);
-      dom.weatherChip.textContent = `${wx.icon} ${wx.name} ⓘ`;
+      dom.weatherChip.innerHTML = `${iconHTML('wx_' + wx.id, wx.icon, '1.2em')} ${wx.name} ⓘ`;
       const rs = ruleShortOf(state);
       if (rs) {
-        dom.ruleChip.textContent = `📌 ${rs} ⓘ`;
+        dom.ruleChip.innerHTML = `${iconHTML('ui_rule', '📌', '1.2em')} ${rs} ⓘ`;
         dom.ruleChip.classList.remove('hidden');
       } else {
         dom.ruleChip.classList.add('hidden');
@@ -1902,20 +1987,20 @@
       dom.briefKicker.textContent = `第 ${lvl.id} 關・本關簡報`;
       dom.briefTitle.textContent = lvl.name;
       const rows = [
-        ['🎯', '目標', `室溫升到 ${lvl.targetTemp.toFixed(0)}°C（起始 ${lvl.startTemp}°C），別讓室溫掉到 0°C。`],
-        [wx.icon, `本關天氣：${wx.name}`, weatherText(lvl)],
-        ['🧰', `材料點數：${lvl.budget} 點`, '每張卡會花掉標示的點數；點數用完還有免費的保底選項。']
+        ['ui_goal', '🎯', '目標', `室溫升到 ${lvl.targetTemp.toFixed(0)}°C（起始 ${lvl.startTemp}°C），別讓室溫掉到 0°C。`],
+        ['wx_' + wx.id, wx.icon, `本關天氣：${wx.name}`, weatherText(lvl)],
+        ['ui_material', '🧰', `材料點數：${lvl.budget} 點`, '每張卡會花掉標示的點數；點數用完還有免費的保底選項。']
       ];
       const rl = ruleLineOf(state);
-      if (rl) rows.push(['📌', '章節規則', rl]);
-      if (lvl.hint) rows.push(['💡', '提示', lvl.hint]);
+      if (rl) rows.push(['ui_rule', '📌', '章節規則', rl]);
+      if (lvl.hint) rows.push(['ui_hint', '💡', '提示', lvl.hint]);
       dom.briefRows.textContent = '';
-      rows.forEach(([ico, label, text]) => {
+      rows.forEach(([artId, ico, label, text]) => {
         const row = document.createElement('div');
         row.className = 'bz-brief-row';
         const i = document.createElement('span');
         i.className = 'bz-brief-ico';
-        i.textContent = ico;
+        i.innerHTML = iconHTML(artId, ico, 22);
         const d = document.createElement('div');
         const b = document.createElement('b');
         b.textContent = label;
@@ -2011,16 +2096,16 @@
 
       const rate = computeTempDeltaPerSec();
       if (rate >= 0.35) {
-        dom.leakBadge.textContent = '🔥 升溫中';
+        setHTML(dom.leakBadge, `${iconHTML('leak_warming', '🔥', 16)} 升溫中`);
         dom.leakBadge.className = 'text-xs font-black px-1.5 py-0.5 rounded-md bg-emerald-950 text-emerald-300 border border-emerald-400';
       } else if (rate >= -0.25) {
-        dom.leakBadge.textContent = '🌤️ 漸穩';
+        setHTML(dom.leakBadge, `${iconHTML('leak_stable', '🌤️', 16)} 漸穩`);
         dom.leakBadge.className = 'text-xs font-black px-1.5 py-0.5 rounded-md bg-amber-950 text-amber-300 border border-amber-400';
       } else if (rate > -1.2) {
-        dom.leakBadge.textContent = '❄️ 漏風中';
+        setHTML(dom.leakBadge, `${iconHTML('leak_leaking', '❄️', 16)} 漏風中`);
         dom.leakBadge.className = 'text-xs font-black px-1.5 py-0.5 rounded-md bg-orange-950 text-orange-300 border border-orange-500';
       } else {
-        dom.leakBadge.textContent = '🚨 寒流狂灌';
+        setHTML(dom.leakBadge, `${iconHTML('leak_danger', '🚨', 16)} 寒流狂灌`);
         dom.leakBadge.className = 'text-xs font-black px-1.5 py-0.5 rounded-md bg-red-950 text-red-300 border border-red-500 animate-pulse';
       }
 
@@ -2035,35 +2120,36 @@
 
       // 溫度：<5°C 危險（變紅＋脈動）、接近目標時溫度條有光澤流過
       const tgt = state.currentLevel.targetTemp;
-      let tEmoji, tValCls, tBarCls;
+      let tEmoji, tFace, tValCls, tBarCls;
       const BAR = 'h-full rounded-full transition-all duration-100 bg-gradient-to-r ';
       if (clampedTemp < 5.0) {
-        tEmoji = '🥶';
+        tEmoji = '🥶'; tFace = 'face_freeze';
         tValCls = 'text-sm font-black tabular-nums bz-danger-val';
         tBarCls = BAR + 'from-red-600 to-rose-400 bz-danger-bar';
       } else if (clampedTemp < tgt * 0.72) {
-        tEmoji = '😨';
+        tEmoji = '😨'; tFace = 'face_cold';
         tValCls = 'text-sm font-black text-cyan-300 tabular-nums';
         tBarCls = BAR + 'from-cyan-500 to-sky-300';
       } else if (clampedTemp < tgt) {
-        tEmoji = '😊';
+        tEmoji = '😊'; tFace = 'face_ok';
         tValCls = 'text-sm font-black text-amber-300 tabular-nums';
         tBarCls = BAR + 'from-amber-500 to-yellow-300';
       } else {
-        tEmoji = '🥰';
+        tEmoji = '🥰'; tFace = 'face_warm';
         tValCls = 'text-sm font-black text-emerald-300 tabular-nums';
         tBarCls = BAR + 'from-emerald-500 to-lime-300';
       }
       if (clampedTemp >= 5.0 && clampedTemp >= tgt * 0.85) tBarCls += ' bz-shine';
-      if (dom.tempEmoji.textContent !== tEmoji) {
-        dom.tempEmoji.textContent = tEmoji;
+      if (dom.tempEmoji._bzk !== tEmoji) {
+        dom.tempEmoji._bzk = tEmoji;
+        dom.tempEmoji.innerHTML = iconHTML(tFace, tEmoji, 20);
         if (state.status === 'playing' || state.status === 'animating') popEl(dom.tempEmoji);
       }
       setCls(dom.tempValue, tValCls);
       setCls(dom.tempBar, tBarCls);
 
       // 材料點數
-      dom.budgetChip.textContent = `🧰 材料 ${state.budget} / ${state.currentLevel.budget}`;
+      setHTML(dom.budgetChip, `${iconHTML('ui_material', '🧰', '1.2em')} 材料 ${state.budget} / ${state.currentLevel.budget}`);
       dom.budgetChip.className = `bz-chip tabular-nums border ${
         state.budget <= 0
           ? 'bg-red-950 text-red-300 border-red-500'
@@ -2076,7 +2162,7 @@
       const lux = getLuxuryProgress();
       dom.luxuryBar.style.width = `${lux.pct}%`;
       dom.repairCountText.textContent = `${lux.repairedCount} / ${lux.total} 處`;
-      dom.luxuryStarsPreview.textContent = [1, 2, 3].map((n) => (n <= lux.stars ? '⭐' : '☆')).join('');
+      setHTML(dom.luxuryStarsPreview, starsHTML(lux.stars, 14));
       if (lux.stars > state.starsSeen && (state.status === 'playing' || state.status === 'animating')) popEl(dom.luxuryStarsPreview);
       state.starsSeen = lux.stars;
 
@@ -2086,28 +2172,28 @@
       const GT = 'text-xs font-black px-1.5 py-0.5 rounded tabular-nums shrink-0 ';
       if (hudWeather.id !== 'gale') {
         setCls(dom.galeHud, GH + 'bg-slate-900 border-slate-700');
-        setTxt(dom.galeIcon, hudWeather.icon);
+        setHTML(dom.galeIcon, iconHTML('wx_' + hudWeather.id, hudWeather.icon, 16));
         setTxt(dom.galeLabel, hudWeather.name);
         setCls(dom.galeLabel, 'text-xs font-black text-slate-300 truncate');
         setTxt(dom.galeTimer, '無狂風');
         setCls(dom.galeTimer, GT + 'bg-slate-800 text-cyan-300');
       } else if (state.galePhase === 'calm') {
         setCls(dom.galeHud, GH + 'bg-slate-900 border-slate-700');
-        setTxt(dom.galeIcon, '🌨️');
+        setHTML(dom.galeIcon, iconHTML('wx_normal', '🌨️', 16));
         setTxt(dom.galeLabel, '下波');
         setCls(dom.galeLabel, 'text-xs font-black text-cyan-200 truncate');
         setTxt(dom.galeTimer, `${Math.ceil(state.galeTimer)}s`);
         setCls(dom.galeTimer, GT + 'bg-slate-800 text-cyan-300');
       } else if (state.galePhase === 'warning') {
         setCls(dom.galeHud, GH + 'bg-amber-950/90 border-amber-400');
-        setTxt(dom.galeIcon, '⚠️');
+        setHTML(dom.galeIcon, iconHTML('ui_warn', '⚠️', 16));
         setTxt(dom.galeLabel, '預警');
         setCls(dom.galeLabel, 'text-xs font-black text-amber-200 truncate');
         setTxt(dom.galeTimer, `${Math.max(0, state.galeTimer).toFixed(1)}s`);
         setCls(dom.galeTimer, GT + 'bz-gt-warn');
       } else {
         setCls(dom.galeHud, GH + 'bg-red-950/95 border-red-400');
-        setTxt(dom.galeIcon, '🌪️');
+        setHTML(dom.galeIcon, iconHTML('wx_gale', '🌪️', 16));
         setTxt(dom.galeLabel, '狂風');
         setCls(dom.galeLabel, 'text-xs font-black text-red-200 truncate');
         setTxt(dom.galeTimer, `${Math.max(0, state.galeTimer).toFixed(1)}s`);
@@ -2157,9 +2243,9 @@
         tab.type = 'button';
         tab.addEventListener('click', () => selectHotspot(hSpec.id));
 
-        let statusIcon = st.iced ? '❄️' : '❗';
-        if (st.tier === 'luxury') statusIcon = '👑';
-        else if (st.tier === 'makeshift') statusIcon = '📎';
+        let statusIcon = iconHTML(st.iced ? 'st_iced' : 'st_broken', st.iced ? '❄️' : '❗', 20);
+        if (st.tier === 'luxury') statusIcon = iconHTML('st_luxury', '👑', 20);
+        else if (st.tier === 'makeshift') statusIcon = iconHTML('st_makeshift', '📎', 20);
 
         tab.className = `bz-tab border transition-all cursor-pointer ${
           isSelected
@@ -2311,9 +2397,11 @@
         }
       }
 
-      const costText = opt.cost > 0 ? `🧰${opt.cost}` : '免費';
+      const costText = opt.cost > 0 ? `${iconHTML('ui_material', '🧰', 13)}${opt.cost}` : '免費';
       const maxed = !stage1 && st.rank >= 2;
-      const icon = safeIcon(maxed && opt.tier === 'luxury' ? '👑' : opt.icon);
+      const crown = maxed && opt.tier === 'luxury';   // 已豪華改造的卡顯示皇冠（沒有對應圖）
+      const hasArt = !crown && artHas(opt.id);
+      const icon = hasArt ? iconHTML(opt.id, opt.icon, '100%') : safeIcon(crown ? '👑' : opt.icon);
       const reasonLine = BLOCK_TEXT[reason]
         ? `<div class="bz-card-reason">${BLOCK_TEXT[reason]}</div>`
         : '';
@@ -2321,8 +2409,8 @@
       card.innerHTML = `
         <div class="bz-card-top">
           <div class="bz-card-cost">${costText}</div>
-          <div class="bz-card-icon">${icon}</div>
-          <div class="bz-card-warnico">${warn ? '⚠' : ''}</div>
+          <div class="bz-card-icon${hasArt ? ' bz-has-art' : ''}">${icon}</div>
+          <div class="bz-card-warnico">${warn ? iconHTML('ui_warn', '⚠', 15) : ''}</div>
         </div>
         <div class="bz-card-name">${opt.name}</div>
         <div class="bz-card-main">${main}</div>
@@ -2345,9 +2433,7 @@
       btn.type = 'button';
       btn.disabled = state.status !== 'playing';
       btn.className = 'bz-fallback-btn';
-      btn.textContent = stage1
-        ? '🧤 徒手摳冰：免費保底（只能鬆動冰面）'
-        : '🧤 就地取材：免費保底（效果很小）';
+      btn.innerHTML = `${iconHTML(it.id, '🧤', '1.3em')} ${stage1 ? '徒手摳冰：免費保底（只能鬆動冰面）' : '就地取材：免費保底（效果很小）'}`;
       btn.addEventListener('click', (e) => handleChoiceClick(it, e.currentTarget));
       box.appendChild(btn);
     }
@@ -2388,6 +2474,7 @@
 
       state.flyingTool = {
         icon: safeIcon(option.icon),
+        id: option.id,
         startX,
         startY,
         targetX,
@@ -2421,7 +2508,7 @@
         sound.playFail();
         triggerScreenShake();
         triggerScreenFlash('bz-fl-red');
-        showToast('error', `${option.icon} ${option.fail}`, `室溫 ${dStr}，失誤 +1`);
+        showToast('error', option.fail, `室溫 ${dStr}，失誤 +1`, undefined, [option.id, option.icon]);
         setBubble(option.say || '糟糕！選錯工具啦！', 'pain');
         addFloatingText(tx, ty - 18, dStr, '#f87171');
         spawnFxParticles(tx, ty, option.fx || 'ice_blast');
@@ -2438,8 +2525,8 @@
           sound.playMakeshiftSuccess();
           triggerScreenFlash('bg-sky-300/25');
         }
-        showToast('info', `${option.icon} 「${option.name}」除冰完成！`,
-          `${option.say}${dry ? '' : '（破洞濕濕的，怕潮的材料會打折）'}`);
+        showToast('info', `「${option.name}」除冰完成！`,
+          `${option.say}${dry ? '' : '（破洞濕濕的，怕潮的材料會打折）'}`, undefined, [option.id, option.icon]);
         setBubble(option.say || '冰塊清除了！快繼續把這裡修好！', 'happy');
         addFloatingText(tx, ty - 18, `❄️ 除冰完成 ${dStr}`, '#38bdf8');
         spawnFxParticles(tx, ty, 'sparkles', 8);
@@ -2459,8 +2546,8 @@
         if (res.eff.dampHit) notes.push('受潮打折');
         if (res.eff.warmUp) notes.push('酷寒加倍保暖');
         if (res.eff.blown) notes.push('狂風來時會被吹掉');
-        showToast(isLux ? 'success' : 'info', `${option.icon} 「${option.name}」${isLux ? '豪華完工！' : '補上了！'}`,
-          `${option.say}（${dStr}${notes.length ? '，' + notes.join('、') : ''}）`);
+        showToast(isLux ? 'success' : 'info', `「${option.name}」${isLux ? '豪華完工！' : '補上了！'}`,
+          `${option.say}（${dStr}${notes.length ? '，' + notes.join('、') : ''}）`, undefined, [option.id, option.icon]);
         setBubble(option.say || (isLux ? '太豪華了！屋子變得又暖又漂亮！' : '勉強補上了！'), isLux ? 'happy' : 'cold');
         addFloatingText(tx, ty - 18, `${isLux ? '👑 ' : ''}${dStr}`, isLux ? '#fde047' : '#7dd3fc');
         spawnFxParticles(tx, ty, 'sparkles', isLux ? 16 : 10);
@@ -2480,7 +2567,7 @@
       if (state.budget <= 0 && openCount > 0 && !state.warnedBudget && res.kind !== 'trap') {
         state.warnedBudget = true;
         setTimeout(() => {
-          if (token === runToken && state.status === 'playing') showToast('info', '🧰 材料點數用完了！', '剩下的破洞可以用免費的「就地取材」先頂著，溫度才撐得住。', 4200);
+          if (token === runToken && state.status === 'playing') showToast('info', '材料點數用完了！', '剩下的破洞可以用免費的「就地取材」先頂著，溫度才撐得住。', 4200, ['ui_material', '🧰']);
         }, 700);
       }
 
@@ -2534,9 +2621,11 @@
 
     // 提示：新訊息直接取代舊的；點一下可關掉。
     // 目前選中的破洞在畫布下半部 → toast 顯示在畫布上緣，反之顯示在下緣（不蓋住要修的洞）
-    function showToast(type, title, desc, duration) {
+    // ico：[圖示 id, 備用 emoji]；有圖時標題前放小圖，沒圖時把 emoji 接在標題前
+    function showToast(type, title, desc, duration, ico) {
       if (toastTimeout) clearTimeout(toastTimeout);
-      dom.feedbackTitle.textContent = safeText(title);
+      if (ico && artHas(ico[0])) dom.feedbackTitle.innerHTML = `${iconHTML(ico[0], ico[1], 22)} ${escHTML(safeText(title))}`;
+      else dom.feedbackTitle.textContent = safeText(ico ? `${ico[1]} ${title}` : title);
       dom.feedbackDesc.textContent = safeText(desc);
       dom.feedbackDesc.style.display = desc ? '' : 'none';
 
@@ -2695,8 +2784,8 @@
 
         // 星星逐顆彈出（已得的依序延遲 0.28 秒）；三星時加暖光與飄落金色雪花
         dom.endStarsRow.innerHTML = [1, 2, 3].map((n) => (n <= lux.stars
-          ? `<span class="bz-star bz-star-on" style="animation-delay:${(0.2 + n * 0.28).toFixed(2)}s">⭐</span>`
-          : '<span class="bz-star bz-star-off">☆</span>')).join('');
+          ? `<span class="bz-star bz-star-on" style="animation-delay:${(0.2 + n * 0.28).toFixed(2)}s">${iconHTML('ui_star', '⭐', 36)}</span>`
+          : `<span class="bz-star bz-star-off">${iconHTML('ui_star_empty', '☆', 36)}</span>`)).join('');
         if (lux.stars === 3) {
           dom.endOverlay.classList.add('bz-end-3');
           buildGoldSnow();
@@ -2705,19 +2794,19 @@
         if (lux.stars === 3) {
           dom.endBadge.textContent = `👑 第 ${lvl.id} 關 夢幻豪宅完美結局！`;
           dom.endBadge.className = 'px-4 py-1 rounded-full text-xs font-black tracking-widest mb-2 border bg-amber-950 border-amber-400 text-amber-300';
-          dom.endEmoji.textContent = '🏰';
+          dom.endEmoji.innerHTML = iconHTML('end_mansion', '🏰', 64);
           dom.endTitle.textContent = '破屋奇蹟蛻變為夢幻豪華別墅！';
           dom.endSubtitle.textContent = `在有限的材料點數下把全屋改造得又豪華又暖（豪華度 ${lux.pct}%，剩餘 ${state.budget} 點），母子三人換上新衣享用大餐！`;
         } else if (lux.stars === 2) {
           dom.endBadge.textContent = `🏡 第 ${lvl.id} 關 溫馨小木屋結局`;
           dom.endBadge.className = 'px-4 py-1 rounded-full text-xs font-black tracking-widest mb-2 border bg-emerald-950 border-emerald-400 text-emerald-300';
-          dom.endEmoji.textContent = '🏡';
+          dom.endEmoji.innerHTML = iconHTML('end_house', '🏡', 64);
           dom.endTitle.textContent = '成功打造溫暖避風港！';
           dom.endSubtitle.textContent = `屋內暖呼呼的！剩餘 ${state.budget} 點。若點數允許，把湊合材料升級成豪華材料並少選錯，就能拿 3 星！`;
         } else {
           dom.endBadge.textContent = `📎 第 ${lvl.id} 關 勉強遮風避雨結局`;
           dom.endBadge.className = 'px-4 py-1 rounded-full text-xs font-black tracking-widest mb-2 border bg-sky-950 border-sky-400 text-sky-300';
-          dom.endEmoji.textContent = '🏚️';
+          dom.endEmoji.innerHTML = iconHTML('end_ruin', '🏚️', 64);
           dom.endTitle.textContent = '勉強撐過暴風雪之夜…';
           dom.endSubtitle.textContent = `雖然保住了性命，但屋子只是勉強補上。重玩一次，看天氣挑對材料、多補幾個破洞衝擊更高星等吧！`;
         }
@@ -2742,9 +2831,9 @@
         sound.playGameOver();
         dom.endBadge.textContent = `💀 第 ${lvl.id} 關 救援失敗`;
         dom.endBadge.className = 'px-4 py-1 rounded-full text-xs font-black tracking-widest mb-2 border bg-red-950 border-red-400 text-red-300';
-        dom.endStarsRow.innerHTML = '<span class="bz-star bz-star-off">☆</span><span class="bz-star bz-star-off">☆</span><span class="bz-star bz-star-off">☆</span>';
+        dom.endStarsRow.innerHTML = [1, 2, 3].map(() => `<span class="bz-star bz-star-off">${iconHTML('ui_star_empty', '☆', 36)}</span>`).join('');
         dom.endOverlay.classList.add('bz-end-lose'); // 失敗：畫面結霜
-        dom.endEmoji.textContent = '🥶';
+        dom.endEmoji.innerHTML = iconHTML('face_freeze', '🥶', 64);
         dom.endTitle.textContent = '室內降至 0°C，母子被暴雪凍僵！';
         dom.endSubtitle.textContent = state.budget <= 0
           ? '材料點數用完了！下次挑便宜又合天氣的卡，別把點數花在陷阱與會被吹掉的材料上。'
@@ -3837,15 +3926,13 @@
         }
 
         // 徽章圖示（新版 emoji 換成舊手機也有的）
-        ctx.font = `${(isSelected ? 22 : 18) + Math.round(press * 4)}px sans-serif`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
         const badgeIcon = st.iced ? '❄️' : st.tier === 'luxury' ? '👑' : st.tier === 'makeshift' ? '📎' : safeIcon(def.icon);
-        ctx.fillText(badgeIcon, cx, cy);
+        const badgeArt = st.iced ? 'st_iced' : st.tier === 'luxury' ? 'st_luxury' : st.tier === 'makeshift' ? 'st_makeshift' : `hs_${hSpec.id}`;
+        // 有圖：畫在圓內（邊長約半徑的 1.55 倍，跟著脈動與按下放大）；沒圖：照原本的 emoji 字級
+        drawIcon(ctx, badgeArt, badgeIcon, cx, cy, pulse * 1.55, (isSelected ? 22 : 18) + Math.round(press * 4));
         if (atRisk) {
-          ctx.font = 'bold 15px sans-serif';
           ctx.fillStyle = '#fbbf24';
-          ctx.fillText('⚠', cx + pulse * 0.75, cy - pulse * 0.8);
+          drawIcon(ctx, 'ui_warn', '⚠', cx + pulse * 0.75, cy - pulse * 0.8, 20, 15);
         }
         ctx.restore();
       });
@@ -3962,7 +4049,7 @@
       events.forEach((ev) => {
         if (ev.type === 'warning') {
           sound.playAlarm();
-          showToast('error', '⚠️ 暴雪狂風即將來襲！', '不抗風的修補會被吹飛，標示「抗風」或高級材料才撐得住！');
+          showToast('error', '暴雪狂風即將來襲！', '不抗風的修補會被吹飛，標示「抗風」或高級材料才撐得住！', undefined, ['ui_warn', '⚠️']);
         } else if (ev.type === 'gale') {
           sound.setWindIntensity(0.085, true);
           triggerScreenShake();
@@ -3974,7 +4061,7 @@
             addRing(rp.x, rp.y, '#f87171');
           });
           if (ev.ripped.length > 0) {
-            showToast('error', `🌪️ 狂風吹飛了 ${ev.ripped.length} 處修補！`, '修補被吹掉要重新花材料點數，下次挑「抗風」的材料。');
+            showToast('error', `狂風吹飛了 ${ev.ripped.length} 處修補！`, '修補被吹掉要重新花材料點數，下次挑「抗風」的材料。', undefined, ['wx_gale', '🌪️']);
             setBubble('哇啊！有的修補被狂風整片吹走了！', 'pain');
             renderDecisionPanel();
           }
@@ -4052,10 +4139,7 @@
           ctx.translate(curX, curY);
           ctx.scale(scale, scale);
           ctx.rotate(Math.sin(t * Math.PI * 4) * 0.22);
-          ctx.font = '42px sans-serif';
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.fillText(ft.icon, 0, 0);
+          drawIcon(ctx, ft.id, ft.icon, 0, 0, 56, 42);
           ctx.restore();
 
           if (ft.progress >= 1) {
@@ -4220,7 +4304,7 @@
       sound.playClick();
       const lvl = state.currentLevel;
       const wx = levelWeather(lvl);
-      showToast('info', `${wx.icon} 本關天氣：${wx.name}`, weatherText(lvl), 6000);
+      showToast('info', `本關天氣：${wx.name}`, weatherText(lvl), 6000, ['wx_' + wx.id, wx.icon]);
     });
 
     dom.ruleChip.addEventListener('click', () => {
@@ -4229,7 +4313,7 @@
       if (!rl) return;
       sound.init();
       sound.playClick();
-      showToast('info', '📌 章節規則', rl, 6000);
+      showToast('info', '章節規則', rl, 6000, ['ui_rule', '📌']);
     });
 
     dom.btnBriefStart.addEventListener('click', () => {
@@ -4352,7 +4436,8 @@
       renderCanvasFrame();
       showMapOverlay();
       requestAnimationFrame(gameLoop);
+      loadArt();
     };
   </script>
 </body>
-</html>
+</html>

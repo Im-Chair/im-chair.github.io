@@ -509,6 +509,85 @@ def process_shrine(src_dir, dst_root):
     return done
 
 
+# ================= 暴雪求生（blizzard-cabin）=================
+# 圖表 sheet-1～6：4x4、純白底；id 要跟 blizzard-cabin/index.html 的道具 id、hs_／st_／wx_／ui_／face_／leak_／end_ 一致
+BZ_DIR = 'blizzard-cabin/art'
+BZ_SIZE = 128   # 成品 128x128 透明畫布，留 4px 邊
+BZ_SHEETS = {
+    1: 'roof_c0 roof_c1 roof_c2 roof_c3 roof_c4 roof_c5 window_s0 window_s1 window_s2 window_s3 window_s4 window_c0 window_c1 window_c2 window_c3 window_c4',
+    2: 'window_c5 wall_c0 wall_c1 wall_c2 wall_c3 wall_c4 wall_c5 door_c0 door_c1 door_c2 door_c3 door_c4 door_c5 fireplace_s0 fireplace_s1 fireplace_s2',
+    3: 'fireplace_s3 fireplace_s4 fireplace_c0 fireplace_c1 fireplace_c2 fireplace_c3 fireplace_c4 fireplace_c5 floor_c0 floor_c1 floor_c2 floor_c3 floor_c4 floor_c5 bed_c0 bed_c1',
+    4: 'bed_c2 bed_c3 bed_c4 bed_c5 feast_c0 feast_c1 feast_c2 feast_c3 feast_c4 feast_c5 fallback fallback_deice hs_roof hs_window hs_wall hs_door',
+    5: 'hs_fireplace hs_floor hs_bed hs_feast st_broken st_iced st_makeshift st_luxury wx_normal wx_gale wx_wet wx_cold ui_material ui_star ui_lock ui_warn',
+    6: 'face_freeze face_cold face_ok face_warm ui_map ui_goal ui_rule ui_hint leak_warming leak_stable leak_leaking leak_danger end_mansion end_house end_ruin ui_star_empty',
+}
+BZ_SHEETS = {n: v.split() for n, v in BZ_SHEETS.items()}
+
+
+def remove_white(im, thr=246):
+    """純白底去背：只把「RGB 都 >= thr 且與圖邊連通」的像素設為透明（物件內部的白／奶油色不動），
+    再內縮 1px 並輕微羽化，去掉邊緣白邊。回傳 RGBA。"""
+    im = im.convert('RGBA')
+    rgb = im.convert('RGB')
+    r, g, b = rgb.split()
+    mn = ImageChops.darker(ImageChops.darker(r, g), b)
+    mask = mn.point(lambda v: 0 if v >= thr else 255)   # 0＝白底候選
+    w, h = im.size
+    seeds = [(x, 0) for x in range(w)] + [(x, h - 1) for x in range(w)] + [(0, y) for y in range(h)] + [(w - 1, y) for y in range(h)]
+    for xy in seeds:
+        if mask.getpixel(xy) == 0:
+            ImageDraw.floodfill(mask, xy, 128)
+    alpha = mask.point(lambda v: 0 if v == 128 else 255)
+    alpha = alpha.filter(ImageFilter.MinFilter(3)).filter(ImageFilter.GaussianBlur(0.6))   # 內縮 1px＋羽化
+    out = im.copy()
+    out.putalpha(alpha)
+    return out
+
+
+def blizzard_icon(im):
+    """切下來的 RGBA 物件 → 128x128 透明畫布，等比縮放置中、留 4px 邊。"""
+    fitted = fit_long_edge(im, BZ_SIZE - 8, margin=0)
+    out = Image.new('RGBA', (BZ_SIZE, BZ_SIZE), (0, 0, 0, 0))
+    out.paste(fitted, ((BZ_SIZE - fitted.width) // 2, (BZ_SIZE - fitted.height) // 2), fitted)
+    return out
+
+
+def process_blizzard(src_dir, dst_root):
+    """處理暴雪求生圖表（有幾張做幾張、缺的略過），回傳成功輸出的 id 清單。"""
+    out_dir = dst_root / BZ_DIR
+    done = []
+    for n, ids in BZ_SHEETS.items():
+        p = find_src(src_dir, f'sheet-{n}')
+        if not p:
+            continue
+        print(f'  {p.name} -> {len(ids)} 格')
+        try:
+            sheet = remove_white(Image.open(p))
+            for oid, cell in slice_sheet(sheet, ids, f'blizzard sheet-{n}').items():
+                try:
+                    res = blizzard_icon(cell)
+                    out_dir.mkdir(parents=True, exist_ok=True)
+                    dst = out_dir / f'{oid}.webp'
+                    res.save(dst, 'WEBP', quality=90, method=6)
+                    print(f'    [OK] {oid}.webp  {dst.stat().st_size // 1024} KB')
+                    done.append(oid)
+                except Exception as e:
+                    print(f'    [失敗] {oid}：{e}')
+        except Exception as e:
+            print(f'    [失敗] {p.name}：{e}')
+    return done
+
+
+def write_blizzard_manifest(dst_root):
+    """index.json＝art/ 裡實際存在的成品 id（遊戲只對清單內的圖發請求）。"""
+    folder = dst_root / BZ_DIR
+    if folder.is_dir():
+        names = sorted(f.stem for f in folder.glob('*.webp'))
+        (folder / 'index.json').write_text(json.dumps(names), encoding='utf-8')
+        return names
+    return []
+
+
 def find_src(src_dir, name):
     for ext in EXTS:
         p = src_dir / (name + ext)
@@ -524,7 +603,15 @@ def main():
     ap.add_argument('--src', type=Path, default=ROOT / 'output' / 'imagegen' / 'arcade')
     ap.add_argument('--dst', type=Path, default=ROOT)
     ap.add_argument('--shrine-src', type=Path, default=ROOT / 'output' / 'imagegen' / 'shrine', help='聖林神廟原圖資料夾')
+    ap.add_argument('--blizzard-src', type=Path, default=ROOT / 'output' / 'imagegen' / 'blizzard', help='暴雪求生圖表原圖資料夾')
+    ap.add_argument('--only', choices=['blizzard'], help='只跑某一組（blizzard＝暴雪求生圖示，不掃其他遊戲）')
     args = ap.parse_args()
+
+    if args.only == 'blizzard':
+        done = process_blizzard(args.blizzard_src, args.dst)
+        names = write_blizzard_manifest(args.dst)
+        print(f'\n完成 {len(done)} 張，index.json 共 {len(names)} 筆。記得把根目錄 sw.js 的 CACHE 版本 +1，並升 blizzard-cabin/index.html 的圖片版號。')
+        return
 
     done, missing = [], []
     for name, (out, fn) in JOBS.items():
@@ -545,6 +632,8 @@ def main():
         done.append(out)
 
     done += process_shrine(args.shrine_src, args.dst)
+    done += process_blizzard(args.blizzard_src, args.dst)
+    write_blizzard_manifest(args.dst)
 
     # 遊戲會先讀這份清單，只對清單裡有的圖發請求（沒有的維持 emoji 或程式繪製）
     for manifest in (RG_DIR, SF_DIR):

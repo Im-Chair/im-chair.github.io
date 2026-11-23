@@ -592,6 +592,29 @@
 - 貪婪深淵重製版（rpg-next）與 rpg 共用 `covers/rpg.webp`，不另出圖。
 - 沒有封面時，首頁會退回 `icons/<遊戲>.webp`（置中放在漸層色塊上），再不行用 emoji；有圖後記得把根目錄 `sw.js` 的 `CACHE` +1。
 
+## 18　暴雪求生圖示（剪紙拼貼風）・6 張圖表 × 16 格
+
+**畫風**：剪紙拼貼風——每個物件像用幾層彩色卡紙剪貼疊成，邊緣乾淨、色塊平整、有輕微紙張層次感（但不要把陰影落在背景上）。配色走冬天暖色系：奶油白、焦糖棕、磚紅、芥末黃、灰藍。**不要日系動漫風**，不要寫實，不要漸層光澤。
+
+**版面規格**：每張圖表為正方形、純白背景（#FFFFFF）、4×4 共 16 格，每格正中央放一個物件，物件之間留白、不要碰到彼此；**無格線、無文字、無背景陰影**。物件內部的白色／奶油色可以有，但背景必須是純白。
+
+**原圖放**：`output/imagegen/blizzard/sheet-1.png` ～ `sheet-6.png`（缺的略過，可一張一張補）。格子順序都是由左到右、由上到下，id 就是成品檔名。
+
+| 圖表 | 16 格 id（依序） |
+|------|------|
+| sheet-1 | roof_c0, roof_c1, roof_c2, roof_c3, roof_c4, roof_c5, window_s0, window_s1, window_s2, window_s3, window_s4, window_c0, window_c1, window_c2, window_c3, window_c4 |
+| sheet-2 | window_c5, wall_c0, wall_c1, wall_c2, wall_c3, wall_c4, wall_c5, door_c0, door_c1, door_c2, door_c3, door_c4, door_c5, fireplace_s0, fireplace_s1, fireplace_s2 |
+| sheet-3 | fireplace_s3, fireplace_s4, fireplace_c0, fireplace_c1, fireplace_c2, fireplace_c3, fireplace_c4, fireplace_c5, floor_c0, floor_c1, floor_c2, floor_c3, floor_c4, floor_c5, bed_c0, bed_c1 |
+| sheet-4 | bed_c2, bed_c3, bed_c4, bed_c5, feast_c0, feast_c1, feast_c2, feast_c3, feast_c4, feast_c5, fallback, fallback_deice, hs_roof, hs_window, hs_wall, hs_door |
+| sheet-5 | hs_fireplace, hs_floor, hs_bed, hs_feast, st_broken, st_iced, st_makeshift, st_luxury, wx_normal, wx_gale, wx_wet, wx_cold, ui_material, ui_star, ui_lock, ui_warn |
+| sheet-6 | face_freeze, face_cold, face_ok, face_warm, ui_map, ui_goal, ui_rule, ui_hint, leak_warming, leak_stable, leak_leaking, leak_danger, end_mansion, end_house, end_ruin, ui_star_empty |
+
+id 前綴：`<破洞>_c<i>`＝一般道具（破洞：roof 屋頂、window 窗、wall 牆、door 門、fireplace 壁爐、floor 地板、bed 床、feast 餐桌）、`_s<i>`＝除冰池道具、`fallback`／`fallback_deice`＝免費保底；`hs_`＝破洞本身的圖示；`st_`＝破洞狀態（未修／結冰／湊合／豪華）；`wx_`＝天氣；`face_`＝溫度表情四段；`leak_`＝漏風狀態徽章四段；`end_`＝結算大圖三種；`ui_`＝材料點數、星星（實心／空心）、鎖頭、警示、地圖、目標、規則、提示。
+
+**處理**：`python tools/process_art.py --only blizzard`（只跑這一組，不重掃其他遊戲）。每格去掉與圖邊相連的純白背景、裁邊、等比縮放置中到 128×128 透明畫布（留 4px 邊），輸出 `blizzard-cabin/art/<id>.webp` 並更新 `art/index.json`。完成後把 `blizzard-cabin/index.html` 的 `ART_VER` 加一、根 `sw.js` 的 `CACHE` +1。
+
+---
+
 ## 待出圖總表（2026-11-07 盤點）
 
 | 順序 | 項目 | 張數 | Prompt 在哪 | 備註 |

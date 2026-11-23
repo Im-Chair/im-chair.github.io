@@ -1,4 +1,4 @@
-const CACHE = 'arcade-v103';
+const CACHE = 'arcade-v104';
 // 珠界的圖獨立一個快取、不跟 CACHE 改版：改版時不必重抓，也不用每次打開都等網路
 const ART_CACHE = 'arcade-pokemo-art';
 // RPG 敵人圖示：檔名＝ENEMIES／首領／域限精英的 key。v385 起 50 隻全數有圖，已無 SVG 回落。
@@ -124,6 +124,14 @@ function fillCaches() {
       if (r.ok) {
         const list = await r.json();
         jobs.push([CACHE, '/shrine/art/index.json'], ...list.map(k => [CACHE, `/shrine/art/${k}.webp`]));
+      }
+    } catch (err) {}
+    // 暴雪求生的選配美術：照 art/index.json 補（清單抓不到＝還沒有圖，略過）
+    try {
+      const r = await fetch('/blizzard-cabin/art/index.json', { priority: 'low' });
+      if (r.ok) {
+        const list = await r.json();
+        jobs.push([CACHE, '/blizzard-cabin/art/index.json'], ...list.map(k => [CACHE, `/blizzard-cabin/art/${k}.webp`]));
       }
     } catch (err) {}
     // 聖林神廟的選配音效：同樣照 sfx/index.json 補（清單抓不到就略過）
