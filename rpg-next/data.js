@@ -306,7 +306,7 @@ const ENDING = {
 const TREASURES = [
   {id:'coin',    fam:'gold',  n:'碎銀',    icon:'gold',            v:30,  g:4,  ef:''},
   {id:'cup',     fam:'gold',  n:'金杯',    img:'ui/ev_can.webp', v:80,  g:9,  ef:''},
-  {id:'gem',     fam:'gold',  n:'深淵晶',  img:'ui/gem.webp',      v:150, g:14, ef:'', cls:'clip'},
+  {id:'gem',     fam:'gold',  n:'深淵晶',  img:'ui/gem.webp',      v:150, g:14, ef:''},
   {id:'pendant', fam:'relic', n:'骨墜',    img:'eq/pendant.webp',  v:10,  g:3,  blk:5,       ef:'開場格擋 +5'},
   {id:'ring',    fam:'relic', n:'無名指環',img:'eq/ring.webp',     v:15,  g:5,  str:1,       ef:'力量 +1'},
   {id:'watch',   fam:'relic', n:'停擺懷錶',img:'eq/watch.webp',    v:15,  g:4,  drawFirst:2, ef:'第一回合多抽 2'},

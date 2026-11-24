@@ -60,7 +60,7 @@ h1.title{
 .class-card .cd{font-size:12px;color:var(--dim);margin-top:4px;min-height:3em;}
 /* ---------- 標題畫面（v409：滿版底圖 + 燈籠閃爍）---------- */
 #s-title{position:relative;overflow:hidden;padding:calc(12px + env(safe-area-inset-top,0px)) 16px calc(20px + var(--safe-b));}
-#s-title::before{content:"";position:absolute;inset:0;background:url("ui/title_bg.webp?v=1") center/cover no-repeat;z-index:0;}
+#s-title::before{content:"";position:absolute;inset:0;background:url("ui/title_bg.webp?v=2") center/cover no-repeat;z-index:0;}
 /* 底部壓一層漸層，讓按鈕與授權小字在亮處也讀得到 */
 #s-title::after{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;
   background:linear-gradient(180deg,rgba(8,6,5,.55) 0%,rgba(8,6,5,0) 26%,rgba(8,6,5,0) 46%,rgba(8,6,5,.78) 86%);}
@@ -131,7 +131,7 @@ h1.title{
    ⚠️ 不要在這裡加 brightness()：camp3 原生平均明度 0.103，本來就暗。
       （camp_v2 那張是 0.250，出廠已 gamma 校正過，當初多乘一次變成過曝。）
       要調亮度就在下面這行加 filter:brightness(x)——全案只有這一個旋鈕。 */
-.camp-scene::before{content:"";position:absolute;inset:0;background:url("camp3.webp?v=1") center/contain no-repeat;}
+.camp-scene::before{content:"";position:absolute;inset:0;background:url("camp3.webp?v=2") center/contain no-repeat;}
 /* 子層一律疊在底圖之上。全部已是 position:absolute，所以只給 z-index、不動 position */
 .camp-scene > *{z-index:1;}
 .camp-top{flex:none;padding:6px 12px 8px;display:flex;flex-direction:column;}
@@ -654,7 +654,7 @@ h1.title{
 #s-smith{
   overflow:hidden;
   padding:calc(8px + env(safe-area-inset-top,0px)) 14px calc(10px + var(--safe-b));
-  --sm-npc:url(ui/npc_smith.webp);
+  --sm-npc:url(ui/npc_smith.webp?v=2);
 }
 .sm-res{display:flex;align-items:center;gap:14px;font-size:13px;color:var(--dim);padding:2px 0 10px;}
 .sm-res .g{color:var(--gold);font-variant-numeric:tabular-nums;margin-left:auto;}
@@ -768,7 +768,7 @@ h1.title{
 #s-market{
   overflow:hidden;
   padding:calc(8px + env(safe-area-inset-top,0px)) 14px calc(10px + var(--safe-b));
-  --mkt-bg:url(ui/bg_market.webp);
+  --mkt-bg:url(ui/bg_market.webp?v=2);
 }
 .mk-res{display:flex;align-items:center;gap:14px;font-size:14px;color:var(--dim);padding:2px 0 10px;}
 .mk-res .back-link{padding:0;}

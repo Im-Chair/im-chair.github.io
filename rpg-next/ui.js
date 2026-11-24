@@ -4,8 +4,9 @@
 const RUN_KEY = 'abyss2-run', META_KEY = 'abyss2-meta', META_VER = 6;
 const $ = id => document.getElementById(id);
 const ic = (n, cls) => `<svg class="ic ${cls || ''}"><use href="#ic-${n}"/></svg>`;
-const art = p => `${ART}${p}?v=4`;
-const foeArt = (a, k) => a && a[0] === '@' ? `${a.slice(1)}?v=4` : art('mon/' + (a || k) + '.webp');
+const ART_V = '5';   // 圖片版號：換圖時 +1（art／foeArt／NPC 圖共用）
+const art = p => `${ART}${p}?v=${ART_V}`;
+const foeArt = (a, k) => a && a[0] === '@' ? `${a.slice(1)}?v=${ART_V}` : art('mon/' + (a || k) + '.webp');
 let S = null;          // 目前這一趟（null＝標題畫面）
 let meta = loadMeta();
 let busy = false;      // 敵方回合與轉場時鎖輸入
@@ -272,7 +273,7 @@ function campHtml(){
         : `<button class="btn up-btn" data-act="smith:${id}" ${st === 'ok' ? '' : 'disabled'}>打造</button>`}</div>`;
   }).join('');
   const matsRow = MATS.map((m, i) => i < craftMaxTier(meta) ? `<span>${m.n}（${RARITY[i].n}） <b>${matOf(meta, i)}</b></span>` : '').join('');
-  return `<div class="camp-head" style="background-image:linear-gradient(180deg,rgba(8,6,5,.35),var(--bg)),url('${ART}camp3.webp')">
+  return `<div class="camp-head" style="background-image:linear-gradient(180deg,rgba(8,6,5,.35),var(--bg)),url('${ART}camp3.webp?v=${ART_V}')">
       <button class="chip camp-back" data-act="toTitle">標題</button>
       <div class="page-title">營地</div>
       <div class="camp-gold">${ic('gold')} ${meta.gold}</div>
@@ -284,7 +285,7 @@ function campHtml(){
       <div class="sheet-p cls-line"><b>${CLASSES[meta.cls].n}</b>：${CLASSES[meta.cls].line}<br><b>${CLASSES[meta.cls].greed.n}</b>：${CLASSES[meta.cls].greed.d}</div>
       <div class="sect">營地的人</div>
       <div class="npc-list">${Object.keys(NPCS).map(id => { const p = NPCS[id];
-        return `<button class="npc-row" data-act="npc:${id}"><span class="npc-ic">${p.img ? `<img src="art/npc-${id}.webp" alt="">` : p.em}</span>
+        return `<button class="npc-row" data-act="npc:${id}"><span class="npc-ic">${p.img ? `<img src="art/npc-${id}.webp?v=${ART_V}" alt="">` : p.em}</span>
           <span class="npc-t"><b>${p.n}</b> <small>${p.role}</small><span class="npc-b">${p.blurb}${id === 'buyer' && meta.meiBonus ? `・收購價 +${Math.round(meta.meiBonus * 100)}%` : ''}</span></span>${talkUnread(meta, id) ? '<i class="dot" title="有新的話"></i>' : ''}</button>`; }).join('')}</div>
       <button class="btn rec-btn" data-act="records">紀錄與圖鑑${loreUnreadCount(meta) ? '<i class="dot"></i>' : ''}<small>成就 ${Object.keys(meta.ach || {}).length} / ${ACHIEVEMENTS.length}・敵人 ${Object.keys(meta.seenFoe || {}).length} / ${Object.keys(ENEMIES).length}・見聞 ${loreVisible(meta).length} / ${LORE.length}</small></button>
       <div class="sect">下一趟的你</div>

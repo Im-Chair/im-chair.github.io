@@ -588,6 +588,308 @@ def write_blizzard_manifest(dst_root):
     return []
 
 
+# ================= 貪婪深淵（rpg / rpg-next）=================
+# 圖表 sheet-1～8（木刻版畫風，純白底、平均格線；sheet-4 是 3x3，其餘 4x4），來源 output/imagegen/rpg/。
+# 輸出 (相對專案根的路徑不含副檔名, 寬, 高, 種類)：icon＝透明、四周留 4% 邊；portrait＝去白底後合成純色深底、人物寬度填滿、底部貼齊
+RPG_PORTRAIT_BG = (0x24, 0x1c, 0x16)
+RPG_MARGIN = 0.04
+
+
+def _rg(dirname, ids, size):
+    return [[(f'{dirname}/{i}', size, size, 'icon')] if i else [] for i in ids.split()]
+
+
+def _rg_sheet4():
+    cells = _rg('rpg/mon', 'mb2 mb3 mb4 bb0 bb1 bb2 bb3 final feign', 200)
+    cells[4].append(('rpg-next/art/boss_warlord', 200, 200, 'icon'))   # bb1 同時給重製版
+    return cells
+
+
+def _rg_sheet6():
+    ids = [('door_fight', 200), ('door_elite', 200), ('door_chest', 200), ('door_rest', 200), ('door_unknown', 384),
+           ('pot_bomb', 192), ('pot_energy', 192), ('pot_heal', 192), ('pot_holy', 192), ('pot_purge', 192),
+           ('pot_stone', 192), ('pot_wrath', 192), ('coin', 200), ('gem', 192), ('smith', 192)]
+    cells = [[(f'rpg/ui/{i}', s, s, 'icon')] for i, s in ids]
+    cells.append([('rpg/ui/res_death', 448, 574, 'icon')])
+    return cells
+
+
+def _rg_sheet7():
+    ids = [('ev_box', 200), ('ev_can', 200)] + [(x, 192) for x in
+           'ev_cart ev_confess ev_corpse ev_crack ev_cycle ev_cyst ev_dice ev_door ev_lava ev_mine ev_rock ev_root ev_rope ev_scroll'.split()]
+    return [[(f'rpg/ui/{i}', s, s, 'icon')] for i, s in ids]
+
+
+def _rg_sheet8():
+    ic = lambda p, s: [(p, s, s, 'icon')]
+    pt = lambda p, s: [(p, s, s, 'portrait')]
+    return [ic('rpg/ui/ev_shrine', 192), ic('rpg/ui/ev_well', 192), ic('rpg/ui/ev_merchant', 192), [],
+            ic('rpg-next/art/boss_brood', 200), ic('rpg-next/art/boss_heart2', 200),
+            pt('rpg/ui/cls_sword', 160), pt('rpg/ui/cls_assassin', 160), pt('rpg/ui/cls_white', 160), pt('rpg/ui/cls_dark', 160),
+            pt('rpg-next/art/npc-smith', 192), pt('rpg-next/art/npc-buyer', 192), pt('rpg-next/art/npc-scholar', 192),
+            pt('rpg-next/art/npc-survivor', 192), [], []]
+
+
+# n: (欄數＝列數, 各格的輸出清單；空清單＝不輸出)
+RPG_SHEETS = {
+    1: (4, _rg('rpg/mon', 'rat slime skel bat spider thief garg drown eel sguard jelly crab siren corpse2 leech clot', 200)),
+    2: (4, _rg('rpg/mon', 'eye teeth hound necro flower monk choir lantern knight zealot reliq sister throm valve worm pulse', 200)),
+    3: (4, _rg('rpg/mon', 'mist puppet magma ratking miner priest raider stitch swarm inquis warden acolyte stoker mimic mb0 mb1', 200)),
+    4: (3, _rg_sheet4()),
+    5: (4, _rg('rpg/eq', 'sword staff axe dagger tome bell leather chain plate scale cloak robe ring pendant watch lamp', 256)),
+    6: (4, _rg_sheet6()),
+    7: (4, _rg_sheet7()),
+    8: (4, _rg_sheet8()),
+}
+RPG_PAD = 0.08   # 切格時往外多看的比例（圖案略超出平均格線時用）
+
+
+def remove_white_holes(im, thr=246, min_area=150):
+    """remove_white 之後再把「被主體包住、面積夠大的近白色區塊」也挖掉（腿間、骨架間的白洞）；
+    小的白點（眼睛高光、鎖子甲孔）保留。回傳 RGBA。"""
+    r, g, b = im.convert('RGB').split()
+    mn = ImageChops.darker(ImageChops.darker(r, g), b)
+    white = ImageChops.multiply(mn.point(lambda v: 255 if v >= thr else 0), im.getchannel('A').point(lambda v: 255 if v > 200 else 0))
+    w, h = im.size
+    try:   # 有 numpy＋scipy 就走快路（整張圖表約 1 秒），沒有就用下面的純 Python 版
+        import numpy as np
+        from scipy import ndimage
+        lab, n = ndimage.label(np.asarray(white) > 0)
+        sizes = ndimage.sum(np.ones_like(lab), lab, range(1, n + 1))
+        big = np.isin(lab, [i + 1 for i, sz in enumerate(sizes) if sz >= min_area])
+        holes = Image.fromarray((big * 255).astype('uint8'))
+        out = im.copy()
+        out.putalpha(ImageChops.subtract(im.getchannel('A'), holes.filter(ImageFilter.MaxFilter(3))))
+        return out
+    except ImportError:
+        pass
+    wp = white.load()
+    seen = bytearray(w * h)
+    alpha = im.getchannel('A')
+    holes = Image.new('L', (w, h), 0)
+    hp = holes.load()
+    for y in range(h):
+        for x in range(w):
+            if wp[x, y] and not seen[y * w + x]:
+                q = deque([(x, y)])
+                seen[y * w + x] = 1
+                pts = []
+                while q:
+                    cx, cy = q.popleft()
+                    pts.append((cx, cy))
+                    for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                        nx, ny = cx + dx, cy + dy
+                        if 0 <= nx < w and 0 <= ny < h and wp[nx, ny] and not seen[ny * w + nx]:
+                            seen[ny * w + nx] = 1
+                            q.append((nx, ny))
+                if len(pts) >= min_area:
+                    for cx, cy in pts:
+                        hp[cx, cy] = 255
+    # 洞緣再擴 1px，去掉洞邊沾到的白邊
+    out = im.copy()
+    out.putalpha(ImageChops.subtract(alpha, holes.filter(ImageFilter.MaxFilter(3))))
+    return out
+
+
+def drop_edge_specks(im, box, ratio=0.03, edge=2):
+    """去白底後做連通塊分析（先稍微膨脹，讓同一主體的細碎筆觸連在一起），保留最大主體；
+    其他塊若面積 < 主體 ratio 且外接框貼著裁切範圍 box 的邊（≤ edge px）就丟掉（鄰格碎片）。
+    不貼邊的小塊（分散的蝙蝠、灰燼、骰子、金幣）一律保留。沒有 numpy／scipy 就原樣回傳。"""
+    try:
+        import numpy as np
+        from scipy import ndimage
+    except ImportError:
+        return im
+    a = np.asarray(im.getchannel('A'))
+    mask = a > 24
+    lab, n = ndimage.label(ndimage.binary_dilation(mask, structure=np.ones((3, 3)), iterations=3))
+    if n < 2:
+        return im
+    lab = lab * mask   # 回到原始像素
+    idx = range(1, n + 1)
+    areas = ndimage.sum(mask, lab, idx)
+    if not len(areas) or max(areas) == 0:
+        return im
+    big = max(areas)
+    objs = ndimage.find_objects(lab, n)
+    bx0, by0, bx1, by1 = box
+    kill = []
+    for k, sl in zip(idx, objs):
+        if sl is None or areas[k - 1] == 0 or areas[k - 1] >= big * ratio:
+            continue
+        y0, y1, x0, x1 = sl[0].start, sl[0].stop, sl[1].start, sl[1].stop
+        if x0 <= bx0 + edge or y0 <= by0 + edge or x1 >= bx1 - edge or y1 >= by1 - edge:
+            kill.append(k)
+    if not kill:
+        return im
+    keep = ~np.isin(lab, kill)
+    out = im.copy()
+    out.putalpha(Image.fromarray((a * keep).astype('uint8')))
+    return out
+
+
+def rpg_cell(sheet, col, row, cols):
+    """從已去白底的整張圖表切一格：先按平均格線外擴 RPG_PAD，再用連通塊只留重心落在該格內的主體，
+    回傳 (RGBA, 是否碰到外擴範圍邊緣＝可能被切到)。"""
+    W, H = sheet.size
+    cw, ch = W / cols, H / cols
+    x0, y0, x1, y1 = col * cw, row * ch, (col + 1) * cw, (row + 1) * ch
+    px, py = cw * RPG_PAD, ch * RPG_PAD
+    ex = (max(0, round(x0 - px)), max(0, round(y0 - py)), min(W, round(x1 + px)), min(H, round(y1 + py)))
+    crop = sheet.crop(ex)
+    alpha = crop.getchannel('A')
+    step, merge = 4, 1
+    w, h = alpha.size
+    gw, gh = -(-w // step), -(-h // step)
+    mask = alpha.point(lambda v: 255 if v > 24 else 0).resize((gw, gh), Image.BOX).point(lambda v: 255 if v > 0 else 0)
+    grown = mask.filter(ImageFilter.MaxFilter(merge * 2 + 1))
+    gp, mp = grown.load(), mask.load()
+    label = [[0] * gw for _ in range(gh)]
+    comps, n = {}, 0
+    for sy in range(gh):
+        for sx in range(gw):
+            if gp[sx, sy] == 0 or label[sy][sx]:
+                continue
+            n += 1
+            q = deque([(sx, sy)])
+            label[sy][sx] = n
+            cnt, sxs, sys_, inner = 0, 0, 0, False
+            while q:
+                x, y = q.popleft()
+                if mp[x, y]:
+                    cnt += 1
+                    sxs += x
+                    sys_ += y
+                    if (x == 0 and ex[0] > 0) or (y == 0 and ex[1] > 0) or (x >= gw - 1 and ex[2] < W) or (y >= gh - 1 and ex[3] < H):
+                        inner = True   # 碰到內側裁切邊：多半是鄰格被切斷的碎片
+                for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                    nx, ny = x + dx, y + dy
+                    if 0 <= nx < gw and 0 <= ny < gh and gp[nx, ny] and not label[ny][nx]:
+                        label[ny][nx] = n
+                        q.append((nx, ny))
+            if cnt:
+                comps[n] = (cnt, ex[0] + (sxs / cnt + .5) * step, ex[1] + (sys_ / cnt + .5) * step, inner)
+    keep = {k for k, (cnt, cx, cy, inner) in comps.items() if cnt >= 3 and x0 <= cx < x1 and y0 <= cy < y1}
+    if keep:   # 碰到內側裁切邊、又比主體小很多的塊＝鄰格碎片，丟掉
+        big = max(comps[k][0] for k in keep)
+        keep = {k for k in keep if not (comps[k][3] and comps[k][0] < big * 0.5)}
+    if not keep:   # 重心都不在格內：退而求其次，留最大塊
+        if not comps:
+            raise ValueError('這一格是空的')
+        keep = {max(comps, key=lambda k: comps[k][0])}
+    sel = Image.new('L', (gw, gh), 0)
+    sp = sel.load()
+    for sy in range(gh):
+        for sx in range(gw):
+            if label[sy][sx] in keep:
+                sp[sx, sy] = 255
+    sel = sel.resize((gw * step, gh * step), Image.NEAREST).crop((0, 0, w, h))
+    lim = Image.new('L', (w, h), 0)   # 只保留平均格線外擴 3% 內的像素（鄰格伸進來的碎片在這之外）
+    mx, my = cw * 0.03, ch * 0.03
+    ImageDraw.Draw(lim).rectangle((round(x0 - mx - ex[0]), round(y0 - my - ex[1]), round(x1 + mx - ex[0]), round(y1 + my - ex[1])), fill=255)
+    sel = ImageChops.multiply(sel, lim)
+    out = crop.copy()
+    out.putalpha(ImageChops.multiply(alpha, sel))
+    out = drop_edge_specks(out, (round(x0 - mx - ex[0]), round(y0 - my - ex[1]), round(x1 + mx - ex[0]), round(y1 + my - ex[1])))
+    # 被切到：主體像素貼到外擴範圍的邊緣（而且那邊不是整張圖表的邊），代表連外擴後都沒包住
+    bb = alpha_bbox(out)
+    cut = bb is not None and ((bb[0] <= 0 and ex[0] > 0) or (bb[1] <= 0 and ex[1] > 0)
+                              or (bb[2] >= w and ex[2] < W) or (bb[3] >= h and ex[3] < H))
+    return out, cut
+
+
+def rpg_icon(im, w, h):
+    """透明圖示：裁邊、等比縮放置中到 w×h 透明畫布，四周留 4% 邊。"""
+    im = im.crop(alpha_bbox(im))
+    k = min(w * (1 - 2 * RPG_MARGIN) / im.width, h * (1 - 2 * RPG_MARGIN) / im.height)
+    im = im.resize((max(1, round(im.width * k)), max(1, round(im.height * k))), Image.LANCZOS)
+    out = Image.new('RGBA', (w, h), (0, 0, 0, 0))
+    out.paste(im, ((w - im.width) // 2, (h - im.height) // 2), im)
+    return out
+
+
+def rpg_portrait(im, w, h):
+    """頭像：人物寬度填滿、底部貼齊畫布下緣（超出的從頭頂裁掉），合成到純色深底，輸出不透明。"""
+    im = im.crop(alpha_bbox(im))
+    k = w / im.width
+    im = im.resize((w, max(1, round(im.height * k))), Image.LANCZOS)
+    bg = Image.new('RGBA', (w, h), RPG_PORTRAIT_BG + (255,))
+    bg.alpha_composite(im, (0, h - im.height)) if im.height <= h else bg.alpha_composite(im.crop((0, im.height - h, w, im.height)), (0, 0))
+    return bg.convert('RGB')
+
+
+def process_rpg(src_dir, dst_root):
+    """處理貪婪深淵圖表（缺的圖表略過），回傳 (輸出路徑清單, 疑似被切到的格子清單)。"""
+    done, cut_cells = [], []
+    for n, (cols, cells) in RPG_SHEETS.items():
+        p = find_src(src_dir, f'sheet-{n}')
+        if not p:
+            continue
+        print(f'  {p.name} -> {cols}x{cols} 格')
+        try:
+            sheet = remove_white_holes(remove_white(Image.open(p)))
+        except Exception as e:
+            print(f'    [失敗] {p.name}：{e}')
+            continue
+        for i, outs in enumerate(cells):
+            if not outs:
+                continue
+            col, row = i % cols, i // cols
+            try:
+                cell, cut = rpg_cell(sheet, col, row, cols)
+                if cut:
+                    cut_cells.append(f'sheet-{n} 第{i + 1}格 {outs[0][0]}')
+                for rel, w, h, kind in outs:
+                    res = rpg_portrait(cell, w, h) if kind == 'portrait' else rpg_icon(cell, w, h)
+                    dst = dst_root / (rel + '.webp')
+                    dst.parent.mkdir(parents=True, exist_ok=True)
+                    res.save(dst, 'WEBP', quality=88, method=6)
+                    print(f'    [OK] {rel}.webp  {w}x{h}  {dst.stat().st_size // 1024} KB' + ('  [可能被切到]' if cut else ''))
+                    done.append(rel)
+            except Exception as e:
+                print(f'    [失敗] sheet-{n} 第{i + 1}格：{e}')
+    done += process_rpg_bg(src_dir, dst_root)
+    return done, cut_cells
+
+
+# 背景類大圖：原圖名 → (輸出路徑, 尺寸, 模式, 垂直對齊)；cover＝等比蓋滿後裁掉多餘，stretch＝直接縮放，keep＝尺寸不變
+RPG_BG = {
+    **{f'bg-realm{i}': (f'rpg/ui/realm{i}', (760, 345), 'cover', 0.5) for i in range(5)},
+    'bg-bg_market': ('rpg/ui/bg_market', (760, 400), 'cover', 0.5),
+    'bg-title_bg': ('rpg/ui/title_bg', (941, 1672), 'stretch', 0.5),
+    'bg-camp3': ('rpg/camp3', (941, 1672), 'stretch', 0.5),   # 點擊區照圖上位置排，不可裁切位移
+    'bg-title': ('rpg/ui/title', (726, 741), 'stretch', 0.5),   # 允許些微變形，不裁外框
+    'bg-npc_smith': ('rpg/ui/npc_smith', (264, 340), 'cover', 0.0),   # 偏上對齊保留頭部
+}
+
+
+def cover_fit(im, size, vy=0.5):
+    """等比縮放到蓋滿 size，水平置中、垂直依 vy（0＝靠上、0.5＝置中）裁掉多餘。"""
+    w, h = size
+    k = max(w / im.width, h / im.height)
+    nw, nh = max(w, round(im.width * k)), max(h, round(im.height * k))
+    im = im.resize((nw, nh), Image.LANCZOS)
+    x, y = (nw - w) // 2, round((nh - h) * vy)
+    return im.crop((x, y, x + w, y + h))
+
+
+def process_rpg_bg(src_dir, dst_root):
+    done = []
+    for name, (rel, size, mode, vy) in RPG_BG.items():
+        p = find_src(src_dir, name)
+        if not p:
+            print(f'  [略過] 缺 {name}')
+            continue
+        im = Image.open(p).convert('RGB')
+        res = cover_fit(im, size, vy) if mode == 'cover' else im.resize(size, Image.LANCZOS)
+        dst = dst_root / (rel + '.webp')
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        res.save(dst, 'WEBP', quality=86, method=6)
+        print(f'    [OK] {rel}.webp  {size[0]}x{size[1]}  {dst.stat().st_size // 1024} KB')
+        done.append(rel)
+    return done
+
+
 def find_src(src_dir, name):
     for ext in EXTS:
         p = src_dir / (name + ext)
@@ -604,13 +906,20 @@ def main():
     ap.add_argument('--dst', type=Path, default=ROOT)
     ap.add_argument('--shrine-src', type=Path, default=ROOT / 'output' / 'imagegen' / 'shrine', help='聖林神廟原圖資料夾')
     ap.add_argument('--blizzard-src', type=Path, default=ROOT / 'output' / 'imagegen' / 'blizzard', help='暴雪求生圖表原圖資料夾')
-    ap.add_argument('--only', choices=['blizzard'], help='只跑某一組（blizzard＝暴雪求生圖示，不掃其他遊戲）')
+    ap.add_argument('--rpg-src', type=Path, default=ROOT / 'output' / 'imagegen' / 'rpg', help='貪婪深淵圖表原圖資料夾')
+    ap.add_argument('--only', choices=['blizzard', 'rpg'], help='只跑某一組（blizzard＝暴雪求生圖示、rpg＝貪婪深淵圖示，不掃其他遊戲）')
     args = ap.parse_args()
 
     if args.only == 'blizzard':
         done = process_blizzard(args.blizzard_src, args.dst)
         names = write_blizzard_manifest(args.dst)
         print(f'\n完成 {len(done)} 張，index.json 共 {len(names)} 筆。記得把根目錄 sw.js 的 CACHE 版本 +1，並升 blizzard-cabin/index.html 的圖片版號。')
+        return
+
+    if args.only == 'rpg':
+        done, cut_cells = process_rpg(args.rpg_src, args.dst)
+        print(f'\n完成 {len(done)} 張。疑似被切到的格子：' + ('、'.join(cut_cells) if cut_cells else '無'))
+        print('記得升 rpg/index.html 的 IMG_VER／RPG_VER、rpg-next/ui.js 的 ART_V、rpg-next/index.html 的 NEXT_VER。')
         return
 
     done, missing = [], []

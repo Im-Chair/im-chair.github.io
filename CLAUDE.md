@@ -82,7 +82,7 @@ data.js → core.js → account.js → items.js → battle.js → run.js → ui.
 | `run.js` | 單局 roguelite 流程（門/事件/戰利品/結算） |
 | `ui.js` | 畫面渲染與版面（如 `layoutCamp`） |
 
-`rpg/mon/` 放敵人圖示（`<ENEMIES 的 key>.webp`，160×160 去背）。渲染唯一入口是 `battle.js` 的 `enemyIcon(e)`：data.js 標了 `img:1` 的走圖檔，其餘回落內嵌 SVG，**所以圖可以一隻一隻補**。新增圖時三件事要一起做：放檔（檔名＝key）、data.js 該筆加 `img:1`、`sw.js` 的 `RPG_MON` 加一筆。`rpg/mon/_spare/` 是未使用的備用素材，不會被載入。
+`rpg/mon/` 放敵人圖示（`<ENEMIES 的 key>.webp`，200×200 去背）。渲染唯一入口是 `battle.js` 的 `enemyIcon(e)`：data.js 標了 `img:1` 的走圖檔，其餘回落內嵌 SVG，**所以圖可以一隻一隻補**。新增圖時三件事要一起做：放檔（檔名＝key）、data.js 該筆加 `img:1`、`sw.js` 的 `RPG_MON` 加一筆。`rpg/mon/_spare/` 是未使用的備用素材，不會被載入。
 
 ### RPG 全域慣例（重要）
 
@@ -98,7 +98,7 @@ data.js → core.js → account.js → items.js → battle.js → run.js → ui.
 
 RPG 內部版號已集中到 `rpg/index.html` `<head>` 的單一常數 **`RPG_VER`**（例如 `'349'`）。它會自動套用到:CSS 連結、所有 `<script src>` 的 `?v=`、以及標題畫面顯示的 `V3.NN`。**修改任何 rpg 的 js/css 後，只要改 `RPG_VER` 這一個數字**即可破除瀏覽器/SW 快取，不必再逐一改。
 
-例外:`rpg/style.css` 裡營地背景圖 `camp.webp?v=NNN` 有自己一個版號（圖片素材，極少變動），換圖時才需手動調。
+例外:`rpg/style.css` 裡營地背景圖 `camp3.webp?v=NNN` 有自己一個版號（圖片素材，極少變動），換圖時才需手動調。
 
 站台層級的離線快取由**根目錄 `sw.js` 的 `CACHE`**（`arcade-vN`）控制，與 `RPG_VER` 是兩套獨立機制——改動需要讓「已安裝 App 的舊使用者」立即拿到的資源時，把 `CACHE` 版本號 +1。
 

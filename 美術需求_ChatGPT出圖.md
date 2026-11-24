@@ -630,3 +630,11 @@ id 前綴：`<破洞>_c<i>`＝一般道具（破洞：roof 屋頂、window 窗�
 
 - **各小遊戲自己的 PWA 圖示**：掃雷、幾A幾B、接龍目前「加到主畫面」時都是 ARCADE 的圖示和名稱。可以直接沿用上面 1–4 的首頁圖示，替每個遊戲做 manifest。
 - **幾A幾B**、**數獨**：介面以文字和格子為主，目前不需要圖。
+
+## 貪婪深淵（rpg／rpg-next）木刻版畫風圖示
+
+- 畫風：木刻版畫風，純白底、無格線的平均格線圖表。
+- 來源：`output/imagegen/rpg/sheet-N.png`（N＝1～8；sheet-4 是 3×3，其餘 4×4，由左到右、由上到下）。
+- 指令：`python tools/process_art.py --only rpg`（只跑這一組，輸出到 `rpg/mon`、`rpg/eq`、`rpg/ui`、`rpg-next/art`）。
+- 對照表在 `tools/process_art.py` 的 `RPG_SHEETS`（格位 → 檔名與尺寸；頭像類 cls_*、npc-* 會合成到深底 #241c16 輸出不透明圖，其餘為透明）。
+- 換圖後升 `rpg/index.html` 的 `IMG_VER`／`RPG_VER`、`rpg-next/ui.js` 的 `ART_V`、`rpg-next/index.html` 的 `NEXT_VER`。
