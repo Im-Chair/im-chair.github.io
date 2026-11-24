@@ -2,41 +2,67 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>凡骨補天</title><!-- 與 JS 的 GAME_NAME 同步（靜態標題，boot 時會再以 GAME_NAME 覆寫） -->
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{margin:0;height:100%;background:#0d1015;color:#dde2ea;font-family:-apple-system,"PingFang TC","Noto Sans TC",sans-serif;font-size:15px}
+html,body{margin:0;height:100%;background:#0d1015;color:#dde2ea;font-family:-apple-system,"PingFang TC","Noto Sans TC",sans-serif;font-size:16px;line-height:1.5}
 #app{display:flex;flex-direction:column;height:100vh;height:100dvh;max-width:560px;margin:0 auto}
-#top{padding:8px 12px;background:#141922;border-bottom:1px solid #2a3140;font-size:13px;line-height:1.5}
+#top{padding:calc(12px + env(safe-area-inset-top)) 16px 10px;background:#141922;border-bottom:1px solid #2a3140;font-size:14.5px;line-height:1.5}
 #top b{color:#e6c35a}
-#view{flex:1;overflow-y:auto;padding:10px 12px}
-#tabs{display:flex;background:#141922;border-top:1px solid #2a3140}
-#tabs button{flex:1;padding:12px 0;background:none;border:0;color:#8c96a8;font-size:14px}
-#tabs button.on{color:#e6c35a;border-top:2px solid #e6c35a;margin-top:-1px}
+#top .tn{font-size:16px;font-weight:700}
+#top .row{flex-wrap:wrap;column-gap:12px}
+#top .dim{font-size:14px}
+#view{flex:1;min-height:0;overflow-y:auto;padding:10px 16px}
+#view.actv{display:flex;flex-direction:column}
+#view.actv>.card{flex:none}
+#tabs{display:flex;gap:4px;padding:6px 10px calc(10px + env(safe-area-inset-bottom));background:#141922;border-top:1px solid #2a3140}
+#tabs button{flex:1;padding:12px 0;background:none;border:0;border-radius:8px;color:#8c96a8;font-size:15px}
+#tabs button.on{color:#e6c35a;background:#2a3446;box-shadow:inset 0 0 0 1px #e6c35a88}
 button{font-family:inherit}
 .btn,#acts button,.grid button{background:#1f2633;color:#dde2ea;border:1px solid #394256;border-radius:8px;padding:10px 8px;font-size:14px}
 #acts button:active,.btn:active{background:#2c3646}
 button:disabled{opacity:.35}
-#log{height:38vh;overflow-y:auto;background:#10141b;border:1px solid #232a37;border-radius:8px;padding:8px 10px;margin-bottom:8px;line-height:1.6}
+#log{flex:1;min-height:72px;overflow-y:auto;background:#10141b;border:1px solid #232a37;border-radius:8px;padding:8px 10px;margin-bottom:8px;line-height:1.6}
 #log p{margin:0 0 5px}
 #log p.sty{margin:8px 0 10px;padding:5px 0 5px 10px;border-left:3px solid #e6c35a;line-height:1.9;color:#f2e6b8;background:#1a1810}
 .sto{border-left:3px solid #e6c35a;line-height:1.8}
 .sto div{color:#d7cfae}
 .y{color:#e6c35a}.r{color:#e0735f}.g{color:#7fcf9a}.b{color:#7fb2e8}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
-.grid small{display:block;color:#8c96a8;font-size:11px;margin-top:2px}
-.card{background:#141922;border:1px solid #2a3140;border-radius:8px;padding:9px 10px;margin-bottom:8px}
+.grid small{display:block;color:#8c96a8;font-size:12.5px;margin-top:2px}
+#acts{flex:none;max-height:45vh;overflow-y:auto}
+#acts .grid{grid-template-rows:repeat(3,minmax(54px,auto));grid-auto-rows:minmax(54px,auto)}
+#acts .grid button{height:54px;padding:2px 6px;line-height:1.25;overflow:hidden}
+#acts .grid button.evb{height:auto;min-height:54px;padding:8px 10px}
+#acts .grid small{line-height:1.2;margin-top:1px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.bn{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ic{min-height:112px}
+.ic.sr{min-height:108px}
+.clamp2{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.card{background:#141922;border:1px solid #2a3140;border-radius:8px;padding:10px 12px;margin-bottom:10px}
 .bar{height:9px;background:#272e3b;border-radius:5px;overflow:hidden;margin:3px 0 6px}
 .bar i{display:block;height:100%}
 .hp{background:#d0584c}.mp{background:#4c8ed0}.xp{background:#d9b44a}
 .row{display:flex;justify-content:space-between;align-items:center;gap:8px}
-.dim{color:#7a8496;font-size:12px}
-h3{margin:12px 0 6px;font-size:15px;color:#e6c35a}
+.dim{color:#7a8496;font-size:13.5px}
+h3{margin:12px 0 6px;font-size:16px;color:#e6c35a}
 select,input,textarea{background:#10141b;color:#dde2ea;border:1px solid #394256;border-radius:6px;padding:8px;font-size:14px;width:100%}
-.tag{display:inline-block;font-size:11px;padding:1px 6px;border-radius:9px;border:1px solid currentColor;margin-right:4px}
-.sm{padding:5px 10px!important;font-size:13px!important}
-#toast{display:none;position:fixed;left:50%;top:64px;transform:translateX(-50%);max-width:88%;background:#1d2533;border:1px solid #e6c35a;border-radius:10px;padding:9px 14px;font-size:14px;line-height:1.5;z-index:9;box-shadow:0 4px 18px #000a;pointer-events:none}
+.tag{display:inline-block;font-size:12.5px;padding:1px 6px;border-radius:9px;border:1px solid currentColor;margin-right:4px}
+.sm{padding:5px 12px!important;font-size:13.5px!important;min-height:40px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 8px}
+.chip{background:#1f2633;color:#aab3c4;border:1px solid #394256;border-radius:16px;padding:6px 14px;min-height:40px;font-size:14px}
+.chip.on{color:#e6c35a;border-color:#e6c35a;background:#2a3446}
+.cfg{display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px solid #232a37}
+.cfg .cl{flex:none;width:3.4em;color:#8c96a8;font-size:13.5px}
+.cfg .cm{flex:1;min-width:0}
+.eff{margin:6px 0 4px;line-height:1.6}
+.ep{display:inline-block;margin:0 14px 2px 0}
+.tc{padding:12px}
+details.card summary{cursor:pointer;min-height:24px}
+.help{margin:8px 0 0;padding-left:20px;line-height:1.7;font-size:14px}
+.help li{margin-bottom:4px}
+#toast{display:none;position:fixed;left:50%;top:calc(64px + env(safe-area-inset-top));transform:translateX(-50%);max-width:88%;background:#1d2533;border:1px solid #e6c35a;border-radius:10px;padding:9px 14px;font-size:14px;line-height:1.5;z-index:9;box-shadow:0 4px 18px #000a;pointer-events:none}
 </style>
 </head>
 <body>
@@ -226,7 +252,7 @@ const STORY_TXT={
 };
 
 /* ===== 狀態 ===== */
-let p=null,B=null,mode='act',tab='act',ev=null,bt=null,selReg=null,intro=null,techF=-1,techUnk=false,showCode='',showSty=false;
+let p=null,B=null,mode='act',tab='act',ev=null,bt=null,selReg=null,intro=null,techF=-1,techUnk=false,btMenu='main',techS='own',techT='',showCode='',showSty=false;
 const KEY='tianlie_xiuxian_v1';
 const rIdx=()=>Math.floor(p.lv/4);
 const maxLv=()=>p.ending?39:35;
@@ -440,7 +466,7 @@ function mkBoss(lv,name,reg){
 }
 function startBattle(o){
  const e=o.e;e.hpMax=e.hp;B={e,o,P:actorP(),over:false,fled:false};
- B.P.st.stun=o.pst||0;e.st.stun=o.est||0;mode='battle';tab='act';render();
+ B.P.st.stun=o.pst||0;e.st.stun=o.est||0;mode='battle';tab='act';btMenu='main';render();
 }
 function attack(a,t,k){
  const A=a.pl?'你':a.n,T=t.pl?'你':t.n;
@@ -495,7 +521,7 @@ function defLose(){
 function useHeal(){if(p.inv.heal<=0){L('沒有療傷丹了。');return false;}p.inv.heal--;return true;}
 const G={};
 G.bt=(k,i)=>{
- if(!B||B.over)return;const Pl=B.P,E=B.e;let act;
+ if(!B||B.over)return;const Pl=B.P,E=B.e;let act;btMenu='main';
  if(k==='atk')act=()=>attack(Pl,E,null);
  else if(k==='sk'){const s=Pl.skills[i];act=()=>attack(Pl,E,s);}
  else if(k==='heal'){if(p.inv.heal<=0){L('沒有療傷丹了。');render();return;}p.inv.heal--;act=()=>{Pl.hp=Math.min(Pl.hpMax,Pl.hp+Pl.hpMax*0.5);L('你服下療傷丹，恢復了氣血。','g');};}
@@ -679,6 +705,7 @@ G.openBt=()=>{if(mode!=='act'||!canBreak())return;bt={liq:0,brk:0};mode='bt';ren
 G.btLiq=d=>{bt.liq=cl(bt.liq+d,0,Math.min(3,p.inv.liq));render();};
 G.btBrk=()=>{if(p.inv.brk>0)bt.brk=bt.brk?0:1;render();};
 G.doBt=doBreak;G.cancelBt=()=>{bt=null;mode='act';render();};
+G.btMenu=m=>{if(mode!=='battle')return;btMenu=m;render();};
 G.tab=t=>{if(mode==='battle'||mode==='ev'){return;}tab=t;render();};
 G.use=k=>{if(mode==='battle')return;const c=calc();
  if(k==='heal'&&p.inv.heal>0){p.inv.heal--;p.hp=Math.min(c.hp,p.hp+c.hp*.5);L('服下療傷丹，氣血恢復。','g');}
@@ -695,7 +722,8 @@ G.eqTech=id=>{const t=TECHS[id];const bad=canUse(t);if(bad){L(bad,'r');render();
  else{const i=p.slots.indexOf(id);if(i>=0)p.slots[i]=null;else{const j=p.slots.indexOf(null);if(j<0)L('戰鬥技能欄已滿（最多4個），請先卸下一個。','r');else p.slots[j]=id;}}
  render();};
 G.techF=v=>{techF=+v;render();};
-G.techUnk=()=>{techUnk=!techUnk;render();};
+G.techS=v=>{techS=v;render();};
+G.techT=v=>{techT=v;render();};
 G.selReg=k=>{selReg=k;render();};
 const isLocked=k=>(k==='天裂淵'&&p.shards.length<7)||(k==='浮空仙域'&&!p.ending);
 G.travel=k=>{if(mode!=='act')return;if(!REG[p.reg].adj.includes(k))return;
@@ -717,8 +745,8 @@ G._s=()=>({p,B,mode,ev});
 function bar(v,m,c){return`<div class="bar"><i class="${c}" style="width:${cl(v/m*100,0,100)}%"></i></div>`;}
 function topHTML(){
  const age=Math.floor(16+p.month/12);
- return`<div class="row"><span><b>${p.name}</b> ${lvName(p.lv)}</span><span>靈石 <b>${fmt(p.st)}</b></span></div>
- <div class="row dim"><span>${p.reg}｜修行第${Math.floor(p.month/12)+1}年${p.month%12+1}月｜壽元 ${age}/${LIFE[rIdx()]+p.extra>9999?'∞':LIFE[rIdx()]+p.extra}</span><span>靈液 ${p.inv.liq}</span></div>`;
+ return`<div class="row"><span class="tn"><b>${p.name}</b> ${lvName(p.lv)}</span><span>靈石 <b>${fmt(p.st)}</b></span></div>
+ <div class="row dim"><span>${p.reg}｜修行第${Math.floor(p.month/12)+1}年${p.month%12+1}月</span><span>壽元 ${age}/${LIFE[rIdx()]+p.extra>9999?'∞':LIFE[rIdx()]+p.extra}｜靈液 ${p.inv.liq}</span></div>`;
 }
 function expBar(){const n=need(p.lv);return`<div class="dim">修為 ${nf(p.exp)} / ${nf(n)}${p.lv%4===3&&p.lv<maxLv()?(p.exp>=n?'（可突破！）':'（圓滿）'):''}</div>${bar(p.exp,n,'xp')}`;}
 function actHTML(){
@@ -726,23 +754,29 @@ function actHTML(){
  if(mode==='shop')return shopHTML();
  const c=calc();
  if(mode==='battle'){const E=B.e,Pl=B.P;
-  h+=`<div class="card"><div class="row"><span><b>${E.n}</b> <span class="dim">${E.kind==='cult'?E.school+(E.el?'・'+E.el:''):E.el+'屬性'}</span> ${ctrTag(ctrVs(p.sc,E))}</span><span class="dim">${lvName(E.lv)}</span></div>${bar(E.hp,E.hpMax,'hp')}
+  h+=`<div class="card ic"><div class="row"><span><b>${E.n}</b> <span class="dim">${E.kind==='cult'?E.school+(E.el?'・'+E.el:''):E.el+'屬性'}</span> ${ctrTag(ctrVs(p.sc,E))}</span><span class="dim">${lvName(E.lv)}</span></div>${bar(E.hp,E.hpMax,'hp')}
   <div class="row"><b>你</b><span class="dim">氣血 ${nf(Pl.hp)}/${nf(Pl.hpMax)}　靈力 ${nf(Pl.mp)}/${nf(Pl.mpMax)}</span></div>${bar(Pl.hp,Pl.hpMax,'hp')}${bar(Pl.mp,Pl.mpMax,'mp')}</div>`;
  }else{
   const ll=lifeLeft();
-  h+=`<div class="card"><div class="dim">氣血 ${nf(p.hp)}/${nf(c.hp)}　靈力 ${nf(p.mp)}/${nf(c.mp)}</div>${bar(p.hp,c.hp,'hp')}${bar(p.mp,c.mp,'mp')}${expBar()}<div class="${ll<10?'r':'dim'}">${ll===Infinity?'壽元：無盡':'剩餘壽元 約 '+Math.max(0,Math.floor(ll))+' 年'+(ll<10?'！壽元將盡，盡快突破或服延壽丹':'')}</div></div>`;
+  h+=`<div class="card ic"><div class="dim">氣血 ${nf(p.hp)}/${nf(c.hp)}　靈力 ${nf(p.mp)}/${nf(c.mp)}</div>${bar(p.hp,c.hp,'hp')}${bar(p.mp,c.mp,'mp')}${expBar()}<div class="${ll<10?'r':'dim'}">${ll===Infinity?'壽元：無盡':'剩餘壽元 約 '+Math.max(0,Math.floor(ll))+' 年'+(ll<10?'！壽元將盡，盡快突破或服延壽丹':'')}</div></div>`;
  }
- if(p.sr&&mode!=='battle')h+=`<div class="card y">「${p.sr.name}」第 ${p.sr.floor}/5 層，探索進度 ${p.sr.step}/4　已耗時 ${p.month-(p.sr.m0==null?p.month:p.sr.m0)} 個月<br>暫存修為 <b>+${nf(p.sr.loot.exp)}</b>（已折損）　暫存收穫：${bText(p.sr.loot)}</div>`;
+ if(p.sr&&mode!=='battle')h+=`<div class="card ic sr y">「${p.sr.name}」第 ${p.sr.floor}/5 層，探索進度 ${p.sr.step}/4　已耗時 ${p.month-(p.sr.m0==null?p.month:p.sr.m0)} 個月<br><div class="clamp2" title="暫存收穫：${bText(p.sr.loot).replace(/<[^>]*>/g,'').replace(/"/g,'')}">暫存修為 <b>+${nf(p.sr.loot.exp)}</b>（已折損）　暫存收穫：${bText(p.sr.loot)}</div></div>`;
  h+='<div id="log">'+p.log.slice(-40).map(x=>`<p class="${x.c}">${x.m}</p>`).join('')+'</div>';
  h+='<div id="acts">';
  if(mode==='battle'){
-  h+='<div class="grid"><button onclick="G.bt(\'atk\')">普攻</button>';
-  B.P.skills.forEach((k,i)=>{const cs=cost(B.P,k);h+=`<button ${B.P.mp<cs?'disabled':''} onclick="G.bt('sk',${i})"><span style="color:${GCOL[Math.floor(k.rank/3)]}">${k.name}</span><small>${rk(k.rank)}・耗靈${nf(cs)}${k.pen<1?'・<span class="r">跨派×'+k.pen+'</span>':''}${(()=>{const m=k.sc<12?ctrVs(k.sc,B.e):1;return m>1?'・<span class="g">剋</span>':m<1?'・<span class="r">被剋</span>':'';})()}</small></button>`;});
-  h+=`<button onclick="G.bt('heal')">療傷丹(${p.inv.heal})</button><button onclick="G.bt('mp')">回靈丹(${p.inv.mp})</button>`;
-  if(B.o.canFlee)h+='<button onclick="G.bt(\'flee\')">逃跑</button>';
+  if(btMenu==='atk'){
+   h+='<div class="grid"><button onclick="G.bt(\'atk\')">普攻</button>';
+   B.P.skills.forEach((k,i)=>{const cs=cost(B.P,k);h+=`<button ${B.P.mp<cs?'disabled':''} onclick="G.bt('sk',${i})"><span class="bn" style="color:${GCOL[Math.floor(k.rank/3)]}">${k.name}</span><small>${rk(k.rank)}・耗靈${nf(cs)}${k.pen<1?'・<span class="r">跨派×'+k.pen+'</span>':''}${(()=>{const m=k.sc<12?ctrVs(k.sc,B.e):1;return m>1?'・<span class="g">剋</span>':m<1?'・<span class="r">被剋</span>':'';})()}</small></button>`;});
+   for(let i=B.P.skills.length;i<4;i++)h+='<button disabled>空欄</button>';
+   h+='<button onclick="G.btMenu(\'main\')">返回</button>';
+  }else{
+   h+='<div class="grid"><button onclick="G.btMenu(\'atk\')">攻擊</button>';
+   h+=`<button onclick="G.bt('heal')">療傷丹(${p.inv.heal})</button><button onclick="G.bt('mp')">回靈丹(${p.inv.mp})</button>`;
+   h+=B.o.canFlee?'<button onclick="G.bt(\'flee\')">逃跑</button>':'<button disabled>無法逃跑</button>';
+  }
   h+='</div>';
  }else if(mode==='ev'){
-  h+='<div class="grid">'+ev.ch.map((c,i)=>`<button onclick="G.ev(${i})" style="grid-column:1/3">${c.l}</button>`).join('')+'</div>';
+  h+='<div class="grid">'+ev.ch.map((c,i)=>`<button class="evb" onclick="G.ev(${i})" style="grid-column:1/3">${c.l}</button>`).join('')+'</div>';
  }else if(mode==='bt'){
   const r=btRate(bt.liq,bt.brk);
   h+=`<div class="card">突破「${lvName(p.lv+1)}」成功率：<b class="y">${Math.round(r*100)}%</b><div class="dim">失敗會損失部分修為並受傷。靈液最多用3瓶，每瓶+8%。</div></div>
@@ -761,7 +795,7 @@ function actHTML(){
   if(canBreak())h+='<button onclick="G.openBt()" style="grid-column:1/3;border-color:#e6c35a;color:#e6c35a">突破境界</button>';
   if(rg.boss&&!p.bossDown[p.reg]&&p.reg!=='天裂淵'&&(p.explored[p.reg]||0)>=3)h+=`<button onclick="G.boss()" style="grid-column:1/3;border-color:#e0735f">挑戰守關者「${rg.boss}」（建議${lvName(rg.lv[1])}）</button>`;
   if(p.reg==='天裂淵'&&!p.ending)h+='<button onclick="G.final()" style="grid-column:1/3;border-color:#e0735f">直面天道殘影</button>';
-  if(rg.city){const cd=srCdLeft();h+=`<button onclick="G.shop()">坊市</button>`+(cd>0?`<button disabled>秘境封閉中，約 ${cd} 個月後重開</button>`:`<button onclick="G.enterSR()">闖秘境<small>入場 ${fmt(srFee())}｜耗時約 ${SR_MONTHS} 個月</small></button>`);}
+  if(rg.city){const cd=srCdLeft();h+=`<button onclick="G.shop()">坊市</button>`+(cd>0?`<button disabled>秘境封閉中，約 ${cd} 個月後重開</button>`:`<button onclick="G.enterSR()"><span class="bn">闖秘境</span><small>入場 ${fmt(srFee())}｜耗時約 ${SR_MONTHS} 個月</small></button>`);}
   h+='</div>';
  }
  return h+'</div>';
@@ -810,23 +844,64 @@ function drawMap(){
  cv.onclick=e=>{const rc=cv.getBoundingClientRect(),x=(e.clientX-rc.left)*W/rc.width,y=(e.clientY-rc.top)*H/rc.height;let best=null,bd=1e9;
   for(const k in REG){const d=Math.hypot(REG[k].x-x,REG[k].y-y);if(d<bd){bd=d;best=k;}}if(bd<45){selReg=best;render();}};
 }
+/* 功法效果的分項排版（數值與 techEff 相同，只是拆成可換行的片段） */
+function techEffParts(t){
+ if(t.type==='心法'){const k=SCX[t.sc],a=['修煉速度 +'+pc(0.1+0.08*t.rank)];if(t.sc<12)a.push(k[2]+' +'+pc(k[1]*(t.rank+1)));return a;}
+ if(t.type==='身法'){const k=SCX[t.sc],a=['速度 +'+(t.rank+1)*5+'%','閃避 +'+pc(0.03+0.025*t.rank)];if(t.sc<12)a.push(k[2]+' +'+pc(k[1]*(t.rank+1)*.5));return a;}
+ const a=['威力 ×'+tMult(t).toFixed(2),'耗靈 '+pc(tCost(t))];
+ if(t.type==='神識')a.push('必中且無視70%防禦');
+ const fx=Object.keys(t.fxs).map(n=>{const b=FXB[n];return b[2].replace('#',n==='shield'?t.fxs[n].toFixed(1):pc(t.fxs[n]));});
+ if(fx.length)a.push('附帶：'+fx.join('、'));
+ return a;}
+const techEffHTML=t=>techEffParts(t).map(x=>`<span class="ep">${x}</span>`).join('');
+const REL_ORD={own:0,wpn:1,ally:2,gen:3,off:4},TYPE_ORD=['心法','身法','攻擊','神識'];
+function relTag(t){const r=rel(t);
+ if(r==='own')return'<span class="tag g">本流派</span>';
+ if(r==='ally')return'<span class="tag b">交好流派</span>';
+ if(r==='wpn')return'<span class="tag y">武器共鳴</span>';
+ if(r==='gen')return'<span class="tag" style="color:#8c96a8">通用</span>';
+ return`<span class="tag r">跨流派 ×${t.type==='心法'||t.type==='身法'?offRel():offPen()}</span>`;}
 function techHTML(){
  const own=p.techs.length;
- let h=`<div class="dim">已領悟 ${own}/${TECHS.length} 種。你的流派：<b class="y">${SCHOOLS[p.sc].n}</b>，交好：${ALLY[p.sc].map(i=>SCHOOLS[i].n).join('、')}。<br>天階只有本流派能修；地階限本流派、交好流派或有該流派武器／法寶；玄黃階可跨流派但威力×${offPen()}（心法身法×${offRel()}）${p.root.type==='偽'?'（偽靈根萬金油）':''}；通用功法威力×0.9。</div>`;
- h+=`<div class="card"><b>相剋一覽</b><div class="dim">你是${SCHOOLS[p.sc].n}：剋 <span class="g">${CTR_NEXT[p.sc]!=null?SCHOOLS[CTR_NEXT[p.sc]].n:'—'}</span>（傷害×${CTR_UP}），被 <span class="r">${CTR_PREV(p.sc).map(i=>SCHOOLS[i].n).join('、')||'—'}</span> 剋（傷害×${CTR_DOWN}）。以功法所屬流派判定，通用功法不參與。</div>
- ${CTR_RINGS.map(r=>`<div class="dim">${r.concat(r[0]).map(i=>SCHOOLS[i].n).join('→')}</div>`).join('')}
- <div class="dim">「A→B」＝A 剋 B。妖獸與首領依地區有五行屬性（金＝劍修、木＝丹修、土＝體修、水＝陣修、火＝器修），只與五行環互剋；御獸功法打妖獸另有×${CTR_SUMMON_UP}。</div></div>`;
- h+=`<div class="card"><b>當前配置</b><div class="dim">心法：${p.heart!=null?TECHS[p.heart].name:'無'}　身法：${p.foot!=null?TECHS[p.foot].name:'無'}</div><div class="dim">技能：${p.slots.map(i=>i!=null?TECHS[i].name:'—').join('｜')}</div></div>`;
- h+=`<div class="row"><select onchange="G.techF(this.value)"><option value="-1">全部流派</option>${SCHOOLS.map((s,i)=>`<option value="${i}" ${techF===i?'selected':''}>${s.n}</option>`).join('')}<option value="12" ${techF===12?'selected':''}>通用</option></select><button class="btn sm" style="white-space:nowrap" onclick="G.techUnk()">${techUnk?'隱藏未習得':'顯示未習得'}</button></div><div style="height:6px"></div>`;
- const list=TECHS.filter(t=>(techF<0||t.sc===techF)&&(techUnk||p.techs.includes(t.id))).sort((a,b)=>b.rank-a.rank||a.id-b.id);
- if(!list.length)h+='<div class="dim">這個分類還沒有領悟的功法。</div>';
- list.forEach(t=>{
-  const has=p.techs.includes(t.id),col=GCOL[Math.floor(t.rank/3)];
-  if(!has){h+=`<div class="card dim row"><span>？？？？　<span style="color:${col}">${rk(t.rank)}</span>・${t.school}${t.type}</span></div>`;return;}
-  const on=p.heart===t.id||p.foot===t.id||p.slots.includes(t.id),r=rel(t),bad=canUse(t);
-  const rc=bad?'r':r==='off'?'r':r==='gen'?'dim':'g';
-  h+=`<div class="card"><div class="row"><span><b style="color:${col}">《${t.name}》</b> <span class="tag" style="color:${col}">${rk(t.rank)}</span></span><button class="btn sm" onclick="G.eqTech(${t.id})">${on?'卸下':'裝備'}</button></div>
-  <div class="dim">${t.school}${t.e?'（'+t.e+'屬性）':''}・${t.type}｜需${REALMS[t.req]}期｜熟練 ${p.mas[t.id]}/5｜<span class="${rc}">${bad&&rIdx()>=t.req?'無法修煉':RELTXT[r]}</span></div><div class="dim">${techEff(t)}</div></div>`;});
+ const chip=(on,fn,txt)=>`<button class="chip${on?' on':''}" onclick="${fn}">${txt}</button>`;
+ let h=`<div class="dim">已領悟 ${own}/${TECHS.length} 種。你的流派：<b class="y">${SCHOOLS[p.sc].n}</b>，交好：${ALLY[p.sc].map(i=>SCHOOLS[i].n).join('、')}。</div>`;
+ /* 當前配置 */
+ const cfgRow=(lab,id)=>{const t=id!=null?TECHS[id]:null;
+  return t?`<div class="cfg"><span class="cl">${lab}</span><div class="cm"><b style="color:${GCOL[Math.floor(t.rank/3)]}">《${t.name}》</b> <span class="tag" style="color:${GCOL[Math.floor(t.rank/3)]}">${rk(t.rank)}</span><div class="dim">${techEffParts(t).join('｜')}</div></div><button class="btn sm" onclick="G.eqTech(${t.id})">卸下</button></div>`
+   :`<div class="cfg"><span class="cl">${lab}</span><div class="cm dim">（空）</div></div>`;};
+ h+=`<div class="card"><b>當前配置</b>${cfgRow('心法',p.heart)}${cfgRow('身法',p.foot)}${p.slots.map((id,i)=>cfgRow('技能'+(i+1),id)).join('')}</div>`;
+ /* 說明（預設收合） */
+ h+=`<details class="card"><summary><b>怎麼看功法？</b></summary><ul class="help">
+ <li>放哪一格：心法放「心法」格（1 格），身法放「身法」格（1 格）；攻擊、神識功法放「技能」格（共 4 格，戰鬥時使用）。</li>
+ <li>本流派、交好流派（${ALLY[p.sc].map(i=>SCHOOLS[i].n).join('、')}）、武器共鳴（裝備了該流派的武器或法寶）：威力沒有折扣。</li>
+ <li>通用功法人人可用，威力×0.9。</li>
+ <li>跨流派功法：威力×${offPen()}，心法與身法×${offRel()}${p.root.type==='偽'?'（偽靈根的倍率較高）':''}。</li>
+ <li>階級限制：天階只有本流派能修煉；地階限本流派、交好流派，或裝備了該流派的武器／法寶；玄黃階可以跨流派。另外要達到功法標示的境界才能修煉。</li>
+ <li>相剋：你的功法所屬流派剋制對手流派時，傷害×${CTR_UP}；被對手流派剋時，傷害×${CTR_DOWN}。以功法所屬流派判定，通用功法不參與。你是${SCHOOLS[p.sc].n}：剋 <span class="g">${CTR_NEXT[p.sc]!=null?SCHOOLS[CTR_NEXT[p.sc]].n:'—'}</span>，被 <span class="r">${CTR_PREV(p.sc).map(i=>SCHOOLS[i].n).join('、')||'—'}</span> 剋。</li>
+ <li>相剋環（A→B＝A 剋 B）：${CTR_RINGS.map(r=>r.concat(r[0]).map(i=>SCHOOLS[i].n).join('→')).join('；')}。</li>
+ <li>妖獸與首領依地區有五行屬性（金＝劍修、木＝丹修、土＝體修、水＝陣修、火＝器修），只與五行環互剋；御獸功法打妖獸另有×${CTR_SUMMON_UP}。</li>
+ <li>熟練度：重複獲得同一功法的殘卷（掉落或坊市購買）就會提升，最高 5；熟練度每高一級，效果多 10%。</li>
+ </ul></details>`;
+ /* 篩選 */
+ const types=TYPE_ORD.filter(x=>TECHS.some(t=>t.type===x)).concat([...new Set(TECHS.map(t=>t.type))].filter(x=>!TYPE_ORD.includes(x)));
+ h+=`<div class="chips">${chip(techS==='use',"G.techS('use')",'能用的')}${chip(techS==='own',"G.techS('own')",'全部已學')}${chip(techS==='all',"G.techS('all')",'未習得也顯示')}</div>`;
+ h+=`<div class="chips">${chip(techT==='',"G.techT('')",'全部類型')}${types.map(x=>chip(techT===x,`G.techT('${x}')`,x)).join('')}</div>`;
+ h+=`<select style="margin-bottom:6px" onchange="G.techF(this.value)"><option value="-1">全部流派</option>${SCHOOLS.map((s,i)=>`<option value="${i}" ${techF===i?'selected':''}>${s.n}</option>`).join('')}<option value="12" ${techF===12?'selected':''}>通用</option></select>`;
+ const isOn=t=>p.heart===t.id||p.foot===t.id||p.slots.includes(t.id);
+ const list=TECHS.filter(t=>(techF<0||t.sc===techF)&&(!techT||t.type===techT)&&(techS==='all'||(p.techs.includes(t.id)&&(techS!=='use'||!canUse(t))))).sort((a,b)=>{
+  const ha=p.techs.includes(a.id),hb=p.techs.includes(b.id);
+  return(isOn(b)-isOn(a))||(hb-ha)||((ha&&canUse(a)?1:0)-(hb&&canUse(b)?1:0))||(REL_ORD[rel(a)]-REL_ORD[rel(b)])||(b.rank-a.rank)||(a.id-b.id);});
+ if(!list.length)h+='<div class="dim">這個分類還沒有符合條件的功法。</div>';
+ types.forEach(ty=>{const g=list.filter(t=>t.type===ty);if(!g.length)return;
+  h+=`<h3>${ty}（${g.length} 本）</h3>`;
+  g.forEach(t=>{
+   const has=p.techs.includes(t.id),col=GCOL[Math.floor(t.rank/3)];
+   if(!has){h+=`<div class="card dim row"><span>？？？？　<span style="color:${col}">${rk(t.rank)}</span>・${t.school}${t.type}</span></div>`;return;}
+   const on=isOn(t),bad=canUse(t);
+   const ctr=t.sc<12?`｜剋：${SCHOOLS[CTR_NEXT[t.sc]].n}　被剋：${CTR_PREV(t.sc).map(i=>SCHOOLS[i].n).join('、')||'—'}`:'';
+   h+=`<div class="card tc" style="${bad?'opacity:.55':''}"><div class="row"><span><b style="color:${col}">《${t.name}》</b> <span class="tag" style="color:${col}">${rk(t.rank)}</span>${on?'<span class="tag y">裝備中</span>':''}</span><button class="btn sm" onclick="G.eqTech(${t.id})">${on?'卸下':'裝備'}</button></div>
+   <div class="eff">${techEffHTML(t)}</div>
+   <div class="dim">${relTag(t)}${t.school}${t.e?'（'+t.e+'屬性）':''}${ctr}｜需${REALMS[t.req]}期｜熟練 ${p.mas[t.id]}/5</div>${bad?`<div class="r" style="font-size:13.5px">不能修煉：${bad}</div>`:''}</div>`;});});
  return h;
 }
 function bagHTML(){
@@ -875,12 +950,14 @@ function introHTML(){
 function render(){
  if(!p){$('#top').innerHTML='';$('#view').innerHTML=introHTML();$('#tabs').innerHTML='';return;}
  if(mode==='battle'||mode==='ev'||mode==='shop'&&tab!=='act')tab='act';
+ if(mode!=='battle')btMenu='main';
  $('#top').innerHTML=topHTML();
  const T=[['act','行動'],['map','地圖'],['tech','功法'],['bag','裝備'],['role','角色']];
  $('#tabs').innerHTML=T.map(x=>`<button class="${tab===x[0]?'on':''}" onclick="G.tab('${x[0]}')">${x[1]}</button>`).join('');
  let v;
  if(mode==='dead')v=deadHTML();else if(tab==='act')v=actHTML();else if(tab==='map')v=mapHTML();else if(tab==='tech')v=techHTML();else if(tab==='bag')v=bagHTML();else v=roleHTML();
  $('#view').innerHTML=v;
+ $('#view').classList.toggle('actv',mode!=='dead'&&mode!=='shop'&&tab==='act');
  if(tab==='map'&&mode!=='dead')drawMap();
  const lg=$('#log');if(lg)lg.scrollTop=lg.scrollHeight;
  save();
