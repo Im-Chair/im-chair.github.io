@@ -60,6 +60,16 @@ select,input,textarea{background:#10141b;color:#dde2ea;border:1px solid #394256;
 .ep{display:inline-block;margin:0 14px 2px 0}
 .tc{padding:12px}
 details.card summary{cursor:pointer;min-height:24px}
+/* 裝備假人：三欄 grid（左標籤／人形／右標籤），線條畫在人形 SVG 內並溢出到標籤邊緣 */
+.mkg{display:grid;grid-template-columns:minmax(0,1fr) 104px minmax(0,1fr);grid-template-rows:72px 72px;gap:8px;justify-content:center}
+.mkf{grid-column:2;grid-row:1/3;overflow:visible;display:block}
+.mks{display:flex;flex-direction:column;justify-content:center;gap:1px;min-width:0;text-align:left;background:#1b212c;border:1px solid #394256;border-radius:8px;padding:5px 8px;color:#dde2ea}
+.mks>*{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:14px}
+.mks>.dim{font-size:12.5px}
+.mks.emp{border-style:dashed;background:transparent}
+.mks.on{border-color:#e6c35a;background:#2a3446}
+.upp{margin-top:8px;padding-top:8px;border-top:1px solid #232a37;line-height:1.6}
+.upp .btn[disabled]{opacity:.45}
 .help{margin:8px 0 0;padding-left:20px;line-height:1.7;font-size:14px}
 .help li{margin-bottom:4px}
 #toast{display:none;position:fixed;left:50%;top:calc(64px + env(safe-area-inset-top));transform:translateX(-50%);max-width:88%;background:#1d2533;border:1px solid #e6c35a;border-radius:10px;padding:9px 14px;font-size:14px;line-height:1.5;z-index:9;box-shadow:0 4px 18px #000a;pointer-events:none}
@@ -152,6 +162,35 @@ const PRE=['凡鐵','青罡','赤焰','玄冥','紫電','九幽','太清','混�
 const SLOTS=['武器','衣甲','飾品','法寶'];
 const SNAME={武器:['劍','刀','槍','杖'],衣甲:['道袍','法衣','護甲'],飾品:['玉佩','戒指','項鍊'],法寶:['寶鐺','寶塔','玲瓏盤','幡']};
 const QN=['下品','中品','上品','極品'],QM=[1,1.25,1.55,2.0],QCOL=['#aab','#7fcf9a','#7fb2e8','#e0a14f'];
+/* 裝備升級：升一次＝實際階 +1（素質提升一個大境界）；舊裝備沒有 up／uf 欄位，一律用 (q.up||0)、(q.uf||0) 讀 */
+const EQ_UP_MAX=[1,2,3,4];            // 下品／中品／上品／極品 可升級次數
+const EQ_UP_BASE=[0.85,0.75,0.65,0.55]; // 各品級基礎成功率
+const EQ_UP_STEP=0.12;                // 每升過一次，成功率 −12%
+const EQ_UP_TIER=0.03;                // 目標階每高一個大境界，成功率 −3%
+const EQ_UP_PITY=0.05;                // 每連續失敗一次 +5%，成功後歸零
+const EQ_UP_MIN=0.15,EQ_UP_MAXP=0.95; // 成功率下限與上限
+const EQ_UP_COST=0.5;                 // 花費＝升級後那一階、同品級裝備價格 ×0.5
+const eqTier=q=>cl(q.tier+(q.up||0),0,9); // 實際階（效果、價格用這個；穿戴門檻仍用 q.tier）
+const eqUpRate=q=>cl(EQ_UP_BASE[q.q]-EQ_UP_STEP*(q.up||0)-EQ_UP_TIER*(eqTier(q)+1)+EQ_UP_PITY*(q.uf||0),EQ_UP_MIN,EQ_UP_MAXP);
+const eqUpCost=q=>Math.round(P((eqTier(q)+1)*4+2)*(3+q.q*3)*EQ_UP_COST);
+const eqName=q=>q.name+((q.up||0)>0?'+'+q.up:'');
+const eqPow=q=>S(eqTier(q)*4+2)*QM[q.q]; // 實際強度（排序、比較用）
+const eqUpBlock=q=>{
+ if((q.up||0)>=EQ_UP_MAX[q.q])return`此品級最多升 ${EQ_UP_MAX[q.q]} 次`;
+ if(eqTier(q)>=9)return'已是最高境界的裝備';
+ if(eqTier(q)+1>rIdx())return`需達到${REALMS[eqTier(q)+1]}期才能再升`;
+ if(p.st<eqUpCost(q))return'靈石不足';
+ return'';};
+/* 階級標籤：○○階、品級、可升次數、流派；穿戴門檻另用 eqNeedHTML */
+const eqTagHTML=q=>{const left=EQ_UP_MAX[q.q]-(q.up||0),sc=eqSc(q);
+ return`<span class="tag y">${REALMS[eqTier(q)]}階</span><span class="tag" style="color:${QCOL[q.q]}">${QN[q.q]}</span>`
+  +(left>0?`<span class="tag dim">可升 ${left} 次</span>`:'<span class="tag g">已升滿</span>')
+  +(sc<12?`<span class="tag b">${SCHOOLS[sc].n}</span>`:'');};
+const eqNeedHTML=q=>`<span class="${rIdx()<q.tier?'r':'dim'}">需 ${REALMS[q.tier]}期 才能穿</span>`;
+/* 背包裝備清單：先依部位、再依實際強度高到低；保留真實索引 i（G.equip／G.sell 用） */
+const bagSorted=()=>p.bag.map((q,i)=>({q,i})).sort((a,b)=>SLOTS.indexOf(a.q.slot)-SLOTS.indexOf(b.q.slot)||eqPow(b.q)-eqPow(a.q));
+const eqCmpHTML=q=>{const o=p.eq[q.slot];if(!o)return'<span class="dim">身上是空的</span>';const d=Math.round((eqPow(q)/eqPow(o)-1)*100);
+ return d>=0?`<span class="g">比身上強 +${d}%</span>`:`<span class="r">比身上弱 −${-d}%</span>`;};
 const ESN=[
 {武器:['飛劍','靈劍'],衣甲:['劍袍'],飾品:['劍穗'],法寶:['劍匣']},
 {武器:['拳套','戰錘'],衣甲:['戰甲'],飾品:['護腕'],法寶:['龍象印']},
@@ -168,12 +207,12 @@ const ESN=[
 const eqSc=q=>q.sc==null?12:q.sc;
 const mkEq=(tier,slot,q,sc)=>{tier=cl(tier,0,9);slot=slot||pick(SLOTS);if(q==null)q=pickW([55,28,13,4]);
  if(sc==null){const pr=(slot==='武器'||slot==='法寶')?0.85:0.4;sc=ch(pr)?((p&&ch(0.4))?p.sc:R(0,11)):12;}
- return{id:Date.now()+Math.floor(rnd()*1e9),slot,tier,q,sc,name:PRE[tier]+(sc<12?pick(ESN[sc][slot]):pick(SNAME[slot]))};};
+ return{id:Date.now()+Math.floor(rnd()*1e9),slot,tier,q,sc,up:0,uf:0,name:PRE[tier]+(sc<12?pick(ESN[sc][slot]):pick(SNAME[slot]))};};
 /* 流派裝備的額外被動 */
-const eqX=q=>{const sc=eqSc(q);if(sc>=12)return null;const k=SCX[sc];return[k[0],k[1]*(q.tier*0.6+1)*(0.8+q.q*0.15),k[2]];};
-const eqDesc=q=>{const v=S(q.tier*4+2)*QM[q.q];let d;if(q.slot==='武器')d='攻擊+'+nf(v*.5);else if(q.slot==='衣甲')d='防禦+'+nf(v*.4)+' 氣血+'+nf(v*2);else if(q.slot==='飾品')d='神識+'+nf(v*.4)+' 速度+'+(q.tier*2+2);else d='攻+'+nf(v*.2)+' 防+'+nf(v*.15)+' 神識+'+nf(v*.2)+' 血+'+nf(v);
+const eqX=q=>{const sc=eqSc(q);if(sc>=12)return null;const k=SCX[sc];return[k[0],k[1]*(eqTier(q)*0.6+1)*(0.8+q.q*0.15),k[2]];};
+const eqDesc=q=>{const v=eqPow(q);let d;if(q.slot==='武器')d='攻擊+'+nf(v*.5);else if(q.slot==='衣甲')d='防禦+'+nf(v*.4)+' 氣血+'+nf(v*2);else if(q.slot==='飾品')d='神識+'+nf(v*.4)+' 速度+'+(eqTier(q)*2+2);else d='攻+'+nf(v*.2)+' 防+'+nf(v*.15)+' 神識+'+nf(v*.2)+' 血+'+nf(v);
  const x=eqX(q);return d+(x?`<br><span class="b">〔${SCHOOLS[eqSc(q)].n}〕${x[2]}+${pc(x[1])}；${SCHOOLS[eqSc(q)].n}功法威力+10%${q.slot==='武器'||q.slot==='法寶'?'；可使用該流派跨派功法而不減傷':''}</span>`:'<br><span class="dim">〔通用〕無流派加成</span>');};
-const eqPrice=q=>Math.round(P(q.tier*4+2)*(3+q.q*3));
+const eqPrice=q=>Math.round(P(eqTier(q)*4+2)*(3+q.q*3));
 
 const REG={
 '中州':{x:105,y:210,lv:[0,6],el:'土',qi:1.0,city:1,adj:['西漠','西南幽谷','北原','南疆','天裂淵'],boss:'天衍宗殘魂',beasts:['山貓妖','赤眼狼','毒牙蛇','青皮野豬'],desc:['宗門遺址的斷碑倒在荒草間。','市集炊煙裊裊，修士往來。','山道上殘留著劍氣的痕跡。'],col:'#9a7a3c'},
@@ -354,8 +393,8 @@ function learn(id){if(!p.techs.includes(id))p.techs.push(id);if(!p.mas[id])p.mas
 /* ===== 數值 ===== */
 function calc(){
  const b=S(p.lv);const o={atk:b,def:b*.6,sense:b*.9,hp:b*6,mp:b*5,spd:10+p.lv*3,dodge:.03,crit:.08,exp:1};
- for(const sl in p.eq){const q=p.eq[sl];if(!q)continue;const v=S(q.tier*4+2)*QM[q.q];
-  if(sl==='武器')o.atk+=v*.5;else if(sl==='衣甲'){o.def+=v*.4;o.hp+=v*2;}else if(sl==='飾品'){o.sense+=v*.4;o.spd+=q.tier*2+2;}else{o.atk+=v*.2;o.def+=v*.15;o.sense+=v*.2;o.hp+=v;}}
+ for(const sl in p.eq){const q=p.eq[sl];if(!q)continue;const v=eqPow(q);
+  if(sl==='武器')o.atk+=v*.5;else if(sl==='衣甲'){o.def+=v*.4;o.hp+=v*2;}else if(sl==='飾品'){o.sense+=v*.4;o.spd+=eqTier(q)*2+2;}else{o.atk+=v*.2;o.def+=v*.15;o.sense+=v*.2;o.hp+=v;}}
  const X={crit:0,critd:0,hpPct:0,defPct:0,senseP:0,atkP:0,spdP:0,lifesteal:0,dodge:0,regen:0,dotUp:0,exp:0};
  for(const sl in p.eq){const q=p.eq[sl];if(!q)continue;const x=eqX(q);if(x)X[x[0]]+=x[1];}
  if(p.heart!=null){const h=TECHS[p.heart],m=1+0.1*((p.mas[h.id]||1)-1),f=relF(h);
@@ -653,9 +692,9 @@ G.buyPot=k=>{const d=POTS.find(x=>x[0]===k),c=Math.round(P(p.lv)*d[2]);
  if(k==='liq'&&!liqLeft()){L(`靈液進貨有限，每 ${LIQ_WIN} 個月最多買 ${LIQ_CAP} 瓶，約 ${LIQ_WIN-(p.month-p.liqBuy.m)} 個月後再來。`,'r');render();return;}
  if(p.st<c){L('靈石不足。','r');render();return;}p.st-=c;p.inv[k]++;
  if(k==='liq'){if(!p.liqBuy||p.month-p.liqBuy.m>=LIQ_WIN)p.liqBuy={m:p.month,n:0};p.liqBuy.n++;}L(`購買了${d[1]}。`,'g');render();};
-G.buyEq=i=>{const q=p.shop.eq[i];if(!q)return;const c=eqPrice(q);if(p.st<c){L('靈石不足。','r');render();return;}p.st-=c;p.bag.push(q);p.shop.eq[i]=null;L(`購買了【${QN[q.q]}${q.name}】。`,'g');render();};
+G.buyEq=i=>{const q=p.shop.eq[i];if(!q)return;const c=eqPrice(q);if(p.st<c){L('靈石不足。','r');render();return;}p.st-=c;p.bag.push(q);p.shop.eq[i]=null;L(`購買了【${QN[q.q]}${eqName(q)}】。`,'g');render();};
 G.buyTech=i=>{const id=p.shop.techs[i];if(id==null)return;const t=TECHS[id],c=Math.round(P(t.req*4)*(2+t.rank*3));if(p.st<c){L('靈石不足。','r');render();return;}p.st-=c;L(addTech(id),'y');p.shop.techs[i]=null;render();};
-G.sell=i=>{const q=p.bag[i];if(!q)return;const v=Math.round(eqPrice(q)*0.4);p.st+=v;p.bag.splice(i,1);L(`賣出【${q.name}】，得靈石 ${fmt(v)}。`,'g');render();};
+G.sell=i=>{const q=p.bag[i];if(!q)return;const v=Math.round(eqPrice(q)*0.4);p.st+=v;p.bag.splice(i,1);L(`賣出【${eqName(q)}】，得靈石 ${fmt(v)}。`,'g');render();};
 
 /* ===== 秘境 ===== */
 /* 秘境的時間與修為參數（集中一處）：
@@ -714,8 +753,20 @@ G.use=k=>{if(mode==='battle')return;const c=calc();
  else if(k==='life'&&p.inv.life>0){p.inv.life--;p.extra+=20;L('服下延壽丹，壽元增加二十年。','y');}
  render();};
 G.equip=i=>{const q=p.bag[i];if(!q)return;if(rIdx()<q.tier){L(`境界不足，需${REALMS[q.tier]}期才能使用。`,'r');render();return;}
- const old=p.eq[q.slot];p.eq[q.slot]=q;p.bag.splice(i,1);if(old)p.bag.push(old);L(`裝備了【${QN[q.q]}${q.name}】。`);fixTechs();render();};
-G.unequip=s=>{if(p.eq[s]){p.bag.push(p.eq[s]);p.eq[s]=null;fixTechs();}render();};
+ const old=p.eq[q.slot];p.eq[q.slot]=q;p.bag.splice(i,1);if(old)p.bag.push(old);L(`裝備了【${QN[q.q]}${eqName(q)}】。`);fixTechs();render();};
+G.unequip=s=>{if(p.eq[s]){p.bag.push(p.eq[s]);p.eq[s]=null;fixTechs();}if(eqSel===s)eqSel=null;render();};
+/* 裝備頁狀態：eqSel＝假人上選中的部位；upOpen＝展開升級面板的那件（'eq:部位' 或 'bag:裝備id'） */
+let eqSel=null,upOpen=null;
+G.eqPick=s=>{eqSel=(eqSel===s?null:s);if(upOpen&&upOpen.indexOf('eq:')===0)upOpen=null;render();};
+G.upToggle=k=>{upOpen=(upOpen===k?null:k);render();};
+const upFind=k=>{if(!k)return null;if(k.indexOf('eq:')===0)return p.eq[k.slice(3)]||null;const id=+k.slice(4);return p.bag.find(x=>x.id===id)||null;};
+/* 升級：where='eq' 時 key 是部位名；where='bag' 時 key 是裝備 id（排序後索引會變，用 id 才穩） */
+G.upEq=(where,key)=>{const q=where==='eq'?p.eq[key]:p.bag.find(x=>x.id===+key);if(!q)return;
+ const bad=eqUpBlock(q);if(bad){L(bad+'。','r');render();return;}
+ const cost=eqUpCost(q),rate=eqUpRate(q);p.st-=cost;
+ if(ch(rate)){q.up=(q.up||0)+1;q.uf=0;L(`升級成功！【${eqName(q)}】提升為${REALMS[eqTier(q)]}階。`,'g');}
+ else{q.uf=(q.uf||0)+1;L(`升級失敗，靈石耗盡了這一爐……裝備無損，下次成功率 +${Math.round(EQ_UP_PITY*100)}%。`,'r');}
+ save();render();};
 G.eqTech=id=>{const t=TECHS[id];const bad=canUse(t);if(bad){L(bad,'r');render();return;}
  if(t.type==='心法')p.heart=p.heart===id?null:id;
  else if(t.type==='身法')p.foot=p.foot===id?null:id;
@@ -807,12 +858,12 @@ function shopHTML(){
  POTS.forEach(d=>{const lq=d[0]==='liq',ll=lq?liqLeft():1;
   h+=`<div class="card row"><span>${d[1]}<span class="dim">　${d[3]}（持有${p.inv[d[0]]}）${lq?`<br>進貨有限：每 ${LIQ_WIN} 個月最多 ${LIQ_CAP} 瓶，目前還可買 ${ll} 瓶`:''}</span></span><button class="btn sm" ${ll?'':'disabled'} onclick="G.buyPot('${d[0]}')">${c(P(p.lv)*d[2])}</button></div>`;});
  h+='<h3>裝備（每3個月更新）</h3>';
- s.eq.forEach((q,i)=>{if(!q)return;h+=`<div class="card"><div class="row"><span style="color:${QCOL[q.q]}">【${QN[q.q]}】${q.name}</span><button class="btn sm" onclick="G.buyEq(${i})">${c(eqPrice(q))}</button></div><div class="dim">需${REALMS[q.tier]}期　${eqDesc(q)}</div></div>`;});
+ s.eq.forEach((q,i)=>{if(!q)return;h+=`<div class="card"><div class="row"><span style="color:${QCOL[q.q]}">【${QN[q.q]}】${eqName(q)}</span><button class="btn sm" onclick="G.buyEq(${i})">${c(eqPrice(q))}</button></div><div>${eqTagHTML(q)}</div><div class="dim">${q.slot}　${eqNeedHTML(q)}<br>${eqDesc(q)}</div></div>`;});
  h+='<h3>功法卷軸</h3>';
  s.techs.forEach((id,i)=>{if(id==null)return;const t=TECHS[id];h+=`<div class="card"><div class="row"><span style="color:${GCOL[Math.floor(t.rank/3)]}">《${t.name}》</span><button class="btn sm" onclick="G.buyTech(${i})">${c(Math.round(P(t.req*4)*(2+t.rank*3)))}</button></div><div class="dim">${rk(t.rank)}｜${t.school}｜${t.type}｜需${REALMS[t.req]}期${p.techs.includes(id)?'｜已學（買入為殘卷）':''}</div></div>`;});
  h+='<h3>出售背包裝備</h3>';
  if(!p.bag.length)h+='<div class="dim">背包是空的。</div>';
- p.bag.forEach((q,i)=>{h+=`<div class="card row"><span style="color:${QCOL[q.q]}">${q.name}<span class="dim">（需${REALMS[q.tier]}期）</span></span><button class="btn sm" onclick="G.sell(${i})">賣 ${c(Math.round(eqPrice(q)*0.4))}</button></div>`;});
+ bagSorted().forEach(({q,i})=>{h+=`<div class="card"><div class="row"><span style="color:${QCOL[q.q]}">${q.slot}・${eqName(q)}</span><button class="btn sm" onclick="G.sell(${i})">賣 ${c(Math.round(eqPrice(q)*0.4))}</button></div><div>${eqTagHTML(q)}</div></div>`;});
  return h+'<button class="btn" style="width:100%;margin-top:6px" onclick="G.leaveShop()">離開</button>';
 }
 function mapHTML(){
@@ -905,11 +956,44 @@ function techHTML(){
  return h;
 }
 function bagHTML(){
- let h='<h3>身上裝備</h3>';
- SLOTS.forEach(s=>{const q=p.eq[s];h+=`<div class="card row"><span>${s}：${q?`<span style="color:${QCOL[q.q]}">${q.name}</span><div class="dim">${QN[q.q]}・${eqDesc(q)}</div>`:'<span class="dim">空</span>'}</span>${q?`<button class="btn sm" onclick="G.unequip('${s}')">卸下</button>`:''}</div>`;});
+ const pct=x=>Math.round(x*100)+'%';
+ let h=`<details class="card"><summary><b>裝備怎麼看？</b></summary><ul class="help">
+<li><b>階</b>：裝備實際的境界，決定素質。「築基階」的裝備，素質相當於築基期的水準。</li>
+<li><b>品級</b>（${QN.join('／')}）：同一階內的素質倍率（${QM.map(x=>'×'+x).join('、')}），同時決定最多能升級幾次（${EQ_UP_MAX.map((n,i)=>QN[i]+' '+n+' 次').join('、')}）。</li>
+<li>升級一次＝階 +1，素質提升一個大境界，名稱後面會加「+N」。</li>
+<li>只能升到自己目前的境界為止；穿戴門檻仍看裝備原本的階，升級不會讓裝備變得穿不了。</li>
+<li>成功率＝品級基礎成功率（${EQ_UP_BASE.map((x,i)=>QN[i]+' '+pct(x)).join('、')}）− 每升過一次 ${pct(EQ_UP_STEP)} − 目標階每高一個大境界 ${pct(EQ_UP_TIER)}，最低 ${pct(EQ_UP_MIN)}、最高 ${pct(EQ_UP_MAXP)}。</li>
+<li>花費＝升級後那一階、同品級裝備價格的 ${pct(EQ_UP_COST)}。</li>
+<li>失敗只損失靈石，裝備不會損壞也不會降級；每連續失敗一次，下次成功率 +${pct(EQ_UP_PITY)}，成功後歸零。</li>
+</ul></details>`;
+ /* 升級面板（展開在該件裝備下方）：k＝'eq:部位' 或 'bag:裝備id' */
+ const upPanel=(q,k)=>{if(upOpen!==k)return'';
+  const where=k.slice(0,k.indexOf(':')),key=k.slice(k.indexOf(':')+1),bad=eqUpBlock(q);
+  const can=(q.up||0)<EQ_UP_MAX[q.q]&&eqTier(q)<9,nx=Object.assign({},q,{up:(q.up||0)+1});
+  return`<div class="upp">`
+   +(can?`<div>升級後：<b>${REALMS[eqTier(nx)]}階</b>（素質 ${nf(eqPow(q))} → ${nf(eqPow(nx))}）</div>`:'<div class="dim">已無法再升級。</div>')
+   +(can?`<div>成功率 <b>${pct(eqUpRate(q))}</b>${(q.uf||0)>0?`<span class="dim">（含連敗補償 +${pct(EQ_UP_PITY*q.uf)}）</span>`:''}</div>`
+   +`<div>花費 靈石 <b>${fmt(eqUpCost(q))}</b></div><div class="dim">失敗只損失靈石，裝備不會壞。</div>`:'')
+   +(bad?`<div class="r">${bad}</div>`:'')
+   +`<div class="row" style="justify-content:flex-start;margin-top:6px"><button class="btn sm" ${bad?'disabled':''} onclick="G.upEq('${where}','${key}')">確定升級</button><button class="btn sm" onclick="G.upToggle('${k}')">收起</button></div></div>`;};
+ /* 假人：標籤框＋拉線。中間欄 104×152，線從標籤邊緣（x=-8 或 112）拉到人形上的點 */
+ const POS={飾品:[1,1],法寶:[1,2],武器:[3,1],衣甲:[3,2]};
+ const slotBox=s=>{const q=p.eq[s],ps=POS[s];
+  return`<button class="mks${q?'':' emp'}${eqSel===s?' on':''}" style="grid-column:${ps[0]};grid-row:${ps[1]}" onclick="G.eqPick('${s}')"><span class="dim">${s}</span>`
+   +(q?`<b style="color:${QCOL[q.q]}">${eqName(q)}</b><span class="dim">${REALMS[eqTier(q)]}階・${QN[q.q]}</span>`:'<b class="dim">（空）</b><span class="dim">&nbsp;</span>')+`</button>`;};
+ const dot=(x,y)=>`<circle cx="${x}" cy="${y}" r="3" fill="#e6c35a"/>`;
+ const ln=(x1,y1,x2,y2)=>`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#e6c35a" stroke-width="1" opacity=".7"/>`+dot(x2,y2);
+ h+=`<h3>身上裝備</h3><div class="card"><div class="mkg">${slotBox('飾品')}${slotBox('法寶')}
+<svg class="mkf" width="104" height="152" viewBox="0 0 104 152" aria-hidden="true">
+<g fill="#2a3140" stroke="#4a566c" stroke-width="1.5"><circle cx="52" cy="20" r="13"/><rect x="34" y="36" width="36" height="56" rx="12"/><rect x="20" y="38" width="11" height="52" rx="5.5"/><rect x="73" y="38" width="11" height="52" rx="5.5"/><rect x="36" y="94" width="14" height="52" rx="6"/><rect x="54" y="94" width="14" height="52" rx="6"/></g>
+${ln(-8,36,44,32)}${ln(-8,112,26,92)}${ln(112,36,78,72)}${ln(112,112,56,84)}</svg>
+${slotBox('武器')}${slotBox('衣甲')}</div></div>`;
+ const sq=eqSel&&p.eq[eqSel];
+ if(eqSel&&!sq)h+=`<div class="card dim">${eqSel}：目前沒有裝備。可從下方背包裝備。</div>`;
+ else if(sq){const k='eq:'+eqSel;h+=`<div class="card"><div class="row"><b style="color:${QCOL[sq.q]}">${eqSel}・${eqName(sq)}</b><span class="row"><button class="btn sm" onclick="G.upToggle('${k}')">升級</button><button class="btn sm" onclick="G.unequip('${eqSel}')">卸下</button></span></div><div>${eqTagHTML(sq)}</div><div class="dim">${eqNeedHTML(sq)}<br>${eqDesc(sq)}</div>${upPanel(sq,k)}</div>`;}
  h+='<h3>背包裝備</h3>';
  if(!p.bag.length)h+='<div class="dim">背包是空的。</div>';
- p.bag.forEach((q,i)=>{h+=`<div class="card row"><span><span style="color:${QCOL[q.q]}">${q.name}</span> <span class="dim">${q.slot}・${QN[q.q]}・需${REALMS[q.tier]}期<br>${eqDesc(q)}</span></span><button class="btn sm" onclick="G.equip(${i})">裝備</button></div>`;});
+ bagSorted().forEach(({q,i})=>{const k='bag:'+q.id;h+=`<div class="card"><div class="row"><b style="color:${QCOL[q.q]}">${q.slot}・${eqName(q)}</b><span class="row"><button class="btn sm" onclick="G.upToggle('${k}')">升級</button><button class="btn sm" onclick="G.equip(${i})">裝備</button></span></div><div>${eqTagHTML(q)}</div><div class="dim">${eqNeedHTML(q)}　${eqCmpHTML(q)}<br>${eqDesc(q)}</div>${upPanel(q,k)}</div>`;});
  h+='<h3>道具</h3>';
  [['liq','靈液','直接煉化，獲得修為；突破時也可增加成功率'],['heal','療傷丹','回復50%氣血'],['mp','回靈丹','回復60%靈力'],['brk','破境丹','突破時使用'],['life','延壽丹','壽元+20年']].forEach(d=>{
   h+=`<div class="card row"><span>${d[1]} ×${p.inv[d[0]]}<div class="dim">${d[2]}</div></span>${d[0]!=='brk'&&mode!=='battle'?`<button class="btn sm" onclick="G.use('${d[0]}')">使用</button>`:''}</div>`;});

@@ -45,7 +45,7 @@
 │                       #   純邏輯在檔內 CORE-BEGIN～CORE-END，可用 node 抽出來模擬；CSS 同樣是 Tailwind v3.4.17 CLI 一次性產出後內嵌（<style id="tailwind-static">）
 │                       #   選配美術走 `blizzard-cabin/art/index.json`（清單有、載入成功才換圖，其餘維持 emoji；輔助函式 iconHTML／drawIcon／artHas 在 CORE 之外），由 tools/process_art.py 從 output/imagegen/blizzard/sheet-N.png（4×4 圖表，共 6 張）切出，單獨跑 `python tools/process_art.py --only blizzard`；id 規則：道具 id（<破洞>_c<i>／_s<i>、fallback、fallback_deice）與 hs_（破洞）／st_（狀態）／wx_（天氣）／ui_／face_／leak_／end_；換圖後升 index.html 的 ART_VER 並把根 sw.js 的 CACHE +1
 ├── xiuxian/            # 凡骨補天（單檔 index.html，修仙養成；改名前叫「天裂問道」，存檔 key tianlie_xiuxian_v1 沿用不改）。
-│                       #   遊戲名集中在 `GAME_NAME`／`GAME_SUB` 常數（另有靜態 `<title>`，改名要改兩處）；劇情文本集中在 `STORY_TXT`（只有資料）；靈根常數 `ROOT_*`、流派相剋表 `CTR_RINGS`、秘境參數 `SR_MONTHS／SR_CD／SR_EXP_K`、靈液限購 `LIQ_CAP／LIQ_WIN`
+│                       #   遊戲名集中在 `GAME_NAME`／`GAME_SUB` 常數（另有靜態 `<title>`，改名要改兩處）；劇情文本集中在 `STORY_TXT`（只有資料）；靈根常數 `ROOT_*`、流派相剋表 `CTR_RINGS`、秘境參數 `SR_MONTHS／SR_CD／SR_EXP_K`、靈液限購 `LIQ_CAP／LIQ_WIN`；裝備升級常數 `EQ_UP_*`，實際階用 `eqTier()`（`tier` 是穿戴門檻、`up` 是已升級次數）
 ├── covers/             # 首頁彩色封面 <遊戲>.webp（大作 900×600、小品 600×600；rpg-next 共用 rpg.webp；可缺，缺的退回 icons/ 再退回 emoji）
 ├── icons/              # 首頁卡片圖示 <遊戲>.webp（封面缺席時的退路，置中放在漸層色塊上；可缺，缺的沿用 emoji）
 └── tools/process_art.py  # 小遊戲美術後製（Pillow；不是網站的一部分）。流程見 美術需求_ChatGPT出圖.md
