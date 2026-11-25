@@ -79,16 +79,6 @@
             background: linear-gradient(180deg, #d32f2f 0%, #b71c1c 100%);
         }
         }
-        .res-tile {
-            transition: transform 0.15s ease, box-shadow 0.15s ease;
-        }
-        @media (hover: hover) {
-        .res-tile:hover {
-            transform: scale(1.06);
-            z-index: 10;
-            box-shadow: 0 0 12px rgba(212, 175, 55, 0.9);
-        }
-        }
         /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: #2e1e11; }
@@ -153,7 +143,7 @@ button, a, select, input, label, [onclick], .nav-tab {
 
 /* --- 觸控裝置：點擊回饋、目標 ≥44px、輸入框 16px --- */
 @media (pointer: coarse) {
-    button:not(:disabled):active, .res-tile:active, .tribe-card:active, .step-btn:active {
+    button:not(:disabled):active, .tribe-card:active, .step-btn:active {
         transform: scale(0.95);
         filter: brightness(0.82);
     }
@@ -188,15 +178,14 @@ button, a, select, input, label, [onclick], .nav-tab {
     :root { --nav-h: 52px; --nav-total: calc(52px + 3px + env(safe-area-inset-bottom)); }
 
     /* 頂列：不再 sticky。第一行＝村莊選擇＋通知＋「⋯」，第二行＝時間流速 */
-    #app-header { position: relative; z-index: 35; }
     #app-header > div { flex-wrap: wrap; }
     .hdr-hide-m { display: none !important; }
     .hdr-left { order: 1; flex: 1 1 0; min-width: 0; }
     #village-selector { max-width: none !important; width: 100%; flex: 1 1 auto; min-height: 44px; font-size: 16px; }
     .hdr-actions { order: 2; flex-wrap: nowrap; }
     .hdr-speed { order: 3; width: 100%; flex-wrap: nowrap; justify-content: space-between; }
+    .hdr-speed > .speed-select { flex: 1 1 0; min-width: 0; min-height: 44px; font-size: 16px; }
     .hdr-speed > button { flex: 1 1 0; min-width: 0; padding-left: 2px; padding-right: 2px; font-size: 12px; white-space: nowrap; }
-    .hdr-speed > button:last-child { flex: 1.6 1 0; margin-left: 0; }
     .hdr-more-btn { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; min-width: 44px; font-size: 20px; line-height: 1; }
     .hdr-menu { display: none; }
     .hdr-menu.open {
@@ -206,25 +195,6 @@ button, a, select, input, label, [onclick], .nav-tab {
         box-shadow: 0 8px 20px rgba(0,0,0,0.6);
     }
     .hdr-menu.open > button { min-height: 44px; min-width: 120px; font-size: 14px; text-align: left; padding: 0 14px; }
-
-    /* 資源列：單列 4 欄、sticky 在頂端（頂端安全區用 body 的 ::before 蓋住） */
-    body::before {
-        content: ''; position: fixed; top: 0; left: 0; right: 0; z-index: 45;
-        height: env(safe-area-inset-top); background: #2e1e11;
-    }
-    #res-bar { position: sticky; top: env(safe-area-inset-top); z-index: 30; padding: 4px; }
-    .res-grid { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; gap: 4px; }
-    .res-box { padding: 4px 2px; justify-content: center; }
-    .res-inner { flex-direction: column; gap: 0; align-items: center; width: 100%; text-align: center; }
-    .res-inner > span { font-size: 16px; line-height: 1.1; }
-    .res-inner > div { width: 100%; min-width: 0; }
-    .res-inner > div > div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .res-inner > div > div:nth-child(1) { font-size: 11px; }
-    .res-inner > div > div:nth-child(2) { font-size: 13px; }
-    .res-inner > div > div:nth-child(2) > span.text-stone-400 { display: none; } /* 倉容量：手機省略（滿倉提示仍在下一行） */
-    .res-inner > div > div:nth-child(3) { font-size: 11px; }
-    .res-inner > div > div:nth-child(3):empty { display: none; }
-    .res-extra { display: none; }
 
     /* 底部固定導覽列 */
     #main-nav {
@@ -246,10 +216,6 @@ button, a, select, input, label, [onclick], .nav-tab {
     #main-nav #unread-badge { top: 2px; right: calc(50% - 28px); }
     #app-main { margin-top: 8px; padding-bottom: calc(var(--nav-total) + 20px); }
 
-    /* 田地：格子隨欄寬伸縮（≥44px，不溢出） */
-    #fields-grid { gap: 4px; width: 100%; }
-    #fields-grid > button { width: 100%; height: auto; aspect-ratio: 1 / 1; min-width: 44px; min-height: 44px; }
-
     /* toast：置中、不擋底部導覽 */
     #toast-container {
         left: 50%; right: auto; transform: translateX(-50%);
@@ -259,8 +225,145 @@ button, a, select, input, label, [onclick], .nav-tab {
 
     /* 字級：重要資訊至少 12px */
     .text-\[10px\], .text-\[11px\] { font-size: 12px; }
-    .res-inner > div > div:nth-child(1), .res-inner > div > div:nth-child(3) { font-size: 11px; }
 }
+
+/* ±鈕長按連發：不要選字、不要跳系統呼叫選單 */
+.step-btn { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+
+/* --- 觸控裝置沒有真正的 hover：點過後 Tailwind 的 hover 底色會殘留。
+   這裡用「hover 類別＋原底色類別」的複合選擇器（權重高於 Tailwind 的 :hover），把底色還原成原本顏色 --- */
+@media (hover: none) {
+    .hover\:bg-amber-50:hover.bg-\[\#fffaf0\] { background-color: #fffaf0; }
+    .hover\:bg-emerald-600:hover.bg-emerald-700 { background-color: #047857; }
+    .hover\:bg-stone-700:hover.bg-stone-800 { background-color: #292524; }
+    .hover\:bg-red-900:hover.bg-red-950 { background-color: #450a0a; }
+    .hover\:bg-\[\#4e3621\]:hover.bg-\[\#3b2818\] { background-color: #3b2818; }
+    .hover\:bg-\[\#4e3621\]:hover.bg-\[\#f7efe0\] { background-color: #f7efe0; }
+    .hover\:bg-amber-200:hover.bg-amber-100 { background-color: #fef3c7; }
+    .hover\:bg-red-600:hover.bg-red-700 { background-color: #b91c1c; }
+    .hover\:bg-red-100:hover.bg-red-50 { background-color: #fef2f2; }
+    .hover\:bg-amber-300:hover.bg-amber-200 { background-color: #fde68a; }
+    .hover\:bg-stone-400:hover.bg-stone-300 { background-color: #d6d3d1; }
+    /* 世界地圖格子 */
+    .hover\:bg-\[\#7fa653\]:hover.bg-\[\#6b8e45\] { background-color: #6b8e45; }
+    .hover\:bg-blue-600:hover.bg-blue-700 { background-color: #1d4ed8; }
+    .hover\:bg-purple-800:hover.bg-purple-900 { background-color: #581c87; }
+    .hover\:bg-teal-600:hover.bg-teal-700 { background-color: #0f766e; }
+    .hover\:bg-amber-100:hover.bg-amber-200 { background-color: #fde68a; }
+    .hover\:bg-red-700:hover.bg-red-800 { background-color: #991b1b; }
+    .hover\:bg-slate-500:hover.bg-slate-600 { background-color: #475569; }
+    .hover\:bg-amber-400:hover.bg-amber-500\/80 { background-color: rgba(245,158,11,.8); }
+    .hover\:bg-lime-400:hover.bg-lime-500\/70 { background-color: rgba(132,204,22,.7); }
+}
+
+/* ==================== 版面 v2：頂列加速下拉、資源列置頂、直列升級清單 ==================== */
+
+/* --- 頂列：不再 sticky（跟著頁面捲走）；資源列才是置頂的那一條 --- */
+#app-header { position: relative; z-index: 35; }
+
+/* --- 加速：原生下拉；暫停時整顆變紅，一眼看出停著 --- */
+.speed-select {
+    min-width: 6.2rem; min-height: 40px; padding: 0 10px; border-radius: 8px;
+    background: #26170c; color: #fde68a; border: 1px solid #f59e0b;
+    font-size: 14px; font-weight: 700;
+}
+.speed-select option { background: #26170c; color: #fde68a; }
+.speed-select.is-paused { background: #7f1d1d; color: #fecaca; border-color: #f87171; box-shadow: 0 0 0 2px rgba(248,113,113,.35); }
+.speed-select.is-paused option { background: #7f1d1d; color: #fecaca; }
+
+/* --- 資源列：position:fixed 釘在視窗最上方（含瀏海安全區），body 用 --resbar-h 補等高的 padding-top。
+   不用 sticky：它受祖先 overflow／容器高度影響，桌機原本也根本沒設 sticky --- */
+body { padding-top: var(--resbar-h, 0px); }
+#setup-screen:not(.hidden) ~ #res-bar { display: none; }
+#res-bar {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 36;
+    background: #2c1d11; border-bottom: 2px solid #8c6239; box-shadow: 0 4px 10px rgba(0,0,0,.55);
+    padding: calc(env(safe-area-inset-top) + 4px) calc(env(safe-area-inset-right) + 6px) 4px calc(env(safe-area-inset-left) + 6px);
+}
+.res-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; max-width: 64rem; margin: 0 auto; }
+.res-box {
+    position: relative; min-width: 0; display: flex; align-items: center; gap: 6px; padding: 4px 6px;
+    background: #1e130b; border: 1px solid rgba(120,53,15,.8); border-radius: 8px; color: #fffbeb;
+}
+.res-ico { font-size: 18px; line-height: 1; flex-shrink: 0; }
+.res-txt { min-width: 0; flex: 1 1 auto; }
+.res-num { font-size: 13px; font-weight: 700; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.res-cap { display: none; font-size: 11px; font-weight: 400; color: #a8a29e; }
+.res-rate { font-size: 11px; line-height: 1.2; color: #34d399; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.res-rate.is-neg { color: #f87171; font-weight: 900; }
+.res-full { display: none; position: absolute; top: 1px; right: 4px; font-size: 10px; font-weight: 900; line-height: 1; color: #fef3c7; }
+.res-box.is-full { background: #92400e; border-color: #fbbf24; }
+.res-box.is-full .res-full { display: block; }
+.res-extra { display: none; font-size: 10px; line-height: 1.2; color: #a8a29e; text-align: right; flex-shrink: 0; }
+.res-extra > div > span:first-child { color: #e7e5e4; }
+@media (min-width: 640px) {
+    .res-box { padding: 6px 12px; gap: 8px; }
+    .res-ico { font-size: 22px; }
+    .res-num { font-size: 15px; }
+    .res-cap { display: inline; }
+    .res-extra { display: block; }
+}
+
+/* --- 直列升級清單（資源田、村莊建築共用） --- */
+.up-wrap { width: 100%; max-width: 640px; margin: 0 auto; }
+.up-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
+.up-sub { font-size: 12px; color: #57534e; margin-bottom: 10px; }
+.up-list { display: flex; flex-direction: column; gap: 6px; }
+.up-group {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px; padding: 6px 10px;
+    background: #3b2818; color: #fde68a; border-radius: 8px; font-size: 13px; font-weight: 800;
+}
+.up-group:first-child { margin-top: 0; }
+.up-group b { color: #6ee7b7; font-weight: 800; }
+.up-card { display: flex; flex-direction: column; gap: 8px; }
+.up-item { scroll-margin-top: calc(var(--resbar-h, 0px) + 8px); border: 2px solid rgba(140,98,57,.6); border-radius: 12px; background: #fffaf0; overflow: hidden; }
+.up-item.is-open { border-color: #d97706; box-shadow: 0 2px 8px rgba(0,0,0,.18); }
+.up-row {
+    display: flex; align-items: center; gap: 10px; width: 100%; min-height: 52px; padding: 8px 10px;
+    background: transparent; border: 0; text-align: left; color: #3b2818; cursor: pointer;
+    scroll-margin-top: calc(var(--resbar-h, 0px) + 8px);
+}
+.up-ico { font-size: 24px; line-height: 1; flex-shrink: 0; width: 30px; text-align: center; }
+.up-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.up-name { font-size: 14px; font-weight: 800; line-height: 1.25; }
+.up-name b { margin-left: 4px; padding: 1px 6px; border-radius: 6px; background: #92400e; color: #fff; font-size: 12px; font-weight: 800; }
+.up-tag { margin-left: 6px; padding: 1px 6px; border-radius: 6px; background: #e0f2fe; border: 1px solid #0ea5e9; color: #082f49; font-size: 11px; font-weight: 700; }
+.up-prog { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #b91c1c; font-weight: 700; }
+.up-bar { flex: 1 1 auto; height: 6px; border-radius: 3px; background: #d6d3d1; overflow: hidden; }
+.up-bar > i { display: block; height: 100%; width: 0; background: #d97706; }
+.up-eta { font-family: ui-monospace, Menlo, Consolas, monospace; white-space: nowrap; }
+.up-side { flex-shrink: 0; max-width: 42%; text-align: right; font-size: 12px; font-weight: 700; color: #047857; line-height: 1.3; }
+.up-side.is-muted { color: #78716c; font-weight: 500; }
+.up-chev { flex-shrink: 0; color: #92400e; font-size: 12px; }
+.up-item.is-open .up-chev { transform: rotate(180deg); }
+.up-detail {
+    padding: 10px 12px 12px; border-top: 1px solid #d4bfa0; background: #fff6e0; font-size: 12px; color: #292524;
+    display: flex; flex-direction: column; gap: 8px;
+    scroll-margin-top: calc(var(--resbar-h, 0px) + 8px); scroll-margin-bottom: calc(var(--nav-total, 0px) + 12px);
+}
+.up-line { line-height: 1.5; }
+.up-line b { font-weight: 800; }
+.up-good { color: #047857; }
+.up-cost { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; padding: 8px; border-radius: 8px; background: #fffbeb; border: 1px solid #fcd34d; }
+.up-cost > span { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px; font-weight: 600; }
+.up-cost > span.is-lack { color: #dc2626; font-weight: 800; }
+.up-cost em { font-style: normal; font-size: 11px; font-weight: 700; }
+.up-actions { display: flex; gap: 8px; }
+.up-btn { flex: 1 1 0; min-height: 44px; padding: 0 12px; border-radius: 8px; font-size: 14px; font-weight: 800; }
+.up-btn.is-sub { flex: 0 1 auto; font-size: 12px; white-space: nowrap; }
+.up-hint { font-size: 12px; line-height: 1.45; font-weight: 700; white-space: pre-line; color: #b91c1c; }
+.up-hint.is-ok { color: #047857; }
+.up-off { display: none !important; }
+.up-desc { font-size: 12px; color: #44403c; line-height: 1.5; }
+.up-sec { padding: 8px; border-radius: 8px; border: 1px solid #d6d3d1; background: #fff; display: flex; flex-direction: column; gap: 6px; }
+.up-sec.is-red { background: #fef2f2; border-color: #fca5a5; }
+.up-sec.is-green { background: #ecfdf5; border-color: #6ee7b7; color: #022c22; }
+.up-train { display: flex; flex-direction: column; gap: 6px; }
+.up-train-btns { display: flex; gap: 6px; }
+.up-train-btns button { flex: 1 1 0; min-height: 44px; border-radius: 6px; font-weight: 800; font-size: 13px; }
+.up-select { width: 100%; min-height: 44px; padding: 0 8px; border-radius: 6px; border: 1px solid #f87171; background: #fff; font-weight: 700; color: #292524; }
+@media (hover: hover) { .up-row:hover { background: rgba(251,191,36,.14); } }
+.up-row:focus-visible { outline: 2px solid #d97706; outline-offset: -2px; }
 </style>
 </head>
 <body class="min-h-screen flex flex-col">
@@ -367,10 +470,12 @@ button, a, select, input, label, [onclick], .nav-tab {
             <!-- 時間倍率控制器 -->
             <div class="hdr-speed flex flex-wrap items-center gap-1 bg-[#1f1309] p-1 rounded-lg border border-amber-700/70 max-w-full">
                 <span class="text-xs text-amber-300 px-1.5 hidden md:inline">⏱️ 時間流速:</span>
-                <button onclick="setGameSpeed(0)" id="speed-0" class="speed-btn px-2.5 py-2 sm:px-2 sm:py-1 min-h-[40px] sm:min-h-0 rounded text-xs font-bold text-stone-300 hover:bg-amber-800">⏸ 暫停</button>
-                <button onclick="setGameSpeed(1)" id="speed-1" class="speed-btn px-2.5 py-2 sm:px-2 sm:py-1 min-h-[40px] sm:min-h-0 rounded text-xs font-bold bg-amber-600 text-white">▶ 1x</button>
-                <button onclick="setGameSpeed(5)" id="speed-5" class="speed-btn px-2.5 py-2 sm:px-2 sm:py-1 min-h-[40px] sm:min-h-0 rounded text-xs font-bold text-stone-300 hover:bg-amber-800">⏩ 5x</button>
-                <button onclick="setGameSpeed(20)" id="speed-20" class="speed-btn px-2.5 py-2 sm:px-2 sm:py-1 min-h-[40px] sm:min-h-0 rounded text-xs font-bold text-stone-300 hover:bg-amber-800">⚡ 20x</button>
+                <select id="speed-select" onchange="setGameSpeed(Number(this.value))" aria-label="時間流速" class="speed-select">
+                    <option value="0">⏸ 暫停</option>
+                    <option value="1" selected>▶ 1x</option>
+                    <option value="5">⏩ 5x</option>
+                    <option value="20">⚡ 20x</option>
+                </select>
                 <button onclick="fastForward(300)" data-tip="瞬間推進遊戲內 5 分鐘（資源、建造、行軍都會一起往前走）" class="sm:ml-1 px-3 py-2 sm:px-2.5 sm:py-1 min-h-[40px] sm:min-h-0 rounded text-xs font-bold bg-emerald-700 hover:bg-emerald-600 text-white border border-emerald-400">⏭ +5分鐘</button>
             </div>
 
@@ -389,54 +494,42 @@ button, a, select, input, label, [onclick], .nav-tab {
     </header>
 
     <!-- ==================== 四大資源即時儀表板 ==================== -->
-    <div id="res-bar" class="bg-[#2c1d11] border-b-2 border-[#8c6239] px-2 py-2 shadow-inner">
-        <div class="res-grid max-w-5xl mx-auto grid grid-cols-2 sm:grid-cols-4 gap-2">
-            <!-- 木材 -->
-            <div class="res-box min-w-0 bg-[#1e130b] border border-amber-900/80 rounded-lg px-2 sm:px-3 py-1.5 flex items-center justify-between gap-1">
-                <div class="res-inner flex items-center gap-1.5 sm:gap-2 min-w-0">
-                    <span class="text-xl shrink-0">🪵</span>
-                    <div>
-                        <div class="text-[11px] text-amber-200/70">木材 (<span id="prod-wood" class="text-emerald-400 font-bold">+0</span>/時)</div>
-                        <div class="text-sm font-bold text-amber-50"><span id="res-wood">0</span> <span class="text-xs text-stone-400">/ <span id="cap-wood">800</span></span></div>
-                        <div id="full-wood" class="text-[10px] leading-tight text-stone-400"></div>
-                    </div>
+    <div id="res-bar">
+        <div class="res-grid">
+            <div id="box-wood" class="res-box">
+                <span class="res-ico">🪵</span>
+                <div class="res-txt">
+                    <div class="res-num"><span id="res-wood">0</span><span class="res-cap">/<span id="cap-wood">800</span></span></div>
+                    <div id="rate-wood" class="res-rate"><span id="prod-wood">+0</span>/時</div>
                 </div>
+                <span id="full-wood" class="res-full"></span>
             </div>
-            <!-- 磚塊 -->
-            <div class="res-box min-w-0 bg-[#1e130b] border border-amber-900/80 rounded-lg px-2 sm:px-3 py-1.5 flex items-center justify-between gap-1">
-                <div class="res-inner flex items-center gap-1.5 sm:gap-2 min-w-0">
-                    <span class="text-xl shrink-0">🧱</span>
-                    <div>
-                        <div class="text-[11px] text-amber-200/70">磚塊 (<span id="prod-clay" class="text-emerald-400 font-bold">+0</span>/時)</div>
-                        <div class="text-sm font-bold text-amber-50"><span id="res-clay">0</span> <span class="text-xs text-stone-400">/ <span id="cap-clay">800</span></span></div>
-                        <div id="full-clay" class="text-[10px] leading-tight text-stone-400"></div>
-                    </div>
+            <div id="box-clay" class="res-box">
+                <span class="res-ico">🧱</span>
+                <div class="res-txt">
+                    <div class="res-num"><span id="res-clay">0</span><span class="res-cap">/<span id="cap-clay">800</span></span></div>
+                    <div id="rate-clay" class="res-rate"><span id="prod-clay">+0</span>/時</div>
                 </div>
+                <span id="full-clay" class="res-full"></span>
             </div>
-            <!-- 鋼鐵 -->
-            <div class="res-box min-w-0 bg-[#1e130b] border border-amber-900/80 rounded-lg px-2 sm:px-3 py-1.5 flex items-center justify-between gap-1">
-                <div class="res-inner flex items-center gap-1.5 sm:gap-2 min-w-0">
-                    <span class="text-xl shrink-0">⛓️</span>
-                    <div>
-                        <div class="text-[11px] text-amber-200/70">鋼鐵 (<span id="prod-iron" class="text-emerald-400 font-bold">+0</span>/時)</div>
-                        <div class="text-sm font-bold text-amber-50"><span id="res-iron">0</span> <span class="text-xs text-stone-400">/ <span id="cap-iron">800</span></span></div>
-                        <div id="full-iron" class="text-[10px] leading-tight text-stone-400"></div>
-                    </div>
+            <div id="box-iron" class="res-box">
+                <span class="res-ico">⛓️</span>
+                <div class="res-txt">
+                    <div class="res-num"><span id="res-iron">0</span><span class="res-cap">/<span id="cap-iron">800</span></span></div>
+                    <div id="rate-iron" class="res-rate"><span id="prod-iron">+0</span>/時</div>
                 </div>
+                <span id="full-iron" class="res-full"></span>
             </div>
-            <!-- 穀物 (含淨產量與耗糧) -->
-            <div class="res-box min-w-0 bg-[#1e130b] border border-amber-900/80 rounded-lg px-2 sm:px-3 py-1.5 flex items-center justify-between gap-1">
-                <div class="res-inner flex items-center gap-1.5 sm:gap-2 min-w-0">
-                    <span class="text-xl shrink-0">🌾</span>
-                    <div>
-                        <div class="text-[11px] text-amber-200/70">淨糧 (<span id="prod-crop" class="text-emerald-400 font-bold">+0</span>/時)</div>
-                        <div class="text-sm font-bold text-amber-50"><span id="res-crop">0</span> <span class="text-xs text-stone-400">/ <span id="cap-crop">800</span></span></div>
-                        <div id="full-crop" class="text-[10px] leading-tight text-stone-400"></div>
-                    </div>
+            <div id="box-crop" class="res-box">
+                <span class="res-ico">🌾</span>
+                <div class="res-txt">
+                    <div class="res-num"><span id="res-crop">0</span><span class="res-cap">/<span id="cap-crop">800</span></span></div>
+                    <div id="rate-crop" class="res-rate"><span id="prod-crop">+0</span>/時</div>
                 </div>
-                <div class="res-extra text-right text-[10px] text-stone-400 leading-tight shrink-0">
-                    <div>產:<span id="crop-gross" class="text-stone-200">0</span></div>
-                    <div>耗:<span id="crop-upkeep" class="text-amber-400">0</span></div>
+                <span id="full-crop" class="res-full"></span>
+                <div class="res-extra">
+                    <div>產:<span id="crop-gross">0</span></div>
+                    <div>耗:<span id="crop-upkeep">0</span></div>
                 </div>
             </div>
         </div>
@@ -509,73 +602,43 @@ button, a, select, input, label, [onclick], .nav-tab {
                 <button onclick="switchTab('reports')" class="px-3 py-1 bg-red-700 hover:bg-red-600 rounded text-xs font-bold border border-red-300">查看軍情</button>
             </div>
 
-            <!-- ==================== 視圖 A：資源田 (18格) ==================== -->
+            <!-- ==================== 視圖 A：資源田（直列清單，依種類分組；點一列在正下方展開升級） ==================== -->
             <section id="view-fields" class="view-section">
-                <div class="flex flex-col md:flex-row gap-5 items-center">
-                    <!-- 左側：經典圓形 18 格資源田分佈圖 -->
-                    <div class="w-full md:w-3/5">
-                        <div class="flex items-center justify-between mb-2">
-                            <h2 class="font-serif-tc font-black text-lg text-[#3b2818]">🌾 村外資源田 (點擊升級)</h2>
-                            <span id="ui-oasis-bonus" class="text-xs font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-400">綠洲加成: 無</span>
-                        </div>
-                        <div class="relative bg-gradient-to-br from-[#7ea154] to-[#5a7d36] rounded-2xl p-3 sm:p-4 border-4 border-[#5c4028] shadow-inner">
-                            <div id="fields-grid" class="grid grid-cols-6 gap-2 sm:gap-2.5 place-items-center">
-                                <!-- JS 動態生成 18 格 + 中央村莊入口 -->
-                            </div>
-                        </div>
-                        <div class="mt-2 flex flex-wrap justify-center gap-3 text-xs text-stone-700">
-                            <span>🪵 伐木場</span>
-                            <span>🧱 磚窯</span>
-                            <span>⛓️ 鐵礦場</span>
-                            <span>🌾 農場</span>
-                            <span class="text-amber-800 font-bold">💡 提示：農田特別多的「豐糧地」適合長期養大軍！</span>
-                        </div>
+                <div class="up-wrap">
+                    <div class="up-head">
+                        <h2 class="font-serif-tc font-black text-lg text-[#3b2818]">🌾 村外資源田</h2>
+                        <span id="ui-oasis-bonus" class="text-xs font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-400">綠洲加成: 無</span>
                     </div>
+                    <div class="up-sub">點一列展開升級；同類田依等級排序。農田特別多的「豐糧地」適合長期養大軍！</div>
+                    <div id="fields-list" class="up-list"></div>
 
-                    <!-- 右側：選中資源田詳情與本村駐軍概況 -->
-                    <div class="w-full md:w-2/5 space-y-4">
-                        <div id="field-detail-card" class="bg-[#fffaf0] border-2 border-[#8c6239] rounded-xl p-4 shadow">
-                            <h3 class="font-bold text-base text-[#3b2818] border-b border-[#d4bfa0] pb-2 mb-2">點擊左側任一資源田查看詳情</h3>
-                            <p class="text-xs text-stone-600">升級資源田可提高每小時資源產量，但同時也會增加村莊人口（消耗糧食）。</p>
+                    <!-- 本村駐軍總覽 -->
+                    <div class="bg-[#fffaf0] border-2 border-[#8c6239] rounded-xl p-4 shadow mt-4">
+                        <div class="flex items-center justify-between border-b border-[#d4bfa0] pb-1.5 mb-2">
+                            <h3 class="font-bold text-sm text-[#3b2818]">⚔️ 本村集結軍力</h3>
+                            <button onclick="switchTab('map')" class="text-xs text-amber-800 font-bold hover:underline">前往地圖出征 ➔</button>
                         </div>
-
-                        <!-- 本村駐軍總覽 -->
-                        <div class="bg-[#fffaf0] border-2 border-[#8c6239] rounded-xl p-4 shadow">
-                            <div class="flex items-center justify-between border-b border-[#d4bfa0] pb-1.5 mb-2">
-                                <h3 class="font-bold text-sm text-[#3b2818]">⚔️ 本村集結軍力</h3>
-                                <button onclick="switchTab('map')" class="text-xs text-amber-800 font-bold hover:underline">前往地圖出征 ➔</button>
-                            </div>
-                            <div id="home-troops-list" class="grid grid-cols-2 gap-1.5 text-xs">
-                                <!-- JS 動態填充 -->
-                            </div>
+                        <div id="home-troops-list" class="grid grid-cols-2 gap-1.5 text-xs">
+                            <!-- JS 動態填充 -->
                         </div>
                     </div>
                 </div>
             </section>
 
-            <!-- ==================== 視圖 B：村莊中心 (村內建築) ==================== -->
+            <!-- ==================== 視圖 B：村莊中心（直列清單；點一列在正下方展開升級／訓練） ==================== -->
             <section id="view-village" class="view-section hidden">
-                <div class="flex items-center justify-between mb-3">
-                    <h2 class="font-serif-tc font-black text-lg text-[#3b2818]">🏰 村莊中心建築 (點擊建造或升級)</h2>
-                    <span class="text-xs text-stone-600">大樓等級越高，所有建築施工越快</span>
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <!-- 左側 2/3：建築列表網格 -->
-                    <div id="buildings-grid" class="md:col-span-2 grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                        <!-- JS 動態生成 10 棟核心建築 -->
+                <div class="up-wrap">
+                    <div class="up-head">
+                        <h2 class="font-serif-tc font-black text-lg text-[#3b2818]">🏰 村莊中心建築</h2>
+                        <span class="text-xs text-stone-600">大樓等級越高，施工越快</span>
                     </div>
-                    <!-- 右側 1/3：建築操作/造兵/拓荒面板 -->
-                    <div id="building-action-panel" class="bg-[#fffaf0] border-2 border-[#8c6239] rounded-xl p-4 shadow flex flex-col justify-between min-h-[360px]">
-                        <div>
-                            <h3 class="font-bold text-base text-[#3b2818] border-b border-[#d4bfa0] pb-2 mb-2">選擇左側建築</h3>
-                            <p class="text-xs text-stone-600 leading-relaxed">點擊任意村內建築可進行升級、訓練步兵/騎兵、製造投石車、訓練拓荒者開分村，或設定投石車瞄準目標。</p>
-                        </div>
-                        <div class="bg-amber-50 p-2.5 rounded border border-amber-300 text-xs text-amber-950">
-                            <b>🎯 掠奪入門：</b><br>
-                            1. 蓋出<b>兵營</b>訓練初期掠奪兵。<br>
-                            2. 蓋出<b>攻城武器廠</b>製造<b>投石車</b>。<br>
-                            3. 在<b>集結點</b>指定投石車目標，正規攻擊就能砸毀敵人建築！
-                        </div>
+                    <div class="up-sub">點一列展開建造、升級、訓練部隊或設定投石車目標。</div>
+                    <div id="buildings-list" class="up-list"></div>
+                    <div class="bg-amber-50 p-2.5 rounded border border-amber-300 text-xs text-amber-950 mt-4">
+                        <b>🎯 掠奪入門：</b><br>
+                        1. 蓋出<b>兵營</b>訓練初期掠奪兵。<br>
+                        2. 蓋出<b>攻城武器廠</b>製造<b>投石車</b>。<br>
+                        3. 在<b>集結點</b>指定投石車目標，正規攻擊就能砸毀敵人建築！
                     </div>
                 </div>
             </section>
@@ -798,6 +861,9 @@ button, a, select, input, label, [onclick], .nav-tab {
         return `第 ${days} 天 ${hrs}:${mins}`;
     }
 
+    // 行軍 id：時間戳＋遞增序號，同一毫秒派出多支部隊也不會撞號（舊存檔裡的舊 id 照常使用）
+    let marchSeq = 0;
+    function makeMarchId(prefix) { return prefix + Date.now() + '_' + (++marchSeq); }
     function makeUid() { return 'b_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
 
     // 某資源的容量／每小時淨產量（糧食用淨產量，會是負的）
@@ -1326,10 +1392,12 @@ button, a, select, input, label, [onclick], .nav-tab {
         if (!gameState || !s || !s.go) return;
         const g = s.go;
         if (g.village != null && g.village >= 0 && g.village < gameState.villages.length) activeVillageIndex = g.village;
-        if (g.field != null) selectedFieldIndex = g.field;
-        if (g.building) selectedBuildingId = g.building;
+        if (g.field != null) openFieldIdx = g.field;
+        if (g.building) openBuildingId = g.building;
         if (g.coord) selectedMapCoord = { x: g.coord.x, y: g.coord.y };
         switchTab(g.tab);
+        if (g.field != null) scrollUpItemIntoView('f' + g.field);
+        else if (g.building) scrollUpItemIntoView('b-' + g.building);
     }
 
     // ----------------------------------------------------------------------------
@@ -1699,8 +1767,8 @@ button, a, select, input, label, [onclick], .nav-tab {
 
     let gameState = null;
     let activeVillageIndex = 0;
-    let selectedFieldIndex = 0;
-    let selectedBuildingId = 'main';
+    let openFieldIdx = null;     // 資源田清單展開中的那一列（只存記憶體，不進存檔）
+    let openBuildingId = null;   // 建築清單展開中的那一列
     let selectedMapCoord = null; // {x, y}
     let currentTab = 'fields';
     let gameSpeed = 1;
@@ -1743,8 +1811,10 @@ button, a, select, input, label, [onclick], .nav-tab {
         checkExistingSave();
         initTips();
         // 頁面切到背景或關閉時存檔，確保「上次存檔時間」夠新（離線補算以此為準）
-        document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') saveGameToStorage(true); });
-        window.addEventListener('pagehide', () => saveGameToStorage(true));
+        document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') saveOnLeave(); });
+        window.addEventListener('pagehide', saveOnLeave);
+        initStepRepeat();
+        initResBarOffset();
         setInterval(gameLoop, 250); // 每 0.25 秒更新一次邏輯與畫面
     });
 
@@ -1962,8 +2032,8 @@ button, a, select, input, label, [onclick], .nav-tab {
         lastTickTime = Date.now(); // 在開局畫面停留的時間不算進遊戲
 
         activeVillageIndex = 0;
-        selectedFieldIndex = 0;
-        selectedBuildingId = 'main';
+        openFieldIdx = null;
+        openBuildingId = null;
         selectedMapCoord = { x: px, y: py };
 
         document.getElementById('setup-screen').classList.add('hidden');
@@ -2034,13 +2104,34 @@ button, a, select, input, label, [onclick], .nav-tab {
         if (gameSpeed <= 0) return;
 
         const simDelta = realDelta * gameSpeed;
-        advanceSimulation(simDelta);
+        advanceTime(simDelta);
+    }
+
+    // 時間跳躍分段：單步最多 SIM_STEP_MAX 秒模擬時間，大的 dt（快轉、背景分頁回來、高倍速）拆成多步，
+    // 讓建造完成、餓兵、AI、行軍抵達都按時間順序發生。總步數上限 SIM_STEPS_MAX，超過的部分用較大的步長補完。
+    // 多步期間 UI 只在最後重繪一次、存檔最多一次。
+    const SIM_STEP_MAX = 5, SIM_STEPS_MAX = 2000;
+    let simBatch = false, simNeedFull = false, simNeedSave = false;
+    function advanceTime(total) {
+        if (!(total > 0)) return;
+        if (total <= SIM_STEP_MAX) { advanceSimulation(total); return; }
+        const steps = Math.min(Math.ceil(total / SIM_STEP_MAX), SIM_STEPS_MAX);
+        const step = total / steps;
+        simBatch = true; simNeedFull = false; simNeedSave = false;
+        try {
+            for (let i = 0; i < steps; i++) advanceSimulation(step);
+        } finally {
+            simBatch = false;
+        }
+        if (simNeedSave) saveGameToStorage(true);
+        if (simNeedFull) refreshAllUI();
+        else refreshTopAndActiveView();
     }
 
     function fastForward(seconds) {
         if (!gameState) return;
         playSound('click');
-        advanceSimulation(seconds);
+        advanceTime(seconds);
         showToast(`⏩ 時間已快轉 ${Math.round(seconds / 60)} 分鐘！`, 'info');
     }
 
@@ -2065,24 +2156,31 @@ button, a, select, input, label, [onclick], .nav-tab {
             v.res.wood = Math.min(stats.capWood, v.res.wood + stats.prod.wood * hours);
             v.res.clay = Math.min(stats.capWood, v.res.clay + stats.prod.clay * hours);
             v.res.iron = Math.min(stats.capWood, v.res.iron + stats.prod.iron * hours);
-            v.res.crop = Math.min(stats.capCrop, v.res.crop + stats.netCrop * hours);
+            v.res.crop = Math.min(stats.capCrop, v.res.crop + stats.netCrop * hours); // 可暫時為負：赤字量決定要餓死幾名
 
             // 餓死兵機制 (若穀物歸零且淨糧為負；離線補算後有短暫保護期)
+            // 依赤字量連續餓死：每死一名（由兵種清單最後面的先死）換 30 糧，直到糧食回到正數或沒兵可死
             if (v.res.crop <= 0) {
-                v.res.crop = 0;
                 if (stats.netCrop < 0 && !(gameState.starveGraceSec > 0)) {
                     const units = TRIBES[gameState.tribe].units;
-                    for (let i = units.length - 1; i >= 0; i--) {
-                        const u = units[i];
-                        if ((v.troops[u.id] || 0) > 0) {
-                            v.troops[u.id] -= 1;
-                            v.res.crop += 30; // 餓死一兵換取少量糧食緩衝
-                            addReport(`⚠️ ${v.name} 發生糧荒！`, `由於穀倉見底且淨糧為負，一名 <b>${u.name}</b> 因飢餓而倒下！請盡快升級農場或輸送糧食。`, 'bad');
-                            notifyStarvation(v, u.name);
-                            break;
+                    const died = []; // 本次各兵種餓死數（依死亡先後）
+                    while (v.res.crop <= 0) {
+                        let victim = null;
+                        for (let i = units.length - 1; i >= 0; i--) {
+                            if ((v.troops[units[i].id] || 0) > 0) { victim = units[i]; break; }
                         }
+                        if (!victim) break;
+                        v.troops[victim.id] -= 1;
+                        v.res.crop += 30; // 餓死一兵換取少量糧食緩衝
+                        const rec = died.find(d => d.u === victim);
+                        if (rec) rec.n++; else died.push({ u: victim, n: 1 });
                     }
+                    died.forEach(d => {
+                        addReport(`⚠️ ${v.name} 發生糧荒！`, `由於穀倉見底且淨糧為負，${d.n === 1 ? '一' : d.n} 名 <b>${d.u.name}</b> 因飢餓而倒下！請盡快升級農場或輸送糧食。`, 'bad');
+                        notifyStarvation(v, d.u.name);
+                    });
                 }
+                if (v.res.crop < 0) v.res.crop = 0;
             }
 
             // 推進建造佇列
@@ -2106,7 +2204,9 @@ button, a, select, input, label, [onclick], .nav-tab {
 
         // 2. 結算 AI 村莊資源自動成長與定期掠奪行為
         aiActionTimer += dt;
-        if (aiActionTimer >= 15) {
+        // 分段模擬中（快轉、分頁從背景回來）不逐步觸發 AI：累積到結束後的下一個 tick 一次結算，
+        // 免得一次快轉就連續出好幾波狼群、玩家來不及反應。
+        if (aiActionTimer >= 15 && !simBatch) {
             const aiHours = aiActionTimer / 3600;
             aiActionTimer = 0;
             processAITick(aiHours);
@@ -2127,9 +2227,11 @@ button, a, select, input, label, [onclick], .nav-tab {
         autoSaveTimer += dt;
         if (autoSaveTimer >= 30) {
             autoSaveTimer = 0;
-            saveGameToStorage(true);
+            if (simBatch) simNeedSave = true; // 分段模擬中：最後統一存一次
+            else saveGameToStorage(true);
         }
 
+        if (simBatch) { if (needFullRefresh) simNeedFull = true; return; } // 分段模擬中：最後統一重繪一次
         if (needFullRefresh) refreshAllUI();
         else refreshTopAndActiveView();
     }
@@ -2180,7 +2282,7 @@ button, a, select, input, label, [onclick], .nav-tab {
 
                 const travelSec = Math.round(dist * 14);
                 gameState.marches.push({
-                    id: 'm_' + Date.now() + Math.random(),
+                    id: makeMarchId('m_'),
                     dir: 'ai_atk',
                     mission: 'raid',
                     fromCoord: { x: wolf.x, y: wolf.y },
@@ -2524,7 +2626,7 @@ button, a, select, input, label, [onclick], .nav-tab {
 
     function scheduleReturnMarch(outMarch, survivingTroops, cargo) {
         gameState.marches.push({
-            id: 'm_ret_' + Date.now() + Math.random(),
+            id: makeMarchId('m_ret_'),
             dir: 'in',
             mission: outMarch.mission,
             fromVillageId: outMarch.fromVillageId,
@@ -2689,7 +2791,7 @@ button, a, select, input, label, [onclick], .nav-tab {
             v.res.wood -= 750; v.res.clay -= 750; v.res.iron -= 750; v.res.crop -= 750;
             const travelSec = calcMarchSec('settle', dist);
             gameState.marches.push({
-                id: 'm_' + Date.now(), dir: 'out', mission: 'settle',
+                id: makeMarchId('m_'), dir: 'out', mission: 'settle',
                 fromVillageId: v.id, fromCoord: { x: v.x, y: v.y },
                 toCoord: { x: targetX, y: targetY }, targetName: `空地 (${targetX},${targetY})`,
                 troops: { settler: 3 }, remainingSec: travelSec, totalSec: travelSec
@@ -2716,7 +2818,7 @@ button, a, select, input, label, [onclick], .nav-tab {
             v.res.wood -= sendRes.wood; v.res.clay -= sendRes.clay; v.res.iron -= sendRes.iron; v.res.crop -= sendRes.crop;
             const travelSec = calcMarchSec('transport', dist);
             gameState.marches.push({
-                id: 'm_' + Date.now(), dir: 'out', mission: 'transport',
+                id: makeMarchId('m_'), dir: 'out', mission: 'transport',
                 fromVillageId: v.id, fromCoord: { x: v.x, y: v.y },
                 toCoord: { x: targetX, y: targetY }, targetName: `分村 (${targetX},${targetY})`,
                 cargo: sendRes, remainingSec: travelSec, totalSec: travelSec
@@ -2749,7 +2851,7 @@ button, a, select, input, label, [onclick], .nav-tab {
         const targetLabel = targetTile?.name || `目標 (${targetX},${targetY})`;
 
         gameState.marches.push({
-            id: 'm_' + Date.now(),
+            id: makeMarchId('m_'),
             dir: 'out',
             mission,
             fromVillageId: v.id,
@@ -2834,14 +2936,11 @@ button, a, select, input, label, [onclick], .nav-tab {
     function setGameSpeed(spd) {
         gameSpeed = spd;
         playSound('click');
-        document.querySelectorAll('.speed-btn').forEach(btn => {
-            btn.classList.remove('bg-amber-600', 'text-white');
-            btn.classList.add('text-stone-300');
-        });
-        const active = document.getElementById('speed-' + spd);
-        if (active) {
-            active.classList.remove('text-stone-300');
-            active.classList.add('bg-amber-600', 'text-white');
+        // 同步下拉的選項（讀檔後、暫停後都要對）；暫停時整顆變紅
+        const sel = document.getElementById('speed-select');
+        if (sel) {
+            sel.value = String(spd);
+            sel.classList.toggle('is-paused', spd === 0);
         }
     }
 
@@ -2884,9 +2983,7 @@ button, a, select, input, label, [onclick], .nav-tab {
         document.getElementById('prod-clay').textContent = `+${fmtNum(stats.prod.clay)}`;
         document.getElementById('prod-iron').textContent = `+${fmtNum(stats.prod.iron)}`;
 
-        const netEl = document.getElementById('prod-crop');
-        netEl.textContent = (stats.netCrop >= 0 ? '+' : '-') + fmtNum(Math.abs(stats.netCrop));
-        netEl.className = stats.netCrop >= 0 ? 'text-emerald-400 font-bold' : 'text-red-400 font-black animate-pulse';
+        setTextIfChanged(document.getElementById('prod-crop'), (stats.netCrop >= 0 ? '+' : '-') + fmtNum(Math.abs(stats.netCrop)));
         document.getElementById('crop-gross').textContent = fmtNum(stats.prod.crop);
         document.getElementById('crop-upkeep').textContent = fmtNum(stats.upkeep);
 
@@ -2925,7 +3022,8 @@ button, a, select, input, label, [onclick], .nav-tab {
 
         // 通知紅點與升級面板的「還缺什麼」提示（只改文字／按鈕狀態）
         updateNotifDot();
-        updateAffordHints(v, stats);
+        const liveListId = currentTab === 'fields' ? 'fields-list' : currentTab === 'village' ? 'buildings-list' : null;
+        if (liveListId) updateUpgradeListLive(document.getElementById(liveListId), v, stats);
         updateAdvisor(false);
 
         // 若正在戰報頁面，即時更新行軍倒數
@@ -2934,27 +3032,46 @@ button, a, select, input, label, [onclick], .nav-tab {
         }
     }
 
-    // 資源列：每種資源一行小字（約 N 後滿倉／已滿倉／糧盡預警）。每 0.25 秒呼叫，只改 textContent
+    // 資源列：每 0.25 秒呼叫，只改 textContent／class。
+    // 滿倉：整格變琥珀底並顯示「滿」；穀物淨產量為負：小字變紅（數字帶負號）。詳細的「約 N 後滿倉／糧盡」放在 title。
     function updateResFullInfo(v, stats) {
         RES_KEYS.forEach(k => {
-            const el = document.getElementById('full-' + k);
-            if (!el) return;
+            const box = document.getElementById('box-' + k);
+            if (!box) return;
             const res = v.res[k], cap = getResCap(stats, k), rate = getResRate(stats, k);
-            let text, cls = 'text-stone-400';
-            if (k === 'crop' && rate < 0) {
-                if (res <= 0.5) { text = '已糧盡，士兵正在餓死'; cls = 'text-red-400 font-black'; }
-                else { text = `約 ${fmtDur(res / -rate * 3600)}後糧盡，之後士兵會餓死`; cls = 'text-red-300 font-bold'; }
-            } else if (res >= cap - 1e-6) {
-                text = '已滿倉'; cls = 'text-amber-300 font-black';
+            const isFull = res >= cap - 1e-6;
+            const neg = k === 'crop' && rate < 0;
+            let tip;
+            if (neg) {
+                tip = res <= 0.5 ? '已糧盡，士兵正在餓死' : `約 ${fmtDur(res / -rate * 3600)}後糧盡，之後士兵會餓死`;
+            } else if (isFull) {
+                tip = '已滿倉';
             } else if (rate > 0) {
-                text = `約 ${fmtDur((cap - res) / rate * 3600)}後滿倉`;
+                tip = `約 ${fmtDur((cap - res) / rate * 3600)}後滿倉`;
             } else {
-                text = '產量為 0，不會增加';
+                tip = '產量為 0，不會增加';
             }
-            if (el.textContent !== text) el.textContent = text;
-            const full = 'text-[10px] leading-tight ' + cls;
-            if (el.className !== full) el.className = full;
+            box.classList.toggle('is-full', isFull);
+            document.getElementById('rate-' + k).classList.toggle('is-neg', neg);
+            setTextIfChanged(document.getElementById('full-' + k), isFull ? '滿' : '');
+            if (box.title !== tip) box.title = tip;
         });
+    }
+
+    // 資源列是 position:fixed：量它的高度寫進 --resbar-h，body 用它補等高的 padding-top（旋轉螢幕、字型載入後高度變了也會跟著更新）
+    function syncResBarOffset() {
+        const bar = document.getElementById('res-bar');
+        if (!bar) return;
+        const h = bar.offsetHeight + 'px';
+        if (document.documentElement.style.getPropertyValue('--resbar-h') !== h) document.documentElement.style.setProperty('--resbar-h', h);
+    }
+    function initResBarOffset() {
+        const bar = document.getElementById('res-bar');
+        if (!bar) return;
+        syncResBarOffset();
+        if (typeof ResizeObserver === 'function') new ResizeObserver(syncResBarOffset).observe(bar);
+        window.addEventListener('resize', syncResBarOffset);
+        window.addEventListener('orientationchange', syncResBarOffset);
     }
 
     // 建造佇列橫幅：佇列組成改變才重建（含取消鈕，避免每 tick 重繪讓按鈕點不到），平常只更新倒數文字
@@ -2983,55 +3100,175 @@ button, a, select, input, label, [onclick], .nav-tab {
         });
     }
 
-    // 升級面板提示：還缺什麼／要等多久／佇列已滿，並同步按鈕可否按、費用紅字
-    const ADVICE_BASE = 'text-[11px] mt-1.5 leading-snug whitespace-pre-line ';
-    function applyUpgradeAdvice(prefix, advice, v) {
-        const hint = document.getElementById(prefix + '-afford-hint');
-        const btn = document.getElementById(prefix + '-upgrade-btn');
-        const box = document.getElementById(prefix + '-cost-box');
-        if (hint) {
-            if (hint.textContent !== advice.text) hint.textContent = advice.text;
-            const cls = ADVICE_BASE + (advice.canStart ? 'text-emerald-700 font-bold' : 'text-red-700 font-bold');
-            if (hint.className !== cls) hint.className = cls;
-        }
-        if (btn && btn.disabled === advice.canStart) btn.disabled = !advice.canStart;
-        const rbtn = document.getElementById(prefix + '-reserve-btn');
-        if (rbtn) {
-            const rType = prefix === 'field' ? 'field' : 'building';
-            const rKey = prefix === 'field' ? selectedFieldIndex : selectedBuildingId;
-            rbtn.classList.toggle('hidden', advice.canStart); // 資源不足或佇列已滿才需要預約
-            setTextIfChanged(rbtn, reserveLabel(v, rType, rKey));
-        }
-        if (box) {
-            box.querySelectorAll('[data-cost-i]').forEach(sp => {
-                const i = Number(sp.dataset.costI);
-                const lack = v.res[RES_KEYS[i]] < advice.info.cost[i];
-                sp.classList.toggle('text-red-600', lack);
-                sp.classList.toggle('font-bold', lack);
-            });
-        }
-    }
-    function updateAffordHints(v, stats) {
-        if (document.getElementById('field-upgrade-btn')) {
-            applyUpgradeAdvice('field', getUpgradeAdvice('field', selectedFieldIndex, v, stats), v);
-        }
-        if (document.getElementById('bld-upgrade-btn')) {
-            applyUpgradeAdvice('bld', getUpgradeAdvice('building', selectedBuildingId, v, stats), v);
-        }
+    // 簽章比對：要輸出的 HTML 與上次相同就不重設 innerHTML（避免打斷下拉選單、捲動與輸入）
+    function setHtmlIfChanged(el, html) {
+        if (el._blSig === html) return false;
+        el.innerHTML = html;
+        el._blSig = html;
+        return true;
     }
 
     function renderVillageSelector() {
         const sel = document.getElementById('village-selector');
-        sel.innerHTML = gameState.villages.map((v, idx) =>
+        setHtmlIfChanged(sel, gameState.villages.map((v, idx) =>
             `<option value="${idx}" ${idx === activeVillageIndex ? 'selected' : ''}>${v.name} (${v.x},${v.y})</option>`
-        ).join('');
+        ).join(''));
     }
 
-    // --- 渲染視圖 A：18 格資源田 ---
+    // ----------------------------------------------------------------------------
+    // 直列升級清單（資源田、村莊建築共用）：一列一個項目，點一列在正下方展開（手風琴，一次一列）
+    //   · 清單 HTML 只含「等級／費用／時間」這類穩定內容，用簽章比對（setHtmlIfChanged）才重建
+    //   · 隨資源與時間每 tick 變動的部分（進度條、倒數、缺料紅字、按鈕可否按、訓練鈕）由 updateUpgradeListLive 只改文字／class／寬度
+    //   · 展開狀態只存記憶體（openFieldIdx／openBuildingId），不進存檔
+    // ----------------------------------------------------------------------------
+    const COST_ICON = ['🪵', '🧱', '⛓️', '🌾'];
+
+    // 展開區裡有輸入框／下拉選單正在操作時，不重建清單（避免手機鍵盤被收起、選單被關掉）
+    function isListBusy(listEl) {
+        const ae = document.activeElement;
+        return !!(ae && listEl.contains(ae) && /^(INPUT|SELECT|TEXTAREA)$/.test(ae.tagName));
+    }
+
+    // 升級卡（展開區）的「還缺什麼」：缺的資源標紅並顯示還差多少、提示文字、按鈕可否按、預約鈕
+    function updateUpgradeDetailLive(root, v, stats) {
+        const type = root.dataset.upType;
+        const key = type === 'field' ? Number(root.dataset.upKey) : root.dataset.upKey;
+        const advice = getUpgradeAdvice(type, key, v, stats);
+        const hint = root.querySelector('[data-up-hint]');
+        if (hint) {
+            setTextIfChanged(hint, advice.text);
+            hint.classList.toggle('is-ok', advice.canStart);
+        }
+        const go = root.querySelector('[data-up-go]');
+        if (go && go.disabled === advice.canStart) go.disabled = !advice.canStart;
+        const rb = root.querySelector('[data-up-reserve]');
+        if (rb) {
+            rb.classList.toggle('up-off', advice.canStart); // 資源不足或佇列已滿才需要預約
+            setTextIfChanged(rb, reserveLabel(v, type, key));
+        }
+        root.querySelectorAll('[data-cost-i]').forEach(sp => {
+            const i = Number(sp.dataset.costI);
+            const lack = Math.max(0, Math.ceil(advice.info.cost[i] - v.res[RES_KEYS[i]]));
+            sp.classList.toggle('is-lack', lack > 0);
+            setTextIfChanged(sp.querySelector('em'), lack > 0 ? `還差 ${fmtNum(lack)}` : '');
+        });
+    }
+
+    // 目前資源最多能訓練幾名（拓荒者另有 3 名上限）
+    function calcMaxTrain(v, u) {
+        return Math.min(
+            Math.floor(v.res.wood / u.cost[0]),
+            Math.floor(v.res.clay / u.cost[1]),
+            Math.floor(v.res.iron / u.cost[2]),
+            Math.floor(v.res.crop / u.cost[3]),
+            u.id === 'settler' ? Math.max(0, 3 - (v.troops.settler || 0)) : 999
+        );
+    }
+    function trainMax(unitId) {
+        const v = getActiveVillage();
+        const u = TRIBES[gameState.tribe].units.find(x => x.id === unitId);
+        if (!u) return;
+        const n = calcMaxTrain(v, u);
+        if (n >= 1) trainUnit(unitId, n);
+    }
+
+    // 每 tick 只改文字／class／寬度：進度條與倒數、升級卡的缺料提示、訓練鈕可否按
+    function updateUpgradeListLive(listEl, v, stats) {
+        if (!listEl) return;
+        listEl.querySelectorAll('[data-up-type]').forEach(r => updateUpgradeDetailLive(r, v, stats));
+        listEl.querySelectorAll('[data-train-u]').forEach(btn => {
+            const u = TRIBES[gameState.tribe].units.find(x => x.id === btn.dataset.trainU);
+            if (!u) return;
+            const max = calcMaxTrain(v, u);
+            const isMax = btn.dataset.trainN === 'max';
+            const dis = isMax ? max < 1 : max < Number(btn.dataset.trainN);
+            if (btn.disabled !== dis) btn.disabled = dis;
+            if (isMax) setTextIfChanged(btn, `最大(${max})`);
+        });
+        listEl.querySelectorAll('[data-row-uid]').forEach(el => {
+            const q = v.buildQueue.find(x => x.uid === el.dataset.rowUid);
+            if (!q) return;
+            const pct = q.totalSec > 0 ? Math.min(100, Math.max(0, (1 - q.remainingSec / q.totalSec) * 100)) : 0;
+            const bar = el.querySelector('.up-bar > i');
+            const w = pct.toFixed(1) + '%';
+            if (bar && bar.style.width !== w) bar.style.width = w;
+            setTextIfChanged(el.querySelector('.up-eta'), fmtDur(q.remainingSec));
+        });
+    }
+
+    function costBoxHtml(cost) {
+        return `<div class="up-cost">` + cost.map((c, i) => `<span data-cost-i="${i}">${COST_ICON[i]} ${fmtNum(c)}<em></em></span>`).join('') + `</div>`;
+    }
+
+    function upActionsHtml(type, key, label) {
+        const k = type === 'field' ? key : `'${key}'`;
+        return `<div class="up-actions">
+            <button type="button" data-up-go onclick="startUpgrade('${type}', ${k})" disabled class="btn-green up-btn">${label}</button>
+            <button type="button" data-up-reserve onclick="toggleReservation('${type}', ${k})" class="btn-medieval up-btn is-sub up-off"></button>
+        </div>`;
+    }
+
+    function cancelJobHtml(job) {
+        return `<div class="up-line">🔨 施工中：${job.name} ➔ Lv.${job.targetLv}，完成後可繼續升級。</div>
+            <div class="up-actions"><button type="button" onclick="cancelBuild('${job.uid}')" class="btn-red up-btn">✖ 取消建造（全額退還）</button></div>`;
+    }
+
+    // 一列：左＝圖示＋名稱＋Lv（施工中顯示進度條與剩餘時間、已預約標籤），右＝目前效果；open 時在正下方接展開區
+    function upItemHtml(o) {
+        const prog = o.job ? `<span class="up-prog" data-row-uid="${o.job.uid}"><span class="up-bar"><i></i></span><span class="up-eta"></span></span>` : '';
+        return `<div class="up-item${o.open ? ' is-open' : ''}" data-up-item="${o.id}">
+            <button type="button" class="up-row" onclick="${o.onclick}" aria-expanded="${o.open ? 'true' : 'false'}">
+                <span class="up-ico">${o.ico}</span>
+                <span class="up-main"><span class="up-name">${o.name}<b>Lv ${o.lv}</b>${o.reserved ? '<span class="up-tag">已預約</span>' : ''}</span>${prog}</span>
+                <span class="up-side${o.muted ? ' is-muted' : ''}">${o.side}</span>
+                <span class="up-chev">▾</span>
+            </button>
+            ${o.open ? `<div class="up-detail">${o.detail}</div>` : ''}
+        </div>`;
+    }
+
+    function fieldProdOf(stats, f, lv) { return Math.round((FIELD_PROD_TABLE[lv] || 8) * (1 + stats.oasisBonus[f.type])); }
+
+    function fieldDetailHtml(v, stats, f, idx, job) {
+        if (job) return cancelJobHtml(job);
+        const cur = fieldProdOf(stats, f, f.lv);
+        if (f.lv >= 15) return `<div class="up-line">已達最高等級 Lv.15，目前產量 <b>${fmtNum(cur)}</b> / 小時</div>`;
+        const upg = getUpgradeCostAndTime('field', idx, v);
+        return `<div class="up-card" data-up-type="field" data-up-key="${idx}">
+            <div class="up-line">📈 產量 <b>${fmtNum(cur)}</b> ➔ <b class="up-good">${fmtNum(fieldProdOf(stats, f, f.lv + 1))}</b> / 小時（含綠洲加成）</div>
+            <div class="up-line">⏱️ 施工時間 <b>${fmtDur(upg.timeSec)}</b>　👥 升級後村莊人口 +2</div>
+            ${costBoxHtml(upg.cost)}
+            ${upActionsHtml('field', idx, `🔨 升級至 Lv.${upg.nextLv}`)}
+            <div class="up-hint" data-up-hint></div>
+        </div>`;
+    }
+
+    // 資源田清單：依種類（木／泥／鐵／穀）分組，組標題顯示該類總產量；同類依等級由高到低
+    function buildFieldsListHtml(v, stats) {
+        return ['wood', 'clay', 'iron', 'crop'].map(type => {
+            const meta = FIELD_TYPES[type];
+            const items = v.fields.map((f, idx) => ({ f, idx })).filter(x => x.f.type === type)
+                .sort((a, b) => b.f.lv - a.f.lv || a.idx - b.idx);
+            if (!items.length) return '';
+            const head = `<div class="up-group"><span>${meta.icon} ${meta.name}（${items.length} 塊）</span><b>總產量 +${fmtNum(stats.prod[type])}/時</b></div>`;
+            return head + items.map(({ f, idx }) => {
+                const job = v.buildQueue.find(q => q.targetType === 'field' && q.indexOrId === idx);
+                const open = openFieldIdx === idx;
+                return upItemHtml({
+                    id: 'f' + idx, open, onclick: `toggleFieldRow(${idx})`, ico: meta.icon, name: `${meta.name} #${idx + 1}`, lv: f.lv,
+                    job, reserved: isReservedTarget(v, 'field', idx),
+                    side: f.lv >= 15 ? `已滿級<br>+${fmtNum(fieldProdOf(stats, f, f.lv))}/時` : `+${fmtNum(fieldProdOf(stats, f, f.lv))}/時`,
+                    detail: open ? fieldDetailHtml(v, stats, f, idx, job) : ''
+                });
+            }).join('');
+        }).join('');
+    }
+
+    // --- 渲染視圖 A：資源田清單 ---
     function renderFieldsView() {
         const v = getActiveVillage();
         const stats = getVillageStats(v);
-        const grid = document.getElementById('fields-grid');
+        const list = document.getElementById('fields-list');
 
         // 綠洲加成顯示
         const oTexts = [];
@@ -3041,192 +3278,105 @@ button, a, select, input, label, [onclick], .nav-tab {
         if (stats.oasisBonus.crop > 0) oTexts.push(`🌾+${Math.round(stats.oasisBonus.crop * 100)}%`);
         document.getElementById('ui-oasis-bonus').textContent = `周邊綠洲加成: ${oTexts.length ? oTexts.join(' ') : '無 (清剿周邊綠洲野獸可獲得)'}`;
 
-        // 渲染 18 格資源田 (排列成 3 行 x 6 列，中間放置快捷村中心按鈕)
-        let html = '';
-        v.fields.forEach((f, idx) => {
-            const meta = FIELD_TYPES[f.type];
-            const isSelected = idx === selectedFieldIndex;
-            const isUpgrading = v.buildQueue.some(q => q.targetType === 'field' && q.indexOrId === idx);
-            html += `
-                <button onclick="selectField(${idx})" class="res-tile relative w-12 h-12 sm:w-14 sm:h-14 rounded-full border-2 ${meta.color} ${isSelected ? 'ring-4 ring-amber-300 scale-105' : ''} flex flex-col items-center justify-center text-white shadow-md">
-                    <span class="text-base sm:text-lg leading-none">${meta.icon}</span>
-                    <span class="text-[11px] font-black mt-0.5 bg-black/50 px-1.5 rounded-full">Lv.${f.lv}</span>
-                    ${isUpgrading ? '<span class="absolute -top-1 -right-1 text-xs animate-bounce">🔨</span>' : ''}
-                </button>
-            `;
-        });
-        grid.innerHTML = html;
-
-        // 渲染右側選中資源田詳情
-        const f = v.fields[selectedFieldIndex] || v.fields[0];
-        const meta = FIELD_TYPES[f.type];
-        const curProd = FIELD_PROD_TABLE[f.lv] || 8;
-        const nextProd = FIELD_PROD_TABLE[f.lv + 1] || curProd;
-        const detailCard = document.getElementById('field-detail-card');
-
-        if (f.lv >= 15) {
-            detailCard.innerHTML = `
-                <h3 class="font-bold text-base text-[#3b2818] border-b border-[#d4bfa0] pb-2 mb-2">${meta.icon} ${meta.name} (已達最高等級 Lv.15)</h3>
-                <p class="text-xs text-stone-700">目前基礎產量：<b>${fmtNum(curProd)}</b> / 小時</p>
-            `;
-        } else {
-            const upg = getUpgradeCostAndTime('field', selectedFieldIndex, v);
-            const advice = getUpgradeAdvice('field', selectedFieldIndex, v, stats);
-            const cs = i => v.res[RES_KEYS[i]] < upg.cost[i] ? 'text-red-600 font-bold' : '';
-            detailCard.innerHTML = `
-                <div class="flex items-center justify-between border-b border-[#d4bfa0] pb-2 mb-2">
-                    <h3 class="font-bold text-base text-[#3b2818]">${meta.icon} ${meta.name} (地塊 #${selectedFieldIndex + 1})</h3>
-                    <span class="px-2 py-0.5 rounded bg-amber-800 text-white text-xs font-bold">Lv.${f.lv} ➔ Lv.${upg.nextLv}</span>
-                </div>
-                <div class="text-xs space-y-1.5 text-stone-800 mb-3">
-                    <div>📈 基礎產量提升：<b>${fmtNum(curProd)}</b> ➔ <b class="text-emerald-700">${fmtNum(nextProd)}</b> / 小時</div>
-                    <div>⏱️ 所需施工時間：<b>${fmtDur(upg.timeSec)}</b></div>
-                    <div>👥 升級後村莊人口 +2</div>
-                    <div class="pt-1 font-bold">升級消耗資源：</div>
-                    <div id="field-cost-box" class="grid grid-cols-2 gap-1 bg-amber-50 p-2 rounded border border-amber-200">
-                        <span data-cost-i="0" class="${cs(0)}">🪵 ${fmtNum(upg.cost[0])}</span>
-                        <span data-cost-i="1" class="${cs(1)}">🧱 ${fmtNum(upg.cost[1])}</span>
-                        <span data-cost-i="2" class="${cs(2)}">⛓️ ${fmtNum(upg.cost[2])}</span>
-                        <span data-cost-i="3" class="${cs(3)}">🌾 ${fmtNum(upg.cost[3])}</span>
-                    </div>
-                </div>
-                <div class="flex gap-2">
-                    <button id="field-upgrade-btn" onclick="startUpgrade('field', ${selectedFieldIndex})" ${!advice.canStart ? 'disabled' : ''} class="btn-green flex-1 py-2 min-h-[40px] rounded-lg font-bold text-sm">
-                        🔨 升級至 Lv.${upg.nextLv}
-                    </button>
-                    <button id="field-reserve-btn" type="button" onclick="toggleReservation('field', ${selectedFieldIndex})" class="${advice.canStart ? 'hidden ' : ''}btn-medieval px-3 min-h-[40px] rounded-lg font-bold text-xs whitespace-nowrap">${reserveLabel(v, 'field', selectedFieldIndex)}</button>
-                </div>
-                <div id="field-afford-hint" class="${ADVICE_BASE}${advice.canStart ? 'text-emerald-700 font-bold' : 'text-red-700 font-bold'}">${advice.text}</div>
-            `;
-        }
+        if (!isListBusy(list)) setHtmlIfChanged(list, buildFieldsListHtml(v, stats));
+        updateUpgradeListLive(list, v, stats);
 
         // 渲染本村駐軍總覽
         const troopsDiv = document.getElementById('home-troops-list');
         const units = TRIBES[gameState.tribe].units;
         const activeTroops = units.filter(u => (v.troops[u.id] || 0) > 0);
         if (activeTroops.length === 0) {
-            troopsDiv.innerHTML = '<div class="col-span-2 text-stone-500 py-1">目前本村無駐軍（請至村莊中心建造兵營訓練）</div>';
+            setHtmlIfChanged(troopsDiv, '<div class="col-span-2 text-stone-500 py-1">目前本村無駐軍（請至村莊中心建造兵營訓練）</div>');
         } else {
-            troopsDiv.innerHTML = activeTroops.map(u =>
+            setHtmlIfChanged(troopsDiv, activeTroops.map(u =>
                 `<div class="bg-amber-50 px-2 py-1 rounded border border-amber-300 flex justify-between">
                     <span>${u.name}</span><b class="text-amber-950">${v.troops[u.id]}</b>
                 </div>`
-            ).join('');
+            ).join(''));
         }
     }
 
-    function selectField(idx) {
+    function blurIfFormControl(listId) {
+        const list = document.getElementById(listId), ae = document.activeElement;
+        if (list && ae && list.contains(ae) && /^(INPUT|SELECT|TEXTAREA)$/.test(ae.tagName)) ae.blur();
+    }
+
+    // 展開後把展開區捲進視野（scroll-margin 已避開置頂資源列與底部導覽）
+    function scrollOpenDetailIntoView(listId) {
+        const d = document.querySelector('#' + listId + ' .up-detail');
+        if (d) d.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+
+    function toggleFieldRow(idx) {
         playSound('click');
-        selectedFieldIndex = idx;
+        blurIfFormControl('fields-list');
+        openFieldIdx = openFieldIdx === idx ? null : idx;
         renderFieldsView();
+        if (openFieldIdx !== null) scrollOpenDetailIntoView('fields-list');
     }
 
-    // --- 渲染視圖 B：村莊中心建築 ---
-    function renderVillageBuildingsView() {
-        const v = getActiveVillage();
-        const stats = getVillageStats(v);
-        const grid = document.getElementById('buildings-grid');
-
-        grid.innerHTML = BUILDINGS_META.map(b => {
-            const lv = v.buildings[b.id] || 0;
-            const isSel = b.id === selectedBuildingId;
-            const isUpgrading = v.buildQueue.some(q => q.targetType === 'building' && q.indexOrId === b.id);
-            return `
-                <div onclick="selectBuilding('${b.id}')" class="cursor-pointer rounded-xl p-3 border-2 transition ${isSel ? 'border-amber-600 bg-amber-100 shadow-md' : 'border-[#8c6239]/60 bg-[#fffaf0] hover:bg-amber-50'}">
-                    <div class="flex items-center justify-between">
-                        <span class="text-2xl">${b.icon}</span>
-                        <span class="text-xs font-black px-2 py-0.5 rounded ${lv > 0 ? 'bg-amber-800 text-white' : 'bg-stone-300 text-stone-700'}">Lv.${lv}</span>
-                    </div>
-                    <div class="font-bold text-sm text-[#3b2818] mt-1.5 flex items-center justify-between">
-                        <span>${b.name}</span>
-                        ${isUpgrading ? '<span class="text-xs animate-bounce">🔨</span>' : ''}
-                    </div>
-                    <div class="text-[11px] text-stone-600 line-clamp-1 mt-0.5">${b.desc}</div>
-                </div>
-            `;
-        }).join('');
-
-        // 右側建築操作面板
-        const bMeta = BUILDINGS_META.find(b => b.id === selectedBuildingId) || BUILDINGS_META[0];
-        const curLv = v.buildings[bMeta.id] || 0;
-        const panel = document.getElementById('building-action-panel');
-
-        let upgradeHtml = '';
-        if (curLv >= bMeta.maxLv) {
-            upgradeHtml = `<div class="p-2 bg-emerald-100 border border-emerald-400 rounded text-xs font-bold text-emerald-900 text-center">已達最高等級 Lv.${bMeta.maxLv}</div>`;
-        } else {
-            const upg = getUpgradeCostAndTime('building', bMeta.id, v);
-            const advice = getUpgradeAdvice('building', bMeta.id, v, stats);
-            const cs = i => v.res[RES_KEYS[i]] < upg.cost[i] ? 'text-red-600 font-bold' : '';
-            upgradeHtml = `
-                <div id="bld-cost-box" class="bg-amber-50 p-2.5 rounded-lg border border-amber-300 text-xs space-y-1.5 mb-2">
-                    <div class="flex justify-between font-bold">
-                        <span>${curLv === 0 ? '建造新建築' : `升級至 Lv.${upg.nextLv}`}</span>
-                        <span>⏱️ ${fmtDur(upg.timeSec)}</span>
-                    </div>
-                    <div class="grid grid-cols-2 gap-1">
-                        <span data-cost-i="0" class="${cs(0)}">🪵 ${fmtNum(upg.cost[0])}</span>
-                        <span data-cost-i="1" class="${cs(1)}">🧱 ${fmtNum(upg.cost[1])}</span>
-                        <span data-cost-i="2" class="${cs(2)}">⛓️ ${fmtNum(upg.cost[2])}</span>
-                        <span data-cost-i="3" class="${cs(3)}">🌾 ${fmtNum(upg.cost[3])}</span>
-                    </div>
-                    <div class="text-emerald-900 leading-snug"><b>升級後：</b>${describeUpgradeBenefit(bMeta.id, curLv, v)}</div>
-                    <div class="flex gap-2">
-                        <button id="bld-upgrade-btn" onclick="startUpgrade('building', '${bMeta.id}')" ${!advice.canStart ? 'disabled' : ''} class="btn-green flex-1 py-1.5 min-h-[40px] rounded font-bold text-xs">
-                            🔨 ${curLv === 0 ? '立即建造' : `升級 Lv.${upg.nextLv}`}
-                        </button>
-                        <button id="bld-reserve-btn" type="button" onclick="toggleReservation('building', '${bMeta.id}')" class="${advice.canStart ? 'hidden ' : ''}btn-medieval px-3 min-h-[40px] rounded font-bold text-xs whitespace-nowrap">${reserveLabel(v, 'building', bMeta.id)}</button>
-                    </div>
-                    <div id="bld-afford-hint" class="${ADVICE_BASE}${advice.canStart ? 'text-emerald-700 font-bold' : 'text-red-700 font-bold'}">${advice.text}</div>
-                </div>
-            `;
+    // --- 渲染視圖 B：村莊中心建築清單 ---
+    // 目前效果的一句話（沒有可量化效果的就顯示簡短功能說明）
+    function buildingEffectText(b, lv) {
+        const tribeObj = TRIBES[gameState.tribe];
+        const trainable = key => tribeObj.units.filter(u => u.req[key] !== undefined && u.req[key] <= lv).length;
+        switch (b.id) {
+            case 'main': return `施工時間 ${Math.round(Math.pow(0.95, Math.max(1, lv) - 1) * 100)}%`;
+            case 'warehouse': case 'granary': return `上限 ${fmtNum(STORAGE_CAP_TABLE[lv] || 800)}`;
+            case 'cranny': return `保護 ${fmtNum(lv * 200 * tribeObj.crannyMult)}`;
+            case 'wall': return `防禦 +${Math.round(lv * tribeObj.wallBonusPerLv * 1000) / 10}%`;
+            case 'rally': return '出征指揮・投石車目標';
+            case 'barracks': case 'stable': case 'workshop': return `可訓練 ${trainable(b.id)} 種兵`;
+            case 'residence': return lv >= 10 ? '可訓練拓荒者' : `Lv.10 解鎖拓荒者`;
+            default: return b.desc;
         }
+    }
 
-        // 建築專屬功能區 (訓練部隊 / 設定投石車目標 / 訓練拓荒者)
-        let specialHtml = '';
-        const tribeUnits = TRIBES[gameState.tribe].units;
-
-        if (bMeta.id === 'barracks' || bMeta.id === 'stable' || bMeta.id === 'workshop' || bMeta.id === 'residence') {
-            if (curLv === 0) {
-                specialHtml = `<div class="text-xs text-stone-500 italic">建造此建築後即可解鎖對應部隊訓練。</div>`;
-            } else {
-                const relevantUnits = tribeUnits.filter(u => {
-                    if (bMeta.id === 'barracks') return u.req.barracks !== undefined;
-                    if (bMeta.id === 'stable') return u.req.stable !== undefined;
-                    if (bMeta.id === 'workshop') return u.req.workshop !== undefined;
-                    if (bMeta.id === 'residence') return u.req.residence !== undefined;
-                    return false;
-                });
-
-                specialHtml = `<div class="space-y-2 max-h-[230px] overflow-y-auto pr-1">` + relevantUnits.map(u => {
-                    const reqLv = u.req[bMeta.id] || 1;
-                    const unlocked = curLv >= reqLv;
-                    const maxTrain = Math.min(
-                        Math.floor(v.res.wood / u.cost[0]),
-                        Math.floor(v.res.clay / u.cost[1]),
-                        Math.floor(v.res.iron / u.cost[2]),
-                        Math.floor(v.res.crop / u.cost[3]),
-                        u.id === 'settler' ? Math.max(0, 3 - (v.troops.settler || 0)) : 999
-                    );
-                    return `
-                        <div class="p-2 rounded border ${unlocked ? 'bg-white border-stone-300' : 'bg-stone-100 border-stone-200 opacity-60'} text-xs">
-                            <div class="flex justify-between font-bold text-[#3b2818]">
-                                <span>${u.name} (現有: ${v.troops[u.id] || 0})</span>
-                                <span class="text-[10px] text-stone-500">攻:${u.atk} 負重:${u.carry}</span>
-                            </div>
-                            <div class="text-[11px] text-stone-600 my-1">🪵${fmtNum(u.cost[0])} 🧱${fmtNum(u.cost[1])} ⛓️${fmtNum(u.cost[2])} 🌾${fmtNum(u.cost[3])}</div>
-                            ${unlocked ? `
-                                <div class="flex gap-1">
-                                    <button onclick="trainUnit('${u.id}', 1)" ${maxTrain < 1 ? 'disabled' : ''} class="btn-medieval flex-1 py-1 rounded font-bold">+1</button>
-                                    ${u.id !== 'settler' ? `<button onclick="trainUnit('${u.id}', 5)" ${maxTrain < 5 ? 'disabled' : ''} class="btn-medieval flex-1 py-1 rounded font-bold">+5</button>` : ''}
-                                    ${u.id !== 'settler' ? `<button onclick="trainUnit('${u.id}', ${Math.max(1, maxTrain)})" ${maxTrain < 1 ? 'disabled' : ''} class="btn-green px-2 py-1 rounded font-bold">最大(${maxTrain})</button>` : ''}
-                                </div>
-                            ` : `<div class="text-[11px] text-red-700 font-bold">需要 ${bMeta.name} Lv.${reqLv}</div>`}
+    function trainSectionHtml(v, b, lv) {
+        if (lv === 0) return `<div class="up-line" style="color:#78716c;font-style:italic">建造此建築後即可解鎖對應部隊訓練。</div>`;
+        const relevantUnits = TRIBES[gameState.tribe].units.filter(u => u.req[b.id] !== undefined);
+        return `<div class="up-train">` + relevantUnits.map(u => {
+            const reqLv = u.req[b.id] || 1;
+            const unlocked = lv >= reqLv;
+            return `
+                <div class="p-2 rounded border ${unlocked ? 'bg-white border-stone-300' : 'bg-stone-100 border-stone-200 opacity-60'} text-xs">
+                    <div class="flex justify-between font-bold text-[#3b2818]">
+                        <span>${u.name} (現有: ${v.troops[u.id] || 0})</span>
+                        <span class="text-[10px] text-stone-500">攻:${u.atk} 負重:${u.carry}</span>
+                    </div>
+                    <div class="text-[11px] text-stone-600 my-1">🪵${fmtNum(u.cost[0])} 🧱${fmtNum(u.cost[1])} ⛓️${fmtNum(u.cost[2])} 🌾${fmtNum(u.cost[3])}</div>
+                    ${unlocked ? `
+                        <div class="up-train-btns">
+                            <button type="button" data-train-u="${u.id}" data-train-n="1" onclick="trainUnit('${u.id}', 1)" disabled class="btn-medieval">+1</button>
+                            ${u.id !== 'settler' ? `<button type="button" data-train-u="${u.id}" data-train-n="5" onclick="trainUnit('${u.id}', 5)" disabled class="btn-medieval">+5</button>
+                            <button type="button" data-train-u="${u.id}" data-train-n="max" onclick="trainMax('${u.id}')" disabled class="btn-green">最大(0)</button>` : ''}
                         </div>
-                    `;
-                }).join('') + `</div>`;
-            }
-        } else if (bMeta.id === 'rally') {
+                    ` : `<div class="text-[11px] text-red-700 font-bold">需要 ${b.name} Lv.${reqLv}</div>`}
+                </div>`;
+        }).join('') + `</div>`;
+    }
+
+    function buildingDetailHtml(v, b, job) {
+        const lv = v.buildings[b.id] || 0;
+        let h = `<div class="up-desc">${b.desc}</div>`;
+        if (job) {
+            h += cancelJobHtml(job);
+        } else if (lv >= b.maxLv) {
+            h += `<div class="up-sec is-green"><b>已達最高等級 Lv.${b.maxLv}</b></div>`;
+        } else {
+            const upg = getUpgradeCostAndTime('building', b.id, v);
+            h += `<div class="up-card" data-up-type="building" data-up-key="${b.id}">
+                <div class="up-line"><b>${lv === 0 ? '建造新建築' : `升級至 Lv.${upg.nextLv}`}</b>　⏱️ ${fmtDur(upg.timeSec)}</div>
+                ${costBoxHtml(upg.cost)}
+                <div class="up-line text-emerald-900"><b>升級後：</b>${describeUpgradeBenefit(b.id, lv, v)}</div>
+                ${upActionsHtml('building', b.id, lv === 0 ? '🔨 立即建造' : `🔨 升級 Lv.${upg.nextLv}`)}
+                <div class="up-hint" data-up-hint></div>
+            </div>`;
+        }
+        // 建築專屬功能區 (訓練部隊 / 設定投石車目標 / 訓練拓荒者 / 陷阱)
+        if (b.id === 'barracks' || b.id === 'stable' || b.id === 'workshop' || b.id === 'residence') {
+            h += trainSectionHtml(v, b, lv);
+        } else if (b.id === 'rally') {
             const targets = [
                 { id: 'random', label: '🎲 隨機建築目標' },
                 { id: 'warehouse', label: '📦 敵方倉庫 (斷其資源儲存)' },
@@ -3234,35 +3384,52 @@ button, a, select, input, label, [onclick], .nav-tab {
                 { id: 'barracks', label: '⚔️ 敵方兵營 (癱瘓造兵)' },
                 { id: 'main', label: '🏛️ 敵方大樓 (徹底夷平村莊)' }
             ];
-            specialHtml = `
-                <div class="bg-red-50 p-2.5 rounded-lg border border-red-300 text-xs">
-                    <div class="font-bold text-red-950 mb-1.5">🎯 投石車瞄準目標設定 (正規攻擊生效)：</div>
-                    <select onchange="setCataTarget(this.value)" class="w-full p-1.5 rounded border border-red-400 bg-white font-bold text-stone-800">
-                        ${targets.map(t => `<option value="${t.id}" ${v.cataTarget === t.id ? 'selected' : ''}>${t.label}</option>`).join('')}
-                    </select>
-                </div>
-            `;
-        } else if (bMeta.id === 'wall' && gameState.tribe === 'gaul') {
-            specialHtml = `<div class="p-2 bg-emerald-50 border border-emerald-300 rounded text-xs text-emerald-950">🪤 翠林聯盟專屬陷阱機：目前可捕獲 <b>${v.traps}</b> 名來犯敵軍（升級木柵自動補充）。</div>`;
+            h += `<div class="up-sec is-red">
+                <div class="font-bold text-red-950">🎯 投石車瞄準目標設定 (正規攻擊生效)：</div>
+                <select onchange="setCataTarget(this.value)" class="up-select">
+                    ${targets.map(t => `<option value="${t.id}" ${v.cataTarget === t.id ? 'selected' : ''}>${t.label}</option>`).join('')}
+                </select>
+            </div>`;
+        } else if (b.id === 'wall' && gameState.tribe === 'gaul') {
+            h += `<div class="up-sec is-green">🪤 翠林聯盟專屬陷阱機：目前可捕獲 <b>${v.traps}</b> 名來犯敵軍（升級木柵自動補充）。</div>`;
         }
-
-        panel.innerHTML = `
-            <div>
-                <div class="flex items-center justify-between border-b border-[#d4bfa0] pb-2 mb-2">
-                    <h3 class="font-bold text-base text-[#3b2818]">${bMeta.icon} ${bMeta.name}</h3>
-                    <span class="text-xs font-bold text-amber-900">目前 Lv.${curLv}</span>
-                </div>
-                <p class="text-xs text-stone-700 mb-3 leading-relaxed">${bMeta.desc}</p>
-                ${upgradeHtml}
-                ${specialHtml}
-            </div>
-        `;
+        return h;
     }
 
-    function selectBuilding(bId) {
+    function buildBuildingsListHtml(v) {
+        return BUILDINGS_META.map(b => {
+            const lv = v.buildings[b.id] || 0;
+            const job = v.buildQueue.find(q => q.targetType === 'building' && q.indexOrId === b.id);
+            const open = openBuildingId === b.id;
+            return upItemHtml({
+                id: 'b-' + b.id, open, onclick: `toggleBuildingRow('${b.id}')`, ico: b.icon, name: b.name, lv,
+                job, reserved: isReservedTarget(v, 'building', b.id),
+                side: lv > 0 ? buildingEffectText(b, lv) : '尚未興建・點擊興建', muted: lv === 0,
+                detail: open ? buildingDetailHtml(v, b, job) : ''
+            });
+        }).join('');
+    }
+
+    function renderVillageBuildingsView() {
+        const v = getActiveVillage();
+        const stats = getVillageStats(v);
+        const list = document.getElementById('buildings-list');
+        if (!isListBusy(list)) setHtmlIfChanged(list, buildBuildingsListHtml(v));
+        updateUpgradeListLive(list, v, stats);
+    }
+
+    function toggleBuildingRow(bId) {
         playSound('click');
-        selectedBuildingId = bId;
+        blurIfFormControl('buildings-list');
+        openBuildingId = openBuildingId === bId ? null : bId;
         renderVillageBuildingsView();
+        if (openBuildingId !== null) scrollOpenDetailIntoView('buildings-list');
+    }
+
+    // 顧問「前往」用：把某一列捲到畫面上方（scroll-margin 已避開置頂資源列）
+    function scrollUpItemIntoView(itemId) {
+        const el = document.querySelector(`[data-up-item="${itemId}"]`);
+        if (el) el.scrollIntoView({ block: 'start' });
     }
 
     function setCataTarget(val) {
@@ -3329,8 +3496,8 @@ button, a, select, input, label, [onclick], .nav-tab {
                 `;
             }
         }
-        grid.innerHTML = html;
-        if (mapSc && (keepL || keepT)) { mapSc.scrollLeft = keepL; mapSc.scrollTop = keepT; }
+        // 簽章相同（格子內容與選取狀態都沒變）就不重建 289 格，也不必還原捲動
+        if (setHtmlIfChanged(grid, html) && mapSc && (keepL || keepT)) { mapSc.scrollLeft = keepL; mapSc.scrollTop = keepT; }
 
         if (selectedMapCoord) {
             renderSelectedMapTileDetail(selectedMapCoord.x, selectedMapCoord.y);
@@ -3369,6 +3536,11 @@ button, a, select, input, label, [onclick], .nav-tab {
         const tile = gameState.mapTiles[`${x},${y}`];
         const v = getActiveVillage();
         const panel = document.getElementById('map-tile-detail');
+        // 使用者正在面板內的輸入框打字（同一村、同一格）：不重建面板，避免手機鍵盤被收起、輸入值被洗掉
+        const tileKey = `${v.id}|${x},${y}`;
+        const ae = document.activeElement;
+        if (ae && ae.tagName === 'INPUT' && panel.contains(ae) && panel.dataset.tileKey === tileKey) return;
+        panel.dataset.tileKey = tileKey;
         const dist = Math.hypot(x - v.x, y - v.y).toFixed(1);
         const prevSendTarget = panel.dataset.sendTarget; // 同一目標重繪時保留已輸入的兵力
         panel.dataset.sendTarget = '';
@@ -3448,9 +3620,9 @@ button, a, select, input, label, [onclick], .nav-tab {
                 <div class="flex flex-wrap items-center justify-between gap-1 text-xs bg-white px-2 py-1 rounded border border-stone-300">
                     <span class="font-medium">${u.name} <span class="text-stone-500">(${avail})</span></span>
                     <div class="flex items-center gap-1 ml-auto">
-                        <button type="button" onclick="stepSendUnit('${u.id}', -1)" aria-label="減少${u.name}" class="step-btn bg-amber-100 hover:bg-amber-200 rounded font-black border border-amber-400">−</button>
+                        <button type="button" data-step-unit="${u.id}" data-step-d="-1" aria-label="減少${u.name}" class="step-btn bg-amber-100 hover:bg-amber-200 rounded font-black border border-amber-400">−</button>
                         <input type="number" id="send-unit-${u.id}" min="0" max="${avail}" value="${keep}" oninput="updateSendPreview()" class="w-14 px-1 py-1 border rounded text-right font-bold">
-                        <button type="button" onclick="stepSendUnit('${u.id}', 1)" aria-label="增加${u.name}" class="step-btn bg-amber-100 hover:bg-amber-200 rounded font-black border border-amber-400">＋</button>
+                        <button type="button" data-step-unit="${u.id}" data-step-d="1" aria-label="增加${u.name}" class="step-btn bg-amber-100 hover:bg-amber-200 rounded font-black border border-amber-400">＋</button>
                         <button type="button" onclick="fillSendUnit('${u.id}', ${avail})" class="px-2 py-1.5 sm:px-1.5 sm:py-0.5 min-h-[32px] sm:min-h-0 bg-amber-200 hover:bg-amber-300 rounded text-[10px] font-bold">全選</button>
                     </div>
                 </div>
@@ -3503,6 +3675,53 @@ button, a, select, input, label, [onclick], .nav-tab {
         n = Math.max(parseInt(el.min) || 0, isNaN(max) ? n : Math.min(max, n));
         el.value = n;
         updateSendPreview();
+    }
+
+    // −／＋ 長按連發：按住 400ms 後開始連發（約每 80ms 一次，之後逐漸加速），放開、移出、取消就停。
+    // 事件委派掛在出征面板容器上、只綁一次，重繪後新產生的按鈕也有效。
+    // pointerdown 負責第一次步進並抑制隨後的 click（滑鼠／觸控）；鍵盤 Enter／空白鍵的 click（detail===0）照常步進。
+    let stepHold = null; // { unitId, d, delayTimer, repTimer }
+    function stopStepHold() {
+        if (!stepHold) return;
+        clearTimeout(stepHold.delayTimer);
+        clearTimeout(stepHold.repTimer);
+        stepHold = null;
+    }
+    function initStepRepeat() {
+        const panel = document.getElementById('map-tile-detail');
+        if (!panel) return;
+        const btnOf = e => e.target.closest ? e.target.closest('[data-step-unit]') : null;
+        panel.addEventListener('pointerdown', e => {
+            const btn = btnOf(e);
+            if (!btn || (e.pointerType === 'mouse' && e.button !== 0)) return;
+            stopStepHold();
+            // 觸控預設會把後續事件綁在原按鈕上；放掉後「移出」才收得到 pointerout
+            if (btn.hasPointerCapture && btn.hasPointerCapture(e.pointerId)) btn.releasePointerCapture(e.pointerId);
+            const unitId = btn.dataset.stepUnit, d = parseInt(btn.dataset.stepD) || 0;
+            stepSendUnit(unitId, d);
+            const hold = stepHold = { unitId, d, delayTimer: 0, repTimer: 0 };
+            let interval = 80, count = 0;
+            const tick = () => {
+                if (stepHold !== hold) return;
+                stepSendUnit(unitId, d);
+                count++;
+                if (count > 10) interval = Math.max(30, interval - 5); // 逐漸加速
+                hold.repTimer = setTimeout(tick, interval);
+            };
+            hold.delayTimer = setTimeout(tick, 400);
+        });
+        panel.addEventListener('pointerout', e => {
+            const btn = btnOf(e);
+            if (btn && stepHold && !(e.relatedTarget && btn.contains(e.relatedTarget))) stopStepHold();
+        });
+        panel.addEventListener('click', e => {
+            const btn = btnOf(e);
+            if (btn && e.detail === 0) stepSendUnit(btn.dataset.stepUnit, parseInt(btn.dataset.stepD) || 0);
+        });
+        panel.addEventListener('contextmenu', e => { if (btnOf(e)) e.preventDefault(); }); // 長按不要跳出系統選單
+        document.addEventListener('pointerup', stopStepHold);
+        document.addEventListener('pointercancel', stopStepHold);
+        window.addEventListener('blur', stopStepHold);
     }
 
     function fillSendUnit(unitId, n) {
@@ -3664,16 +3883,31 @@ button, a, select, input, label, [onclick], .nav-tab {
     // ----------------------------------------------------------------------------
     // 10. 存檔、讀檔與提示元件
     // ----------------------------------------------------------------------------
+    let saveFailNotified = false; // 自動存檔連續失敗時只提示一次，成功後重置
     function saveGameToStorage(silent = false) {
         if (!gameState) return;
         try {
             gameState.savedAt = Date.now(); // 真實時間戳：下次讀檔時用來補算離線
             gameState.savedPaused = gameSpeed === 0; // 暫停中離開的，不算離線
             localStorage.setItem(SAVE_KEY, JSON.stringify(gameState));
+            saveFailNotified = false;
             if (!silent) showToast('💾 遊戲進度已儲存至本機！', 'good');
         } catch (e) {
             if (!silent) showToast('存檔失敗（瀏覽器空間不足）', 'bad');
+            else if (!saveFailNotified) {
+                saveFailNotified = true;
+                showToast('自動存檔失敗：瀏覽器儲存空間不足或被停用', 'bad', { important: true });
+            }
         }
+    }
+
+    // 切到背景（visibilitychange）與關閉頁面（pagehide）常常連續觸發：1 秒內合併成一次存檔
+    let lastLeaveSaveMs = 0;
+    function saveOnLeave() {
+        const now = Date.now();
+        if (now - lastLeaveSaveMs < 1000) return;
+        lastLeaveSaveMs = now;
+        saveGameToStorage(true);
     }
 
     function manualSave() {
@@ -3743,6 +3977,7 @@ button, a, select, input, label, [onclick], .nav-tab {
     // opts.important：重要事件（建造完成、遭受攻擊、糧食耗盡餓兵）停留 7 秒，可點掉；其餘 3.2 秒
     // opts.log：有意義的事件（建造完成、預約開工、行軍抵達／戰鬥結果、遭襲、餓兵、取消退款…）才進通知紀錄；
     //           「已存檔」「歡迎」「音效開關」這類小提示只跳 toast
+    const TOAST_MAX = 4;
     function showToast(msg, type = 'info', opts = {}) {
         if (opts.log) pushNotification(msg, type);
         const important = !!opts.important;
@@ -3768,6 +4003,7 @@ button, a, select, input, label, [onclick], .nav-tab {
             el.addEventListener('click', dismiss);
         }
         container.appendChild(el);
+        while (container.children.length > TOAST_MAX) container.firstElementChild.remove(); // 最多同時 4 則，移除最舊的
         setTimeout(dismiss, important ? 7000 : 3200);
     }
 
