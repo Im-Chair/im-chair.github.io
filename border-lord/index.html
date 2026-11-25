@@ -309,12 +309,6 @@ body { padding-top: var(--resbar-h, 0px); }
 .up-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
 .up-sub { font-size: 12px; color: #57534e; margin-bottom: 10px; }
 .up-list { display: flex; flex-direction: column; gap: 6px; }
-.up-group {
-    display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px; padding: 6px 10px;
-    background: #3b2818; color: #fde68a; border-radius: 8px; font-size: 13px; font-weight: 800;
-}
-.up-group:first-child { margin-top: 0; }
-.up-group b { color: #6ee7b7; font-weight: 800; }
 .up-card { display: flex; flex-direction: column; gap: 8px; }
 .up-item { scroll-margin-top: calc(var(--resbar-h, 0px) + 8px); border: 2px solid rgba(140,98,57,.6); border-radius: 12px; background: #fffaf0; overflow: hidden; }
 .up-item.is-open { border-color: #d97706; box-shadow: 0 2px 8px rgba(0,0,0,.18); }
@@ -331,6 +325,33 @@ body { padding-top: var(--resbar-h, 0px); }
 .up-prog { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #b91c1c; font-weight: 700; }
 .up-bar { flex: 1 1 auto; height: 6px; border-radius: 3px; background: #d6d3d1; overflow: hidden; }
 .up-bar > i { display: block; height: 100%; width: 0; background: #d97706; }
+/* --- 資源田：三欄六排格子；詳情區插在被點格子那一排的正下方整排展開 --- */
+.fg-summary { font-size: 12px; font-weight: 800; color: #3b2818; background: #e6d5b8; border: 1px solid #a37846; border-radius: 8px; padding: 6px 8px; margin-bottom: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fg-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.fg-cell {
+    position: relative; display: grid; grid-template-columns: auto 1fr; align-items: center; column-gap: 4px; row-gap: 2px;
+    min-height: 56px; padding: 6px 6px 6px 8px; text-align: left; color: #3b2818; cursor: pointer;
+    border: 2px solid rgba(140,98,57,.45); border-left-width: 5px; border-radius: 10px;
+    scroll-margin-top: calc(var(--resbar-h, 0px) + 8px);
+}
+.fg-cell.t-wood { background: #ecfdf5; border-left-color: #059669; }
+.fg-cell.t-clay { background: #fff1e6; border-left-color: #c2410c; }
+.fg-cell.t-iron { background: #eef2f6; border-left-color: #64748b; }
+.fg-cell.t-crop { background: #fefce8; border-left-color: #ca8a04; }
+.fg-cell.is-sel { outline: 3px solid #d97706; outline-offset: -1px; z-index: 1; }
+.fg-ico { font-size: 20px; line-height: 1; }
+.fg-lv { font-size: 13px; font-weight: 800; }
+.fg-prod { grid-column: 1 / -1; font-size: 12px; font-weight: 700; color: #047857; white-space: nowrap; }
+.fg-rsv { position: absolute; top: 2px; right: 4px; font-size: 10px; font-weight: 800; color: #0369a1; }
+.fg-dot { display: none; position: absolute; top: 5px; right: 5px; width: 8px; height: 8px; border-radius: 50%; background: #16a34a; }
+.fg-cell.can-up .fg-dot { display: block; }
+.fg-cell.has-rsv.can-up .fg-dot { right: 36px; }
+.fg-cell .up-prog { grid-column: 1 / -1; font-size: 10px; gap: 4px; }
+.fg-detail.up-detail { grid-column: 1 / -1; position: relative; border: 2px solid #d97706; border-radius: 10px; margin-top: 4px; }
+.fg-detail::before {
+    content: ''; position: absolute; top: -9px; left: calc((var(--fg-col, 0) + 0.5) / 3 * 100%); margin-left: -8px;
+    width: 0; height: 0; border-left: 8px solid transparent; border-right: 8px solid transparent; border-bottom: 8px solid #d97706;
+}
 .up-eta { font-family: ui-monospace, Menlo, Consolas, monospace; white-space: nowrap; }
 .up-side { flex-shrink: 0; max-width: 42%; text-align: right; font-size: 12px; font-weight: 700; color: #047857; line-height: 1.3; }
 .up-side.is-muted { color: #78716c; font-weight: 500; }
@@ -609,8 +630,9 @@ body { padding-top: var(--resbar-h, 0px); }
                         <h2 class="font-serif-tc font-black text-lg text-[#3b2818]">🌾 村外資源田</h2>
                         <span id="ui-oasis-bonus" class="text-xs font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-400">綠洲加成: 無</span>
                     </div>
-                    <div class="up-sub">點一列展開升級；同類田依等級排序。農田特別多的「豐糧地」適合長期養大軍！</div>
-                    <div id="fields-list" class="up-list"></div>
+                    <div id="fields-summary" class="fg-summary"></div>
+                    <div id="fields-list" class="fg-grid"></div>
+                    <div class="up-sub" style="margin-top:8px">點一格展開升級；同類田依等級排序。農田特別多的「豐糧地」適合長期養大軍！</div>
 
                     <!-- 本村駐軍總覽 -->
                     <div class="bg-[#fffaf0] border-2 border-[#8c6239] rounded-xl p-4 shadow mt-4">
@@ -3185,6 +3207,12 @@ body { padding-top: var(--resbar-h, 0px); }
             if (btn.disabled !== dis) btn.disabled = dis;
             if (isMax) setTextIfChanged(btn, `最大(${max})`);
         });
+        listEl.querySelectorAll('[data-fg-idx]').forEach(cell => {
+            const idx = Number(cell.dataset.fgIdx);
+            const f = v.fields[idx];
+            const can = !!f && f.lv < 15 && !inBuildQueue(v, 'field', idx) && getUpgradeAdvice('field', idx, v, stats).canStart;
+            cell.classList.toggle('can-up', can);
+        });
         listEl.querySelectorAll('[data-row-uid]').forEach(el => {
             const q = v.buildQueue.find(x => x.uid === el.dataset.rowUid);
             if (!q) return;
@@ -3230,11 +3258,12 @@ body { padding-top: var(--resbar-h, 0px); }
     function fieldProdOf(stats, f, lv) { return Math.round((FIELD_PROD_TABLE[lv] || 8) * (1 + stats.oasisBonus[f.type])); }
 
     function fieldDetailHtml(v, stats, f, idx, job) {
-        if (job) return cancelJobHtml(job);
+        const title = `<div class="up-line" style="font-size:14px"><b>${FIELD_TYPES[f.type].icon} ${FIELD_TYPES[f.type].name} #${idx + 1} Lv ${f.lv}</b></div>`;
+        if (job) return title + cancelJobHtml(job);
         const cur = fieldProdOf(stats, f, f.lv);
-        if (f.lv >= 15) return `<div class="up-line">已達最高等級 Lv.15，目前產量 <b>${fmtNum(cur)}</b> / 小時</div>`;
+        if (f.lv >= 15) return title + `<div class="up-line">已達最高等級 Lv.15，目前產量 <b>${fmtNum(cur)}</b> / 小時</div>`;
         const upg = getUpgradeCostAndTime('field', idx, v);
-        return `<div class="up-card" data-up-type="field" data-up-key="${idx}">
+        return title + `<div class="up-card" data-up-type="field" data-up-key="${idx}">
             <div class="up-line">📈 產量 <b>${fmtNum(cur)}</b> ➔ <b class="up-good">${fmtNum(fieldProdOf(stats, f, f.lv + 1))}</b> / 小時（含綠洲加成）</div>
             <div class="up-line">⏱️ 施工時間 <b>${fmtDur(upg.timeSec)}</b>　👥 升級後村莊人口 +2</div>
             ${costBoxHtml(upg.cost)}
@@ -3243,25 +3272,33 @@ body { padding-top: var(--resbar-h, 0px); }
         </div>`;
     }
 
-    // 資源田清單：依種類（木／泥／鐵／穀）分組，組標題顯示該類總產量；同類依等級由高到低
+    // 資源田格子：三欄六排。順序依木／磚／鐵／糧、同類依等級由高到低（照先橫後直填入）；
+    // 被展開的那一格，詳情區插在它所在那一排最後一格之後、整排展開（展開狀態以田的索引為準，換位置也跟著走）
     function buildFieldsListHtml(v, stats) {
-        return ['wood', 'clay', 'iron', 'crop'].map(type => {
-            const meta = FIELD_TYPES[type];
-            const items = v.fields.map((f, idx) => ({ f, idx })).filter(x => x.f.type === type)
-                .sort((a, b) => b.f.lv - a.f.lv || a.idx - b.idx);
-            if (!items.length) return '';
-            const head = `<div class="up-group"><span>${meta.icon} ${meta.name}（${items.length} 塊）</span><b>總產量 +${fmtNum(stats.prod[type])}/時</b></div>`;
-            return head + items.map(({ f, idx }) => {
-                const job = v.buildQueue.find(q => q.targetType === 'field' && q.indexOrId === idx);
-                const open = openFieldIdx === idx;
-                return upItemHtml({
-                    id: 'f' + idx, open, onclick: `toggleFieldRow(${idx})`, ico: meta.icon, name: `${meta.name} #${idx + 1}`, lv: f.lv,
-                    job, reserved: isReservedTarget(v, 'field', idx),
-                    side: f.lv >= 15 ? `已滿級<br>+${fmtNum(fieldProdOf(stats, f, f.lv))}/時` : `+${fmtNum(fieldProdOf(stats, f, f.lv))}/時`,
-                    detail: open ? fieldDetailHtml(v, stats, f, idx, job) : ''
-                });
-            }).join('');
-        }).join('');
+        const cells = [];
+        ['wood', 'clay', 'iron', 'crop'].forEach(type => {
+            v.fields.map((f, idx) => ({ f, idx })).filter(x => x.f.type === type)
+                .sort((a, b) => b.f.lv - a.f.lv || a.idx - b.idx).forEach(x => cells.push(x));
+        });
+        let html = '';
+        cells.forEach(({ f, idx }, pos) => {
+            const meta = FIELD_TYPES[f.type];
+            const job = v.buildQueue.find(q => q.targetType === 'field' && q.indexOrId === idx);
+            const reserved = isReservedTarget(v, 'field', idx);
+            const sel = openFieldIdx === idx;
+            html += `<button type="button" class="fg-cell t-${f.type}${sel ? ' is-sel' : ''}${reserved ? ' has-rsv' : ''}" data-fg-idx="${idx}" data-up-item="f${idx}" onclick="toggleFieldRow(${idx})" aria-expanded="${sel ? 'true' : 'false'}" aria-label="${meta.name} #${idx + 1}">
+                <span class="fg-ico">${meta.icon}</span><span class="fg-lv">Lv ${f.lv}</span>
+                <span class="fg-prod">+${fmtNum(fieldProdOf(stats, f, f.lv))}/時</span>
+                ${reserved ? '<span class="fg-rsv">預約</span>' : ''}<span class="fg-dot"></span>
+                ${job ? `<span class="up-prog" data-row-uid="${job.uid}"><span class="up-bar"><i></i></span><span class="up-eta"></span></span>` : ''}
+            </button>`;
+            const rowEnd = pos % 3 === 2 || pos === cells.length - 1;
+            if (rowEnd) {
+                const openCell = cells.slice(pos - (pos % 3), pos + 1).find(c => c.idx === openFieldIdx);
+                if (openCell) html += `<div class="fg-detail up-detail" style="--fg-col:${cells.indexOf(openCell) % 3}">${fieldDetailHtml(v, stats, openCell.f, openCell.idx, v.buildQueue.find(q => q.targetType === 'field' && q.indexOrId === openCell.idx))}</div>`;
+            }
+        });
+        return html;
     }
 
     // --- 渲染視圖 A：資源田清單 ---
@@ -3278,6 +3315,8 @@ body { padding-top: var(--resbar-h, 0px); }
         if (stats.oasisBonus.crop > 0) oTexts.push(`🌾+${Math.round(stats.oasisBonus.crop * 100)}%`);
         document.getElementById('ui-oasis-bonus').textContent = `周邊綠洲加成: ${oTexts.length ? oTexts.join(' ') : '無 (清剿周邊綠洲野獸可獲得)'}`;
 
+        const sum = document.getElementById('fields-summary');
+        if (sum) setTextIfChanged(sum, `木 +${fmtNum(stats.prod.wood)}　磚 +${fmtNum(stats.prod.clay)}　鐵 +${fmtNum(stats.prod.iron)}　糧 +${fmtNum(stats.prod.crop)} /時`);
         if (!isListBusy(list)) setHtmlIfChanged(list, buildFieldsListHtml(v, stats));
         updateUpgradeListLive(list, v, stats);
 
