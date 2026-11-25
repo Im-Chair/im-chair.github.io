@@ -162,29 +162,34 @@ const PRE=['凡鐵','青罡','赤焰','玄冥','紫電','九幽','太清','混�
 const SLOTS=['武器','衣甲','飾品','法寶'];
 const SNAME={武器:['劍','刀','槍','杖'],衣甲:['道袍','法衣','護甲'],飾品:['玉佩','戒指','項鍊'],法寶:['寶鐺','寶塔','玲瓏盤','幡']};
 const QN=['下品','中品','上品','極品'],QM=[1,1.25,1.55,2.0],QCOL=['#aab','#7fcf9a','#7fb2e8','#e0a14f'];
-/* 裝備升級：升一次＝實際階 +1（素質提升一個大境界）；舊裝備沒有 up／uf 欄位，一律用 (q.up||0)、(q.uf||0) 讀 */
-const EQ_UP_MAX=[1,2,3,4];            // 下品／中品／上品／極品 可升級次數
+/* 裝備升級：升一次＝實際階 +1（素質提升一個大境界）；舊裝備沒有 up／uf／ut 欄位，up、uf 用 (q.up||0)、(q.uf||0) 讀，已用機會 ut 用 eqUsed(q) 讀 */
+const EQ_UP_MAX=[1,2,3,4];            // 升級機會（嘗試次數，失敗也算）：下品／中品／上品／極品
+const eqUsed=q=>q.ut==null?(q.up||0):q.ut;   // 已用掉的機會；舊存檔沒有 ut，以已成功次數代替
+const eqLeft=q=>Math.max(0,EQ_UP_MAX[q.q]-eqUsed(q)); // 剩餘機會
 const EQ_UP_BASE=[0.85,0.75,0.65,0.55]; // 各品級基礎成功率
 const EQ_UP_STEP=0.12;                // 每升過一次，成功率 −12%
 const EQ_UP_TIER=0.03;                // 目標階每高一個大境界，成功率 −3%
 const EQ_UP_PITY=0.05;                // 每連續失敗一次 +5%，成功後歸零
 const EQ_UP_MIN=0.15,EQ_UP_MAXP=0.95; // 成功率下限與上限
-const EQ_UP_COST=0.5;                 // 花費＝升級後那一階、同品級裝備價格 ×0.5
+const EQ_UP_COST=0.3;                 // 花費＝升級後那一階、同品級裝備價格 ×0.3
+const EQ_UP_BONUS=0.05;               // 淬鍊加成：每成功升一次，裝備主素質與特效數值再 +5%（只影響素質，不影響買賣價與升級花費、成功率）
+const eqUpMul=q=>1+EQ_UP_BONUS*(q.up||0); // 淬鍊倍率（沒升過＝1）
 const eqTier=q=>cl(q.tier+(q.up||0),0,9); // 實際階（效果、價格用這個；穿戴門檻仍用 q.tier）
 const eqUpRate=q=>cl(EQ_UP_BASE[q.q]-EQ_UP_STEP*(q.up||0)-EQ_UP_TIER*(eqTier(q)+1)+EQ_UP_PITY*(q.uf||0),EQ_UP_MIN,EQ_UP_MAXP);
 const eqUpCost=q=>Math.round(P((eqTier(q)+1)*4+2)*(3+q.q*3)*EQ_UP_COST);
 const eqName=q=>q.name+((q.up||0)>0?'+'+q.up:'');
-const eqPow=q=>S(eqTier(q)*4+2)*QM[q.q]; // 實際強度（排序、比較用）
+const eqPow=q=>S(eqTier(q)*4+2)*QM[q.q]*eqUpMul(q); // 實際強度（排序、比較用；含淬鍊加成。calc、eqDesc 都由它算）
 const eqUpBlock=q=>{
- if((q.up||0)>=EQ_UP_MAX[q.q])return`此品級最多升 ${EQ_UP_MAX[q.q]} 次`;
+ if(eqUsed(q)>=EQ_UP_MAX[q.q])return'升級機會已用完';
  if(eqTier(q)>=9)return'已是最高境界的裝備';
  if(eqTier(q)+1>rIdx())return`需達到${REALMS[eqTier(q)+1]}期才能再升`;
  if(p.st<eqUpCost(q))return'靈石不足';
  return'';};
-/* 階級標籤：○○階、品級、可升次數、流派；穿戴門檻另用 eqNeedHTML */
-const eqTagHTML=q=>{const left=EQ_UP_MAX[q.q]-(q.up||0),sc=eqSc(q);
+/* 階級標籤：○○階、品級、剩餘機會、流派；穿戴門檻另用 eqNeedHTML */
+const eqTagHTML=q=>{const left=eqLeft(q),sc=eqSc(q);
  return`<span class="tag y">${REALMS[eqTier(q)]}階</span><span class="tag" style="color:${QCOL[q.q]}">${QN[q.q]}</span>`
-  +(left>0?`<span class="tag dim">可升 ${left} 次</span>`:'<span class="tag g">已升滿</span>')
+  +((q.up||0)>0?`<span class="tag g">+${q.up}</span>`:'')
+  +(left>0?`<span class="tag dim">剩 ${left} 次機會</span>`:'<span class="tag dim">機會已用完</span>')
   +(sc<12?`<span class="tag b">${SCHOOLS[sc].n}</span>`:'');};
 const eqNeedHTML=q=>`<span class="${rIdx()<q.tier?'r':'dim'}">需 ${REALMS[q.tier]}期 才能穿</span>`;
 /* 背包裝備清單：先依部位、再依實際強度高到低；保留真實索引 i（G.equip／G.sell 用） */
@@ -209,9 +214,9 @@ const mkEq=(tier,slot,q,sc)=>{tier=cl(tier,0,9);slot=slot||pick(SLOTS);if(q==nul
  if(sc==null){const pr=(slot==='武器'||slot==='法寶')?0.85:0.4;sc=ch(pr)?((p&&ch(0.4))?p.sc:R(0,11)):12;}
  return{id:Date.now()+Math.floor(rnd()*1e9),slot,tier,q,sc,up:0,uf:0,name:PRE[tier]+(sc<12?pick(ESN[sc][slot]):pick(SNAME[slot]))};};
 /* 流派裝備的額外被動 */
-const eqX=q=>{const sc=eqSc(q);if(sc>=12)return null;const k=SCX[sc];return[k[0],k[1]*(eqTier(q)*0.6+1)*(0.8+q.q*0.15),k[2]];};
+const eqX=q=>{const sc=eqSc(q);if(sc>=12)return null;const k=SCX[sc];return[k[0],k[1]*(eqTier(q)*0.6+1)*(0.8+q.q*0.15)*eqUpMul(q),k[2]];};
 const eqDesc=q=>{const v=eqPow(q);let d;if(q.slot==='武器')d='攻擊+'+nf(v*.5);else if(q.slot==='衣甲')d='防禦+'+nf(v*.4)+' 氣血+'+nf(v*2);else if(q.slot==='飾品')d='神識+'+nf(v*.4)+' 速度+'+(eqTier(q)*2+2);else d='攻+'+nf(v*.2)+' 防+'+nf(v*.15)+' 神識+'+nf(v*.2)+' 血+'+nf(v);
- const x=eqX(q);return d+(x?`<br><span class="b">〔${SCHOOLS[eqSc(q)].n}〕${x[2]}+${pc(x[1])}；${SCHOOLS[eqSc(q)].n}功法威力+10%${q.slot==='武器'||q.slot==='法寶'?'；可使用該流派跨派功法而不減傷':''}</span>`:'<br><span class="dim">〔通用〕無流派加成</span>');};
+ const x=eqX(q);return d+(x?`<br><span class="b">〔${SCHOOLS[eqSc(q)].n}〕${x[2]}+${pc(x[1])}；${SCHOOLS[eqSc(q)].n}功法威力+10%${q.slot==='武器'||q.slot==='法寶'?'；可使用該流派跨派功法而不減傷':''}</span>`:'<br><span class="dim">〔通用〕無流派加成</span>')+((q.up||0)>0?`<br><span class="dim">淬鍊 +${Math.round(EQ_UP_BONUS*100*q.up)}%</span>`:'');};
 const eqPrice=q=>Math.round(P(eqTier(q)*4+2)*(3+q.q*3));
 
 const REG={
@@ -764,8 +769,10 @@ const upFind=k=>{if(!k)return null;if(k.indexOf('eq:')===0)return p.eq[k.slice(3
 G.upEq=(where,key)=>{const q=where==='eq'?p.eq[key]:p.bag.find(x=>x.id===+key);if(!q)return;
  const bad=eqUpBlock(q);if(bad){L(bad+'。','r');render();return;}
  const cost=eqUpCost(q),rate=eqUpRate(q);p.st-=cost;
- if(ch(rate)){q.up=(q.up||0)+1;q.uf=0;L(`升級成功！【${eqName(q)}】提升為${REALMS[eqTier(q)]}階。`,'g');}
- else{q.uf=(q.uf||0)+1;L(`升級失敗，靈石耗盡了這一爐……裝備無損，下次成功率 +${Math.round(EQ_UP_PITY*100)}%。`,'r');}
+ q.ut=eqUsed(q)+1; // 不論成敗都用掉一次機會
+ const left=eqLeft(q),lt=left>0?`還剩 ${left} 次機會`:'升級機會已用完';
+ if(ch(rate)){q.up=(q.up||0)+1;q.uf=0;L(`升級成功！【${eqName(q)}】提升為${REALMS[eqTier(q)]}階，${lt}。`,'g');}
+ else{q.uf=(q.uf||0)+1;L(`升級失敗，靈石耗盡了這一爐……裝備無損，但用掉了一次機會，${lt}；下次成功率 +${Math.round(EQ_UP_PITY*100)}%。`,'r');}
  save();render();};
 G.eqTech=id=>{const t=TECHS[id];const bad=canUse(t);if(bad){L(bad,'r');render();return;}
  if(t.type==='心法')p.heart=p.heart===id?null:id;
@@ -959,22 +966,25 @@ function bagHTML(){
  const pct=x=>Math.round(x*100)+'%';
  let h=`<details class="card"><summary><b>裝備怎麼看？</b></summary><ul class="help">
 <li><b>階</b>：裝備實際的境界，決定素質。「築基階」的裝備，素質相當於築基期的水準。</li>
-<li><b>品級</b>（${QN.join('／')}）：同一階內的素質倍率（${QM.map(x=>'×'+x).join('、')}），同時決定最多能升級幾次（${EQ_UP_MAX.map((n,i)=>QN[i]+' '+n+' 次').join('、')}）。</li>
-<li>升級一次＝階 +1，素質提升一個大境界，名稱後面會加「+N」。</li>
+<li><b>品級</b>（${QN.join('／')}）：同一階內的素質倍率（${QM.map(x=>'×'+x).join('、')}），同時決定升級機會（${EQ_UP_MAX.map((n,i)=>QN[i]+' '+n+' 次').join('、')}）。</li>
+<li>每嘗試升級一次就用掉一次機會，成功才升一階（素質提升一個大境界，名稱後面會加「+N」），失敗也算一次；機會用完就不能再升。</li>
 <li>只能升到自己目前的境界為止；穿戴門檻仍看裝備原本的階，升級不會讓裝備變得穿不了。</li>
 <li>成功率＝品級基礎成功率（${EQ_UP_BASE.map((x,i)=>QN[i]+' '+pct(x)).join('、')}）− 每升過一次 ${pct(EQ_UP_STEP)} − 目標階每高一個大境界 ${pct(EQ_UP_TIER)}，最低 ${pct(EQ_UP_MIN)}、最高 ${pct(EQ_UP_MAXP)}。</li>
 <li>花費＝升級後那一階、同品級裝備價格的 ${pct(EQ_UP_COST)}。</li>
-<li>失敗只損失靈石，裝備不會損壞也不會降級；每連續失敗一次，下次成功率 +${pct(EQ_UP_PITY)}，成功後歸零。</li>
+<li>升過的裝備比同階、同品級直接買的強：每成功升一次，主素質與特效數值再 +${pct(EQ_UP_BONUS)}（顯示為「淬鍊 +N%」），而且花費比直接買下一階低。</li>
+<li>失敗會損失靈石並用掉一次機會，裝備不會損壞也不會降級；每連續失敗一次，下次成功率 +${pct(EQ_UP_PITY)}，成功後歸零。</li>
 </ul></details>`;
  /* 升級面板（展開在該件裝備下方）：k＝'eq:部位' 或 'bag:裝備id' */
  const upPanel=(q,k)=>{if(upOpen!==k)return'';
   const where=k.slice(0,k.indexOf(':')),key=k.slice(k.indexOf(':')+1),bad=eqUpBlock(q);
-  const can=(q.up||0)<EQ_UP_MAX[q.q]&&eqTier(q)<9,nx=Object.assign({},q,{up:(q.up||0)+1});
+  const can=eqLeft(q)>0&&eqTier(q)<9,nx=Object.assign({},q,{up:(q.up||0)+1});
   return`<div class="upp">`
    +(can?`<div>升級後：<b>${REALMS[eqTier(nx)]}階</b>（素質 ${nf(eqPow(q))} → ${nf(eqPow(nx))}）</div>`:'<div class="dim">已無法再升級。</div>')
    +(can?`<div>成功率 <b>${pct(eqUpRate(q))}</b>${(q.uf||0)>0?`<span class="dim">（含連敗補償 +${pct(EQ_UP_PITY*q.uf)}）</span>`:''}</div>`
-   +`<div>花費 靈石 <b>${fmt(eqUpCost(q))}</b></div><div class="dim">失敗只損失靈石，裝備不會壞。</div>`:'')
+   +`<div>花費 靈石 <b>${fmt(eqUpCost(q))}</b>　剩 <b>${eqLeft(q)}</b> 次機會</div>`:'')
+   +`<div class="dim">升級比買下一階便宜，每成功一次素質再 +${pct(EQ_UP_BONUS)}</div>`
    +(bad?`<div class="r">${bad}</div>`:'')
+   +(can?'<div class="dim">失敗也會用掉一次機會</div>':'')
    +`<div class="row" style="justify-content:flex-start;margin-top:6px"><button class="btn sm" ${bad?'disabled':''} onclick="G.upEq('${where}','${key}')">確定升級</button><button class="btn sm" onclick="G.upToggle('${k}')">收起</button></div></div>`;};
  /* 假人：標籤框＋拉線。中間欄 104×152，線從標籤邊緣（x=-8 或 112）拉到人形上的點 */
  const POS={飾品:[1,1],法寶:[1,2],武器:[3,1],衣甲:[3,2]};
