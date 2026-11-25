@@ -177,15 +177,14 @@ button, a, select, input, label, [onclick], .nav-tab {
 @media (max-width: 639.98px) {
     :root { --nav-h: 52px; --nav-total: calc(52px + 3px + env(safe-area-inset-bottom)); }
 
-    /* 頂列：不再 sticky。第一行＝村莊選擇＋通知＋「⋯」，第二行＝時間流速 */
-    #app-header > div { flex-wrap: wrap; }
+    /* 頂列一行排完不換行：村莊下拉（吃剩餘寬度、過長省略）｜通知鈴 44×44｜加速下拉｜⋯ 44×44 */
+    #app-header { padding-top: 4px; padding-bottom: 4px; }
+    #app-header > div { flex-wrap: nowrap; gap: 6px; }
     .hdr-hide-m { display: none !important; }
-    .hdr-left { order: 1; flex: 1 1 0; min-width: 0; }
-    #village-selector { max-width: none !important; width: 100%; flex: 1 1 auto; min-height: 44px; font-size: 16px; }
-    .hdr-actions { order: 2; flex-wrap: nowrap; }
-    .hdr-speed { order: 3; width: 100%; flex-wrap: nowrap; justify-content: space-between; }
-    .hdr-speed > .speed-select { flex: 1 1 0; min-width: 0; min-height: 44px; font-size: 16px; }
-    .hdr-speed > button { flex: 1 1 0; min-width: 0; padding-left: 2px; padding-right: 2px; font-size: 12px; white-space: nowrap; }
+    .hdr-left { flex: 1 1 0; min-width: 0; }
+    #village-selector { max-width: none !important; width: 100%; flex: 1 1 auto; min-width: 0; min-height: 44px; font-size: 16px; text-overflow: ellipsis; }
+    .hdr-actions { flex-wrap: nowrap; flex-shrink: 0; gap: 4px; }
+    #btn-notif { min-width: 44px; min-height: 44px; }
     .hdr-more-btn { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; min-width: 44px; font-size: 20px; line-height: 1; }
     .hdr-menu { display: none; }
     .hdr-menu.open {
@@ -258,8 +257,8 @@ button, a, select, input, label, [onclick], .nav-tab {
 
 /* ==================== 版面 v2：頂列加速下拉、資源列置頂、直列升級清單 ==================== */
 
-/* --- 頂列：不再 sticky（跟著頁面捲走）；資源列才是置頂的那一條 --- */
-#app-header { position: relative; z-index: 35; }
+/* --- 頂列：與資源列一起放進 #top-fixed，固定在視窗最上方 --- */
+#app-header { position: relative; z-index: 2; }
 
 /* --- 加速：原生下拉；暫停時整顆變紅，一眼看出停著 --- */
 .speed-select {
@@ -270,38 +269,42 @@ button, a, select, input, label, [onclick], .nav-tab {
 .speed-select option { background: #26170c; color: #fde68a; }
 .speed-select.is-paused { background: #7f1d1d; color: #fecaca; border-color: #f87171; box-shadow: 0 0 0 2px rgba(248,113,113,.35); }
 .speed-select.is-paused option { background: #7f1d1d; color: #fecaca; }
-
-/* --- 資源列：position:fixed 釘在視窗最上方（含瀏海安全區），body 用 --resbar-h 補等高的 padding-top。
-   不用 sticky：它受祖先 overflow／容器高度影響，桌機原本也根本沒設 sticky --- */
-body { padding-top: var(--resbar-h, 0px); }
-#setup-screen:not(.hidden) ~ #res-bar { display: none; }
-#res-bar {
-    position: fixed; top: 0; left: 0; right: 0; z-index: 36;
-    background: #2c1d11; border-bottom: 2px solid #8c6239; box-shadow: 0 4px 10px rgba(0,0,0,.55);
-    padding: calc(env(safe-area-inset-top) + 4px) calc(env(safe-area-inset-right) + 6px) 4px calc(env(safe-area-inset-left) + 6px);
+@media (max-width: 639.98px) {
+    .speed-select { width: 80px; min-width: 0; min-height: 44px; padding: 0 0 0 4px; font-size: 16px; letter-spacing: -0.6px; }
+    /* 村莊名稱後面的座標要看得到：縮小內距與字距，把寬度讓給文字 */
+    #village-selector { padding-left: 6px !important; padding-right: 0 !important; letter-spacing: -0.6px; }
 }
+
+/* --- 頂列＋資源列：#top-fixed 用 position:fixed 釘在視窗最上方（含瀏海安全區），
+   body 用 --topbar-h（JS 量整個固定區塊的高度）補等高的 padding-top。
+   不用 sticky：它受祖先 overflow／容器高度影響，桌機原本也根本沒設 sticky。
+   z-index 36：低於底部導覽（40）、modal、toast；⋯ 選單在頂列內 z-index 50，會蓋過資源列與內容 --- */
+body { padding-top: var(--topbar-h, 0px); }
+#setup-screen:not(.hidden) ~ #top-fixed { display: none; }
+#top-fixed {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 36;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);
+    background: #4a3320; box-shadow: 0 4px 10px rgba(0,0,0,.55);
+}
+#res-bar { background: #2c1d11; border-bottom: 2px solid #8c6239; padding: 3px 6px; }
 .res-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; max-width: 64rem; margin: 0 auto; }
 .res-box {
-    position: relative; min-width: 0; display: flex; align-items: center; gap: 6px; padding: 4px 6px;
+    min-width: 0; display: flex; align-items: center; justify-content: center; gap: 3px; padding: 4px 3px; overflow: hidden;
     background: #1e130b; border: 1px solid rgba(120,53,15,.8); border-radius: 8px; color: #fffbeb;
 }
-.res-ico { font-size: 18px; line-height: 1; flex-shrink: 0; }
-.res-txt { min-width: 0; flex: 1 1 auto; }
-.res-num { font-size: 13px; font-weight: 700; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.res-cap { display: none; font-size: 11px; font-weight: 400; color: #a8a29e; }
-.res-rate { font-size: 11px; line-height: 1.2; color: #34d399; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.res-rate.is-neg { color: #f87171; font-weight: 900; }
-.res-full { display: none; position: absolute; top: 1px; right: 4px; font-size: 10px; font-weight: 900; line-height: 1; color: #fef3c7; }
+.res-ico { font-size: 14px; line-height: 1; flex-shrink: 0; }
+.res-num { font-size: 13px; font-weight: 700; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.res-rate, .res-extra { display: none; }
 .res-box.is-full { background: #92400e; border-color: #fbbf24; }
-.res-box.is-full .res-full { display: block; }
-.res-extra { display: none; font-size: 10px; line-height: 1.2; color: #a8a29e; text-align: right; flex-shrink: 0; }
-.res-extra > div > span:first-child { color: #e7e5e4; }
+.res-box.is-neg .res-num { color: #f87171; }
 @media (min-width: 640px) {
-    .res-box { padding: 6px 12px; gap: 8px; }
-    .res-ico { font-size: 22px; }
-    .res-num { font-size: 15px; }
-    .res-cap { display: inline; }
-    .res-extra { display: block; }
+    .res-box { padding: 5px 10px; gap: 8px; justify-content: flex-start; }
+    .res-ico { font-size: 20px; }
+    .res-num { font-size: 15px; flex: 0 1 auto; }
+    .res-rate { display: inline; margin-left: auto; font-size: 12px; color: #34d399; white-space: nowrap; }
+    .res-rate.is-neg { color: #f87171; font-weight: 900; }
+    .res-extra { display: inline; font-size: 10px; color: #a8a29e; white-space: nowrap; }
+    .res-extra > span:first-child { color: #e7e5e4; }
 }
 
 /* --- 直列升級清單（資源田、村莊建築共用） --- */
@@ -310,12 +313,12 @@ body { padding-top: var(--resbar-h, 0px); }
 .up-sub { font-size: 12px; color: #57534e; margin-bottom: 10px; }
 .up-list { display: flex; flex-direction: column; gap: 6px; }
 .up-card { display: flex; flex-direction: column; gap: 8px; }
-.up-item { scroll-margin-top: calc(var(--resbar-h, 0px) + 8px); border: 2px solid rgba(140,98,57,.6); border-radius: 12px; background: #fffaf0; overflow: hidden; }
+.up-item { scroll-margin-top: calc(var(--topbar-h, 0px) + 8px); border: 2px solid rgba(140,98,57,.6); border-radius: 12px; background: #fffaf0; overflow: hidden; }
 .up-item.is-open { border-color: #d97706; box-shadow: 0 2px 8px rgba(0,0,0,.18); }
 .up-row {
     display: flex; align-items: center; gap: 10px; width: 100%; min-height: 52px; padding: 8px 10px;
     background: transparent; border: 0; text-align: left; color: #3b2818; cursor: pointer;
-    scroll-margin-top: calc(var(--resbar-h, 0px) + 8px);
+    scroll-margin-top: calc(var(--topbar-h, 0px) + 8px);
 }
 .up-ico { font-size: 24px; line-height: 1; flex-shrink: 0; width: 30px; text-align: center; }
 .up-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
@@ -325,14 +328,14 @@ body { padding-top: var(--resbar-h, 0px); }
 .up-prog { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #b91c1c; font-weight: 700; }
 .up-bar { flex: 1 1 auto; height: 6px; border-radius: 3px; background: #d6d3d1; overflow: hidden; }
 .up-bar > i { display: block; height: 100%; width: 0; background: #d97706; }
-/* --- 資源田：三欄六排格子；詳情區插在被點格子那一排的正下方整排展開 --- */
-.fg-summary { font-size: 12px; font-weight: 800; color: #3b2818; background: #e6d5b8; border: 1px solid #a37846; border-radius: 8px; padding: 6px 8px; margin-bottom: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.fg-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+/* --- 資源田：左半＝三欄六排格子（只有圖示與等級），右半＝固定詳情面板（預設顯示每小時產出總覽） --- */
+.fp-wrap { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; align-items: start; scroll-margin-top: calc(var(--topbar-h, 0px) + 8px); }
+.fg-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
 .fg-cell {
-    position: relative; display: grid; grid-template-columns: auto 1fr; align-items: center; column-gap: 4px; row-gap: 2px;
-    min-height: 56px; padding: 6px 6px 6px 8px; text-align: left; color: #3b2818; cursor: pointer;
-    border: 2px solid rgba(140,98,57,.45); border-left-width: 5px; border-radius: 10px;
-    scroll-margin-top: calc(var(--resbar-h, 0px) + 8px);
+    position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+    min-width: 44px; min-height: 52px; padding: 4px 2px 6px 5px; color: #3b2818; cursor: pointer;
+    border: 2px solid rgba(140,98,57,.45); border-left-width: 4px; border-radius: 9px;
+    scroll-margin-top: calc(var(--topbar-h, 0px) + 8px);
 }
 .fg-cell.t-wood { background: #ecfdf5; border-left-color: #059669; }
 .fg-cell.t-clay { background: #fff1e6; border-left-color: #c2410c; }
@@ -340,17 +343,34 @@ body { padding-top: var(--resbar-h, 0px); }
 .fg-cell.t-crop { background: #fefce8; border-left-color: #ca8a04; }
 .fg-cell.is-sel { outline: 3px solid #d97706; outline-offset: -1px; z-index: 1; }
 .fg-ico { font-size: 20px; line-height: 1; }
-.fg-lv { font-size: 13px; font-weight: 800; }
-.fg-prod { grid-column: 1 / -1; font-size: 12px; font-weight: 700; color: #047857; white-space: nowrap; }
-.fg-rsv { position: absolute; top: 2px; right: 4px; font-size: 10px; font-weight: 800; color: #0369a1; }
-.fg-dot { display: none; position: absolute; top: 5px; right: 5px; width: 8px; height: 8px; border-radius: 50%; background: #16a34a; }
+.fg-lv { font-size: 12px; font-weight: 800; line-height: 1.2; }
+.fg-rsv { position: absolute; top: 1px; right: 2px; font-size: 9px; line-height: 1; }
+.fg-dot { display: none; position: absolute; top: 3px; left: 3px; width: 7px; height: 7px; border-radius: 50%; background: #16a34a; }
 .fg-cell.can-up .fg-dot { display: block; }
-.fg-cell.has-rsv.can-up .fg-dot { right: 36px; }
-.fg-cell .up-prog { grid-column: 1 / -1; font-size: 10px; gap: 4px; }
-.fg-detail.up-detail { grid-column: 1 / -1; position: relative; border: 2px solid #d97706; border-radius: 10px; margin-top: 4px; }
-.fg-detail::before {
-    content: ''; position: absolute; top: -9px; left: calc((var(--fg-col, 0) + 0.5) / 3 * 100%); margin-left: -8px;
-    width: 0; height: 0; border-left: 8px solid transparent; border-right: 8px solid transparent; border-bottom: 8px solid #d97706;
+.fg-cell .up-prog { position: absolute; left: 3px; right: 3px; bottom: 2px; }
+.fg-cell .up-bar { height: 4px; }
+.fg-cell .up-eta { display: none; }
+.fp-panel {
+    position: sticky; top: calc(var(--topbar-h, 0px) + 8px); min-width: 0; padding: 8px; font-size: 12px; color: #292524;
+    background: #fff6e0; border: 2px solid #d4bfa0; border-radius: 10px; display: flex; flex-direction: column; gap: 8px;
+}
+.fp-panel .up-line { overflow-wrap: anywhere; }
+.fp-panel .up-cost { grid-template-columns: minmax(0, 1fr); }
+.fp-panel .up-actions { flex-direction: column; }
+.fp-panel .up-btn { flex: 0 0 auto; width: 100%; min-height: 44px; padding: 6px 8px; font-size: 13px; line-height: 1.25; white-space: normal; }
+.fp-panel .up-btn.is-sub { font-size: 12px; white-space: normal; }
+.fp-panel .up-prog { font-size: 11px; }
+.fp-row { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; font-weight: 700; }
+.fp-row b { color: #047857; font-weight: 800; white-space: nowrap; }
+.fp-row.is-sub { font-size: 11px; font-weight: 500; color: #57534e; }
+.fp-row.is-neg b { color: #dc2626; }
+.fp-tip { font-size: 11px; color: #78716c; line-height: 1.4; }
+@media (min-width: 640px) {
+    .fg-grid { gap: 8px; }
+    .fg-cell { min-height: 68px; }
+    .fg-ico { font-size: 26px; }
+    .fg-lv { font-size: 14px; }
+    .fp-panel { padding: 12px; font-size: 13px; }
 }
 .up-eta { font-family: ui-monospace, Menlo, Consolas, monospace; white-space: nowrap; }
 .up-side { flex-shrink: 0; max-width: 42%; text-align: right; font-size: 12px; font-weight: 700; color: #047857; line-height: 1.3; }
@@ -360,7 +380,7 @@ body { padding-top: var(--resbar-h, 0px); }
 .up-detail {
     padding: 10px 12px 12px; border-top: 1px solid #d4bfa0; background: #fff6e0; font-size: 12px; color: #292524;
     display: flex; flex-direction: column; gap: 8px;
-    scroll-margin-top: calc(var(--resbar-h, 0px) + 8px); scroll-margin-bottom: calc(var(--nav-total, 0px) + 12px);
+    scroll-margin-top: calc(var(--topbar-h, 0px) + 8px); scroll-margin-bottom: calc(var(--nav-total, 0px) + 12px);
 }
 .up-line { line-height: 1.5; }
 .up-line b { font-weight: 800; }
@@ -478,7 +498,8 @@ body { padding-top: var(--resbar-h, 0px); }
     </div>
 
     <!-- ==================== 頂部狀態與時間控制列 ==================== -->
-    <header id="app-header" class="wood-header sticky top-0 z-30 px-2 sm:px-4 py-2 shadow-lg">
+    <div id="top-fixed">
+    <header id="app-header" class="wood-header px-2 sm:px-4 py-2">
         <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
             <!-- 村莊切換器與種族標誌 -->
             <div class="hdr-left flex items-center gap-2">
@@ -488,22 +509,17 @@ body { padding-top: var(--resbar-h, 0px); }
                 <span id="ui-village-type" class="hidden sm:inline-block text-xs px-2 py-0.5 rounded bg-stone-800 text-amber-300 border border-stone-600">普田 4:4:4:6</span>
             </div>
 
-            <!-- 時間倍率控制器 -->
-            <div class="hdr-speed flex flex-wrap items-center gap-1 bg-[#1f1309] p-1 rounded-lg border border-amber-700/70 max-w-full">
-                <span class="text-xs text-amber-300 px-1.5 hidden md:inline">⏱️ 時間流速:</span>
-                <select id="speed-select" onchange="setGameSpeed(Number(this.value))" aria-label="時間流速" class="speed-select">
-                    <option value="0">⏸ 暫停</option>
-                    <option value="1" selected>▶ 1x</option>
-                    <option value="5">⏩ 5x</option>
-                    <option value="20">⚡ 20x</option>
-                </select>
-                <button onclick="fastForward(300)" data-tip="瞬間推進遊戲內 5 分鐘（資源、建造、行軍都會一起往前走）" class="sm:ml-1 px-3 py-2 sm:px-2.5 sm:py-1 min-h-[40px] sm:min-h-0 rounded text-xs font-bold bg-emerald-700 hover:bg-emerald-600 text-white border border-emerald-400">⏭ +5分鐘</button>
-            </div>
-
             <!-- 音效與存檔選單 -->
             <div class="hdr-actions flex flex-wrap items-center gap-1.5">
                 <span id="ui-game-clock" class="text-xs font-mono text-amber-200/80 hidden lg:inline mr-1">第 1 天 00:00</span>
                 <button onclick="openNotifPanel()" id="btn-notif" class="relative px-3 py-2 sm:px-2 sm:py-1 min-h-[40px] min-w-[40px] sm:min-h-0 sm:min-w-0 rounded bg-stone-800 hover:bg-stone-700 text-xs border border-stone-600" data-tip="通知紀錄：只收建造完成、行軍與戰鬥結果、遭襲等重要事件">🔔<span id="notif-dot" class="hidden absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-600 rounded-full border border-white"></span></button>
+                <select id="speed-select" onchange="onSpeedSelect(this)" aria-label="時間流速" class="speed-select">
+                    <option value="0">⏸ 暫停</option>
+                    <option value="1" selected>▶ 1x</option>
+                    <option value="5">⏩ 5x</option>
+                    <option value="20">⚡ 20x</option>
+                    <option value="ff">⏭ 快轉 5 分鐘</option>
+                </select>
                 <button type="button" id="btn-more" onclick="toggleHeaderMenu(event)" aria-label="更多選項（音效、存檔、新局）" aria-expanded="false" class="hdr-more-btn rounded bg-stone-800 border border-stone-600 text-amber-200 font-bold">⋯</button>
                 <div id="hdr-menu" class="hdr-menu">
                 <button onclick="toggleSound()" id="btn-sound" class="px-3 py-2 sm:px-2 sm:py-1 min-h-[40px] min-w-[40px] sm:min-h-0 sm:min-w-0 rounded bg-stone-800 hover:bg-stone-700 text-xs border border-stone-600" data-tip="切換音效（開／關）">🔊</button>
@@ -514,46 +530,32 @@ body { padding-top: var(--resbar-h, 0px); }
         </div>
     </header>
 
-    <!-- ==================== 四大資源即時儀表板 ==================== -->
+    <!-- ==================== 四大資源即時儀表板（與上面的頂列一起固定在最上方） ==================== -->
     <div id="res-bar">
         <div class="res-grid">
             <div id="box-wood" class="res-box">
                 <span class="res-ico">🪵</span>
-                <div class="res-txt">
-                    <div class="res-num"><span id="res-wood">0</span><span class="res-cap">/<span id="cap-wood">800</span></span></div>
-                    <div id="rate-wood" class="res-rate"><span id="prod-wood">+0</span>/時</div>
-                </div>
-                <span id="full-wood" class="res-full"></span>
+                <span class="res-num"><span id="res-wood">0</span>/<span id="cap-wood">800</span></span>
+                <span id="rate-wood" class="res-rate"><span id="prod-wood">+0</span>/時</span>
             </div>
             <div id="box-clay" class="res-box">
                 <span class="res-ico">🧱</span>
-                <div class="res-txt">
-                    <div class="res-num"><span id="res-clay">0</span><span class="res-cap">/<span id="cap-clay">800</span></span></div>
-                    <div id="rate-clay" class="res-rate"><span id="prod-clay">+0</span>/時</div>
-                </div>
-                <span id="full-clay" class="res-full"></span>
+                <span class="res-num"><span id="res-clay">0</span>/<span id="cap-clay">800</span></span>
+                <span id="rate-clay" class="res-rate"><span id="prod-clay">+0</span>/時</span>
             </div>
             <div id="box-iron" class="res-box">
                 <span class="res-ico">⛓️</span>
-                <div class="res-txt">
-                    <div class="res-num"><span id="res-iron">0</span><span class="res-cap">/<span id="cap-iron">800</span></span></div>
-                    <div id="rate-iron" class="res-rate"><span id="prod-iron">+0</span>/時</div>
-                </div>
-                <span id="full-iron" class="res-full"></span>
+                <span class="res-num"><span id="res-iron">0</span>/<span id="cap-iron">800</span></span>
+                <span id="rate-iron" class="res-rate"><span id="prod-iron">+0</span>/時</span>
             </div>
             <div id="box-crop" class="res-box">
                 <span class="res-ico">🌾</span>
-                <div class="res-txt">
-                    <div class="res-num"><span id="res-crop">0</span><span class="res-cap">/<span id="cap-crop">800</span></span></div>
-                    <div id="rate-crop" class="res-rate"><span id="prod-crop">+0</span>/時</div>
-                </div>
-                <span id="full-crop" class="res-full"></span>
-                <div class="res-extra">
-                    <div>產:<span id="crop-gross">0</span></div>
-                    <div>耗:<span id="crop-upkeep">0</span></div>
-                </div>
+                <span class="res-num"><span id="res-crop">0</span>/<span id="cap-crop">800</span></span>
+                <span id="rate-crop" class="res-rate"><span id="prod-crop">+0</span>/時</span>
+                <span class="res-extra">產:<span id="crop-gross">0</span> 耗:<span id="crop-upkeep">0</span></span>
             </div>
         </div>
+    </div>
     </div>
 
     <!-- ==================== 主導航分頁 (四大視圖) ==================== -->
@@ -630,9 +632,11 @@ body { padding-top: var(--resbar-h, 0px); }
                         <h2 class="font-serif-tc font-black text-lg text-[#3b2818]">🌾 村外資源田</h2>
                         <span id="ui-oasis-bonus" class="text-xs font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-400">綠洲加成: 無</span>
                     </div>
-                    <div id="fields-summary" class="fg-summary"></div>
-                    <div id="fields-list" class="fg-grid"></div>
-                    <div class="up-sub" style="margin-top:8px">點一格展開升級；同類田依等級排序。農田特別多的「豐糧地」適合長期養大軍！</div>
+                    <div class="fp-wrap">
+                        <div id="fields-list" class="fg-grid"></div>
+                        <div id="fields-panel" class="fp-panel"></div>
+                    </div>
+                    <div class="up-sub" style="margin-top:8px">同類田依等級排序。農田特別多的「豐糧地」適合長期養大軍！</div>
 
                     <!-- 本村駐軍總覽 -->
                     <div class="bg-[#fffaf0] border-2 border-[#8c6239] rounded-xl p-4 shadow mt-4">
@@ -1418,7 +1422,7 @@ body { padding-top: var(--resbar-h, 0px); }
         if (g.building) openBuildingId = g.building;
         if (g.coord) selectedMapCoord = { x: g.coord.x, y: g.coord.y };
         switchTab(g.tab);
-        if (g.field != null) scrollUpItemIntoView('f' + g.field);
+        if (g.field != null) scrollFieldsBlockIntoView();
         else if (g.building) scrollUpItemIntoView('b-' + g.building);
     }
 
@@ -1836,7 +1840,7 @@ body { padding-top: var(--resbar-h, 0px); }
         document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') saveOnLeave(); });
         window.addEventListener('pagehide', saveOnLeave);
         initStepRepeat();
-        initResBarOffset();
+        initTopBarOffset();
         setInterval(gameLoop, 250); // 每 0.25 秒更新一次邏輯與畫面
     });
 
@@ -2955,6 +2959,16 @@ body { padding-top: var(--resbar-h, 0px); }
         refreshAllUI();
     }
 
+    // 加速下拉：最後一項「快轉 5 分鐘」是動作不是檔位，選到就快轉並把下拉還原成目前的實際速度
+    function onSpeedSelect(sel) {
+        if (sel.value === 'ff') {
+            sel.value = String(gameSpeed);
+            fastForward(300);
+            return;
+        }
+        setGameSpeed(Number(sel.value));
+    }
+
     function setGameSpeed(spd) {
         gameSpeed = spd;
         playSound('click');
@@ -2991,15 +3005,11 @@ body { padding-top: var(--resbar-h, 0px); }
         document.getElementById('ui-game-clock').textContent = fmtGameClock(gameState.elapsedSec);
 
         // 四大資源即時數值
-        document.getElementById('res-wood').textContent = fmtNum(v.res.wood);
-        document.getElementById('res-clay').textContent = fmtNum(v.res.clay);
-        document.getElementById('res-iron').textContent = fmtNum(v.res.iron);
-        document.getElementById('res-crop').textContent = fmtNum(v.res.crop);
-
-        document.getElementById('cap-wood').textContent = fmtNum(stats.capWood);
-        document.getElementById('cap-clay').textContent = fmtNum(stats.capWood);
-        document.getElementById('cap-iron').textContent = fmtNum(stats.capWood);
-        document.getElementById('cap-crop').textContent = fmtNum(stats.capCrop);
+        RES_KEYS.forEach(k => {
+            const [a, b] = fmtResPair(v.res[k], getResCap(stats, k));
+            setTextIfChanged(document.getElementById('res-' + k), a);
+            setTextIfChanged(document.getElementById('cap-' + k), b);
+        });
 
         document.getElementById('prod-wood').textContent = `+${fmtNum(stats.prod.wood)}`;
         document.getElementById('prod-clay').textContent = `+${fmtNum(stats.prod.clay)}`;
@@ -3046,6 +3056,7 @@ body { padding-top: var(--resbar-h, 0px); }
         updateNotifDot();
         const liveListId = currentTab === 'fields' ? 'fields-list' : currentTab === 'village' ? 'buildings-list' : null;
         if (liveListId) updateUpgradeListLive(document.getElementById(liveListId), v, stats);
+        if (currentTab === 'fields') updateUpgradeListLive(document.getElementById('fields-panel'), v, stats);
         updateAdvisor(false);
 
         // 若正在戰報頁面，即時更新行軍倒數
@@ -3054,8 +3065,16 @@ body { padding-top: var(--resbar-h, 0px); }
         }
     }
 
+    // 資源列專用的精簡數字（不用千分位）：上限 ≥10000 時，數量與上限都縮成「12.3k」（數量不到 1000 維持原數字）
+    function fmtResPair(res, cap) {
+        const r = Math.max(0, Math.floor(res)), c = Math.floor(cap);
+        if (c < 10000) return [String(r), String(c)];
+        const k = n => (Math.floor(n / 100) / 10).toFixed(1) + 'k';
+        return [r < 1000 ? String(r) : k(r), k(c)];
+    }
+
     // 資源列：每 0.25 秒呼叫，只改 textContent／class。
-    // 滿倉：整格變琥珀底並顯示「滿」；穀物淨產量為負：小字變紅（數字帶負號）。詳細的「約 N 後滿倉／糧盡」放在 title。
+    // 滿倉：整格變琥珀底；穀物淨產量為負：數字（與桌機的產量小字）變紅。詳細的「約 N 後滿倉／糧盡」放在 title。
     function updateResFullInfo(v, stats) {
         RES_KEYS.forEach(k => {
             const box = document.getElementById('box-' + k);
@@ -3074,26 +3093,27 @@ body { padding-top: var(--resbar-h, 0px); }
                 tip = '產量為 0，不會增加';
             }
             box.classList.toggle('is-full', isFull);
+            box.classList.toggle('is-neg', neg);
             document.getElementById('rate-' + k).classList.toggle('is-neg', neg);
-            setTextIfChanged(document.getElementById('full-' + k), isFull ? '滿' : '');
             if (box.title !== tip) box.title = tip;
         });
     }
 
-    // 資源列是 position:fixed：量它的高度寫進 --resbar-h，body 用它補等高的 padding-top（旋轉螢幕、字型載入後高度變了也會跟著更新）
-    function syncResBarOffset() {
-        const bar = document.getElementById('res-bar');
+    // 頂列＋資源列（#top-fixed）是 position:fixed：量整個區塊的高度寫進 --topbar-h，body 用它補等高的 padding-top、
+    // 各處 scroll-margin-top 也用它（旋轉螢幕、字型載入、設定畫面顯示／隱藏後高度變了都會更新）
+    function syncTopBarOffset() {
+        const bar = document.getElementById('top-fixed');
         if (!bar) return;
         const h = bar.offsetHeight + 'px';
-        if (document.documentElement.style.getPropertyValue('--resbar-h') !== h) document.documentElement.style.setProperty('--resbar-h', h);
+        if (document.documentElement.style.getPropertyValue('--topbar-h') !== h) document.documentElement.style.setProperty('--topbar-h', h);
     }
-    function initResBarOffset() {
-        const bar = document.getElementById('res-bar');
+    function initTopBarOffset() {
+        const bar = document.getElementById('top-fixed');
         if (!bar) return;
-        syncResBarOffset();
-        if (typeof ResizeObserver === 'function') new ResizeObserver(syncResBarOffset).observe(bar);
-        window.addEventListener('resize', syncResBarOffset);
-        window.addEventListener('orientationchange', syncResBarOffset);
+        syncTopBarOffset();
+        if (typeof ResizeObserver === 'function') new ResizeObserver(syncTopBarOffset).observe(bar);
+        window.addEventListener('resize', syncTopBarOffset);
+        window.addEventListener('orientationchange', syncTopBarOffset);
     }
 
     // 建造佇列橫幅：佇列組成改變才重建（含取消鈕，避免每 tick 重繪讓按鈕點不到），平常只更新倒數文字
@@ -3198,6 +3218,12 @@ body { padding-top: var(--resbar-h, 0px); }
     function updateUpgradeListLive(listEl, v, stats) {
         if (!listEl) return;
         listEl.querySelectorAll('[data-up-type]').forEach(r => updateUpgradeDetailLive(r, v, stats));
+        listEl.querySelectorAll('[data-fp-prod]').forEach(el => setTextIfChanged(el, '+' + fmtNum(stats.prod[el.dataset.fpProd]) + '/時'));
+        const netEl = listEl.querySelector('[data-fp-net]');
+        if (netEl) {
+            setTextIfChanged(netEl, (stats.netCrop >= 0 ? '+' : '-') + fmtNum(Math.abs(stats.netCrop)) + '/時（耗 ' + fmtNum(stats.upkeep) + '）');
+            netEl.parentNode.classList.toggle('is-neg', stats.netCrop < 0);
+        }
         listEl.querySelectorAll('[data-train-u]').forEach(btn => {
             const u = TRIBES[gameState.tribe].units.find(x => x.id === btn.dataset.trainU);
             if (!u) return;
@@ -3259,7 +3285,7 @@ body { padding-top: var(--resbar-h, 0px); }
 
     function fieldDetailHtml(v, stats, f, idx, job) {
         const title = `<div class="up-line" style="font-size:14px"><b>${FIELD_TYPES[f.type].icon} ${FIELD_TYPES[f.type].name} #${idx + 1} Lv ${f.lv}</b></div>`;
-        if (job) return title + cancelJobHtml(job);
+        if (job) return title + `<div class="up-prog" data-row-uid="${job.uid}"><span class="up-bar"><i></i></span><span class="up-eta"></span></div>` + cancelJobHtml(job);
         const cur = fieldProdOf(stats, f, f.lv);
         if (f.lv >= 15) return title + `<div class="up-line">已達最高等級 Lv.15，目前產量 <b>${fmtNum(cur)}</b> / 小時</div>`;
         const upg = getUpgradeCostAndTime('field', idx, v);
@@ -3272,33 +3298,41 @@ body { padding-top: var(--resbar-h, 0px); }
         </div>`;
     }
 
-    // 資源田格子：三欄六排。順序依木／磚／鐵／糧、同類依等級由高到低（照先橫後直填入）；
-    // 被展開的那一格，詳情區插在它所在那一排最後一格之後、整排展開（展開狀態以田的索引為準，換位置也跟著走）
+    // 資源田格子（左半）：三欄六排，只有圖示與等級。順序依木／磚／鐵／糧、同類依等級由高到低（先橫後直）；
+    // 選中狀態以田的索引（openFieldIdx）為準，升級後換位置也跟著走
     function buildFieldsListHtml(v, stats) {
-        const cells = [];
-        ['wood', 'clay', 'iron', 'crop'].forEach(type => {
-            v.fields.map((f, idx) => ({ f, idx })).filter(x => x.f.type === type)
-                .sort((a, b) => b.f.lv - a.f.lv || a.idx - b.idx).forEach(x => cells.push(x));
-        });
         let html = '';
-        cells.forEach(({ f, idx }, pos) => {
-            const meta = FIELD_TYPES[f.type];
-            const job = v.buildQueue.find(q => q.targetType === 'field' && q.indexOrId === idx);
-            const reserved = isReservedTarget(v, 'field', idx);
-            const sel = openFieldIdx === idx;
-            html += `<button type="button" class="fg-cell t-${f.type}${sel ? ' is-sel' : ''}${reserved ? ' has-rsv' : ''}" data-fg-idx="${idx}" data-up-item="f${idx}" onclick="toggleFieldRow(${idx})" aria-expanded="${sel ? 'true' : 'false'}" aria-label="${meta.name} #${idx + 1}">
-                <span class="fg-ico">${meta.icon}</span><span class="fg-lv">Lv ${f.lv}</span>
-                <span class="fg-prod">+${fmtNum(fieldProdOf(stats, f, f.lv))}/時</span>
-                ${reserved ? '<span class="fg-rsv">預約</span>' : ''}<span class="fg-dot"></span>
-                ${job ? `<span class="up-prog" data-row-uid="${job.uid}"><span class="up-bar"><i></i></span><span class="up-eta"></span></span>` : ''}
-            </button>`;
-            const rowEnd = pos % 3 === 2 || pos === cells.length - 1;
-            if (rowEnd) {
-                const openCell = cells.slice(pos - (pos % 3), pos + 1).find(c => c.idx === openFieldIdx);
-                if (openCell) html += `<div class="fg-detail up-detail" style="--fg-col:${cells.indexOf(openCell) % 3}">${fieldDetailHtml(v, stats, openCell.f, openCell.idx, v.buildQueue.find(q => q.targetType === 'field' && q.indexOrId === openCell.idx))}</div>`;
-            }
+        ['wood', 'clay', 'iron', 'crop'].forEach(type => {
+            const meta = FIELD_TYPES[type];
+            v.fields.map((f, idx) => ({ f, idx })).filter(x => x.f.type === type)
+                .sort((a, b) => b.f.lv - a.f.lv || a.idx - b.idx).forEach(({ f, idx }) => {
+                    const job = v.buildQueue.find(q => q.targetType === 'field' && q.indexOrId === idx);
+                    const reserved = isReservedTarget(v, 'field', idx);
+                    const sel = openFieldIdx === idx;
+                    html += `<button type="button" class="fg-cell t-${f.type}${sel ? ' is-sel' : ''}" data-fg-idx="${idx}" data-up-item="f${idx}" onclick="toggleFieldRow(${idx})" aria-pressed="${sel ? 'true' : 'false'}" aria-label="${meta.name} #${idx + 1} Lv ${f.lv}">
+                        <span class="fg-ico">${meta.icon}</span><span class="fg-lv">Lv ${f.lv}</span>
+                        ${reserved ? '<span class="fg-rsv">📌</span>' : ''}<span class="fg-dot"></span>
+                        ${job ? `<span class="up-prog" data-row-uid="${job.uid}"><span class="up-bar"><i></i></span><span class="up-eta"></span></span>` : ''}
+                    </button>`;
+                });
         });
         return html;
+    }
+
+    // 右半面板：沒選田＝每小時產出總覽（數字由 updateUpgradeListLive 每 tick 更新）；選了田＝該田的升級詳情
+    function buildFieldsPanelHtml(v, stats) {
+        const f = openFieldIdx !== null ? v.fields[openFieldIdx] : null;
+        if (f) {
+            const job = v.buildQueue.find(q => q.targetType === 'field' && q.indexOrId === openFieldIdx);
+            return fieldDetailHtml(v, stats, f, openFieldIdx, job);
+        }
+        return `<div class="up-line" style="font-size:14px"><b>📊 每小時產出</b></div>
+            <div class="fp-row"><span>🪵 木材</span><b data-fp-prod="wood"></b></div>
+            <div class="fp-row"><span>🧱 磚塊</span><b data-fp-prod="clay"></b></div>
+            <div class="fp-row"><span>⛓️ 鋼鐵</span><b data-fp-prod="iron"></b></div>
+            <div class="fp-row"><span>🌾 穀物</span><b data-fp-prod="crop"></b></div>
+            <div class="fp-row is-sub" data-fp-netrow><span>扣駐軍耗糧後</span><b data-fp-net></b></div>
+            <div class="fp-tip">點左邊的田查看升級需求</div>`;
     }
 
     // --- 渲染視圖 A：資源田清單 ---
@@ -3315,10 +3349,11 @@ body { padding-top: var(--resbar-h, 0px); }
         if (stats.oasisBonus.crop > 0) oTexts.push(`🌾+${Math.round(stats.oasisBonus.crop * 100)}%`);
         document.getElementById('ui-oasis-bonus').textContent = `周邊綠洲加成: ${oTexts.length ? oTexts.join(' ') : '無 (清剿周邊綠洲野獸可獲得)'}`;
 
-        const sum = document.getElementById('fields-summary');
-        if (sum) setTextIfChanged(sum, `木 +${fmtNum(stats.prod.wood)}　磚 +${fmtNum(stats.prod.clay)}　鐵 +${fmtNum(stats.prod.iron)}　糧 +${fmtNum(stats.prod.crop)} /時`);
+        const panel = document.getElementById('fields-panel');
         if (!isListBusy(list)) setHtmlIfChanged(list, buildFieldsListHtml(v, stats));
+        if (!isListBusy(panel)) setHtmlIfChanged(panel, buildFieldsPanelHtml(v, stats));
         updateUpgradeListLive(list, v, stats);
+        updateUpgradeListLive(panel, v, stats);
 
         // 渲染本村駐軍總覽
         const troopsDiv = document.getElementById('home-troops-list');
@@ -3348,10 +3383,9 @@ body { padding-top: var(--resbar-h, 0px); }
 
     function toggleFieldRow(idx) {
         playSound('click');
-        blurIfFormControl('fields-list');
+        blurIfFormControl('fields-panel');
         openFieldIdx = openFieldIdx === idx ? null : idx;
         renderFieldsView();
-        if (openFieldIdx !== null) scrollOpenDetailIntoView('fields-list');
     }
 
     // --- 渲染視圖 B：村莊中心建築清單 ---
@@ -3463,6 +3497,12 @@ body { padding-top: var(--resbar-h, 0px); }
         openBuildingId = openBuildingId === bId ? null : bId;
         renderVillageBuildingsView();
         if (openBuildingId !== null) scrollOpenDetailIntoView('buildings-list');
+    }
+
+    // 顧問「前往」用：把資源田區塊（格子＋面板）捲到畫面上方（scroll-margin 已避開頂部固定區塊）
+    function scrollFieldsBlockIntoView() {
+        const el = document.querySelector('#view-fields .fp-wrap');
+        if (el) el.scrollIntoView({ block: 'start' });
     }
 
     // 顧問「前往」用：把某一列捲到畫面上方（scroll-margin 已避開置頂資源列）
