@@ -85,13 +85,6 @@
         ::-webkit-scrollbar-thumb { background: #8c6239; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #b58938; }
 
-        @keyframes pulse-border {
-            0%, 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7); }
-            50% { box-shadow: 0 0 0 6px rgba(220, 38, 38, 0); }
-        }
-        .attack-alert {
-            animation: pulse-border 1.5s infinite;
-        }
     </style>
 <style id="tailwind-static">
 /* Tailwind CSS v3.4.17 CLI 一次性產出（取代執行期 Tailwind CDN，讓遊戲能離線玩）。新增 class 要手寫 CSS 或重跑一次 CLI */
@@ -179,7 +172,6 @@ button, a, select, input, label, [onclick], .nav-tab {
 @media (max-width: 639.98px), (pointer: coarse) {
     #world-map-scroll {
         overflow: auto;
-        max-height: 60vh; max-height: 60dvh;
         overscroll-behavior: contain;
         -webkit-overflow-scrolling: touch;
     }
@@ -397,6 +389,88 @@ body { padding-top: var(--topbar-h, 0px); }
 .up-train-btns { display: flex; gap: 6px; }
 .up-train-btns button { flex: 1 1 0; min-height: 44px; border-radius: 6px; font-weight: 800; font-size: 13px; }
 .up-select { width: 100%; min-height: 44px; padding: 0 8px; border-radius: 6px; border: 1px solid #f87171; background: #fff; font-weight: 700; color: #292524; }
+/* ==================== 第三排資訊列、精簡顧問、世界地圖一個畫面 ==================== */
+#info-bar {
+    position: relative; display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    height: 28px; padding: 0 8px; background: #3b2818; border-top: 1px solid #5c4028; border-bottom: 2px solid #8c6239;
+    font-size: 12px; color: #fde68a; white-space: nowrap; overflow: visible;
+}
+.ib-stats { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.ib-stats b { font-weight: 800; color: #fffbeb; }
+/* 來襲警報 chip：沒有來襲時完全不顯示；出現時只擠壓寬度，不改變第三排高度 */
+.ib-alert { display: none; }
+#info-bar button.ib-alert.is-on:not(#_) {
+    display: inline-flex; align-items: center; gap: 3px; flex-shrink: 0; min-width: 0; min-height: 0; height: 24px; padding: 0 7px;
+    border-radius: 6px; background: #b91c1c; border: 1px solid #fca5a5; color: #fff; font-size: 12px; font-weight: 800; line-height: 1;
+    animation: ib-pulse 1.5s infinite;
+}
+#ac-time { font-family: ui-monospace, Menlo, Consolas, monospace; }
+@keyframes ib-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.8); }
+    50% { box-shadow: 0 0 0 5px rgba(248, 113, 113, 0); }
+}
+@media (prefers-reduced-motion: reduce) { #info-bar button.ib-alert.is-on:not(#_) { animation: none; } }
+#info-bar button.ib-chip:not(#_) {
+    display: inline-flex; align-items: center; gap: 4px; min-width: 0; min-height: 0; height: 24px; max-width: 62%; flex: 0 1 auto; padding: 0 8px;
+    border-radius: 6px; background: #92400e; border: 1px solid #fbbf24; color: #fff; font-size: 12px; font-weight: 700; line-height: 1;
+}
+#info-bar button.ib-chip.is-idle:not(#_) { background: transparent; border-color: #78716c; color: #a8a29e; font-weight: 500; }
+.qc-name { min-width: 0; flex: 0 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.qc-time { font-family: ui-monospace, Menlo, Consolas, monospace; flex-shrink: 0; }
+.qc-more { flex-shrink: 0; color: #fde68a; }
+#queue-menu.open { min-width: 250px; max-width: calc(100vw - 16px); gap: 8px; color: #fde68a; font-size: 12px; align-items: stretch; }
+.qm-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.qm-name { flex: 1 1 100%; font-weight: 800; }
+.qm-t { flex: 1 1 auto; font-family: ui-monospace, Menlo, Consolas, monospace; color: #fca5a5; }
+.qm-row button { min-height: 44px; padding: 0 12px; border-radius: 6px; border: 1px solid #ef4444; background: #450a0a; color: #fecaca; font-weight: 700; font-size: 12px; }
+.qm-empty, .qm-note { color: #a8a29e; font-size: 11px; }
+
+/* 村莊顧問：固定高度一列，說明用浮層，不推動版面 */
+.adv-card { position: relative; height: 52px; margin-bottom: 8px; }
+.adv-row { display: flex; align-items: center; gap: 6px; height: 100%; padding: 0 6px; }
+.adv-icon { font-size: 18px; line-height: 1; flex-shrink: 0; }
+.adv-label { font-size: 11px; font-weight: 800; color: #92400e; flex-shrink: 0; }
+.adv-title { flex: 1 1 0; min-width: 0; font-size: 13px; font-weight: 700; color: #3b2818; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.adv-btn { flex-shrink: 0; padding: 0 10px; min-width: 40px; min-height: 40px; border-radius: 8px; }
+.adv-toggle { background: #fef3c7; border: 1px solid #b45309; color: #78350f; }
+.adv-pop {
+    display: none; position: absolute; left: -2px; right: -2px; top: calc(100% + 4px); z-index: 30;
+    padding: 10px; border-radius: 8px; background: #fffbeb; border: 2px solid #d97706; box-shadow: 0 8px 20px rgba(0,0,0,.35);
+    font-size: 12px; line-height: 1.5; color: #44403c;
+}
+.adv-card.is-open .adv-pop { display: block; }
+
+/* 世界地圖：手機上＝工具列＋地圖（約 55%）＋詳情（約 45%），整塊剛好填滿固定列與底部導覽之間 */
+.mp-wrap {
+    display: flex; flex-direction: column; gap: 6px; min-height: 480px;
+    height: calc(100vh - var(--topbar-h, 0px) - var(--nav-total, 0px) - 56px);
+    height: calc(100dvh - var(--topbar-h, 0px) - var(--nav-total, 0px) - 56px);
+}
+.mp-left { flex: 55 1 0; min-height: 270px; display: flex; flex-direction: column; gap: 4px; }
+.mp-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 32px; flex-shrink: 0; }
+.mp-coord { font-size: 12px; font-weight: 800; color: #3b2818; white-space: nowrap; }
+.mp-coord b { color: #92400e; }
+.mp-home { min-height: 30px; padding: 0 10px; border-radius: 8px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+#view-map .mp-home:not(#_) { min-height: 32px; min-width: 0; }
+.mp-scroll {
+    flex: 1 1 0; min-height: 240px; overflow: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
+    background: #3d5229; padding: 6px; border-radius: 12px; border: 4px solid #5c4028; box-shadow: inset 0 2px 4px rgba(0,0,0,.2);
+}
+.mp-detail {
+    flex: 45 1 0; min-height: 200px; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
+    padding: 10px; background: #fffaf0; border: 2px solid #8c6239; border-radius: 12px;
+}
+.mp-detail .max-h-\[210px\] { max-height: none; overflow: visible; }
+.mp-legend { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 8px; font-size: 12px; color: #292524; }
+.mp-legend span { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.mp-legend i { width: 14px; height: 14px; border-radius: 3px; border: 1px solid rgba(0,0,0,.35); flex-shrink: 0; }
+#world-map-grid button.ring-2 { outline: 3px solid #facc15; outline-offset: -1px; }
+@media (min-width: 640px) {
+    .mp-wrap { flex-direction: row; height: 460px; min-height: 0; }
+    .mp-left { flex: 3 1 0; min-height: 0; }
+    .mp-scroll { min-height: 0; }
+    .mp-detail { flex: 2 1 0; min-height: 0; }
+}
 </style>
 </head>
 <body class="min-h-screen flex flex-col">
@@ -549,6 +623,17 @@ body { padding-top: var(--topbar-h, 0px); }
             </div>
         </div>
     </div>
+    <!-- 第三排：人口／城牆防禦／山洞保護 + 建造佇列 chip（單行、固定高度；佇列完整內容在浮層） -->
+    <div id="info-bar">
+        <div class="ib-stats">
+            <span id="ib-pop" title="村莊人口" aria-label="村莊人口">👥 <b>0</b></span>
+            <span id="ib-wall" title="城牆防禦" aria-label="城牆防禦">🛡 <b>+0%</b></span>
+            <span id="ib-cranny" title="山洞保護" aria-label="山洞保護">🕳 <b>0</b></span>
+        </div>
+        <button type="button" id="alert-chip" onclick="switchTab('reports')" class="ib-alert">🚨 <span id="ac-time"></span><span id="ac-more"></span></button>
+        <button type="button" id="queue-chip" data-pop="queue-menu" onclick="toggleHdrPop('queue-menu', event)" aria-haspopup="menu" aria-expanded="false" aria-label="建造佇列" class="ib-chip is-idle">🔨 <span id="qc-name" class="qc-name">無工程</span><span id="qc-time" class="qc-time"></span><span id="qc-more" class="qc-more"></span></button>
+        <div id="queue-menu" class="hdr-pop" role="menu"></div>
+    </div>
     </div>
 
     <!-- ==================== 主導航分頁 (四大視圖) ==================== -->
@@ -574,48 +659,16 @@ body { padding-top: var(--topbar-h, 0px); }
     <main id="app-main" class="max-w-5xl w-full mx-auto px-2 pb-8 flex-1">
         <div class="parchment-panel rounded-b-xl rounded-tr-xl p-3 sm:p-5 min-h-[540px]">
 
-            <!-- 村莊顧問：永遠顯示 1 條最值得做的建議（規則表見 ADVISOR_RULES），可收合 -->
-            <div id="advisor-card" class="mb-3 rounded-lg border-2 border-amber-600 bg-amber-50 shadow-sm">
-                <div class="flex items-start gap-2 p-2.5">
-                    <span id="advisor-icon" class="text-xl leading-none mt-1 shrink-0">🧭</span>
-                    <div class="flex-1 min-w-0">
-                        <div class="flex flex-wrap items-baseline gap-x-2">
-                            <span class="text-[11px] font-bold text-amber-800 shrink-0">村莊顧問</span>
-                            <span id="advisor-title" class="font-bold text-sm text-[#3b2818] min-w-0">讀取中…</span>
-                        </div>
-                        <div id="advisor-reason" class="text-xs text-stone-700 mt-1 leading-snug"></div>
-                    </div>
-                    <div class="flex flex-col sm:flex-row gap-1.5 shrink-0">
-                        <button id="advisor-go" type="button" onclick="advisorGo()" class="btn-green px-3 py-2 min-h-[40px] rounded-lg font-bold text-xs whitespace-nowrap">前往</button>
-                        <button id="advisor-toggle" type="button" onclick="toggleAdvisor()" aria-label="收合或展開顧問" class="px-3 py-2 min-h-[40px] min-w-[40px] rounded-lg border border-amber-700 bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold text-xs">▾</button>
-                    </div>
+            <!-- 村莊顧問：固定高度的精簡一列（只在資源田、村莊中心顯示）；說明以浮層顯示，不推動版面 -->
+            <div id="advisor-card" class="adv-card border-2 border-amber-600 bg-amber-50 rounded-lg shadow-sm">
+                <div class="adv-row">
+                    <span id="advisor-icon" class="adv-icon">🧭</span>
+                    <span class="adv-label">村莊顧問</span>
+                    <span id="advisor-title" class="adv-title">讀取中…</span>
+                    <button id="advisor-go" type="button" onclick="advisorGo()" class="btn-green adv-btn font-bold text-xs whitespace-nowrap">前往</button>
+                    <button id="advisor-toggle" type="button" onclick="toggleAdvisor()" aria-label="展開或收起顧問說明" aria-expanded="false" class="adv-btn adv-toggle font-bold text-xs">▾</button>
                 </div>
-            </div>
-
-            <!-- 建造佇列與即時狀態橫幅 (在資源田與村莊中心顯示) -->
-            <div id="construction-banner" class="mb-4 p-3 rounded-lg bg-[#e6d5b8] border border-[#a37846]">
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <div class="text-sm font-bold text-[#3b2818] flex flex-wrap items-center gap-2">
-                        <span>🔨 建造佇列：</span>
-                        <span id="build-queue-list" class="font-normal text-stone-800">目前無建築工程</span>
-                    </div>
-                    <div class="text-xs text-stone-700 flex flex-wrap items-center gap-x-3 gap-y-1">
-                        <span>👥 村莊人口：<b id="ui-pop">0</b></span>
-                        <span>🛡️ 城牆防禦：<b id="ui-wall-bonus">+0%</b></span>
-                        <span>🕳️ 山洞保護：<b id="ui-cranny-cap">0</b></span>
-                    </div>
-                </div>
-                <!-- 預約建造（只有 1 格，不預扣資源） -->
-                <div id="reserve-line" class="hidden mt-2 pt-2 border-t border-[#a37846]/50 text-xs"></div>
-            </div>
-
-            <!-- 來襲警報橫幅 -->
-            <div id="incoming-alert-banner" class="hidden mb-4 p-3 rounded-lg bg-red-900 text-white border-2 border-red-400 attack-alert flex items-center justify-between">
-                <div class="font-bold text-sm flex items-center gap-2">
-                    <span class="text-xl">🚨</span>
-                    <span id="incoming-alert-text">警告！有敵軍部隊正在逼近你的村莊！</span>
-                </div>
-                <button onclick="switchTab('reports')" class="px-3 py-1 bg-red-700 hover:bg-red-600 rounded text-xs font-bold border border-red-300">查看軍情</button>
+                <div id="advisor-reason" class="adv-pop"></div>
             </div>
 
             <!-- ==================== 視圖 A：資源田（左：三欄六排格子，右：固定詳情面板） ==================== -->
@@ -664,48 +717,36 @@ body { padding-top: var(--topbar-h, 0px); }
                 </div>
             </section>
 
-            <!-- ==================== 視圖 C：世界地圖 (17x17) ==================== -->
+            <!-- ==================== 視圖 C：世界地圖（手機一個畫面看完：上＝地圖，下＝詳情；兩塊高度固定） ==================== -->
             <section id="view-map" class="view-section hidden">
-                <div class="flex flex-col lg:flex-row gap-4">
-                    <!-- 地圖網格區 -->
-                    <div class="w-full lg:w-3/5">
-                        <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
-                            <h2 class="font-serif-tc font-black text-lg text-[#3b2818]">🗺️ 世界地圖 (17×17 座標系)</h2>
-                            <div class="text-xs font-bold text-stone-700">
-                                游標座標：<span id="map-hover-coord" class="text-amber-900">(0, 0)</span>
-                            </div>
+                <div class="mp-wrap">
+                    <div class="mp-left">
+                        <div class="mp-bar">
+                            <span class="mp-coord">📍 選取 <b id="map-hover-coord">—</b></span>
+                            <button type="button" onclick="mapGoHome()" class="btn-medieval mp-home">回我的村莊</button>
                         </div>
-
                         <!-- 17x17 網格容器 -->
-                        <div id="world-map-scroll" class="bg-[#3d5229] p-1.5 rounded-xl border-4 border-[#5c4028] shadow-inner overflow-x-auto">
-                            <div id="world-map-grid" class="grid gap-[2px] mx-auto" style="grid-template-columns: repeat(17, minmax(22px, 1fr)); min-width: 400px;">
+                        <div id="world-map-scroll" class="mp-scroll">
+                            <div id="world-map-grid" onmouseleave="syncMapCoord()" class="grid gap-[2px] mx-auto" style="grid-template-columns: repeat(17, minmax(22px, 1fr)); min-width: 400px;">
                                 <!-- JS 動態生成 289 格 -->
                             </div>
                         </div>
-
-                        <!-- 圖例說明 -->
-                        <div class="mt-2.5 flex flex-wrap gap-x-3 gap-y-1 text-[11px] font-medium text-stone-800 bg-[#e8d8bc] p-2 rounded-lg border border-[#b59469]">
-                            <span>🚩 <b>我方村莊</b></span>
-                            <span>🐑 <b>可掠奪的村莊</b>(資源多/無兵)</span>
-                            <span>🐺 <b>掠奪狼群</b>(會主動來搶)</span>
-                            <span>🛡️ <b>重兵防守</b>(高城牆重兵)</span>
-                            <span>👑 <b>中央奇觀(0,0)</b></span>
-                            <span>🌴 <b>綠洲</b>(+25%產量)</span>
-                            <span class="text-amber-900 font-bold">🌾 豐糧地 / 🔥 極豐糧地（農田特別多）</span>
-                        </div>
                     </div>
 
-                    <!-- 右側：選中地塊情報與出兵指揮面板 -->
-                    <div class="w-full lg:w-2/5">
-                        <div id="map-tile-detail" class="bg-[#fffaf0] border-2 border-[#8c6239] rounded-xl p-4 shadow min-h-[420px]">
-                            <h3 class="font-bold text-base text-[#3b2818] border-b border-[#d4bfa0] pb-2 mb-2">點擊地圖上的任意格子</h3>
-                            <p class="text-xs text-stone-600 mb-3">你可以點擊空地尋找農田特別多的「豐糧地」建立分村，或是點擊周邊可掠奪的村莊發動掠奪與投石車轟炸！</p>
-                            <div class="space-y-2 text-xs bg-stone-100 p-3 rounded-lg border border-stone-300">
-                                <div class="font-bold text-stone-800">⚔️ 出征模式差異：</div>
-                                <div>• <b>偵察</b>：派出偵察騎兵探查敵軍數量與資源存量。</div>
-                                <div>• <b>掠奪 (Raid)</b>：快速搶劫資源，雙方不會死戰到底，<b>不會觸發投石車拆建築</b>。</div>
-                                <div>• <b>正規攻擊 (Attack)</b>：死戰到底！衝撞車會撞毀城牆，<b>投石車會將指定建築等級砸降</b>！</div>
-                            </div>
+                    <!-- 選中地塊情報與出兵指揮面板（未選取時顯示提示與圖例） -->
+                    <div id="map-tile-detail" class="mp-detail">
+                        <h3 class="font-bold text-base text-[#3b2818] border-b border-[#d4bfa0] pb-2 mb-2">點擊地圖上的任意格子</h3>
+                        <p class="text-xs text-stone-600 mb-2">點空地可建立分村，點周邊可掠奪的村莊可發動掠奪與投石車轟炸。</p>
+                        <div class="mp-legend">
+                            <span><i style="background:#1d4ed8"></i>🚩 我方村莊</span>
+                            <span><i style="background:#fde68a"></i>🐑 可掠奪的村莊</span>
+                            <span><i style="background:#991b1b"></i>🐺 掠奪狼群</span>
+                            <span><i style="background:#475569"></i>🛡️ 重兵防守</span>
+                            <span><i style="background:#581c87"></i>👑 世界奇觀</span>
+                            <span><i style="background:#0f766e"></i>🌴 綠洲（+25%）</span>
+                            <span><i style="background:rgba(245,158,11,.8)"></i>🔥 極豐糧地</span>
+                            <span><i style="background:rgba(132,204,22,.7)"></i>🌾 豐糧地</span>
+                            <span><i style="background:#6b8e45"></i>無主空地</span>
                         </div>
                     </div>
                 </div>
@@ -1391,21 +1432,30 @@ body { padding-top: var(--topbar-h, 0px); }
         setTextIfChanged(document.getElementById('advisor-icon'), s.icon);
         setTextIfChanged(document.getElementById('advisor-title'), s.title);
         setTextIfChanged(document.getElementById('advisor-reason'), s.reason);
-        const collapsed = !!gameState.advisorCollapsed;
-        document.getElementById('advisor-reason').classList.toggle('hidden', collapsed);
-        document.getElementById('advisor-go').classList.toggle('hidden', collapsed || !s.go);
-        setTextIfChanged(document.getElementById('advisor-toggle'), collapsed ? '▸' : '▾');
+        document.getElementById('advisor-go').classList.toggle('hidden', !s.go);
         document.getElementById('advisor-card').classList.toggle('border-red-600', s.id === 'incoming');
         document.getElementById('advisor-card').classList.toggle('border-amber-600', s.id !== 'incoming');
     }
 
+    // 顧問說明浮層：只在記憶體記狀態；展開時浮在內容上方、不推動版面，再按一次或點別處收起
+    function setAdvisorOpen(open) {
+        const card = document.getElementById('advisor-card'), btn = document.getElementById('advisor-toggle');
+        if (!card) return;
+        card.classList.toggle('is-open', open);
+        if (btn) {
+            btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+            setTextIfChanged(btn, open ? '▴' : '▾');
+        }
+    }
     function toggleAdvisor() {
         if (!gameState) return;
-        gameState.advisorCollapsed = !gameState.advisorCollapsed;
         playSound('click');
-        updateAdvisor(true);
-        saveGameToStorage(true);
+        setAdvisorOpen(!document.getElementById('advisor-card').classList.contains('is-open'));
     }
+    document.addEventListener('click', e => {
+        if (e.target.closest && e.target.closest('#advisor-card')) return;
+        setAdvisorOpen(false);
+    });
 
     // 「前往」：切到對應頁籤並選中那塊田／那棟建築／地圖目標
     function advisorGo() {
@@ -1522,34 +1572,6 @@ body { padding-top: var(--topbar-h, 0px); }
         playSound('build');
         showToast(`📌 預約的「${r.name} ➔ Lv.${r.targetLv}」已開工${gameState.villages.length > 1 ? `（${v.name}）` : ''}`, 'good', { important: true, log: true });
         return true;
-    }
-
-    // 佇列橫幅下方的預約列：預約內容變動才重建，平常只更新「約 N 後可開工」文字
-    let reserveSig = '';
-    function updateReserveLine() {
-        const line = document.getElementById('reserve-line');
-        if (!line) return;
-        const r = gameState && gameState.reservation;
-        if (!r) {
-            if (reserveSig !== '') { reserveSig = ''; line.classList.add('hidden'); line.innerHTML = ''; }
-            return;
-        }
-        const sig = [r.villageId, r.targetType, r.indexOrId, r.targetLv].join('|');
-        if (sig !== reserveSig) {
-            reserveSig = sig;
-            const rv = gameState.villages.find(x => x.id === r.villageId);
-            const where = rv && gameState.villages.length > 1 ? `${escHtml(rv.name)}：` : '';
-            line.innerHTML = `<div class="flex flex-wrap items-center gap-2">
-                <span class="inline-flex items-center gap-1.5 bg-sky-100 border border-sky-500 px-2 py-0.5 rounded font-bold text-sky-950">
-                    <span>📌 預約中：${where}${escHtml(r.name)} ➔ Lv.${r.targetLv}</span>
-                    <span class="font-normal">（<span data-rsv-eta class="font-mono text-sky-800"></span>）</span>
-                </span>
-                <button type="button" onclick="cancelReservation()" class="px-3 py-2 sm:px-2 sm:py-0.5 min-h-[40px] sm:min-h-0 rounded border border-red-500 bg-red-50 hover:bg-red-100 text-red-800 text-[11px] font-bold">取消預約</button>
-                <span class="text-[11px] text-stone-600">不預扣資源，條件滿足時自動開工</span>
-            </div>`;
-            line.classList.remove('hidden');
-        }
-        setTextIfChanged(line.querySelector('[data-rsv-eta]'), describeReserveEta(r));
     }
 
     // ----------------------------------------------------------------------------
@@ -2906,6 +2928,8 @@ body { padding-top: var(--topbar-h, 0px); }
 
         document.querySelectorAll('.view-section').forEach(sec => sec.classList.add('hidden'));
         document.getElementById('view-' + tab).classList.remove('hidden');
+        setAdvisorOpen(false);
+        document.getElementById('advisor-card').classList.toggle('hidden', tab === 'map' || tab === 'reports');
 
         // 點開戰報分頁時清除未讀紅點
         if (tab === 'reports' && gameState) {
@@ -2928,6 +2952,14 @@ body { padding-top: var(--topbar-h, 0px); }
         const sr = sc.getBoundingClientRect(), cr = cell.getBoundingClientRect();
         sc.scrollLeft += (cr.left + cr.width / 2) - (sr.left + sr.width / 2);
         sc.scrollTop += (cr.top + cr.height / 2) - (sr.top + sr.height / 2);
+    }
+
+    // 世界地圖工具列「回我的村莊」：選取目前村莊並把地圖視窗捲到它置中
+    function mapGoHome() {
+        if (!gameState) return;
+        const v = getActiveVillage();
+        selectMapTile(v.x, v.y);
+        centerMapOnVillage();
     }
 
     // 頂列彈出選單（「⋯」與速度共用）：開一個就關另一個；點外面、再點按鈕、選了、按 Esc 都會關
@@ -3024,23 +3056,22 @@ body { padding-top: var(--topbar-h, 0px); }
         updateResFullInfo(v, stats);
 
         // 建造佇列與村莊概況橫幅
-        document.getElementById('ui-pop').textContent = fmtNum(stats.pop);
-        document.getElementById('ui-wall-bonus').textContent = `+${Math.round(stats.wallBonus * 100)}%`;
-        document.getElementById('ui-cranny-cap').textContent = fmtNum(stats.crannyCap);
+        setTextIfChanged(document.querySelector('#ib-pop b'), fmtNum(stats.pop));
+        setTextIfChanged(document.querySelector('#ib-wall b'), `+${Math.round(stats.wallBonus * 100)}%`);
+        setTextIfChanged(document.querySelector('#ib-cranny b'), fmtNum(stats.crannyCap));
 
-        renderBuildQueue(v);
-        updateReserveLine();
+        updateQueueUi(v);
 
         // 來襲警報檢查
         const incoming = gameState.marches.filter(m => m.dir === 'ai_atk');
-        const alertBanner = document.getElementById('incoming-alert-banner');
+        const chip = document.getElementById('alert-chip');
+        chip.classList.toggle('is-on', incoming.length > 0);
         if (incoming.length > 0) {
-            alertBanner.classList.remove('hidden');
-            const first = incoming[0];
-            document.getElementById('incoming-alert-text').textContent =
-                `警報！來自 ${first.sourceName} 的敵軍正在襲擊 ${first.targetName}，還有 ${fmtDur(first.remainingSec)}抵達！`;
-        } else {
-            alertBanner.classList.add('hidden');
+            const first = incoming.reduce((a, b) => (b.remainingSec < a.remainingSec ? b : a));
+            setTextIfChanged(document.getElementById('ac-time'), fmtMMSS(first.remainingSec));
+            setTextIfChanged(document.getElementById('ac-more'), incoming.length > 1 ? `×${incoming.length}` : '');
+            const msg = `警報！來自 ${first.sourceName} 的敵軍正在襲擊 ${first.targetName}，還有 ${fmtDur(first.remainingSec)}抵達！` + (incoming.length > 1 ? `（共 ${incoming.length} 波來襲）` : '') + '點擊查看軍情';
+            if (chip.title !== msg) { chip.title = msg; chip.setAttribute('aria-label', msg); }
         }
 
         // 未讀戰報紅點
@@ -3116,30 +3147,44 @@ body { padding-top: var(--topbar-h, 0px); }
         window.addEventListener('orientationchange', syncTopBarOffset);
     }
 
-    // 建造佇列橫幅：佇列組成改變才重建（含取消鈕，避免每 tick 重繪讓按鈕點不到），平常只更新倒數文字
-    let buildQueueSig = null;
-    function renderBuildQueue(v) {
-        const qList = document.getElementById('build-queue-list');
-        const sig = v.id + '|' + v.buildQueue.map(q => q.uid).join(',');
-        if (sig !== buildQueueSig) {
-            buildQueueSig = sig;
-            if (v.buildQueue.length === 0) {
-                qList.innerHTML = '<span class="text-stone-500">目前無建築工程</span>';
-            } else {
-                qList.innerHTML = v.buildQueue.map(q =>
-                    `<span class="inline-flex items-center gap-1.5 bg-amber-100 border border-amber-500 px-2 py-0.5 rounded mr-2 mb-1 font-bold text-amber-950">
-                        <span>${q.name} ➔ Lv.${q.targetLv} (<span data-q-time="${q.uid}" class="font-mono text-red-700"></span>)</span>
-                        <button type="button" onclick="cancelBuild('${q.uid}')" data-tip="取消並全額退還資源（超過倉庫上限的部分會損失）" class="px-3 py-2 sm:px-1.5 sm:py-0 min-h-[40px] sm:min-h-0 rounded border border-red-500 bg-red-50 hover:bg-red-100 text-red-800 text-[11px] font-bold">取消</button>
-                    </span>`
-                ).join('');
+    // 倒數用 mm:ss（滿 1 小時用 h:mm:ss）
+    function fmtMMSS(sec) {
+        const t = Math.max(0, Math.ceil(Number(sec) || 0));
+        const h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), r = t % 60;
+        const mm = String(m).padStart(h ? 2 : 1, '0'), rr = String(r).padStart(2, '0');
+        return h ? `${h}:${mm}:${rr}` : `${mm}:${rr}`;
+    }
+
+    // 第三排的建造佇列 chip＋完整佇列浮層：浮層內容（佇列組成、預約）改變才重建（含取消鈕），平常只更新倒數文字
+    function updateQueueUi(v) {
+        const menu = document.getElementById('queue-menu');
+        const r = gameState.reservation;
+        let html = '';
+        if (v.buildQueue.length === 0 && !r) {
+            html = '<div class="qm-empty">目前無建築工程</div>';
+        } else {
+            html = v.buildQueue.map(q =>
+                `<div class="qm-row"><span class="qm-name">🔨 ${escHtml(q.name)} ➔ Lv.${q.targetLv}</span><span class="qm-t" data-q-time="${q.uid}"></span>
+                    <button type="button" onclick="cancelBuild('${q.uid}')" title="取消並全額退還資源（超過倉庫上限的部分會損失）">取消</button></div>`
+            ).join('');
+            if (r) {
+                const rv = gameState.villages.find(x => x.id === r.villageId);
+                const where = rv && gameState.villages.length > 1 ? `${escHtml(rv.name)}：` : '';
+                html += `<div class="qm-row"><span class="qm-name">📌 預約中：${where}${escHtml(r.name)} ➔ Lv.${r.targetLv}</span><span class="qm-t" data-rsv-eta></span>
+                    <button type="button" onclick="cancelReservation()">取消預約</button></div>
+                    <div class="qm-note">不預扣資源，條件滿足時自動開工</div>`;
             }
         }
-        v.buildQueue.forEach(q => {
-            const el = qList.querySelector(`[data-q-time="${q.uid}"]`);
-            if (!el) return;
-            const t = fmtDur(q.remainingSec);
-            if (el.textContent !== t) el.textContent = t;
-        });
+        setHtmlIfChanged(menu, html);
+        v.buildQueue.forEach(q => setTextIfChanged(menu.querySelector(`[data-q-time="${q.uid}"]`), `剩餘 ${fmtDur(q.remainingSec)}`));
+        if (r) setTextIfChanged(menu.querySelector('[data-rsv-eta]'), describeReserveEta(r));
+
+        const first = v.buildQueue[0];
+        const extra = Math.max(0, v.buildQueue.length - 1) + (r ? 1 : 0);
+        setTextIfChanged(document.getElementById('qc-name'), first ? `${first.name} Lv.${first.targetLv}` : (r ? '已預約' : '無工程'));
+        setTextIfChanged(document.getElementById('qc-time'), first ? fmtMMSS(first.remainingSec) : '');
+        setTextIfChanged(document.getElementById('qc-more'), (first && extra) ? `+${extra}` : '');
+        document.getElementById('queue-chip').classList.toggle('is-idle', !first);
     }
 
     // 簽章比對：要輸出的 HTML 與上次相同就不重設 innerHTML（避免打斷下拉選單、捲動與輸入）
@@ -3567,6 +3612,7 @@ body { padding-top: var(--topbar-h, 0px); }
             }
         }
         // 簽章相同（格子內容與選取狀態都沒變）就不重建 289 格，也不必還原捲動
+        syncMapCoord(); // 進入地圖分頁、顧問前往、讀檔等自動選取時也同步
         if (setHtmlIfChanged(grid, html) && mapSc && (keepL || keepT)) { mapSc.scrollLeft = keepL; mapSc.scrollTop = keepT; }
 
         if (selectedMapCoord) {
@@ -3594,11 +3640,15 @@ body { padding-top: var(--topbar-h, 0px); }
         return at + '無主荒野：' + f + '，可建立分村';
     }
 
+    // 工具列座標：以「目前選取格」為準（觸控沒有 hover）；尚未選取顯示「—」。桌機 hover 時暫時顯示游標座標，移開後回到選取格
+    function syncMapCoord() {
+        const c = selectedMapCoord;
+        setTextIfChanged(document.getElementById('map-hover-coord'), c ? `(${c.x}, ${c.y})` : '—');
+    }
+
     function selectMapTile(x, y) {
         playSound('click');
         selectedMapCoord = { x, y };
-        const coordEl = document.getElementById('map-hover-coord'); // 觸控沒有 mouseenter，點選時同步座標
-        if (coordEl) coordEl.textContent = `(${x}, ${y})`;
         renderWorldMapView();
     }
 
