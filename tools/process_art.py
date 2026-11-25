@@ -522,6 +522,17 @@ BZ_SHEETS = {
     6: 'face_freeze face_cold face_ok face_warm ui_map ui_goal ui_rule ui_hint leak_warming leak_stable leak_leaking leak_danger end_mansion end_house end_ruin ui_star_empty',
 }
 BZ_SHEETS = {n: v.split() for n, v in BZ_SHEETS.items()}
+# 場景物件圖表 sheet-7～8：4x4、純白底；成品 256x256、四周留 8px。id 規則與版面見 美術需求_ChatGPT出圖.md 第 19 節
+BZ_SCENE_SIZE = 256
+BZ_SCENE_PAD = 8
+BZ_SCENE_SHEETS = {
+    7: 'sc_roof_0 sc_roof_1 sc_roof_2 sc_window_0 sc_window_i sc_window_1 sc_window_2 sc_wall_0 sc_wall_1 sc_wall_2 sc_door_0 sc_door_1 sc_door_2 sc_fireplace_0 sc_fireplace_1 sc_fireplace_2',
+    8: 'sc_floor_0 sc_floor_1 sc_floor_2 sc_bed_0 sc_bed_1 sc_bed_2 sc_feast_0 sc_feast_1 sc_feast_2 sc_family_cold sc_family_ok sc_family_warm sc_chandelier sc_garland sc_snowpile sc_icicles',
+}
+BZ_SCENE_SHEETS = {n: v.split() for n, v in BZ_SCENE_SHEETS.items()}
+# 房間底圖：原圖（整張、不去背）→ 成品 id；成品 768x768，置中 cover 裁切，webp quality 80
+BZ_ROOM_SIZE = 768
+BZ_ROOMS = {'room-cold': 'sc_room_cold', 'room-warm': 'sc_room_warm'}
 
 
 def remove_white(im, thr=246):
@@ -544,37 +555,70 @@ def remove_white(im, thr=246):
     return out
 
 
-def blizzard_icon(im):
-    """切下來的 RGBA 物件 → 128x128 透明畫布，等比縮放置中、留 4px 邊。"""
-    fitted = fit_long_edge(im, BZ_SIZE - 8, margin=0)
-    out = Image.new('RGBA', (BZ_SIZE, BZ_SIZE), (0, 0, 0, 0))
-    out.paste(fitted, ((BZ_SIZE - fitted.width) // 2, (BZ_SIZE - fitted.height) // 2), fitted)
+def blizzard_icon(im, size=BZ_SIZE, pad=4):
+    """切下來的 RGBA 物件 → size x size 透明畫布，等比縮放置中、四周留 pad px 邊。"""
+    fitted = fit_long_edge(im, size - pad * 2, margin=0)
+    out = Image.new('RGBA', (size, size), (0, 0, 0, 0))
+    out.paste(fitted, ((size - fitted.width) // 2, (size - fitted.height) // 2), fitted)
     return out
 
 
+def _bz_sheet(src_dir, out_dir, n, ids, size, pad):
+    """處理一張暴雪求生 4x4 圖表（去白底、切格、輸出 webp），回傳成功輸出的 id。原圖缺就印一行略過。"""
+    done = []
+    p = find_src(src_dir, f'sheet-{n}')
+    if not p:
+        print(f'  [略過] 缺 sheet-{n}（找不到原圖）')
+        return done
+    print(f'  {p.name} -> {len(ids)} 格')
+    try:
+        sheet = remove_white(Image.open(p))
+        for oid, cell in slice_sheet(sheet, ids, f'blizzard sheet-{n}').items():
+            try:
+                res = blizzard_icon(cell, size, pad)
+                out_dir.mkdir(parents=True, exist_ok=True)
+                dst = out_dir / f'{oid}.webp'
+                res.save(dst, 'WEBP', quality=90, method=6)
+                print(f'    [OK] {oid}.webp  {dst.stat().st_size // 1024} KB')
+                done.append(oid)
+            except Exception as e:
+                print(f'    [失敗] {oid}：{e}')
+    except Exception as e:
+        print(f'    [失敗] {p.name}：{e}')
+    return done
+
+
+def process_blizzard_rooms(src_dir, out_dir):
+    """房間底圖（整張、不去背）→ 768x768 webp，置中 cover 裁切。原圖缺就印一行略過，回傳成功輸出的 id。"""
+    done = []
+    for name, oid in BZ_ROOMS.items():
+        p = find_src(src_dir, name)
+        if not p:
+            print(f'  [略過] 缺 {name}（找不到原圖）')
+            continue
+        print(f'  {p.name} -> {oid}.webp')
+        try:
+            im = Image.open(p).convert('RGB')
+            res = cover_fit(im, (BZ_ROOM_SIZE, BZ_ROOM_SIZE), 0.5)
+            out_dir.mkdir(parents=True, exist_ok=True)
+            dst = out_dir / f'{oid}.webp'
+            res.save(dst, 'WEBP', quality=80, method=6)
+            print(f'    [OK] {oid}.webp  {dst.stat().st_size // 1024} KB')
+            done.append(oid)
+        except Exception as e:
+            print(f'    [失敗] {p.name}：{e}')
+    return done
+
+
 def process_blizzard(src_dir, dst_root):
-    """處理暴雪求生圖表（有幾張做幾張、缺的略過），回傳成功輸出的 id 清單。"""
+    """處理暴雪求生圖表與場景（有幾張做幾張、缺的略過），回傳成功輸出的 id 清單。"""
     out_dir = dst_root / BZ_DIR
     done = []
     for n, ids in BZ_SHEETS.items():
-        p = find_src(src_dir, f'sheet-{n}')
-        if not p:
-            continue
-        print(f'  {p.name} -> {len(ids)} 格')
-        try:
-            sheet = remove_white(Image.open(p))
-            for oid, cell in slice_sheet(sheet, ids, f'blizzard sheet-{n}').items():
-                try:
-                    res = blizzard_icon(cell)
-                    out_dir.mkdir(parents=True, exist_ok=True)
-                    dst = out_dir / f'{oid}.webp'
-                    res.save(dst, 'WEBP', quality=90, method=6)
-                    print(f'    [OK] {oid}.webp  {dst.stat().st_size // 1024} KB')
-                    done.append(oid)
-                except Exception as e:
-                    print(f'    [失敗] {oid}：{e}')
-        except Exception as e:
-            print(f'    [失敗] {p.name}：{e}')
+        done += _bz_sheet(src_dir, out_dir, n, ids, BZ_SIZE, 4)
+    for n, ids in BZ_SCENE_SHEETS.items():
+        done += _bz_sheet(src_dir, out_dir, n, ids, BZ_SCENE_SIZE, BZ_SCENE_PAD)
+    done += process_blizzard_rooms(src_dir, out_dir)
     return done
 
 

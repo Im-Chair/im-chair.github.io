@@ -1727,7 +1727,7 @@
 
     // ---- 選配美術（剪紙圖示）：art/index.json 有列、且載入成功的 id 才用圖，其餘維持 emoji ----
     // 更新圖檔時把 ART_VER 加一，瀏覽器才會重抓
-    const ART_VER = '1';
+    const ART_VER = '2';
     const ART_IMGS = {};   // id → 已載入完成的 Image
     function artHas(id) { return Boolean(id && ART_IMGS[id]); }
     function artImg(id) { return (id && ART_IMGS[id]) || null; }
@@ -1754,6 +1754,27 @@
       c.textAlign = 'center';
       c.textBaseline = 'middle';
       c.fillText(safeText(emoji), x, y);
+    }
+    // 場景選配美術（sc_ 前綴，圖放 art/<id>.webp、列在 art/index.json；缺哪張該處就維持原本的 canvas 程式畫法）：
+    //   房間底圖 768×768 不透明：sc_room_cold／sc_room_warm（畫面 70% 高處是牆與地板交界，拉伸鋪滿整個 canvas，取代牆＋地板底色）
+    //   場景物件 256×256 透明去背（置中、四周留邊，以 contain 放進該物件的矩形）：
+    //     sc_roof_/sc_window_/sc_wall_/sc_door_/sc_fireplace_/sc_floor_/sc_bed_/sc_feast_ ＋ 0 未修／1 湊合／2 豪華（窗另有 sc_window_i＝結冰）
+    //     sc_family_cold（心情 0–1）／sc_family_ok（心情 2）／sc_family_warm（心情 3）、sc_chandelier、sc_garland
+    //   動態層（壁爐火光、風、雪、對話泡泡、狀態標記、圖釘）一律維持程式畫法疊在圖上
+    // 放法：圖是正方形格、物件在格內置中，所以正方形邊長＝max(矩形寬, 矩形高)、中心對齊矩形中心
+    //   （寬的物件以寬為準、窄高的以高為準，超出矩形的部分是透明留邊）。房間底圖不走這裡，直接拉伸鋪滿。
+    //   有圖並畫了回傳 true，沒圖回傳 false（呼叫端走原本畫法）
+    function drawSceneArt(c, id, x, y, w, h) {
+      const im = artImg(id);
+      if (!im || !im.naturalWidth) return false;
+      const sz = Math.max(w, h);
+      c.drawImage(im, x + w / 2 - sz / 2, y + h / 2 - sz / 2, sz, sz);
+      return true;
+    }
+    // 直接指定中心與邊長的畫法：邊長＝畫布寬 × wFrac，且不超過畫布高 × hCap（極寬或極高的畫布上不會過大）
+    function drawSceneArtC(c, id, cx, cy, wFrac, hCap) {
+      const sz = Math.min(Math.max(240, canvasW) * wFrac, Math.max(120, canvasH) * (hCap || 0.36));
+      return drawSceneArt(c, id, cx - sz / 2, cy - sz / 2, sz, sz);
     }
     function starsHTML(n, size) {
       let h = '';
@@ -2889,6 +2910,10 @@
       return state.hotspotStates[id] || { tier: 'luxury', iced: false };
     }
 
+    // 有房間底圖時，依主題疊色的強度（0＝不疊；預設主題 cabin 一律不疊）
+    const THEME_TINT_ALPHA = 0.3;
+    const THEME_TINT_MODE = 'soft-light';
+
     function drawScene() {
       const w = Math.max(240, canvasW);
       const h = Math.max(120, canvasH);
@@ -2896,7 +2921,33 @@
       const lux = getLuxuryProgress();
       const isLuxuryRoom = lux.pct >= 55;
 
+      // 0. 選配房間底圖（取代牆＋地板底色）；缺圖就走下面原本的程式畫法
+      let roomArt = false;
+      {
+        const rid = isLuxuryRoom ? 'sc_room_warm' : 'sc_room_cold';
+        if (artHas(rid)) {
+          // 底圖是 1:1，但要拉伸鋪滿整個 canvas（不用 contain）
+          ctx.drawImage(artImg(rid), 0, 0, w, h);
+          roomArt = true;
+          if (state.currentLevel.theme !== 'cabin' && THEME_TINT_ALPHA > 0) {
+            ctx.save();
+            ctx.globalCompositeOperation = THEME_TINT_MODE;
+            ctx.globalAlpha = THEME_TINT_ALPHA;
+            ctx.fillStyle = isLuxuryRoom ? pal.warmBot : pal.coldBot;
+            ctx.fillRect(0, 0, w, h);
+            ctx.restore();
+          }
+        }
+      }
+
+      // 0b. 冷房的裝飾（有底圖才畫，墊在家具後面）：上緣冰柱、右下角雪堆
+      if (roomArt && !isLuxuryRoom) {
+        drawSceneArtC(ctx, 'sc_icicles', w * 0.78, h * 0.12, 0.30, 0.36);
+        drawSceneArtC(ctx, 'sc_snowpile', w * 0.90, h * 0.93, 0.20, 0.36);
+      }
+
       // 1. 室內背景牆壁 (隨著豪華改造度從冷暗藍灰蛻變為溫暖蜂蜜金木牆)
+      if (!roomArt) {
       const wallGrad = ctx.createLinearGradient(0, 0, 0, h * 0.72);
       if (!isLuxuryRoom) {
         wallGrad.addColorStop(0, pal.coldTop);
@@ -2917,6 +2968,7 @@
         ctx.lineTo(w, y);
         ctx.stroke();
       }
+      }
 
       // 豪華度 >= 75% 時出現金色吊燈與節慶彩旗！
       if (lux.pct >= 75) {
@@ -2924,11 +2976,12 @@
       }
 
       // 2. 屋頂區域
-      drawRoofVisual(w, h, pal, getHotspotState('roof'));
+      drawRoofVisual(w, h, pal, getHotspotState('roof'), roomArt);
 
       // 3. 地板區域
       const floorY = h * 0.70;
       const floorSt = getHotspotState('floor');
+      if (!roomArt) {
       const floorGrad = ctx.createLinearGradient(0, floorY, 0, h);
       if (floorSt.tier === 'luxury' || isLuxuryRoom) {
         floorGrad.addColorStop(0, '#b45309');
@@ -2942,9 +2995,13 @@
 
       ctx.fillStyle = '#1e293b';
       ctx.fillRect(0, floorY - 3, w, 6);
+      }
 
-      // 地板狀態視覺：結冰 / 舊草蓆 / 豪華波斯紅絨地毯
-      if (floorSt.tier === 'broken') {
+      // 地板狀態視覺：結冰 / 舊草蓆 / 豪華波斯紅絨地毯（有 sc_floor_N 圖就用圖）
+      const floorTierIdx = floorSt.tier === 'luxury' ? 2 : floorSt.tier === 'makeshift' ? 1 : floorSt.tier === 'broken' ? 0 : -1;
+      if (floorTierIdx >= 0 && drawSceneArtC(ctx, `sc_floor_${floorTierIdx}`, w * 0.48, h * 0.88, 0.46, 0.5)) {
+        // 已用圖畫地板物件
+      } else if (floorSt.tier === 'broken') {
         ctx.fillStyle = 'rgba(56, 189, 248, 0.45)';
         ctx.beginPath();
         ctx.ellipse(w * 0.48, h * 0.87, w * 0.35, 22, 0, 0, Math.PI * 2);
@@ -2997,7 +3054,11 @@
       drawAmbientAndFire(w, h);
 
       // 10c. 對話泡泡（約 3 秒後淡出；矮畫布時避開圖釘，放不下就改用 toast）
-      drawBubbleLayer(w * 0.30, h * 0.73);
+      {
+        const fa = familyArtPlace(w, h);
+        if (fa) drawBubbleLayer(fa.cx + 16, fa.cy - fa.sz / 2 + 52);
+        else drawBubbleLayer(w * 0.30, h * 0.73);
+      }
 
       // 10d. 修補完成狀態：湊合＝虛線補丁環、豪華＝柔光＋閃星、已除冰＝水光
       drawStateMarks();
@@ -3153,16 +3214,19 @@
     }
 
     function drawChandelierAndGarland(w, h) {
-      // 節慶彩帶
-      ctx.strokeStyle = '#fbbf24';
-      ctx.lineWidth = 2.5;
-      ctx.beginPath();
-      ctx.moveTo(0, h * 0.14);
-      ctx.quadraticCurveTo(w * 0.25, h * 0.21, w * 0.5, h * 0.13);
-      ctx.quadraticCurveTo(w * 0.75, h * 0.21, w, h * 0.14);
-      ctx.stroke();
+      // 節慶彩帶（有 sc_garland 圖就用圖）
+      if (!drawSceneArtC(ctx, 'sc_garland', w * 0.50, h * 0.07, 0.60, 0.7)) {
+        ctx.strokeStyle = '#fbbf24';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.moveTo(0, h * 0.14);
+        ctx.quadraticCurveTo(w * 0.25, h * 0.21, w * 0.5, h * 0.13);
+        ctx.quadraticCurveTo(w * 0.75, h * 0.21, w, h * 0.14);
+        ctx.stroke();
+      }
 
-      // 金色吊燈
+      // 金色吊燈（有 sc_chandelier 圖就用圖）
+      if (drawSceneArtC(ctx, 'sc_chandelier', w * 0.30, h * 0.17, 0.20, 0.36)) return;
       const cx = w * 0.5;
       const cy = h * 0.18;
       ctx.fillStyle = '#fbbf24';
@@ -3180,18 +3244,25 @@
       ctx.fill();
     }
 
-    function drawRoofVisual(w, h, pal, st) {
-      ctx.fillStyle = pal.roof;
-      ctx.beginPath();
-      ctx.moveTo(0, 0);
-      ctx.lineTo(w, 0);
-      ctx.lineTo(w, h * 0.15);
-      ctx.lineTo(w * 0.5, h * 0.05);
-      ctx.lineTo(0, h * 0.15);
-      ctx.closePath();
-      ctx.fill();
+    function drawRoofVisual(w, h, pal, st, roomArt) {
+      // 有房間底圖時屋頂橫樑已含在底圖裡，不再畫
+      if (!roomArt) {
+        ctx.fillStyle = pal.roof;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(w, 0);
+        ctx.lineTo(w, h * 0.15);
+        ctx.lineTo(w * 0.5, h * 0.05);
+        ctx.lineTo(0, h * 0.15);
+        ctx.closePath();
+        ctx.fill();
+      }
 
-      if (st.tier === 'broken') {
+      // 破洞／補丁本身（有 sc_roof_N 圖就用圖）
+      const roofIdx = st.tier === 'luxury' ? 2 : st.tier === 'makeshift' ? 1 : st.tier === 'broken' ? 0 : -1;
+      if (roofIdx >= 0 && drawSceneArt(ctx, `sc_roof_${roofIdx}`, w * 0.35, h * 0.01, w * 0.30, h * 0.20)) {
+        // 已用圖畫
+      } else if (st.tier === 'broken') {
         ctx.fillStyle = skyColor();
         ctx.beginPath();
         ctx.ellipse(w * 0.50, h * 0.08, 46, 17, 0, 0, Math.PI * 2);
@@ -3220,6 +3291,10 @@
     }
 
     function drawWindowVisual(x, y, w, h, st) {
+      {
+        const wid = st.tier === 'luxury' ? '2' : st.tier === 'makeshift' ? '1' : (st.iced ? 'i' : '0');
+        if (drawSceneArt(ctx, `sc_window_${wid}`, x, y, w, h)) return;
+      }
       ctx.fillStyle = skyColor();
       drawRoundRect(x, y, w, h, 8);
       ctx.fill();
@@ -3294,6 +3369,7 @@
     }
 
     function drawWallVisual(x, y, w, h, st) {
+      if (drawSceneArt(ctx, `sc_wall_${st.tier === 'luxury' ? 2 : st.tier === 'makeshift' ? 1 : 0}`, x, y, w, h)) return;
       if (st.tier === 'luxury') {
         // 豪華木牆＋暖光壁燈
         softGlow(x, y, w, h, 8);
@@ -3336,6 +3412,7 @@
     }
 
     function drawDoorVisual(x, y, w, h, st) {
+      if (drawSceneArtC(ctx, `sc_door_${st.tier === 'luxury' ? 2 : st.tier === 'makeshift' ? 1 : 0}`, canvasW * 0.91, canvasH * 0.57, 0.22, 0.36)) return;
       if (st.tier === 'luxury') {
         softGlow(x, y, w, h, 6);
         ctx.fillStyle = '#92400e';
@@ -3364,6 +3441,18 @@
     }
 
     function drawFireplaceVisual(cx, cy, st) {
+      // 有圖時壁爐本體由圖負責（圖不含火焰）；火焰仍用程式動態畫在圖上，結冰層與 🎄🧦 略過；光暈由 drawAmbientAndFire 疊上
+      const art = drawSceneArtC(ctx, `sc_fireplace_${st.tier === 'luxury' ? 2 : st.tier === 'makeshift' ? 1 : 0}`, canvasW * 0.72, canvasH * 0.66, 0.28, 0.36);
+      if (art) {
+        // 火焰對到圖的爐口（圖的 50% 寬、68% 高），依圖大小縮放；以下 cx,cy 改為火焰自己的座標原點
+        const fsz = Math.min(Math.max(240, canvasW) * 0.28, Math.max(120, canvasH) * 0.36);
+        const fk = fsz / 112;
+        ctx.save();
+        ctx.translate(canvasW * 0.72, canvasH * 0.66 - fsz / 2 + 0.68 * fsz + 16 * fk);
+        ctx.scale(fk, fk);
+        cx = 0; cy = 0;
+      }
+      if (!art) {
       ctx.fillStyle = st.iced ? '#38bdf8' : '#991b1b';
       ctx.fillRect(cx - 18, cy - 92, 36, 38);
 
@@ -3377,14 +3466,17 @@
       ctx.fillStyle = '#1e293b';
       drawRoundRect(cx - 31, cy - 40, 62, 46, 8);
       ctx.fill();
+      }
 
       if (st.iced) {
+        if (!art) {
         ctx.fillStyle = 'rgba(125, 211, 252, 0.85)';
         drawRoundRect(cx - 35, cy - 44, 70, 52, 10);
         ctx.fill();
         ctx.strokeStyle = '#f0f9ff';
         ctx.lineWidth = 2;
         ctx.stroke();
+        }
       } else if (st.tier === 'luxury') {
         const flicker = REDUCED ? 0 : Math.sin(state.time * 15) * 4.5;
         ctx.fillStyle = '#f97316';
@@ -3403,9 +3495,11 @@
         ctx.closePath();
         ctx.fill();
 
-        ctx.font = '16px sans-serif';
-        ctx.fillText('🎄', cx - 26, cy - 64);
-        ctx.fillText('🧦', cx + 22, cy - 64);
+        if (!art) {
+          ctx.font = '16px sans-serif';
+          ctx.fillText('🎄', cx - 26, cy - 64);
+          ctx.fillText('🧦', cx + 22, cy - 64);
+        }
       } else if (st.tier === 'makeshift') {
         // 微弱小火苗
         const wob = REDUCED ? 0 : Math.sin(state.time * 11);
@@ -3417,14 +3511,16 @@
         ctx.beginPath();
         ctx.arc(cx, cy - 10, 4 + wob * 0.6, 0, Math.PI * 2);
         ctx.fill();
-      } else {
+      } else if (!art) {
         ctx.fillStyle = '#78350f';
         drawRoundRect(cx - 18, cy - 12, 36, 8, 3);
         ctx.fill();
       }
+      if (art) ctx.restore();
     }
 
     function drawBedVisual(x, y, w, h, st) {
+      if (drawSceneArtC(ctx, `sc_bed_${st.tier === 'luxury' ? 2 : st.tier === 'makeshift' ? 1 : 0}`, canvasW * 0.24, canvasH * 0.72, 0.30, 0.36)) return;
       if (st.tier === 'luxury') {
         ctx.fillStyle = '#92400e';
         drawRoundRect(x - 6, y - 14, w * 0.78, 50, 8);
@@ -3452,6 +3548,7 @@
     }
 
     function drawFeastVisual(cx, cy, st) {
+      if (drawSceneArtC(ctx, `sc_feast_${st.tier === 'luxury' ? 2 : st.tier === 'makeshift' ? 1 : 0}`, canvasW * 0.54, canvasH * 0.78, 0.22, 0.36)) return;
       ctx.fillStyle = '#78350f';
       ctx.fillRect(cx - 5, cy + 4, 10, 22);
 
@@ -3495,6 +3592,16 @@
       return m;
     }
 
+    // 家人圖的位置：有圖回傳 { id, cx, cy, sz }（左下前景，夾在畫布內），沒圖回傳 null
+    function familyArtPlace(w, h) {
+      const m = moodLevel();
+      const id = m >= 3 ? 'sc_family_warm' : m === 2 ? 'sc_family_ok' : 'sc_family_cold';
+      if (!artHas(id)) return null;
+      const W = Math.max(240, w), H = Math.max(120, h);
+      const sz = Math.min(W * 0.24, H * 0.36);
+      return { id, sz, cx: Math.max(sz / 2, W * 0.14), cy: Math.min(H - sz / 2, H * 0.87) };
+    }
+
     function drawFamilyVisual(baseX, baseY) {
       const mood = moodLevel();
       const isLuxuryClothes = getHotspotState('bed').tier === 'luxury';
@@ -3505,6 +3612,24 @@
       const sy = Math.cos(state.time * 36) * (shiverAmp * 0.4);
       // 呼出白氣：很冷、或酷寒天氣且還沒暖起來
       const breath = !REDUCED && (mood <= 1 || (state.currentLevel.weather === 'cold' && mood < 3));
+
+      // 有 sc_family_* 圖就用圖，放在左下前景（發抖位移照舊、臉色變化由圖負責；呼氣白煙仍用程式畫在圖上）
+      {
+        const fa = familyArtPlace(canvasW, canvasH);
+        if (fa && drawSceneArt(ctx, fa.id, fa.cx + sx - fa.sz / 2, fa.cy + sy - fa.sz / 2, fa.sz, fa.sz)) {
+          if (breath) {
+            // 以圖左上角為原點、圖寬＝100 的座標：三個頭約在左 30%、中 50%、右 70%，上 1/3 處
+            ctx.save();
+            ctx.translate(fa.cx + sx - fa.sz / 2, fa.cy + sy - fa.sz / 2);
+            ctx.scale(fa.sz / 100, fa.sz / 100);
+            drawBreathPuff(30, 30, 9, 1);
+            drawBreathPuff(50, 36, 11, 0);
+            drawBreathPuff(70, 30, 9, 2);
+            ctx.restore();
+          }
+          return;
+        }
+      }
 
       ctx.save();
       ctx.translate(baseX + sx, baseY + sy);
@@ -3604,19 +3729,21 @@
         ctx.fill();
       }
 
-      if (breath) {
-        // 呼出白氣：從嘴邊飄起、擴大、淡出
-        const ph = (state.time * 0.6 + seed * 0.37) % 1;
-        if (ph < 0.75) {
-          const k = ph / 0.75;
-          ctx.save();
-          ctx.globalAlpha = (1 - k) * 0.6;
-          ctx.fillStyle = '#f1f5f9';
-          ctx.beginPath();
-          ctx.arc(x + headR * 0.8 + k * 16, y + 6 - k * 14, 2 + k * 6, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.restore();
-        }
+      if (breath) drawBreathPuff(x, y, headR, seed);
+    }
+
+    // 呼出白氣：從嘴邊飄起、擴大、淡出
+    function drawBreathPuff(x, y, headR, seed) {
+      const ph = (state.time * 0.6 + seed * 0.37) % 1;
+      if (ph < 0.75) {
+        const k = ph / 0.75;
+        ctx.save();
+        ctx.globalAlpha = (1 - k) * 0.6;
+        ctx.fillStyle = '#f1f5f9';
+        ctx.beginPath();
+        ctx.arc(x + headR * 0.8 + k * 16, y + 6 - k * 14, 2 + k * 6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
       }
     }
 

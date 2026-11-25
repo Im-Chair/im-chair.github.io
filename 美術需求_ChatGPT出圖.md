@@ -615,6 +615,69 @@ id 前綴：`<破洞>_c<i>`＝一般道具（破洞：roof 屋頂、window 窗�
 
 ---
 
+## 19　暴雪求生場景（剪紙拼貼風）・房間底圖 2 張 ＋ 場景物件圖表 2 張 × 16 格
+
+**畫風**：與第 18 節相同——剪紙拼貼，多層彩色卡紙剪貼疊成，邊緣乾淨、色塊平整。冬天暖色系：奶油白、焦糖棕、磚紅、芥末黃、灰藍。**不要日系動漫風**，不要寫實，不要漸層光澤。
+
+### 房間底圖（2 張）`room-cold.png`、`room-warm.png`
+
+- 正方形 1024×1024，鋪滿、不留白、無文字。
+- 小木屋室內正面剖面，**只有空房間**：上方約 70% 是橫向木板牆，下方約 30% 是木地板，牆與地板的交界是水平線、位在畫面高度 70% 處；頂端一條屋樑。
+- **不要畫窗、門、壁爐、家具、人物**，這些會另外貼上去。
+- 構圖要均勻、沒有明顯的單一主體，因為遊戲會把它橫向或縱向拉伸。
+- `cold`：灰藍冷色、木板有裂縫與結霜、陰暗。
+- `warm`：焦糖暖色、木板完整、有溫暖光感。
+- 兩張構圖要一致（同一個房間的前後）。
+
+### 場景物件圖表（2 張）`sheet-7.png`、`sheet-8.png`
+
+- 版面規則同第 18 節：正方形、純白 #FFFFFF 背景、4×4 共 16 格，物件居中、彼此不碰觸；無格線、無文字、無陰影。
+- 格子順序由左到右、由上到下，id 就是成品檔名。
+- 狀態規則：`_0`＝破損未修、`_i`＝結冰（僅窗）、`_1`＝用現成材料湊合修補（膠帶、木板、防水布、報紙）、`_2`＝豪華修繕完成。
+- 同一物件的三格要同一視角、同一大小，只有狀態不同。
+
+| 圖表 | 16 格 id（依序）與畫什麼 |
+|------|------|
+| sheet-7 | 第 1 列：`sc_roof_0` 屋頂上的破洞（從室內往上看，洞外是雪天）、`sc_roof_1` 補丁、`sc_roof_2` 完好的紅瓦天窗、`sc_window_0` 破玻璃的窗、 |
+| sheet-7 | 第 2 列：`sc_window_i` 整片結冰的窗、`sc_window_1` 報紙膠帶封住的窗、`sc_window_2` 彩繪拱窗、`sc_wall_0` 牆上的破洞（看得到外面的雪）、 |
+| sheet-7 | 第 3 列：`sc_wall_1` 木板釘補、`sc_wall_2` 砌磚掛畫、`sc_door_0` 歪斜漏風的門、`sc_door_1` 塞毛毯擋風的門、 |
+| sheet-7 | 第 4 列：`sc_door_2` 厚實雕花木門、`sc_fireplace_0` 熄滅、積雪的壁爐、`sc_fireplace_1` 小火盆湊合用、`sc_fireplace_2` 石砌大壁爐 |
+| sheet-8 | 第 1 列：`sc_floor_0` 一灘冰（橫向扁平、俯斜視角）、`sc_floor_1` 草蓆、`sc_floor_2` 厚地毯、`sc_bed_0` 破床墊（橫向）、 |
+| sheet-8 | 第 2 列：`sc_bed_1` 鋪毛毯的床、`sc_bed_2` 羽絨大床、`sc_feast_0` 空桌與冷罐頭、`sc_feast_1` 簡單熱湯、 |
+| sheet-8 | 第 3 列：`sc_feast_2` 豐盛大餐、`sc_family_cold` 一家三口擠在一起發抖、裹薄毯、`sc_family_ok` 坐著取暖、`sc_family_warm` 開心穿毛衣、 |
+| sheet-8 | 第 4 列：`sc_chandelier` 吊燈、`sc_garland` 一串彩色三角旗（橫向）、`sc_snowpile` 室內的小積雪堆、`sc_icicles` 一排垂下的冰柱（橫向） |
+
+- 注意：`sc_fireplace_*` **不要畫火焰**，火由程式畫。`sc_family_*` 三張是同一家人、同一構圖，只換表情與衣著。
+
+### id 與尺寸
+
+- `sc_`＝場景（與第 18 節的道具圖示 id 不重複）。
+- 物件圖表：去白底後輸出 256×256 透明 webp（四周留 8px）。
+- 房間底圖：輸出 768×768 webp（整張，不去背），id 為 `sc_room_cold`、`sc_room_warm`。
+
+### 處理
+
+1. 圖放 `output/imagegen/blizzard/`（`room-cold.png`、`room-warm.png`、`sheet-7.png`、`sheet-8.png`，缺的略過，可一張一張補）。
+2. 執行 `python tools/process_art.py --only blizzard`（只跑這一組，不重掃其他遊戲）。
+3. 成品輸出到 `blizzard-cabin/art/`，`index.json` 會自動把新檔列入。
+4. 升 `blizzard-cabin/index.html` 的 `ART_VER`，根目錄 `sw.js` 的 `CACHE` +1。
+
+### 提示詞
+
+**底圖（一段，貼給 ChatGPT 後再附上「要 cold／warm 哪一種」）**
+
+```
+Paper-cut collage style illustration, a small wooden cabin interior, front-facing cross-section showing an EMPTY room only. Layered colored cardstock with clean edges and flat color blocks, subtle paper layering, no gradients, no glossy shading, not anime, not photorealistic. Square 1024x1024 image, full-bleed, no white border, no text. Upper 70% of the image: horizontal wooden plank wall. Lower 30%: wooden floorboards. A clear horizontal line where wall meets floor at exactly 70% of the image height. A single roof beam across the top edge. Do NOT draw windows, doors, fireplace, furniture, or people. Evenly composed, no single focal object. Palette: [cold: slate blue-gray, cracked planks with frost, dim and somber] / [warm: caramel brown, intact planks, warm glowing light, mustard and brick accents]. Keep the same room layout as the other version.
+```
+
+**物件圖表（一段，貼給 ChatGPT）**
+
+```
+Paper-cut collage style, a 4x4 grid sheet of 16 separate small objects on a pure white background (#FFFFFF). Each object centered in its own cell, objects must not touch each other. No grid lines, no text, no labels, no background shadow. Layered colored cardstock with clean edges, flat color blocks, subtle paper layering, no gradients, not anime, not photorealistic. Warm winter palette: cream white, caramel brown, brick red, mustard yellow, slate blue-gray. Read order left to right, top to bottom. [Paste the 16-item list for this sheet from the table above, numbered 1 to 16, each with its description. For the three states of the same object, keep the same viewpoint and the same size; only the condition changes: broken, makeshift repair, luxurious restoration.] Do NOT draw fire flames in the fireplace; leave the fireplace unlit.
+```
+
+---
+
 ## 待出圖總表（2026-11-07 盤點）
 
 | 順序 | 項目 | 張數 | Prompt 在哪 | 備註 |
