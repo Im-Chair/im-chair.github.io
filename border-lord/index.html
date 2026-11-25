@@ -137,8 +137,25 @@ button, a, select, input, label, [onclick], .nav-tab {
 #tip-bubble { max-width: min(260px, calc(100vw - 16px)); }
 
 /* 頂列：桌機時「⋯」隱藏、選單按鈕照原樣橫排 */
+/* 頂列三顆按鈕（通知、速度、⋯）共用同一套外觀 */
+.hdr-btn {
+    display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+    min-width: 44px; min-height: 44px; padding: 0 6px; border-radius: .25rem;
+    background: #292524; border: 1px solid #57534e; color: #fde68a; font-size: 14px; font-weight: 700; line-height: 1;
+}
+@media (min-width: 640px) { .hdr-btn { min-width: 36px; min-height: 34px; } }
 .hdr-more-btn { display: none; }
-.hdr-menu { display: contents; }
+/* 頂列彈出選單（⋯ 與速度共用）：靠按鈕右緣對齊（right 由 JS 依按鈕位置設定）、蓋在資源列與內容之上 */
+.hdr-pop { display: none; }
+.hdr-pop.open {
+    display: flex; flex-direction: column; gap: 6px;
+    position: absolute; right: 8px; top: calc(100% - 2px); z-index: 50;
+    padding: 8px; background: #2e1e11; border: 2px solid #b58938; border-radius: 10px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.6);
+}
+.hdr-pop.open > button { min-height: 44px; min-width: 120px; font-size: 14px; text-align: left; padding: 0 14px; }
+.hdr-pop.open > button.is-cur { background: #92400e; border-color: #fbbf24; color: #fff; }
+@media (min-width: 640px) { .hdr-menu.hdr-pop { display: contents; } }
 .step-btn { min-width: 32px; min-height: 32px; line-height: 1; font-size: 16px; }
 
 /* --- 觸控裝置：點擊回饋、目標 ≥44px、輸入框 16px --- */
@@ -184,16 +201,7 @@ button, a, select, input, label, [onclick], .nav-tab {
     .hdr-left { flex: 1 1 0; min-width: 0; }
     #village-selector { max-width: none !important; width: 100%; flex: 1 1 auto; min-width: 0; min-height: 44px; font-size: 16px; text-overflow: ellipsis; }
     .hdr-actions { flex-wrap: nowrap; flex-shrink: 0; gap: 4px; }
-    #btn-notif { min-width: 44px; min-height: 44px; }
-    .hdr-more-btn { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; min-width: 44px; font-size: 20px; line-height: 1; }
-    .hdr-menu { display: none; }
-    .hdr-menu.open {
-        display: flex; flex-direction: column; gap: 6px;
-        position: absolute; right: 8px; top: calc(100% - 2px); z-index: 50;
-        padding: 8px; background: #2e1e11; border: 2px solid #b58938; border-radius: 10px;
-        box-shadow: 0 8px 20px rgba(0,0,0,0.6);
-    }
-    .hdr-menu.open > button { min-height: 44px; min-width: 120px; font-size: 14px; text-align: left; padding: 0 14px; }
+    .hdr-more-btn { display: inline-flex; font-size: 20px; }
 
     /* 底部固定導覽列 */
     #main-nav {
@@ -260,17 +268,10 @@ button, a, select, input, label, [onclick], .nav-tab {
 /* --- 頂列：與資源列一起放進 #top-fixed，固定在視窗最上方 --- */
 #app-header { position: relative; z-index: 2; }
 
-/* --- 加速：原生下拉；暫停時整顆變紅，一眼看出停著 --- */
-.speed-select {
-    min-width: 6.2rem; min-height: 40px; padding: 0 10px; border-radius: 8px;
-    background: #26170c; color: #fde68a; border: 1px solid #f59e0b;
-    font-size: 14px; font-weight: 700;
-}
-.speed-select option { background: #26170c; color: #fde68a; }
-.speed-select.is-paused { background: #7f1d1d; color: #fecaca; border-color: #f87171; box-shadow: 0 0 0 2px rgba(248,113,113,.35); }
-.speed-select.is-paused option { background: #7f1d1d; color: #fecaca; }
+/* --- 加速鈕：外觀同通知鈴與 ⋯（.hdr-btn）；暫停時整顆變紅 --- */
+#speed-btn { min-width: 56px; }
+#speed-btn.is-paused { background: #7f1d1d; color: #fecaca; border-color: #f87171; box-shadow: 0 0 0 2px rgba(248,113,113,.35); }
 @media (max-width: 639.98px) {
-    .speed-select { width: 80px; min-width: 0; min-height: 44px; padding: 0 0 0 4px; font-size: 16px; letter-spacing: -0.6px; }
     /* 村莊名稱後面的座標要看得到：縮小內距與字距，把寬度讓給文字 */
     #village-selector { padding-left: 6px !important; padding-right: 0 !important; letter-spacing: -0.6px; }
 }
@@ -292,8 +293,8 @@ body { padding-top: var(--topbar-h, 0px); }
     min-width: 0; display: flex; align-items: center; justify-content: center; gap: 3px; padding: 4px 3px; overflow: hidden;
     background: #1e130b; border: 1px solid rgba(120,53,15,.8); border-radius: 8px; color: #fffbeb;
 }
-.res-ico { font-size: 14px; line-height: 1; flex-shrink: 0; }
-.res-num { font-size: 13px; font-weight: 700; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.res-ico { font-size: 12px; line-height: 1; flex-shrink: 0; }
+.res-num { font-size: 12px; letter-spacing: -0.3px; font-weight: 700; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .res-rate, .res-extra { display: none; }
 .res-box.is-full { background: #92400e; border-color: #fbbf24; }
 .res-box.is-neg .res-num { color: #f87171; }
@@ -311,29 +312,21 @@ body { padding-top: var(--topbar-h, 0px); }
 .up-wrap { width: 100%; max-width: 640px; margin: 0 auto; }
 .up-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
 .up-sub { font-size: 12px; color: #57534e; margin-bottom: 10px; }
-.up-list { display: flex; flex-direction: column; gap: 6px; }
 .up-card { display: flex; flex-direction: column; gap: 8px; }
-.up-item { scroll-margin-top: calc(var(--topbar-h, 0px) + 8px); border: 2px solid rgba(140,98,57,.6); border-radius: 12px; background: #fffaf0; overflow: hidden; }
-.up-item.is-open { border-color: #d97706; box-shadow: 0 2px 8px rgba(0,0,0,.18); }
-.up-row {
-    display: flex; align-items: center; gap: 10px; width: 100%; min-height: 52px; padding: 8px 10px;
-    background: transparent; border: 0; text-align: left; color: #3b2818; cursor: pointer;
-    scroll-margin-top: calc(var(--topbar-h, 0px) + 8px);
-}
-.up-ico { font-size: 24px; line-height: 1; flex-shrink: 0; width: 30px; text-align: center; }
-.up-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
-.up-name { font-size: 14px; font-weight: 800; line-height: 1.25; }
-.up-name b { margin-left: 4px; padding: 1px 6px; border-radius: 6px; background: #92400e; color: #fff; font-size: 12px; font-weight: 800; }
-.up-tag { margin-left: 6px; padding: 1px 6px; border-radius: 6px; background: #e0f2fe; border: 1px solid #0ea5e9; color: #082f49; font-size: 11px; font-weight: 700; }
 .up-prog { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #b91c1c; font-weight: 700; }
 .up-bar { flex: 1 1 auto; height: 6px; border-radius: 3px; background: #d6d3d1; overflow: hidden; }
 .up-bar > i { display: block; height: 100%; width: 0; background: #d97706; }
 /* --- 資源田：左半＝三欄六排格子（只有圖示與等級），右半＝固定詳情面板（預設顯示每小時產出總覽） --- */
-.fp-wrap { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; align-items: start; scroll-margin-top: calc(var(--topbar-h, 0px) + 8px); }
-.fg-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
+.fp-wrap {
+    display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); gap: 8px;
+    height: 416px; /* 固定高度：以「選了一塊資源不足、可預約的田」時面板內容放得下為準；兩半同高，選田／施工都不會讓下方內容位移 */
+    scroll-margin-top: calc(var(--topbar-h, 0px) + 8px);
+}
+.fg-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: repeat(var(--fg-rows, 6), minmax(0, 1fr)); gap: 5px; height: 100%; min-height: 0; }
+#buildings-list { --fg-rows: 5; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .fg-cell {
     position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
-    min-width: 44px; min-height: 52px; padding: 4px 2px 6px 5px; color: #3b2818; cursor: pointer;
+    min-width: 44px; min-height: 0; padding: 4px 2px 6px 5px; color: #3b2818; cursor: pointer;
     border: 2px solid rgba(140,98,57,.45); border-left-width: 4px; border-radius: 9px;
     scroll-margin-top: calc(var(--topbar-h, 0px) + 8px);
 }
@@ -342,7 +335,10 @@ body { padding-top: var(--topbar-h, 0px); }
 .fg-cell.t-iron { background: #eef2f6; border-left-color: #64748b; }
 .fg-cell.t-crop { background: #fefce8; border-left-color: #ca8a04; }
 .fg-cell.is-sel { outline: 3px solid #d97706; outline-offset: -1px; z-index: 1; }
-.fg-ico { font-size: 20px; line-height: 1; }
+.fg-cell.t-bld { background: #fffaf0; border-left-color: #8c6239; }
+.fg-cell.is-unbuilt { filter: saturate(.35); opacity: .75; }
+.fg-ico { font-size: 22px; line-height: 1.25; }
+.fg-name { font-size: 11px; font-weight: 800; line-height: 1.15; text-align: center; margin-top: 3px; overflow-wrap: anywhere; }
 .fg-lv { font-size: 12px; font-weight: 800; line-height: 1.2; }
 .fg-rsv { position: absolute; top: 1px; right: 2px; font-size: 9px; line-height: 1; }
 .fg-dot { display: none; position: absolute; top: 3px; left: 3px; width: 7px; height: 7px; border-radius: 50%; background: #16a34a; }
@@ -351,15 +347,21 @@ body { padding-top: var(--topbar-h, 0px); }
 .fg-cell .up-bar { height: 4px; }
 .fg-cell .up-eta { display: none; }
 .fp-panel {
-    position: sticky; top: calc(var(--topbar-h, 0px) + 8px); min-width: 0; padding: 8px; font-size: 12px; color: #292524;
+    min-width: 0; min-height: 0; height: 100%; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
+    padding: 8px; font-size: 12px; color: #292524;
     background: #fff6e0; border: 2px solid #d4bfa0; border-radius: 10px; display: flex; flex-direction: column; gap: 8px;
 }
 .fp-panel .up-line { overflow-wrap: anywhere; }
-.fp-panel .up-cost { grid-template-columns: minmax(0, 1fr); }
+.fp-panel .up-cost { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 6px; }
 .fp-panel .up-actions { flex-direction: column; }
 .fp-panel .up-btn { flex: 0 0 auto; width: 100%; min-height: 44px; padding: 6px 8px; font-size: 13px; line-height: 1.25; white-space: normal; }
 .fp-panel .up-btn.is-sub { font-size: 12px; white-space: normal; }
 .fp-panel .up-prog { font-size: 11px; }
+.fp-panel .up-train .flex { flex-wrap: wrap; gap: 2px; }
+.fp-panel .up-train-btns button { min-width: 40px; min-height: 44px; font-size: 12px; padding: 0 2px; white-space: normal; line-height: 1.1; }
+.fp-panel .up-train-btns button[data-train-n="max"] { flex: 1.7 1 0; }
+.fp-panel .up-select { font-size: 13px; padding: 0 4px; }
+.fp-panel .up-sec { padding: 6px; }
 .fp-row { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; font-weight: 700; }
 .fp-row b { color: #047857; font-weight: 800; white-space: nowrap; }
 .fp-row.is-sub { font-size: 11px; font-weight: 500; color: #57534e; }
@@ -367,21 +369,13 @@ body { padding-top: var(--topbar-h, 0px); }
 .fp-tip { font-size: 11px; color: #78716c; line-height: 1.4; }
 @media (min-width: 640px) {
     .fg-grid { gap: 8px; }
-    .fg-cell { min-height: 68px; }
-    .fg-ico { font-size: 26px; }
+    .fp-wrap { height: 460px; }
+    .fg-ico { font-size: 28px; }
+    .fg-name { font-size: 13px; }
     .fg-lv { font-size: 14px; }
     .fp-panel { padding: 12px; font-size: 13px; }
 }
 .up-eta { font-family: ui-monospace, Menlo, Consolas, monospace; white-space: nowrap; }
-.up-side { flex-shrink: 0; max-width: 42%; text-align: right; font-size: 12px; font-weight: 700; color: #047857; line-height: 1.3; }
-.up-side.is-muted { color: #78716c; font-weight: 500; }
-.up-chev { flex-shrink: 0; color: #92400e; font-size: 12px; }
-.up-item.is-open .up-chev { transform: rotate(180deg); }
-.up-detail {
-    padding: 10px 12px 12px; border-top: 1px solid #d4bfa0; background: #fff6e0; font-size: 12px; color: #292524;
-    display: flex; flex-direction: column; gap: 8px;
-    scroll-margin-top: calc(var(--topbar-h, 0px) + 8px); scroll-margin-bottom: calc(var(--nav-total, 0px) + 12px);
-}
 .up-line { line-height: 1.5; }
 .up-line b { font-weight: 800; }
 .up-good { color: #047857; }
@@ -403,8 +397,6 @@ body { padding-top: var(--topbar-h, 0px); }
 .up-train-btns { display: flex; gap: 6px; }
 .up-train-btns button { flex: 1 1 0; min-height: 44px; border-radius: 6px; font-weight: 800; font-size: 13px; }
 .up-select { width: 100%; min-height: 44px; padding: 0 8px; border-radius: 6px; border: 1px solid #f87171; background: #fff; font-weight: 700; color: #292524; }
-@media (hover: hover) { .up-row:hover { background: rgba(251,191,36,.14); } }
-.up-row:focus-visible { outline: 2px solid #d97706; outline-offset: -2px; }
 </style>
 </head>
 <body class="min-h-screen flex flex-col">
@@ -512,16 +504,17 @@ body { padding-top: var(--topbar-h, 0px); }
             <!-- 音效與存檔選單 -->
             <div class="hdr-actions flex flex-wrap items-center gap-1.5">
                 <span id="ui-game-clock" class="text-xs font-mono text-amber-200/80 hidden lg:inline mr-1">第 1 天 00:00</span>
-                <button onclick="openNotifPanel()" id="btn-notif" class="relative px-3 py-2 sm:px-2 sm:py-1 min-h-[40px] min-w-[40px] sm:min-h-0 sm:min-w-0 rounded bg-stone-800 hover:bg-stone-700 text-xs border border-stone-600" data-tip="通知紀錄：只收建造完成、行軍與戰鬥結果、遭襲等重要事件">🔔<span id="notif-dot" class="hidden absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-600 rounded-full border border-white"></span></button>
-                <select id="speed-select" onchange="onSpeedSelect(this)" aria-label="時間流速" class="speed-select">
-                    <option value="0">⏸ 暫停</option>
-                    <option value="1" selected>▶ 1x</option>
-                    <option value="5">⏩ 5x</option>
-                    <option value="20">⚡ 20x</option>
-                    <option value="ff">⏭ 快轉 5 分鐘</option>
-                </select>
-                <button type="button" id="btn-more" onclick="toggleHeaderMenu(event)" aria-label="更多選項（音效、存檔、新局）" aria-expanded="false" class="hdr-more-btn rounded bg-stone-800 border border-stone-600 text-amber-200 font-bold">⋯</button>
-                <div id="hdr-menu" class="hdr-menu">
+                <button onclick="openNotifPanel()" id="btn-notif" class="hdr-btn relative" data-tip="通知紀錄：只收建造完成、行軍與戰鬥結果、遭襲等重要事件">🔔<span id="notif-dot" class="hidden absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-600 rounded-full border border-white"></span></button>
+                <button type="button" id="speed-btn" data-pop="speed-menu" onclick="toggleHdrPop('speed-menu', event)" aria-haspopup="menu" aria-expanded="false" aria-label="時間流速" class="hdr-btn">1x</button>
+                <div id="speed-menu" class="hdr-pop" role="menu">
+                    <button type="button" role="menuitem" data-speed="0" onclick="pickSpeed('0')" class="rounded bg-stone-800 hover:bg-stone-700 border border-stone-600 text-amber-200 font-bold">⏸ 暫停</button>
+                    <button type="button" role="menuitem" data-speed="1" onclick="pickSpeed('1')" class="is-cur rounded bg-stone-800 hover:bg-stone-700 border border-stone-600 text-amber-200 font-bold">▶ 1x</button>
+                    <button type="button" role="menuitem" data-speed="5" onclick="pickSpeed('5')" class="rounded bg-stone-800 hover:bg-stone-700 border border-stone-600 text-amber-200 font-bold">⏩ 5x</button>
+                    <button type="button" role="menuitem" data-speed="20" onclick="pickSpeed('20')" class="rounded bg-stone-800 hover:bg-stone-700 border border-stone-600 text-amber-200 font-bold">⚡ 20x</button>
+                    <button type="button" role="menuitem" data-speed="ff" onclick="pickSpeed('ff')" class="rounded bg-stone-800 hover:bg-stone-700 border border-stone-600 text-amber-200 font-bold">⏭ 快轉 5 分鐘</button>
+                </div>
+                <button type="button" id="btn-more" data-pop="hdr-menu" onclick="toggleHdrPop('hdr-menu', event)" aria-haspopup="menu" aria-label="更多選項（音效、存檔、新局）" aria-expanded="false" class="hdr-btn hdr-more-btn">⋯</button>
+                <div id="hdr-menu" class="hdr-menu hdr-pop">
                 <button onclick="toggleSound()" id="btn-sound" class="px-3 py-2 sm:px-2 sm:py-1 min-h-[40px] min-w-[40px] sm:min-h-0 sm:min-w-0 rounded bg-stone-800 hover:bg-stone-700 text-xs border border-stone-600" data-tip="切換音效（開／關）">🔊</button>
                 <button onclick="manualSave()" class="px-3 py-2 sm:px-2.5 sm:py-1 min-h-[40px] sm:min-h-0 rounded bg-stone-800 hover:bg-stone-700 text-xs border border-stone-600 font-medium">💾 存檔</button>
                 <button onclick="openResetModal()" class="px-3 py-2 sm:px-2 sm:py-1 min-h-[40px] sm:min-h-0 rounded bg-red-950 hover:bg-red-900 text-xs border border-red-700 text-red-200">新局</button>
@@ -625,7 +618,7 @@ body { padding-top: var(--topbar-h, 0px); }
                 <button onclick="switchTab('reports')" class="px-3 py-1 bg-red-700 hover:bg-red-600 rounded text-xs font-bold border border-red-300">查看軍情</button>
             </div>
 
-            <!-- ==================== 視圖 A：資源田（直列清單，依種類分組；點一列在正下方展開升級） ==================== -->
+            <!-- ==================== 視圖 A：資源田（左：三欄六排格子，右：固定詳情面板） ==================== -->
             <section id="view-fields" class="view-section">
                 <div class="up-wrap">
                     <div class="up-head">
@@ -651,15 +644,17 @@ body { padding-top: var(--topbar-h, 0px); }
                 </div>
             </section>
 
-            <!-- ==================== 視圖 B：村莊中心（直列清單；點一列在正下方展開升級／訓練） ==================== -->
+            <!-- ==================== 視圖 B：村莊中心（左：兩欄五排建築格子，右：固定詳情面板） ==================== -->
             <section id="view-village" class="view-section hidden">
                 <div class="up-wrap">
                     <div class="up-head">
                         <h2 class="font-serif-tc font-black text-lg text-[#3b2818]">🏰 村莊中心建築</h2>
                         <span class="text-xs text-stone-600">大樓等級越高，施工越快</span>
                     </div>
-                    <div class="up-sub">點一列展開建造、升級、訓練部隊或設定投石車目標。</div>
-                    <div id="buildings-list" class="up-list"></div>
+                    <div class="fp-wrap">
+                        <div id="buildings-list" class="fg-grid"></div>
+                        <div id="buildings-panel" class="fp-panel"></div>
+                    </div>
                     <div class="bg-amber-50 p-2.5 rounded border border-amber-300 text-xs text-amber-950 mt-4">
                         <b>🎯 掠奪入門：</b><br>
                         1. 蓋出<b>兵營</b>訓練初期掠奪兵。<br>
@@ -1422,8 +1417,7 @@ body { padding-top: var(--topbar-h, 0px); }
         if (g.building) openBuildingId = g.building;
         if (g.coord) selectedMapCoord = { x: g.coord.x, y: g.coord.y };
         switchTab(g.tab);
-        if (g.field != null) scrollFieldsBlockIntoView();
-        else if (g.building) scrollUpItemIntoView('b-' + g.building);
+        if (g.field != null || g.building) scrollFpWrapIntoView(g.tab);
     }
 
     // ----------------------------------------------------------------------------
@@ -2936,22 +2930,32 @@ body { padding-top: var(--topbar-h, 0px); }
         sc.scrollTop += (cr.top + cr.height / 2) - (sr.top + sr.height / 2);
     }
 
-    // 手機頂列的「⋯」選單（音效、存檔、新局）
-    function toggleHeaderMenu(e) {
+    // 頂列彈出選單（「⋯」與速度共用）：開一個就關另一個；點外面、再點按鈕、選了、按 Esc 都會關
+    function closeHdrPops(except) {
+        document.querySelectorAll('.hdr-pop.open').forEach(m => {
+            if (m === except) return;
+            m.classList.remove('open');
+            const b = document.querySelector(`[data-pop="${m.id}"]`);
+            if (b) b.setAttribute('aria-expanded', 'false');
+        });
+    }
+    function toggleHdrPop(menuId, e) {
         if (e) e.stopPropagation();
-        const m = document.getElementById('hdr-menu'), b = document.getElementById('btn-more');
+        const m = document.getElementById(menuId), b = document.querySelector(`[data-pop="${menuId}"]`);
         const open = !m.classList.contains('open');
+        closeHdrPops(open ? m : null);
         m.classList.toggle('open', open);
         if (b) b.setAttribute('aria-expanded', open ? 'true' : 'false');
+        if (open) {
+            const h = document.getElementById('app-header');
+            if (h && b) m.style.right = Math.max(4, Math.round(h.getBoundingClientRect().right - b.getBoundingClientRect().right)) + 'px'; // 靠按鈕右緣對齊
+        }
     }
     document.addEventListener('click', e => {
-        const m = document.getElementById('hdr-menu');
-        if (m && m.classList.contains('open') && !(e.target.closest && e.target.closest('#btn-more'))) {
-            m.classList.remove('open');
-            const b = document.getElementById('btn-more');
-            if (b) b.setAttribute('aria-expanded', 'false');
-        }
+        if (e.target.closest && e.target.closest('[data-pop]')) return;
+        closeHdrPops(null);
     });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeHdrPops(null); });
 
     function switchActiveVillage(idx) {
         activeVillageIndex = parseInt(idx) || 0;
@@ -2959,25 +2963,22 @@ body { padding-top: var(--topbar-h, 0px); }
         refreshAllUI();
     }
 
-    // 加速下拉：最後一項「快轉 5 分鐘」是動作不是檔位，選到就快轉並把下拉還原成目前的實際速度
-    function onSpeedSelect(sel) {
-        if (sel.value === 'ff') {
-            sel.value = String(gameSpeed);
-            fastForward(300);
-            return;
-        }
-        setGameSpeed(Number(sel.value));
+    // 速度選單：最後一項「快轉 5 分鐘」是動作不是檔位，不改目前檔位
+    function pickSpeed(val) {
+        if (val === 'ff') { fastForward(300); return; }
+        setGameSpeed(Number(val));
     }
 
     function setGameSpeed(spd) {
         gameSpeed = spd;
         playSound('click');
-        // 同步下拉的選項（讀檔後、暫停後都要對）；暫停時整顆變紅
-        const sel = document.getElementById('speed-select');
-        if (sel) {
-            sel.value = String(spd);
-            sel.classList.toggle('is-paused', spd === 0);
+        // 同步速度鈕文字與暫停樣式、選單中的目前檔位（讀檔後、暫停後都要對）
+        const btn = document.getElementById('speed-btn');
+        if (btn) {
+            setTextIfChanged(btn, spd === 0 ? '⏸' : spd + 'x');
+            btn.classList.toggle('is-paused', spd === 0);
         }
+        document.querySelectorAll('#speed-menu [data-speed]').forEach(b => b.classList.toggle('is-cur', b.dataset.speed === String(spd)));
     }
 
     function refreshAllUI() {
@@ -3054,9 +3055,8 @@ body { padding-top: var(--topbar-h, 0px); }
 
         // 通知紅點與升級面板的「還缺什麼」提示（只改文字／按鈕狀態）
         updateNotifDot();
-        const liveListId = currentTab === 'fields' ? 'fields-list' : currentTab === 'village' ? 'buildings-list' : null;
-        if (liveListId) updateUpgradeListLive(document.getElementById(liveListId), v, stats);
-        if (currentTab === 'fields') updateUpgradeListLive(document.getElementById('fields-panel'), v, stats);
+        const liveIds = currentTab === 'fields' ? ['fields-list', 'fields-panel'] : currentTab === 'village' ? ['buildings-list', 'buildings-panel'] : [];
+        liveIds.forEach(id => updateUpgradeListLive(document.getElementById(id), v, stats));
         updateAdvisor(false);
 
         // 若正在戰報頁面，即時更新行軍倒數
@@ -3239,6 +3239,22 @@ body { padding-top: var(--topbar-h, 0px); }
             const can = !!f && f.lv < 15 && !inBuildQueue(v, 'field', idx) && getUpgradeAdvice('field', idx, v, stats).canStart;
             cell.classList.toggle('can-up', can);
         });
+        listEl.querySelectorAll('[data-fb-id]').forEach(cell => {
+            const meta = BUILDINGS_META.find(b => b.id === cell.dataset.fbId);
+            const can = !!meta && (v.buildings[meta.id] || 0) < meta.maxLv && !inBuildQueue(v, 'building', meta.id) && getUpgradeAdvice('building', meta.id, v, stats).canStart;
+            cell.classList.toggle('can-up', can);
+        });
+        listEl.querySelectorAll('[data-bp]').forEach(el => {
+            const k = el.dataset.bp;
+            let t = '';
+            if (k === 'pop') t = fmtNum(stats.pop);
+            else if (k === 'wall') t = `+${Math.round(stats.wallBonus * 100)}%`;
+            else if (k === 'cranny') t = fmtNum(stats.crannyCap);
+            else if (k === 'capWood') t = fmtNum(stats.capWood);
+            else if (k === 'capCrop') t = fmtNum(stats.capCrop);
+            else if (k === 'queue') t = v.buildQueue.length ? v.buildQueue.map(q => `${q.name} ➔ Lv.${q.targetLv}（${fmtDur(q.remainingSec)}）`).join('、') : '目前無建築工程';
+            setTextIfChanged(el, t);
+        });
         listEl.querySelectorAll('[data-row-uid]').forEach(el => {
             const q = v.buildQueue.find(x => x.uid === el.dataset.rowUid);
             if (!q) return;
@@ -3265,20 +3281,6 @@ body { padding-top: var(--topbar-h, 0px); }
     function cancelJobHtml(job) {
         return `<div class="up-line">🔨 施工中：${job.name} ➔ Lv.${job.targetLv}，完成後可繼續升級。</div>
             <div class="up-actions"><button type="button" onclick="cancelBuild('${job.uid}')" class="btn-red up-btn">✖ 取消建造（全額退還）</button></div>`;
-    }
-
-    // 一列：左＝圖示＋名稱＋Lv（施工中顯示進度條與剩餘時間、已預約標籤），右＝目前效果；open 時在正下方接展開區
-    function upItemHtml(o) {
-        const prog = o.job ? `<span class="up-prog" data-row-uid="${o.job.uid}"><span class="up-bar"><i></i></span><span class="up-eta"></span></span>` : '';
-        return `<div class="up-item${o.open ? ' is-open' : ''}" data-up-item="${o.id}">
-            <button type="button" class="up-row" onclick="${o.onclick}" aria-expanded="${o.open ? 'true' : 'false'}">
-                <span class="up-ico">${o.ico}</span>
-                <span class="up-main"><span class="up-name">${o.name}<b>Lv ${o.lv}</b>${o.reserved ? '<span class="up-tag">已預約</span>' : ''}</span>${prog}</span>
-                <span class="up-side${o.muted ? ' is-muted' : ''}">${o.side}</span>
-                <span class="up-chev">▾</span>
-            </button>
-            ${o.open ? `<div class="up-detail">${o.detail}</div>` : ''}
-        </div>`;
     }
 
     function fieldProdOf(stats, f, lv) { return Math.round((FIELD_PROD_TABLE[lv] || 8) * (1 + stats.oasisBonus[f.type])); }
@@ -3309,7 +3311,7 @@ body { padding-top: var(--topbar-h, 0px); }
                     const job = v.buildQueue.find(q => q.targetType === 'field' && q.indexOrId === idx);
                     const reserved = isReservedTarget(v, 'field', idx);
                     const sel = openFieldIdx === idx;
-                    html += `<button type="button" class="fg-cell t-${f.type}${sel ? ' is-sel' : ''}" data-fg-idx="${idx}" data-up-item="f${idx}" onclick="toggleFieldRow(${idx})" aria-pressed="${sel ? 'true' : 'false'}" aria-label="${meta.name} #${idx + 1} Lv ${f.lv}">
+                    html += `<button type="button" class="fg-cell t-${f.type}${sel ? ' is-sel' : ''}" data-fg-idx="${idx}" onclick="toggleFieldRow(${idx})" aria-pressed="${sel ? 'true' : 'false'}" aria-label="${meta.name} #${idx + 1} Lv ${f.lv}">
                         <span class="fg-ico">${meta.icon}</span><span class="fg-lv">Lv ${f.lv}</span>
                         ${reserved ? '<span class="fg-rsv">📌</span>' : ''}<span class="fg-dot"></span>
                         ${job ? `<span class="up-prog" data-row-uid="${job.uid}"><span class="up-bar"><i></i></span><span class="up-eta"></span></span>` : ''}
@@ -3375,12 +3377,6 @@ body { padding-top: var(--topbar-h, 0px); }
         if (list && ae && list.contains(ae) && /^(INPUT|SELECT|TEXTAREA)$/.test(ae.tagName)) ae.blur();
     }
 
-    // 展開後把展開區捲進視野（scroll-margin 已避開置頂資源列與底部導覽）
-    function scrollOpenDetailIntoView(listId) {
-        const d = document.querySelector('#' + listId + ' .up-detail');
-        if (d) d.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-    }
-
     function toggleFieldRow(idx) {
         playSound('click');
         blurIfFormControl('fields-panel');
@@ -3389,22 +3385,6 @@ body { padding-top: var(--topbar-h, 0px); }
     }
 
     // --- 渲染視圖 B：村莊中心建築清單 ---
-    // 目前效果的一句話（沒有可量化效果的就顯示簡短功能說明）
-    function buildingEffectText(b, lv) {
-        const tribeObj = TRIBES[gameState.tribe];
-        const trainable = key => tribeObj.units.filter(u => u.req[key] !== undefined && u.req[key] <= lv).length;
-        switch (b.id) {
-            case 'main': return `施工時間 ${Math.round(Math.pow(0.95, Math.max(1, lv) - 1) * 100)}%`;
-            case 'warehouse': case 'granary': return `上限 ${fmtNum(STORAGE_CAP_TABLE[lv] || 800)}`;
-            case 'cranny': return `保護 ${fmtNum(lv * 200 * tribeObj.crannyMult)}`;
-            case 'wall': return `防禦 +${Math.round(lv * tribeObj.wallBonusPerLv * 1000) / 10}%`;
-            case 'rally': return '出征指揮・投石車目標';
-            case 'barracks': case 'stable': case 'workshop': return `可訓練 ${trainable(b.id)} 種兵`;
-            case 'residence': return lv >= 10 ? '可訓練拓荒者' : `Lv.10 解鎖拓荒者`;
-            default: return b.desc;
-        }
-    }
-
     function trainSectionHtml(v, b, lv) {
         if (lv === 0) return `<div class="up-line" style="color:#78716c;font-style:italic">建造此建築後即可解鎖對應部隊訓練。</div>`;
         const relevantUnits = TRIBES[gameState.tribe].units.filter(u => u.req[b.id] !== undefined);
@@ -3431,9 +3411,9 @@ body { padding-top: var(--topbar-h, 0px); }
 
     function buildingDetailHtml(v, b, job) {
         const lv = v.buildings[b.id] || 0;
-        let h = `<div class="up-desc">${b.desc}</div>`;
+        let h = `<div class="up-line" style="font-size:14px"><b>${b.icon} ${b.name} Lv ${lv}</b></div><div class="up-desc">${b.desc}</div>`;
         if (job) {
-            h += cancelJobHtml(job);
+            h += `<div class="up-prog" data-row-uid="${job.uid}"><span class="up-bar"><i></i></span><span class="up-eta"></span></div>` + cancelJobHtml(job);
         } else if (lv >= b.maxLv) {
             h += `<div class="up-sec is-green"><b>已達最高等級 Lv.${b.maxLv}</b></div>`;
         } else {
@@ -3469,45 +3449,56 @@ body { padding-top: var(--topbar-h, 0px); }
         return h;
     }
 
+    // 建築格子（左半）：兩欄五排，每格圖示＋短名＋Lv（未興建顯示「未建」並降低飽和度）
     function buildBuildingsListHtml(v) {
         return BUILDINGS_META.map(b => {
             const lv = v.buildings[b.id] || 0;
             const job = v.buildQueue.find(q => q.targetType === 'building' && q.indexOrId === b.id);
-            const open = openBuildingId === b.id;
-            return upItemHtml({
-                id: 'b-' + b.id, open, onclick: `toggleBuildingRow('${b.id}')`, ico: b.icon, name: b.name, lv,
-                job, reserved: isReservedTarget(v, 'building', b.id),
-                side: lv > 0 ? buildingEffectText(b, lv) : '尚未興建・點擊興建', muted: lv === 0,
-                detail: open ? buildingDetailHtml(v, b, job) : ''
-            });
+            const reserved = isReservedTarget(v, 'building', b.id);
+            const sel = openBuildingId === b.id;
+            return `<button type="button" class="fg-cell t-bld${sel ? ' is-sel' : ''}${lv === 0 ? ' is-unbuilt' : ''}" data-fb-id="${b.id}" onclick="toggleBuildingRow('${b.id}')" aria-pressed="${sel ? 'true' : 'false'}" aria-label="${b.name} ${lv === 0 ? '未興建' : 'Lv ' + lv}">
+                <span class="fg-ico">${b.icon}</span><span class="fg-name">${b.name}</span><span class="fg-lv">${lv === 0 ? '未建' : 'Lv ' + lv}</span>
+                ${reserved ? '<span class="fg-rsv">📌</span>' : ''}<span class="fg-dot"></span>
+                ${job ? `<span class="up-prog" data-row-uid="${job.uid}"><span class="up-bar"><i></i></span><span class="up-eta"></span></span>` : ''}
+            </button>`;
         }).join('');
+    }
+
+    // 右半面板：沒選建築＝村莊概況（數字由 updateUpgradeListLive 每 tick 更新）；選了建築＝該建築的升級與功能
+    function buildBuildingsPanelHtml(v) {
+        const b = openBuildingId ? BUILDINGS_META.find(x => x.id === openBuildingId) : null;
+        if (b) return buildingDetailHtml(v, b, v.buildQueue.find(q => q.targetType === 'building' && q.indexOrId === b.id));
+        return `<div class="up-line" style="font-size:14px"><b>🏘️ 村莊概況</b></div>
+            <div class="fp-row"><span>👥 人口</span><b data-bp="pop"></b></div>
+            <div class="fp-row"><span>🛡️ 城牆防禦</span><b data-bp="wall"></b></div>
+            <div class="fp-row"><span>🕳️ 山洞保護</span><b data-bp="cranny"></b></div>
+            <div class="fp-row"><span>📦 倉庫上限</span><b data-bp="capWood"></b></div>
+            <div class="fp-row"><span>🏚️ 穀倉上限</span><b data-bp="capCrop"></b></div>
+            <div class="up-line"><b>🔨 建造佇列</b><br><span data-bp="queue"></span></div>
+            <div class="fp-tip">點左邊的建築查看升級與功能</div>`;
     }
 
     function renderVillageBuildingsView() {
         const v = getActiveVillage();
         const stats = getVillageStats(v);
         const list = document.getElementById('buildings-list');
+        const panel = document.getElementById('buildings-panel');
         if (!isListBusy(list)) setHtmlIfChanged(list, buildBuildingsListHtml(v));
+        if (!isListBusy(panel)) setHtmlIfChanged(panel, buildBuildingsPanelHtml(v));
         updateUpgradeListLive(list, v, stats);
+        updateUpgradeListLive(panel, v, stats);
     }
 
     function toggleBuildingRow(bId) {
         playSound('click');
-        blurIfFormControl('buildings-list');
+        blurIfFormControl('buildings-panel');
         openBuildingId = openBuildingId === bId ? null : bId;
         renderVillageBuildingsView();
-        if (openBuildingId !== null) scrollOpenDetailIntoView('buildings-list');
     }
 
-    // 顧問「前往」用：把資源田區塊（格子＋面板）捲到畫面上方（scroll-margin 已避開頂部固定區塊）
-    function scrollFieldsBlockIntoView() {
-        const el = document.querySelector('#view-fields .fp-wrap');
-        if (el) el.scrollIntoView({ block: 'start' });
-    }
-
-    // 顧問「前往」用：把某一列捲到畫面上方（scroll-margin 已避開置頂資源列）
-    function scrollUpItemIntoView(itemId) {
-        const el = document.querySelector(`[data-up-item="${itemId}"]`);
+    // 顧問「前往」用：把該頁的格子＋面板區塊捲到畫面上方（scroll-margin 已避開頂部固定區塊）
+    function scrollFpWrapIntoView(tab) {
+        const el = document.querySelector(`#view-${tab} .fp-wrap`);
         if (el) el.scrollIntoView({ block: 'start' });
     }
 
