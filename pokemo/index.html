@@ -207,7 +207,7 @@ body.ptmap #dlg{bottom:var(--padh,260px);padding-bottom:12px}
     <button class="pri" id="btnCont" style="display:none">繼續遊戲</button>
     <button class="pri" id="btnNew">新遊戲</button>
     <button id="btnImp">匯入存檔碼</button>
-    <div class="ver">原型 v1.32 ・ 110 種怪物 ・ 前九章可玩</div>
+    <div class="ver">原型 v1.33 ・ 110 種怪物 ・ 前九章可玩</div>
   </div>
 
   <div id="sMap" class="screen">
@@ -688,11 +688,11 @@ function buildMarsh(){ // 第 4 章：霧語沼林（畫面只看得到約 7 格
    warps [{x,y,to,tx,ty,face,need}] 踩到 (x,y) 格就傳送到地圖 to 的 (tx,ty)；need＝需要的旗標
    state(m,flags) 依劇情旗標修改圖塊（例：關門打開）｜signs {'x,y':[對話]}｜onTile(t,x,y) 特殊圖塊互動，回傳對話或 null
    art {原素材名:替換素材名} 之後有該地圖專屬地磚／物件圖時使用（例：{tiles:'tiles_coast'}） */
-function buildSky(){ // 第 5 章：天穹浮島（畫面只看得到約 7 格寬：兩側岩壁實心、主道 2 格、高草切成小塊；西側是湖，東側是湖）
- const W=30,H=34,m=Array.from({length:H},()=>Array(W).fill(T.ROCK));
+function buildSky(){ // 第 5 章：天穹浮島（畫面只看得到約 7 格寬：兩側樹林實心、主道 2 格、高草切成小塊；西側是湖，東側是湖）
+ const W=30,H=34,m=Array.from({length:H},()=>Array(W).fill(T.TREE));
  const rect=(x1,y1,x2,y2,t)=>{for(let y=y1;y<=y2;y++)for(let x=x1;x<=x2;x++)m[y][x]=t};
- // 可走範圍：每段列 y1..y2 只開 x=L..R，最外側那格用 hash 做不規則邊，其餘全是岩壁
- const carve=(y1,y2,L,R)=>{for(let y=y1;y<=y2;y++){rect(L,y,R,y,T.G);if(hash(L*5+1,y*3+2)<40)m[y][L]=T.ROCK;if(hash(R*5,y*7+2)<40)m[y][R]=T.ROCK}};
+ // 可走範圍：每段列 y1..y2 只開 x=L..R，最外側那格用 hash 做不規則邊，其餘全是樹林
+ const carve=(y1,y2,L,R)=>{for(let y=y1;y<=y2;y++){rect(L,y,R,y,T.G);if(hash(L*5+1,y*3+2)<40)m[y][L]=T.TREE;if(hash(R*5,y*7+2)<40)m[y][R]=T.TREE}};
  carve(4,6,10,19);carve(7,7,8,19);carve(8,19,8,21);carve(20,21,8,24);carve(22,23,8,21);carve(24,26,4,20);
  rect(3,7,7,16,T.WATER);rect(22,8,26,19,T.WATER);
  m[27][6]=m[27][7]=T.G;m[27][22]=T.G;   // 雲雀、小豆站的小凹口
@@ -708,10 +708,10 @@ function buildSky(){ // 第 5 章：天穹浮島（畫面只看得到約 7 格�
  m[24][5]=T.G;   // 小屋（5,24）的圖要畫在可走的格子上
  return m;
 }
-function buildAbyss(){ // 第 6 章：無光深淵（畫面只看得到約 7 格寬：兩側岩壁實心、主道 2 格、高草切成小塊；東側是裂縫水域，西側有小水池）
- const W=30,H=34,m=Array.from({length:H},()=>Array(W).fill(T.ROCK));
+function buildAbyss(){ // 第 6 章：無光深淵（畫面只看得到約 7 格寬：兩側樹林實心、主道 2 格、高草切成小塊；東側是裂縫水域，西側有小水池）
+ const W=30,H=34,m=Array.from({length:H},()=>Array(W).fill(T.TREE));
  const rect=(x1,y1,x2,y2,t)=>{for(let y=y1;y<=y2;y++)for(let x=x1;x<=x2;x++)m[y][x]=t};
- const carve=(y1,y2,L,R)=>{for(let y=y1;y<=y2;y++){rect(L,y,R,y,T.G);if(hash(L*5+1,y*3+2)<40)m[y][L]=T.ROCK;if(hash(R*5,y*7+2)<40)m[y][R]=T.ROCK}};
+ const carve=(y1,y2,L,R)=>{for(let y=y1;y<=y2;y++){rect(L,y,R,y,T.G);if(hash(L*5+1,y*3+2)<40)m[y][L]=T.TREE;if(hash(R*5,y*7+2)<40)m[y][R]=T.TREE}};
  carve(4,5,10,19);carve(6,8,10,20);carve(9,19,7,20);carve(20,20,8,21);carve(21,23,8,24);carve(24,26,5,21);
  rect(21,6,26,18,T.WATER);rect(3,9,6,14,T.WATER);rect(12,13,12,17,T.ROCK);   // 壁畫旁的一排石柱維持原樣
  m[27][6]=m[27][7]=T.G;m[27][22]=T.G;   // 灰鴉、小豆站的小凹口
@@ -726,10 +726,10 @@ function buildAbyss(){ // 第 6 章：無光深淵（畫面只看得到約 7 格
  return m;
 }
 function buildRoyal(){ // 第 7 章：守界盟王都（街道為主：兩側實心、主街 2 格；兩間房子只剩 3×3 本體，門口各鋪一條小路接到主街）
- const W=30,H=34,m=Array.from({length:H},()=>Array(W).fill(T.ROCK));
+ const W=30,H=34,m=Array.from({length:H},()=>Array(W).fill(T.TREE));
  const rect=(x1,y1,x2,y2,t)=>{for(let y=y1;y<=y2;y++)for(let x=x1;x<=x2;x++)m[y][x]=t};
- const carve=(y1,y2,L,R)=>{for(let y=y1;y<=y2;y++){rect(L,y,R,y,T.G);if(hash(L*5+1,y*3+2)<40)m[y][L]=T.ROCK;if(hash(R*5,y*7+2)<40)m[y][R]=T.ROCK}};
- // 可走範圍：城門前、王城庭院、檔案廳（y=13..25）三段，其餘是岩壁
+ const carve=(y1,y2,L,R)=>{for(let y=y1;y<=y2;y++){rect(L,y,R,y,T.G);if(hash(L*5+1,y*3+2)<40)m[y][L]=T.TREE;if(hash(R*5,y*7+2)<40)m[y][R]=T.TREE}};
+ // 可走範圍：城門前、王城庭院、檔案廳（y=13..25）三段，其餘是樹林
  carve(2,2,13,16);carve(4,4,10,19);carve(5,5,10,22);carve(6,7,7,22);carve(8,9,7,18);carve(10,10,5,20);carve(11,11,8,20);carve(13,25,6,22);
  rect(17,12,18,12,T.G);   // 內門東側的窄道（原本就繞得過內門，連通性維持不變）
  m[5][22]=m[6][22]=m[7][22]=T.G;   // 繞過賽倫（21,6）、通到盟長書房告示牌（22,8）的路
@@ -749,8 +749,8 @@ function buildRoyal(){ // 第 7 章：守界盟王都（街道為主：兩側實
  [[12,14],[18,16],[12,24]].forEach(([x,y])=>{if(m[y][x]===T.G||m[y][x]===T.FLOWER)m[y][x]=T.ROCK});
  return m;
 }
-function buildThrone(){ // 五核回聲的交會處（畫面只看得到約 7 格寬：兩側岩壁實心、主道與橫道各 2 格、高草切成小塊；四個回憶入口是嵌在兩側水岸與橫道上的告示牌）
- const W=30,H=34,m=Array.from({length:H},()=>Array(W).fill(T.ROCK));
+function buildThrone(){ // 五核回聲的交會處（畫面只看得到約 7 格寬：兩側樹林實心、主道與橫道各 2 格、高草切成小塊；四個回憶入口是嵌在兩側水岸與橫道上的告示牌）
+ const W=30,H=34,m=Array.from({length:H},()=>Array(W).fill(T.TREE));
  const rect=(x1,y1,x2,y2,t)=>{for(let y=y1;y<=y2;y++)for(let x=x1;x<=x2;x++)m[y][x]=t};
  // 場地 x=7~22；內緣各有一欄不規則（x=6 或 x=23，同一列最多開一邊，每列寬度 ≤17）
  for(let y=3;y<=30;y++){
@@ -768,8 +768,8 @@ function buildThrone(){ // 五核回聲的交會處（畫面只看得到約 7 �
  m[14][6]=T.SIGN;m[14][11]=T.SIGN;m[14][18]=T.SIGN;m[14][23]=T.SIGN;m[25][14]=T.FOUNT;
  return m;
 }
-function buildMemory(stage){ // 四張可步行的回憶小地圖（畫面只看得到約 7 格寬：兩側岩壁實心、主道與橫道各 2 格）
- const W=26,H=30,m=Array.from({length:H},()=>Array(W).fill(T.ROCK));
+function buildMemory(stage){ // 四張可步行的回憶小地圖（畫面只看得到約 7 格寬：兩側樹林實心、主道與橫道各 2 格）
+ const W=26,H=30,m=Array.from({length:H},()=>Array(W).fill(T.TREE));
  const rect=(x1,y1,x2,y2,t)=>{for(let y=y1;y<=y2;y++)for(let x=x1;x<=x2;x++)m[y][x]=t};
  // 場地 x=6~21；內緣各有一欄不規則（x=5 或 x=22，同一列最多開一邊，每列寬度 ≤17）
  for(let y=2;y<=27;y++){
@@ -787,15 +787,15 @@ function buildMemory(stage){ // 四張可步行的回憶小地圖（畫面只看
  m[12][13]=T.SIGN;m[27][13]=T.PATH;
  return m;
 }
-function buildTower(){ // 第 9 章：樓層隨存檔狀態推進的無盡之塔（畫面只看得到約 7 格寬：兩側岩壁實心、主道與橫道各 2 格）
- const W=30,H=34,m=Array.from({length:H},()=>Array(W).fill(T.ROCK));
+function buildTower(){ // 第 9 章：樓層隨存檔狀態推進的無盡之塔（畫面只看得到約 7 格寬：兩側樹林實心、主道與橫道各 2 格）
+ const W=30,H=34,m=Array.from({length:H},()=>Array(W).fill(T.TREE));
  const rect=(x1,y1,x2,y2,t)=>{for(let y=y1;y<=y2;y++)for(let x=x1;x<=x2;x++)m[y][x]=t};
  // 場地 x=6~22（噴泉一帶 y=25~29 往西多開一欄、東緣內縮一欄，寬度仍是 17）；其餘列內緣用 hash 內縮一欄
  for(let y=3;y<=30;y++){
   const town=y>=25&&y<=29,keep=town||(y>=12&&y<=14)||(y>=22&&y<=24);
   const L=town?5:6,R=town?21:22;
   rect(L,y,R,y,T.G);
-  if(!keep){const sl=hash(6,y*3+1)<35;if(sl)m[y][6]=T.ROCK;else if(hash(22,y*3+2)<35)m[y][22]=T.ROCK}
+  if(!keep){const sl=hash(6,y*3+1)<35;if(sl)m[y][6]=T.TREE;else if(hash(22,y*3+2)<35)m[y][22]=T.TREE}
  }
  rect(14,2,15,33,T.PATH);                      // 主道 2 格（塔門在北，入口在南）
  rect(7,8,13,9,T.PATH);rect(16,8,22,9,T.PATH);rect(7,18,13,19,T.PATH);rect(16,18,22,19,T.PATH);   // 四條側廊（2 格）
