@@ -75,6 +75,7 @@ const shopName=s=>(TEXT.shop.items[s.key]||TEXT.shop.items['tonic_'+s.tonic]||{}
 const shopSold=s=>!!s.once&&V().stock[s.key]<=0;                                               // 一次性品買完了
 const shopShown=s=>bossCount()>=(s.boss|0)&&(!s.after||V().stock[s.after]<=0)&&!shopSold(s);   // 已上架（還沒賣完）
 const shopPieces=()=>SHOP.filter(s=>s.give==='piece').length;                                   // 旅商賣的命珠碎片（算進「累計碎片 x/總數」的總數）
+const bountyPieces=()=>BOUNTY.reduce((a,b)=>a+(b.reward.item?parseLoot(b.reward.item).reduce((t,o)=>t+((o.id==='piece'||o.id==='gem')?o.n:0),0):0),0);   // 賞金獎勵裡的命珠碎片（湖畔尋寶）也算進總數
 function shopFull(s){
   if(s.tonic)return ST.tonic[s.tonic]>=TONIC_MAX;
   if(s.up)return s.up==='info'?!!V().info:(V().up[s.up]|0)>=s.lv;
@@ -192,9 +193,12 @@ EVT.on('boss',()=>{vilInit();for(const s of SHOP)if(!s.once&&!EQUIP[s.give])V().
 
 /* 藏寶情報：世界地圖上，去過的地圖旁標「寶箱 已開/總數」（index.html 的 drawWorld 呼叫） */
 const mapChestIds=id=>{const M=MAPS[id]||{};const a=[...(M.chests||[]).map(c=>c.id),...(M.cracks||[]).filter(k=>k.chest).map(k=>k.chest.id)];if(M.blockReward)a.push(M.blockReward.id);return a};
-function mapChestCount(id){const a=mapChestIds(id);return {open:a.filter(k=>ST.chests[k]).length,total:a.length}}   // 某張地圖的寶箱 已開/總數（獨立函式，新版世界地圖畫面直接呼叫；沒買藏寶情報時由呼叫端自行不顯示：看 shopHasInfo()）
+function mapChestCount(id){const a=mapChestIds(id),M=MAPS[id]||{};
+  const crack=(M.cracks||[]).some(k=>k.chest&&!ST.chests[k.chest.id]),mech=!!(M.blockReward&&!ST.chests[M.blockReward.id]);   // 還有沒開的：裂牆（要炸彈）、石塊機關
+  return {open:a.filter(k=>ST.chests[k]).length,total:a.length,tag:crack&&mech?'有裂牆、機關':crack?'有裂牆':mech?'有石塊機關':''}}   // 某張地圖的寶箱 已開/總數（獨立函式，新版世界地圖畫面直接呼叫；沒買藏寶情報時由呼叫端自行不顯示：看 shopHasInfo()）
 const shopHasInfo=()=>!!V().info;
-HOOKS.worldNote=id=>{if(!shopHasInfo())return null;const c=mapChestCount(id);return c.total?`${TEXT.shop.chestNote} ${c.open}/${c.total}`:null};   // 舊版世界地圖（drawWorld）用
+HOOKS.worldNote=id=>{const c=mapChestCount(id);return c.total?`${TEXT.shop.chestNote} ${c.open}/${c.total}${c.tag?' '+c.tag:''}`:null};
+HOOKS.compass=shopHasInfo;   // 尋寶羅盤：買過藏寶情報（V().info）→ 場景邊緣常駐箭頭（index.html 的 drawChestHints）   // 舊版世界地圖（drawWorld）用
 
 /* ================= 鐵匠 ================= */
 const recipeOK=f=>ST.money>=f.money&&Object.entries(f.mats).every(([k,n])=>(ST.mats[k]|0)>=n)&&ST.bag.equip.includes(f.from)&&!ST.bag.equip.includes(f.id);

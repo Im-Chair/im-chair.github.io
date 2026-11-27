@@ -37,6 +37,7 @@ const TEXT={
   brazierDoor:'最後一座火盆亮了。石門深處傳來聲響。',
   keyDoor:'小鑰匙轉動，門鎖應聲而開。',
   crack:'碎石落下，牆壁被炸開了。',
+  crackHint:'牆上有裂痕，也許有東西能炸開它。',
   blocks:'石塊歸位。深處傳來一聲沉重的機關聲。',
   needFire:'火盆沒有反應。需要提燈才能點燃。',
   noBomb:'沒有炸彈了。打破陶罐或打倒敵人可以補充。',
@@ -102,7 +103,7 @@ const TEXT={
       piece2:{name:'命珠碎片',desc:'和寶箱裡的一樣，集滿四片，生命上限 +1。最後一片，不補貨。'},
       shard:{name:'魔晶',desc:'鍛造用的材料。'},
       ore:{name:'鐵礦石',desc:'鍛造用的材料。'},
-      info:{name:'藏寶情報',desc:'買了之後，世界地圖會顯示各地點的寶箱「已開／總數」。一次性。'}
+      info:{name:'尋寶羅盤',desc:'買了之後，場景邊緣會常駐金色箭頭，指出這張地圖最近的未開寶箱方向（有炸彈時也會指向裂牆）。一次性。'}
     }},
   smith:{hi:'……要打傢伙？材料跟珠幣放桌上。',ask:['打造裝備','先不用了'],made:'打造完成：',lack:'材料不夠，珠幣也差一點。湊齊了再來。'},
   bounty:{done:'委託完成了！回村子的賞金板領取獎勵吧。',take:'接下委託：',claim:'領到賞金：',busy:'別太貪心，手上這張辦妥了再接下一張。',already:'這個寶箱你早就開過了。這張直接算完成。',quit:'委託已放棄。'},
@@ -223,14 +224,17 @@ function crackRect(k){const L=k.len||2.4,W=k.w||2,h=W/2;
     case 'w':return {x0:k.x-L,y0:k.y-h,x1:k.x+.4,y1:k.y+h,cx:k.x-L+.8,cy:k.y+.35};
     case 'n':return {x0:k.x-h,y0:k.y-L,x1:k.x+h,y1:k.y+.4,cx:k.x,cy:k.y-L+1.1};
     default:return {x0:k.x-h,y0:k.y-.4,x1:k.x+h,y1:k.y+L,cx:k.x,cy:k.y+L-.4}}}
-function carve(c,k){
-  c._carved=c._carved||{};if(c._carved[k.id])return;c._carved[k.id]=1;
+function carveMask(c,k){   // 把裂牆的洞挖進可走遮罩（audit 也用它在副本上模擬）
   const r=crackRect(k),rad=.45;
   for(let y=Math.floor(r.y0*MASK_RES);y<Math.ceil(r.y1*MASK_RES);y++)for(let x=Math.floor(r.x0*MASK_RES);x<Math.ceil(r.x1*MASK_RES);x++){
     if(x<0||y<0||x>=c.mw||y>=c.mh)continue;const px=(x+.5)/MASK_RES,py=(y+.5)/MASK_RES;
     const qx=clamp(px,r.x0+rad,r.x1-rad),qy=clamp(py,r.y0+rad,r.y1-rad);if(Math.hypot(px-qx,py-qy)>rad)continue;   // 圓角
     c.walk[y*c.mw+x]=1;c.wet[y*c.mw+x]=0;
   }
+}
+function carve(c,k){
+  c._carved=c._carved||{};if(c._carved[k.id])return;c._carved[k.id]=1;
+  const r=crackRect(k);carveMask(c,k);
   if(k.chest)addChest(c,{id:k.chest.id,x:r.cx,y:r.cy,loot:k.chest.loot});
 }
 function openCrack(k){
@@ -641,7 +645,7 @@ EVT.on('chest',(p,loot)=>{const ids=parseLoot(loot).map(o=>o.id).filter(id=>TEXT
 /* ===== 通關 ===== */
 const fmtTime=s=>{s=Math.round(s);const h=Math.floor(s/3600),m=Math.floor(s/60)%60,ss=s%60;return (h?h+':'+String(m).padStart(2,'0'):m)+':'+String(ss).padStart(2,'0')};
 function totalGems(){let n=0;const isGem=l=>parseLoot(l).reduce((a,o)=>a+((o.id==='gem'||o.id==='piece')?o.n:0),0);
-  for(const M of Object.values(MAPS)){(M.chests||[]).forEach(c=>n+=isGem(c.loot));(M.cracks||[]).forEach(k=>k.chest&&(n+=isGem(k.chest.loot)));if(M.blockReward)n+=isGem(M.blockReward.loot)}return n+(typeof shopPieces==='function'?shopPieces():0)}   // 旅商賣的命珠碎片也算進總數（village.js）
+  for(const M of Object.values(MAPS)){(M.chests||[]).forEach(c=>n+=isGem(c.loot));(M.cracks||[]).forEach(k=>k.chest&&(n+=isGem(k.chest.loot)));if(M.blockReward)n+=isGem(M.blockReward.loot)}return n+(typeof shopPieces==='function'?shopPieces():0)+(typeof bountyPieces==='function'?bountyPieces():0)}   // 旅商賣的、賞金獎勵給的命珠碎片也算進總數（village.js）
 function totalChests(){let n=0;for(const M of Object.values(MAPS)){n+=(M.chests||[]).length+(M.cracks||[]).filter(k=>k.chest).length+(M.blockReward?1:0)}return n}
 function recordWin(){
   try{const s=JSON.parse(localStorage.getItem(STATS_KEY)||'null')||{};const m=s.story=s.story||{plays:0,wins:0,best:{}};m.plays=m.plays|0;m.wins=(m.wins|0)+1;m.best=m.best||{};
@@ -683,8 +687,15 @@ HOOKS.update=dt=>{
   if(!PS.dead){lockTick();blockTick(dt)}
   advHud();
 };
+const CRACK_HINTED=new Set();   // 這次遊玩已經提示過的裂牆（靠近時自動提示一次）
 HOOKS.near=best=>{
   let hit=null;
+  if(!has('bomb'))for(const k of C.M.cracks||[]){   // 還沒有炸彈：靠近裂牆自動提示一次，對它按互動鍵也會說
+    if(ST.flags[fk('ck',k.id)])continue;
+    const d=Math.hypot(k.x-P.x,k.y-P.y);
+    if(d<2.2&&!CRACK_HINTED.has(CURID+':'+k.id)){CRACK_HINTED.add(CURID+':'+k.id);toast(TEXT.crackHint)}
+    if(d<best){best=d;hit={x:k.x,y:k.y,label:'檢查',act:()=>say([TEXT.crackHint])}}
+  }
   for(const p of C.props){
     if(p.k==='brazier'&&!p.lit){const d=Math.hypot(p.x-P.x,p.y-.25-P.y);if(d<best){best=d;hit=p;p.label='點火';p.act=()=>tryLight(p)}}
     else if(p.k==='altar'&&p.awake&&!p.taken){const d=Math.hypot(p.x-P.x,p.y+.3-P.y);if(d<Math.max(best,1.9)){best=d;hit=p;p.label='取得聖物';p.act=()=>claimAltar(p)}}
@@ -694,6 +705,35 @@ HOOKS.near=best=>{
 HOOKS.blocked=(x,y,r)=>!!(FIGHT&&!FIGHT.over&&Math.hypot(x-FIGHT.cx,y-FIGHT.cy)+r>FIGHT.R);
 HOOKS.light=()=>has('lantern')?TOOLS.lantern.light:3.4;
 HOOKS.camera=()=>CAM;
+// 尋寶羅盤：有炸彈時，還沒炸開的裂牆寶箱也算目標（指向裂牆位置；炸開後寶箱成為場上物件，由引擎自己找）
+HOOKS.hintTargets=()=>{const a=[];if(!has('bomb'))return a;for(const k of C.M.cracks||[])if(k.chest&&!ST.flags[fk('ck',k.id)]&&!ST.chests[k.chest.id])a.push({x:k.x,y:k.y});return a};
+// 開發用：audit() 的補充檢查——石塊獎勵寶箱的位置、裂牆炸開後洞裡的寶箱（在遮罩副本上模擬炸開，跑完還原）
+HOOKS.audit=(c,reach,reach2)=>{
+  const M=c.M,out={problems:[],locked:[]},R=.36,rr=R+PLAYER_R+.4;
+  const hitCol=(x,y)=>{for(const [,a] of c.cols)for(const col of a)if(!col.off&&colHit(col,x,y,R))return true;return false};
+  const b=M.blockReward;
+  if(b){const x=b.x,y=b.y-.25,tag='石塊獎勵寶箱 '+b.id;
+    if(x<0||y<0||x>c.w||y>c.h||!walkAt(c,x,y))out.problems.push(tag+' 不在可走區');
+    else{if(hitCol(x,y))out.problems.push(tag+' 壓在其他碰撞體上');
+      if(!reach(x,y,rr)){if(reach2(x,y,rr))out.locked.push(tag+'（機關後）');else out.problems.push(tag+' 到不了')}}}
+  for(const k of M.cracks||[]){if(!k.chest)continue;
+    const r=crackRect(k),cx=r.cx,cy=r.cy-.25,tag='裂牆寶箱 '+k.chest.id;
+    if(cx<0||cy<0||cx>c.w||cy>c.h){out.problems.push(tag+' 超出地圖');continue}
+    const w0=c.walk.slice(),e0=c.wet.slice();
+    try{
+      carveMask(c,k);
+      if(!walkAt(c,cx,cy))out.problems.push(tag+' 炸開後仍不在可走區');
+      if(hitCol(cx,cy))out.problems.push(tag+' 壓在其他碰撞體上');
+      // 洞裡找一個離寶箱 ≤1 單位、玩家站得下的位置，再檢查從裂牆外側一路走得進去
+      let spot=null;
+      for(let rad=.7;rad<=1.01&&!spot;rad+=.15)for(let i=0;i<16&&!spot;i++){const a=i/16*Math.PI*2,x=cx+Math.cos(a)*rad,y=cy+Math.sin(a)*rad;
+        if(circleFree(x,y,PLAYER_R)&&Math.hypot(x-cx,y-cy)>R+PLAYER_R)spot=[x,y]}
+      if(!spot)out.problems.push(tag+' 炸開後洞裡沒有能站著開箱的位置');
+      else{const u={e:[1,0],w:[-1,0],n:[0,-1]}[k.dir]||[0,1],sx=k.x-u[0]*.5,sy=k.y-u[1]*.5,n=Math.ceil(Math.hypot(spot[0]-sx,spot[1]-sy)/.1);
+        for(let i=0;i<=n;i++){const x=sx+(spot[0]-sx)*i/n,y=sy+(spot[1]-sy)*i/n;if(!circleFree(x,y,PLAYER_R)){out.problems.push(tag+' 炸開後走不進洞裡（約在 '+x.toFixed(1)+', '+y.toFixed(1)+'）');break}}}
+    }finally{for(let i=0;i<w0.length;i++){c.walk[i]=w0[i];c.wet[i]=e0[i]}}}
+  return out;
+};
 const _art=HOOKS.art;HOOKS.art=id=>{const a=_art(id),b=MAPS[id]&&MAPS[id].boss;if(b&&BOSS_DEF[b.id])a.push(BOSS_DEF[b.id].art);return a};
 HOOKS.actors=(list,c,now)=>{
   _actors(list,c,now);

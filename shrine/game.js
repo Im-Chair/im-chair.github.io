@@ -5,7 +5,7 @@
    circleFree、walkAt、wetAt、moveBy、inRect、go、fade、sleep、toast、render、mapArt、loadMap、
    ART／ART_SRC／needArt、drawShadow、keys、running、lock、dlgOpen、worldOpen、PLAYER_R、HERO_*。
    這個檔掛上 HOOKS，負責：玩家戰鬥、敵人、飛行物、掉落、互動物、HUD、存檔、音效、標題按鈕。
-   座標單位同引擎（1 單位＝48 CSS px），時間單位秒，生命以「半顆心」為 1。
+   座標單位同引擎（1 單位＝U 個 CSS px；U 是引擎的變數、依螢幕重算，別寫死 48），時間單位秒，生命以「半顆心」為 1。
 
    ── 結構 ──
    數值表   PL（玩家）、ENEMY（四種敵人）、MAP_POWER／POWER_TIER（地圖強度）、ITEMS（物品）、DROP（掉落）
@@ -21,7 +21,7 @@ const MONEY='珠幣';
 const SAVE_KEY='arcade-shrine-save',STATS_KEY='arcade-shrine-stats',SAVE_V=1;
 
 /* ================= 數值表 ================= */
-// 玩家（舊原型：木劍 12、受傷無敵 1.05s、翻滾 .28s／340px/s、蓄力 .65s；1 單位＝48px 換算）
+// 玩家（舊原型：木劍 12、受傷無敵 1.05s、翻滾 .28s／340px/s、蓄力 .65s；1 單位換算成像素要用引擎的 U 與 dpr）
 const PL={
   hearts:5,maxHearts:20,piecesPerHeart:4,startMoney:20,
   atk:12,                    // 斬擊傷害
@@ -37,6 +37,21 @@ const PL={
   deathLoss:.15,                              // 倒下時失去的錢比例
   pickR:.6
 };
+// 戰鬥手感（輸入緩衝、輔助瞄準、命中回饋、傷害數字）
+const BUF_T=.14;                         // 輸入緩衝：還不能做時按下的攻擊／翻滾，記住這麼久（秒）
+const AIM_CONE=35*Math.PI/180;           // 揮砍輔助瞄準：面向左右各這個角度內的敵人才會吸過去
+const AIM_EXTRA=.6;                      // 輔助瞄準距離＝揮砍半徑 + 這個值（單位）
+const AIM_MAX=20*Math.PI/180;            // 輔助瞄準：一刀最多修正的角度
+const SLASH_MOVE_MUL=.35;                // 揮砍中的移動速度倍率（原 .15 太黏）
+const SHAKE_HIT=[.06,90];                // 畫面震動 [位移（單位）, 持續毫秒]：打中敵人
+const SHAKE_BIG=[.12,140];               // 擊殺或蓄力斬命中
+const SHAKE_HURT=[.14,180];              // 主角受傷
+const VIB_HURT=40,VIB_KILL=20;           // 手機震動毫秒：受傷、擊殺（音效總開關關閉時不震）
+const NUM_FONT=.34,NUM_FONT_BIG=.44;     // 傷害數字字高（× U）：一般、高傷害
+const NUM_BIG_K=1.4;                     // 單次傷害 ≥ 目前斬擊傷害 × 這個倍率，或蓄力斬命中，就算高傷害（金字）
+const NUM_RISE=.6,NUM_LIFE=.6;           // 傷害數字往上飄的距離（單位）、存活秒數（後段淡出）
+const NUM_MAX=24;                        // 同時最多幾個傷害數字，超過丟最舊的
+const NUM_STAG=[0,1,-1,2,-2],NUM_STAG_DX=.24,NUM_STAG_T=.35;   // 同一目標 NUM_STAG_T 秒內連續受傷：數字依序水平錯開 NUM_STAG_DX 單位的倍數
 // 敵人（舊原型：slime 26hp/atk2、archer 36hp、knight 65hp/atk3、2.4 秒一箭；goblin 為新增）
 const ENEMY={
   slime:{name:'史萊姆',hp:26,atk:2,spd:1.3,r:.32,mass:1,aggro:5,lose:8,leash:7,gold:[2,6],heart:.3,touch:true,
@@ -231,6 +246,8 @@ function equip(id){   // 穿上背包裡的裝備；回傳 true＝成功
 function equipSet(o){for(const s of EQUIP_SLOTS)if(o[s]!==undefined){if(o[s]&&!ST.bag.equip.includes(o[s]))ST.bag.equip.push(o[s]);ST.eq[s]=o[s]||(s==='acc'?'':EQ_START[s])}}
 const PS={carry:0,act:'',t:0,inv:0,blink:false,kbx:0,kby:0,kbt:0,rollCd:0,rdx:0,rdy:0,charge:0,charged:false,shield:false,hit:new Set(),stop:0,flash:0,dead:false,deadT:0};
 const IN={atk:false,shd:false};
+const BUF={n:'',t:0};   // 輸入緩衝：n＝'atk'|'roll'，t＝剩餘秒數
+let SLASH_A=null;       // 這一刀的實際朝向（弧度；輔助瞄準修正後），判定與刀光共用
 let ENEMIES=[],SHOTS=[],DROPS=[],FX=[],INTER=[],EID=0,FROZEN=false,AI_OFF=false,GT=0;
 const EVT={h:{},on(n,f){(this.h[n]=this.h[n]||[]).push(f)},emit(n,...a){(this.h[n]||[]).forEach(f=>{try{f(...a)}catch(e){console.error(e)}})}};
 const rand=(a,b)=>a+Math.random()*(b-a);
@@ -409,29 +426,67 @@ function sparks(x,y,col,n=7,spd=4,z=.4){for(let i=0;i<n;i++){const a=Math.random
 function shards(x,y){for(let i=0;i<10;i++){const a=Math.random()*Math.PI*2,s=rand(1.5,3.5);FX.push({k:'p',x,y,z:.3,vx:Math.cos(a)*s,vy:Math.sin(a)*s*.6,vz:rand(2,4),g:14,life:rand(.4,.6),max:.6,col:i%2?'#c2783e':'#7a3f22',sz:rand(.06,.1),sq:1})}}
 function puff(x,y,col='#cfc8e8'){for(let i=0;i<9;i++){const a=i/9*Math.PI*2;FX.push({k:'p',x:x+Math.cos(a)*.2,y:y+Math.sin(a)*.1,z:.3,vx:Math.cos(a)*1.2,vy:Math.sin(a)*.6,vz:.8,g:0,life:.5,max:.5,col,sz:.16,soft:1})}}
 function ring(x,y,r,col){FX.push({k:'ring',x,y,r,col,life:.18,max:.18})}
+// 畫面震動：用真實時間（暫停、停頓時也不會卡在偏移上）；同時多個取最大者、不疊加；系統設「減少動態」就不震
+const SHAKE={amp:0,t0:0,dur:0};
+function shakeNow(){const a=performance.now()-SHAKE.t0;return a>=SHAKE.dur?0:SHAKE.amp*Math.pow(1-a/SHAKE.dur,2)}
+function shake(cfg){
+  try{if(matchMedia('(prefers-reduced-motion: reduce)').matches)return}catch(e){}
+  if(cfg[0]<shakeNow())return;
+  SHAKE.amp=cfg[0];SHAKE.t0=performance.now();SHAKE.dur=cfg[1];
+}
+function vibe(ms){try{if(localStorage.getItem('arcade-sound')==='off')return;navigator.vibrate?.(ms)}catch(e){}}   // 音效總開關關閉時也不震，每次重讀
+// 傷害數字：{x,y,v,k:'e'|'p',big,t}，t 用 GT（遊戲時間）
+const DMGN=[];
+function popNum(x,y,v,k,big,own){
+  let dx=0;
+  if(own){own._nK=(GT-(own._nT!=null?own._nT:-9)<NUM_STAG_T)?(own._nK|0)+1:0;own._nT=GT;dx=NUM_STAG[own._nK%NUM_STAG.length]*NUM_STAG_DX}
+  DMGN.push({x:x+dx,y,v,k,big,t:GT});
+  while(DMGN.length>NUM_MAX)DMGN.shift();
+}
+function hitFeel(e,dmg,killed,big){   // 主角打中敵人
+  shake(killed||big?SHAKE_BIG:SHAKE_HIT);if(killed)vibe(VIB_KILL);
+  popNum(e.x,e.y-(e.z||0)-Math.max(1,e.r*2+.4),dmg,'e',big,e);
+}
+function hurtFeel(dmg){shake(SHAKE_HURT);vibe(VIB_HURT);popNum(P.x,P.y-HERO_H-.1,dmg,'p',false,PS)}
 
 /* ================= 玩家 ================= */
 function faceVec(){return FACE_V[P.face]||FACE_V.down}
+function canSlash(){return PS.act===''||PS.act==='charge'||(PS.act==='slash'&&PS.t>PL.slashT*.6)}
+function canRoll(){return !(PS.dead||lock||dlgOpen||worldOpen||PS.rollCd>0||PS.kbt>0||!(PS.act===''||PS.act==='charge'))}
+function bufPut(n){BUF.n=n;BUF.t=BUF_T}   // 只記最後一個
 function press(name,down){
   if(name==='atk'){
     if(!down){IN.atk=false;if(PS.charged&&!PS.dead)spinAttack();else if(PS.act==='charge')PS.act='';PS.charge=0;PS.charged=false;return}
     if(IN.atk)return;IN.atk=true;
     if(PS.dead||lock||dlgOpen||worldOpen||panelOpen)return;
-    if(PS.act===''||PS.act==='charge'||(PS.act==='slash'&&PS.t>PL.slashT*.6))slash();
+    if(canSlash())slash();else bufPut('atk');   // 現在不能揮：記住，能揮的那一幀立刻揮
   }else if(name==='roll'){
-    if(down)roll();
-  }else if(name==='shd')IN.shd=!!down;
+    if(down&&!roll()&&!(PS.dead||lock||dlgOpen||worldOpen||panelOpen))bufPut('roll');
+  }else if(name==='shd')IN.shd=!!down;   // 舉盾不緩衝
+}
+// 揮砍輔助瞄準：面向 ±AIM_CONE、距離 ≤ 揮砍半徑+AIM_EXTRA 內最近的敵人，朝它修正最多 AIM_MAX；沒有就照面向
+function aimSlash(){
+  const [fx,fy]=faceVec(),base=Math.atan2(fy,fx);let best=null,bd=1e9;
+  for(const e of ENEMIES){
+    if(e.dead||e.immune)continue;
+    const dx=e.x-P.x,dy=e.y-P.y,d=Math.hypot(dx,dy);if(d>PL.slashR+AIM_EXTRA||d<1e-3)continue;
+    let da=Math.atan2(dy,dx)-base;while(da>Math.PI)da-=Math.PI*2;while(da<-Math.PI)da+=Math.PI*2;
+    if(Math.abs(da)>AIM_CONE)continue;
+    if(d<bd){bd=d;best=da}
+  }
+  return best==null?base:base+clamp(best,-AIM_MAX,AIM_MAX);
 }
 function slash(){PS.act='slash';PS.t=0;PS.hit.clear();PS.charge=0;PS.charged=false;PS.shield=false;SFX.swing();
-  const [fx,fy]=faceVec();FX.push({k:'arc',a:Math.atan2(fy,fx),half:PL.slashArc,r:PL.slashR,life:PL.slashT*.9,max:PL.slashT*.9})}
+  SLASH_A=aimSlash();BUF.t=0;
+  FX.push({k:'arc',a:SLASH_A,half:PL.slashArc,r:PL.slashR,life:PL.slashT*.9,max:PL.slashT*.9})}
 function spinAttack(){PS.act='spin';PS.t=0;PS.hit.clear();PS.charge=0;PS.charged=false;SFX.spin();FX.push({k:'spin',r:PL.spinR,life:PL.spinT+.08,max:PL.spinT+.08})}
-function roll(){
-  if(PS.dead||lock||dlgOpen||worldOpen||PS.rollCd>0||PS.kbt>0||!(PS.act===''||PS.act==='charge'))return;
+function roll(){   // 回傳 true＝翻滾成功啟動
+  if(!canRoll())return false;
   let ix=(keys.ArrowRight||keys.d?1:0)-(keys.ArrowLeft||keys.a?1:0)+joy.x,iy=(keys.ArrowDown||keys.s?1:0)-(keys.ArrowUp||keys.w?1:0)+joy.y;
   let l=Math.hypot(ix,iy);if(l<.15){[ix,iy]=faceVec();l=1}
-  PS.rdx=ix/l;PS.rdy=iy/l;PS.act='roll';PS.t=PL.rollT;PS.inv=Math.max(PS.inv,PL.rollInv);PS.blink=false;PS.charge=0;PS.charged=false;IN.atk=false;
+  PS.rdx=ix/l;PS.rdy=iy/l;PS.act='roll';PS.t=PL.rollT;PS.inv=Math.max(PS.inv,PL.rollInv);PS.blink=false;PS.charge=0;PS.charged=false;IN.atk=false;BUF.t=0;
   if(Math.abs(PS.rdx)>Math.abs(PS.rdy))P.face=PS.rdx<0?'left':'right';else P.face=PS.rdy<0?'up':'down';
-  SFX.roll();
+  SFX.roll();return true;
 }
 // 每幀（引擎移動前）呼叫：回傳輸入移動的速度倍率（0＝這幀不准用輸入移動）
 function playerTick(dt){
@@ -442,6 +497,10 @@ function playerTick(dt){
   if(PS.stop>0){PS.stop-=dt;FROZEN=true;return 0}
   FROZEN=false;
   if(PS.inv>0)PS.inv-=dt;if(PS.rollCd>0)PS.rollCd-=dt;if(PS.flash>0)PS.flash-=dt;
+  if(BUF.t>0){   // 輸入緩衝：能做的那一幀立刻做，過期就丟
+    BUF.t-=dt;
+    if(BUF.n==='atk'){if(canSlash())slash()}else if(BUF.n==='roll')roll();
+  }
   if(IN.atk&&(PS.act==='slash'||PS.act==='charge')){PS.charge+=dt;if(!PS.charged&&PS.charge>=eqStat('chargeT')){PS.charged=true;SFX.charged();sparks(P.x+faceVec()[0]*.5,P.y+.05,'#fff6c8',5,2,.7)}}
   if(PS.kbt>0){PS.kbt-=dt;moveBy(PS.kbx*dt,PS.kby*dt);return 0}
   switch(PS.act){
@@ -452,7 +511,7 @@ function playerTick(dt){
     case 'slash':
       PS.t+=dt;if(PS.t<=PL.slashHit)swingHits(false);
       if(PS.t>=PL.slashT)PS.act=IN.atk?'charge':'';
-      return .15;
+      return SLASH_MOVE_MUL;
     case 'spin':
       PS.t+=dt;swingHits(true);if(PS.t>=PL.spinT)PS.act='';
       return .3;
@@ -463,7 +522,7 @@ function playerTick(dt){
 function faceLocked(){return PS.shield||PS.act==='charge'||PS.act==='slash'||PS.act==='spin'||PS.act==='roll'}
 // 斬擊／旋轉斬判定：敵人與陶罐
 function swingHits(spin){
-  const [fx,fy]=faceVec(),R=spin?PL.spinR:PL.slashR,cosA=Math.cos(PL.slashArc),dmg=Math.round(eqStat('atk')*(spin?eqStat('spinMul'):1));
+  const [fx,fy]=(!spin&&SLASH_A!=null)?[Math.cos(SLASH_A),Math.sin(SLASH_A)]:faceVec(),R=spin?PL.spinR:PL.slashR,cosA=Math.cos(PL.slashArc),dmg=Math.round(eqStat('atk')*(spin?eqStat('spinMul'):1));
   const inArc=(x,y,r)=>{const dx=x-P.x,dy=y-P.y,d=Math.hypot(dx,dy);if(d-r>R)return false;if(spin||d<.4)return true;return (dx*fx+dy*fy)/d>=cosA};
   for(const e of ENEMIES){
     if(e.dead||PS.hit.has(e))continue;
@@ -474,7 +533,7 @@ function swingHits(spin){
       const dx=P.x-e.x,dy=P.y-e.y,l=Math.hypot(dx,dy)||1;PS.kbx=dx/l*4;PS.kby=dy/l*4;PS.kbt=.08;e.blockT=.25;
       continue;
     }
-    damageEnemy(e,dmg,P.x,P.y);
+    damageEnemy(e,dmg,P.x,P.y,spin?{big:true}:null);
   }
   for(const p of INTER){
     if(p.k!=='pot'||p.gone)continue;
@@ -500,7 +559,7 @@ function hurtPlayer(dmg,sx,sy,o={}){
   ST.hp=Math.max(0,ST.hp-dmg);PS.inv=PL.hurtInv;PS.blink=true;PS.flash=.28;PS.stop=Math.max(PS.stop,PL.hurtStop);
   const dx=P.x-sx,dy=P.y-sy,l=Math.hypot(dx,dy)||1;PS.kbx=dx/l*kb;PS.kby=dy/l*kb;PS.kbt=PL.hurtKbT;
   if(PS.act==='slash'||PS.act==='charge'){PS.act='';PS.charge=0;PS.charged=false}
-  SFX.hurt();EVT.emit('hurt',dmg);
+  SFX.hurt();hurtFeel(dmg);EVT.emit('hurt',dmg);
   if(ST.hp<=0){
     if(ST.bag.potion>0){ST.bag.potion--;ST.hp=maxHp();SFX.heart();toast('回復藥發揮效果，生命全滿！');sparks(P.x,P.y,'#ff8aa8',12,3,.8)}
     else die();
@@ -569,10 +628,11 @@ function steer(e,ux,uy,spd,dt){
 function setFace(e,x,y){const l=Math.hypot(x,y);if(l<1e-6)return;e.fx=x/l;e.fy=y/l;e.fa=Math.atan2(e.fy,e.fx)}
 function turnToward(e,x,y,rate,dt){let d=Math.atan2(y,x)-e.fa;while(d>Math.PI)d-=Math.PI*2;while(d<-Math.PI)d+=Math.PI*2;e.fa+=clamp(d,-rate*dt,rate*dt);e.fx=Math.cos(e.fa);e.fy=Math.sin(e.fa)}
 function inCone(e,R,cosA){const dx=P.x-e.x,dy=P.y-e.y,d=Math.hypot(dx,dy);return d<R+PLAYER_R&&(d<.3||(dx*e.fx+dy*e.fy)/d>cosA)}
-function damageEnemy(e,dmg,sx,sy){
+function damageEnemy(e,dmg,sx,sy,o){
   if(e.dead||e.immune)return;   // immune：首領潛入、瞬移中等
   if(e.onHit&&e.onHit(dmg,sx,sy)===false)return;
   e.hp-=dmg;e.flash=.13;
+  hitFeel(e,dmg,e.hp<=0,!!(o&&o.big)||dmg>=eqStat('atk')*NUM_BIG_K);
   const dx=e.x-sx,dy=e.y-sy,l=Math.hypot(dx,dy)||1,kb=PL.kbEnemy/(e.D.mass||1);
   e.kbx=dx/l*kb;e.kby=dy/l*kb;e.kbt=PL.kbEnemyT;e.mode='chase';
   PS.stop=Math.max(PS.stop,PL.hitStop);SFX.hit();sparks(e.x,e.y,'#fff6b0',8,4.5,.45);ring(e.x,e.y-.4,.4,'#ffffff');
@@ -772,7 +832,7 @@ HOOKS.art=id=>{   // 這張地圖會出現的怪物圖（首領戰會召喚史�
   return [...ks];
 };
 HOOKS.enter=id=>{
-  ENEMIES=[];SHOTS=[];DROPS=[];FX=[];
+  ENEMIES=[];SHOTS=[];DROPS=[];FX=[];DMGN.length=0;BUF.t=0;
   Object.assign(PS,{act:'',kbt:0,stop:0,charge:0,charged:false,shield:false});
   setupInteract();spawnAll();
   ST.cp={map:id,x:+P.x.toFixed(2),y:+P.y.toFixed(2),face:P.face};
@@ -943,6 +1003,10 @@ function drawShield(c,fx,fy){
   c.fillStyle='#8d5a2b';c.beginPath();c.arc(0,0,.25,0,7);c.fill();c.strokeStyle='#e6c27a';c.lineWidth=.05;c.stroke();
   c.fillStyle='#c9a35a';c.beginPath();c.arc(0,0,.07,0,7);c.fill();c.restore();
 }
+HOOKS.shake=()=>{
+  const a=shakeNow();if(a<=0)return null;
+  const px=a*U*dpr;return [Math.round((Math.random()*2-1)*px),Math.round((Math.random()*2-1)*px)];
+};
 HOOKS.fx=(c,S,now)=>{
   const bx=P.x,by=P.y-.4;
   for(const f of FX){
@@ -960,6 +1024,21 @@ HOOKS.fx=(c,S,now)=>{
       c.strokeStyle='rgba(255,250,220,.9)';c.lineWidth=.16*a+.04;c.beginPath();c.arc(bx,by+.2,f.r*.92,a1-Math.PI*1.2,a1);c.stroke();
       c.strokeStyle='rgba(255,255,255,.6)';c.lineWidth=.05;c.beginPath();c.arc(bx,by+.2,f.r*.6,a1-Math.PI,a1);c.stroke();
     }
+  }
+  c.globalAlpha=1;
+  for(let i=DMGN.length-1;i>=0;i--)if(GT-DMGN[i].t>=NUM_LIFE)DMGN.splice(i,1);
+  if(DMGN.length){   // 傷害數字：螢幕座標畫（字高以 U 為基準），不清畫布
+    const S2=U*dpr;c.save();c.setTransform(1,0,0,1,0,0);c.textAlign='center';c.textBaseline='middle';c.lineJoin='round';
+    for(const n of DMGN){
+      const age=GT-n.t,p=age/NUM_LIFE,rise=NUM_RISE*(1-Math.pow(1-p,2)),pop=1+.25*Math.max(0,1-age/.1);
+      const px=(n.big?NUM_FONT_BIG:NUM_FONT)*S2*pop;
+      c.globalAlpha=p<.45?1:Math.max(0,1-(p-.45)/.55);
+      c.font=`800 ${px}px system-ui,'Microsoft JhengHei',sans-serif`;
+      const x=n.x*S2-camDX,y=(n.y-rise)*S2-camDY,t=String(n.v);
+      c.lineWidth=px*.2;c.strokeStyle='rgba(20,10,12,.9)';c.strokeText(t,x,y);
+      c.fillStyle=n.k==='p'?'#ff4a4a':n.big?'#ffd34a':'#ffffff';c.fillText(t,x,y);
+    }
+    c.restore();
   }
   c.globalAlpha=1;
   if(PS.flash>0){c.setTransform(1,0,0,1,0,0);const W=c.canvas.width,H=c.canvas.height,g=c.createRadialGradient(W/2,H/2,Math.min(W,H)*.3,W/2,H/2,Math.max(W,H)*.7);

@@ -62,7 +62,12 @@ body.touch .tbtn{display:block}
 #hudR{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
 #dbg{display:none;background:#000b;padding:4px 8px;border-radius:8px;font:11px/1.4 monospace;white-space:pre;color:#bfe}
 body.debug #dbg{display:block}
-#joy{position:absolute;left:22px;bottom:calc(30px + env(safe-area-inset-bottom));width:130px;height:130px;border-radius:50%;background:#ffffff18;border:2px solid #ffffff44;display:none}
+#joy{position:absolute;left:22px;bottom:calc(30px + env(safe-area-inset-bottom));width:130px;height:130px;border-radius:50%;background:#ffffff18;border:2px solid #ffffff44;display:none;pointer-events:none;opacity:.55}
+#joy.act{opacity:1}
+/* 搖桿觸控區（浮動搖桿）：透明層，DOM 排在 HUD、按鈕、對話、面板之前，所以它們都蓋在它上面、點擊不受影響；位置與大小由 JS 依畫面比例設定 */
+#joyZone{position:absolute;left:0;bottom:0;width:55%;height:60%;display:none}
+body.touch #joyZone{display:block}
+body.fading #joyZone{pointer-events:none}
 #knob{position:absolute;left:41px;top:41px;width:48px;height:48px;border-radius:50%;background:#ffffffaa;box-shadow:0 2px 8px #0008;pointer-events:none}
 body.touch #joy{display:block}
 #actBtn{position:absolute;right:112px;bottom:calc(112px + env(safe-area-inset-bottom));width:62px;height:62px;border-radius:50%;padding:0;background:#1c3a2acc;border:2px solid #6fd69a;font-weight:700;font-size:15px;display:none}
@@ -171,7 +176,7 @@ body.touch #itemBtn:not(.on),body.touch #cycBtn:not(.on){display:none}
 </style>
 <script>
 /* 版號：改了 maps.js 或這個檔就 +1，破除瀏覽器快取 */
-const SHRINE_VER='23';
+const SHRINE_VER='26';
 document.write('<script src="maps.js?v='+SHRINE_VER+'"><\/script>');
 </script>
 </head>
@@ -194,6 +199,7 @@ document.write('<script src="maps.js?v='+SHRINE_VER+'"><\/script>');
   </section>
   <section id="sMap" class="screen">
     <canvas id="cv"></canvas>
+    <div id="joyZone"></div>
     <div id="hud"><div id="hudL"><canvas id="hpCv"></canvas><div id="purse"><span class="gem"></span><b id="hudMoney">0</b><span id="hudKeyWrap" style="display:none"><span class="keyic"></span> <b id="hudKeys">0</b></span></div><div id="hudPiece" style="display:none"></div><div id="tonics"></div><div id="toolBox"><canvas id="toolCv" width="52" height="52"></canvas><span id="toolName"></span><b id="toolN"></b></div><div id="relics"><i></i><i></i><i></i></div><div id="hudName"></div></div><div id="hudR"><div id="hudBtns"><button id="bagBtn">背包</button><button id="mapBtn">地圖</button></div><div id="dayTag"></div><div id="dbg"></div></div></div>
     <div id="joy"><div id="knob"></div></div>
     <button id="actBtn">對話</button>
@@ -222,7 +228,24 @@ document.write('<script src="maps.js?v='+SHRINE_VER+'"><\/script>');
    ============================================================ */
 const GAME_TITLE='珠界：聖林神廟';   // 暫定標題，之後改這裡
 const MAPS=typeof SHRINE_MAPS!=='undefined'?SHRINE_MAPS:{};   // maps.js 用 const 宣告，不在 window 上
-const U=48;               // 1 單位的 CSS 像素
+let U=48;                 // 1 單位的 CSS 像素（resize() 依螢幕重算；整數裝置像素，地面紋理才不會有接縫）
+/* ===== 畫面比例與鏡頭（以主角為比例基準，參考早期掌機 RPG）===== */
+const VIEW_UNITS_PORTRAIT=6.5;   // 直式：畫面寬度看得到幾單位（430px 寬 ≈ 66px／單位）
+const VIEW_UNITS_SHORT=6.75;     // 橫式／桌機：短邊看得到幾單位
+const U_MIN=36,U_MAX=80;         // 1 單位的 CSS 像素上下限（大螢幕不放得過大）
+const HERO_SCREEN_Y=.42;         // 直式：主角（身體中心）落在可視高度的這個位置（正中＝.5；下半部被搖桿與按鈕佔住，所以往上偏）
+const HERO_BODY_DY=.55;          // 主角身體中心在腳底上方幾單位（鏡頭以身體中心對位）
+const HOUSE_K=1.5;               // 房子圖放大倍數（原寬 3.35 單位）：門高 ≈ 0.75×倍數 ≥ 主角身高。碰撞框與排序線以房底中心為基準，跟著這個倍數等比放大（最低 1.35，再小門會比主角矮）
+const SIGN_W=.73;                // 告示牌圖寬（單位；圖比 2:3，高 ≈ 1.1 單位）
+const BOARD_BOX=[1.3,1.2];       // 賞金板圖的框 [寬,高]（單位）
+const CORNER_SLIP=.3;            // 牆角滑動：被擋時往側邊挪多少單位以內就能通過，就自動滑過去
+const CORNER_STEP=.05;           // 牆角滑動：試探的步距（單位）
+const CHEST_HINT_DIST=5;         // 靠近寶箱多近（單位）會出現方向箭頭（寶箱在畫面外時）
+const CHEST_GLOW_D=.5;           // 未開寶箱的閃光直徑（單位）
+const CHEST_GLOW_MS=2000;        // 閃光一循環（毫秒）
+const ARROW_INSET=[28,76,28,170]; // 方向箭頭離畫面邊緣的距離 [左,上,右,下]（CSS px；上方避開 HUD、下方避開搖桿）
+const ARROW_SIZE=15;             // 方向箭頭大小（CSS px）
+const OCC_KINDS=new Set(['tree1','tree2','giant','house','pillar']);   // 會遮住人與寶箱的前景物件（被遮時變半透明）
 const DPR_MAX=2;          // 裝置像素比上限（手機記憶體）
 const BLK=512;            // 地面區塊邊長（裝置像素）
 const BLK_MIN_CACHE=40;   // 地面區塊快取下限（張；實際上限＝max(這個, 畫面所需＋12)，只淘汰本幀沒用到的）
@@ -253,7 +276,7 @@ const ART_SRC={hero:`art/hero.webp?v=${SHRINE_VER}`};   // 帶版號：換新圖
 for(const t of THEMES)for(const k of ['tiles','tree1','tree2','house','rock','bush','sign'])ART_SRC[k+t]=`${PK}map-${k}${t}.webp`;
 // 物件種類 → 用哪張圖、顯示寬度（單位，再乘上各自的縮放）
 const PROP_ART={tree1:'tree1',tree2:'tree2',giant:'tree1',house:'house',rock:'rock',bush:'bush',sign:'sign'};
-const ARTW={tree1:1.9,tree2:1.55,giant:4.4,house:3.35,rock:1.15,bush:1.25,sign:1.1};
+const ARTW={tree1:1.9,tree2:1.55,giant:4.4,house:3.35*HOUSE_K,rock:1.15,bush:1.25,sign:SIGN_W};
 // 英雄圖集 art/hero.webp：4 欄 × 4 列，每格 204×154，腳底貼齊格子底邊、水平置中
 // 欄＝幀（0 站立、1/2 走路、3 攻擊），列＝方向（0 下、1 左、2 右、3 上）
 const HERO_CW=204,HERO_CH=154,HERO_BODY=150;
@@ -399,7 +422,7 @@ function sprite(kind){
   let im=ART[tk];
   if(!im){needArt(tk);if(th&&artFail[tk]){im=ART[base];if(!im)needArt(base)}}
   if(!im)return null;
-  const S=U*dpr,w=Math.max(8,Math.round((ARTW[kind]||1)*1.3*S)),h=Math.round(w*im.height/im.width),c=mk(w,h),g=c.getContext('2d');
+  const S=U*dpr,w=Math.max(8,Math.min(im.width,Math.round((ARTW[kind]||1)*1.3*S))),h=Math.round(w*im.height/im.width),c=mk(w,h),g=c.getContext('2d');
   g.imageSmoothingQuality='high';g.drawImage(im,0,0,w,h);
   return SPR[key]=c;
 }
@@ -533,7 +556,7 @@ function makeProp(k,x,y,s,flip){
   else if(k==='rock')p.col={x,y:y-.3*s,r:.42*s};
   else if(k==='bush')p.col={x,y:y-.3*s,r:.42*s};
   else if(k==='sign')p.col={x,y:y-.12,r:.18};
-  else if(k==='house'){p.col={x0:x-1.22*s,y0:y-1.9*s,x1:x+1.22*s,y1:y-.42*s};p.sy=y-.42*s;p.h=w*.94}
+  else if(k==='house'){const hk=HOUSE_K*s;p.col={x0:x-1.22*hk,y0:y-1.9*hk,x1:x+1.22*hk,y1:y-.42*hk};p.sy=y-.42*hk;p.h=w*.94}   // 碰撞＝牆體與屋頂投影下半部，隨 HOUSE_K 與個別縮放 s 等比放大
   else if(k==='pillar'||k==='pillarb'){p.col={x,y:y-.2*s,r:.36*s};p.w=.9*s;p.h=(k==='pillar'?2.6:1.3)*s}
   else if(k==='campfire'){p.col={x,y:y-.2,r:.38};p.w=1;p.h=1}
   else if(k==='chest'){p.col={x,y:y-.25,r:.36};p.w=.9;p.h=.8}
@@ -741,9 +764,13 @@ const HOOKS={
   ground:(c,now)=>{},      // 地面層（物件之下：警示圈、壓板、裂牆）
   blocked:(x,y,r)=>false,  // 額外的不可通行判定（首領戰結界）
   light:()=>3.4,           // 室內玩家自身的照明半徑
+  shake:()=>null,          // 畫面震動：回傳 [dx,dy]（裝置像素，整數），在鏡頭位置算完之後才加上去（game.js）
   camera:()=>null,         // 鏡頭焦點覆寫 {x,y}（機關開啟、首領登場時看過去）
   ambient:()=>null,        // 室外的日夜：{dark:暗幕濃度 0～1, tint:色調}（village.js 依營火設定的時段）
-  bag:()=>{}               // B／Tab／背包鈕：開背包（village.js）
+  bag:()=>{},              // B／Tab／背包鈕：開背包（village.js）
+  compass:()=>false,       // 尋寶羅盤：true＝畫面邊緣常駐箭頭指向最近的未開寶箱（village.js：買過藏寶情報）
+  hintTargets:()=>[],      // 羅盤額外的目標 [{x,y}]（adventure.js：有炸彈時的裂牆寶箱）
+  audit:(c,reach,reach2)=>null   // 開發用：audit() 補充檢查，回傳 {problems,locked}（adventure.js）
 };
 
 /* ================= 碰撞 ================= */
@@ -796,6 +823,19 @@ function moveBy(dx,dy){
     }
     if(dx&&circleFree(P.x+dx,P.y,PLAYER_R)){P.x+=dx;continue}
     if(dy&&circleFree(P.x,P.y+dy,PLAYER_R)){P.y+=dy;continue}
+    // 矩形牆角／窄門邊：往垂直方向挪 CORNER_SLIP 單位以內就能通過的話，自動滑過去（每步最多滑移動距離那麼多）。圓形物（石塊、樹幹）與推石塊中不套用
+    if(!(n&&n[2])&&!(typeof pushP!=='undefined'&&pushP)){
+      const st=Math.hypot(dx,dy);
+      if(st>1e-6){
+        const ux=dx/st,uy=dy/st,qx=-uy,qy=ux;let bo=0,bs=0;
+        for(const sg of [1,-1])for(let o=CORNER_STEP;o<=CORNER_SLIP+1e-6;o+=CORNER_STEP){
+          const lx=P.x+qx*o*sg,ly=P.y+qy*o*sg;
+          if(!circleFree(lx,ly,PLAYER_R))break;   // 橫移途中就被擋：再遠也過不去
+          if(circleFree(lx+ux*.14,ly+uy*.14,PLAYER_R)&&circleFree(lx+ux*.3,ly+uy*.3,PLAYER_R)){if(!bo||o<bo){bo=o;bs=sg}break}
+        }
+        if(bo){const m=Math.min(st,bo),nx=P.x+qx*bs*m,ny=P.y+qy*bs*m;if(circleFree(nx,ny,PLAYER_R)){P.x=nx;P.y=ny;continue}}
+      }
+    }
     break;
   }
 }
@@ -1122,7 +1162,7 @@ function drawProp(c,p,now){
 }
 function drawBoard(c,n){   // 賞金板（NPC 佔位）
   const x=n.x,y=n.y;
-  if(drawArtFit(c,'p-board',x,y+.05,1.6,1.7))return;
+  if(drawArtFit(c,'p-board',x,y+.05,BOARD_BOX[0],BOARD_BOX[1]))return;
   c.fillStyle='#5a3b22';c.fillRect(x-.55,y-1.3,.1,1.3);c.fillRect(x+.45,y-1.3,.1,1.3);
   c.fillStyle='#8d6038';rr(c,x-.7,y-1.45,1.4,.85,.06);c.fill();
   c.fillStyle='#efe2c0';c.fillRect(x-.5,y-1.32,.42,.5);c.fillRect(x+.02,y-1.28,.44,.36);
@@ -1136,11 +1176,11 @@ function drawHero(c){
   c.drawImage(im,fr*HERO_CW,row*HERO_CH,HERO_CW,HERO_CH,fx-w/2,fy-h,w,h);
 }
 function bubble(c,bx,by){c.fillStyle='#fffffff0';c.beginPath();c.ellipse(bx,by,.32,.2,0,0,7);c.fill();c.beginPath();c.moveTo(bx-.06,by+.16);c.lineTo(bx+.06,by+.16);c.lineTo(bx,by+.28);c.fill();c.fillStyle='#3b55d6';for(const k of [-1,0,1]){c.beginPath();c.arc(bx+k*.11,by,.035,0,7);c.fill()}}
-const NPC_H={chief:1.35,smith:1.35,merchant:1.35,traveler:1.4,trainer:1.5,villager:1.3};   // 選配 NPC 圖的身高（單位）
+const NPC_H={chief:1.5,smith:1.55,merchant:1.45,traveler:1.5,trainer:1.6,villager:1.3};   // 選配 NPC 圖的身高（單位）：大人比主角（HERO_H＝1.3）高一點 1.45～1.6；村民矮個，不高於主角
 function drawNpc(c,n,now){
   const d=CH[n.ch],na=n.ch!=='board'&&sImg('n-'+n.id),im=d&&!na&&ART[d.art];let h=1.2;
   drawShadow(c,n.x,n.y+.08,n.ch==='board'?1.2:.6,.22);
-  if(n.ch==='board'){drawBoard(c,n);h=1.5}
+  if(n.ch==='board'){drawBoard(c,n);h=BOARD_BOX[1]+.1}
   else if(na){h=NPC_H[n.id]||1.3;c.drawImage(na,n.x-h*na.width/na.height/2,n.y+.1-h,h*na.width/na.height,h)}
   else if(SART.has('n-'+n.id)){c.fillStyle='#5a7dff';c.beginPath();c.arc(n.x,n.y-.4,.3,0,7);c.fill()}   // 圖載入中：先放個點，不要閃現借來的舊圖
   else if(!im){if(d)needArt(d.art);c.fillStyle='#5a7dff';c.beginPath();c.arc(n.x,n.y-.4,.3,0,7);c.fill();c.fillStyle='#f0c9a0';c.beginPath();c.arc(n.x,n.y-.9,.22,0,7);c.fill()}
@@ -1175,6 +1215,42 @@ function drawArena(c,b,now){   // 首領場地：地上淡淡的符文圈
   c.restore();
 }
 
+/* ================= 寶箱提示（閃光＋方向箭頭） ================= */
+const chestLeft=p=>p.k==='chest'&&!p.open&&!(typeof ST!=='undefined'&&ST.chests&&ST.chests[p.id]);   // 場上還沒開的寶箱
+function drawChestGlow(c,p,now){   // 寶箱上方緩慢明滅的金色光芒＋四芒星
+  const ph=(now%CHEST_GLOW_MS)/CHEST_GLOW_MS,a=.5-.5*Math.cos(ph*Math.PI*2),x=p.x,y=p.y-1.2-.05*a,r=CHEST_GLOW_D/2*(.8+.4*a);
+  c.save();
+  const g=c.createRadialGradient(x,y,0,x,y,r*1.3);g.addColorStop(0,`rgba(255,246,200,${.4+.5*a})`);g.addColorStop(.45,`rgba(255,212,90,${.25+.3*a})`);g.addColorStop(1,'rgba(255,190,40,0)');
+  c.fillStyle=g;c.beginPath();c.arc(x,y,r*1.3,0,7);c.fill();
+  c.globalAlpha=.5+.5*a;c.fillStyle='#fff6c8';
+  const L=r*1.35,w=r*.2;c.beginPath();c.moveTo(x,y-L);c.quadraticCurveTo(x+w,y-w,x+L,y);c.quadraticCurveTo(x+w,y+w,x,y+L);c.quadraticCurveTo(x-w,y+w,x-L,y);c.quadraticCurveTo(x-w,y-w,x,y-L);c.fill();
+  c.restore();
+}
+// 方向箭頭：寶箱在畫面外時，在畫面邊緣指向它。
+// 基本提示：靠近（CHEST_HINT_DIST 單位內）的最近未開寶箱；尋寶羅盤（買了藏寶情報）：不限距離，且有炸彈時也指向裂牆（HOOKS.compass／hintTargets）
+function drawChestHints(c,S,now){
+  if(worldOpen||panelOpen||!C)return;
+  const compass=!!HOOKS.compass();
+  let list=C.props.filter(chestLeft).map(p=>({x:p.x,y:p.y-.5}));
+  if(compass)list=list.concat(HOOKS.hintTargets()||[]);
+  let best=null,bd=1e9;
+  for(const t of list){const d=Math.hypot(t.x-P.x,t.y-P.y);if(d<bd){bd=d;best=t}}
+  if(!best||(!compass&&bd>CHEST_HINT_DIST))return;
+  const k=dpr,pad=20*k,sx=best.x*S-camDX,sy=best.y*S-camDY;
+  if(sx>=pad&&sx<=cw-pad&&sy>=pad&&sy<=ch-pad)return;   // 在畫面內：只靠光芒（裂牆有裂痕可看）
+  const L=ARROW_INSET[0]*k,T=ARROW_INSET[1]*k,R=cw-ARROW_INSET[2]*k,B=ch-ARROW_INSET[3]*k;
+  const px=clamp(P.x*S-camDX,L,R),py=clamp((P.y-HERO_BODY_DY)*S-camDY,T,B);   // 從主角身上射向目標，交在邊緣框上
+  let dx=sx-px,dy=sy-py;const l=Math.hypot(dx,dy)||1;dx/=l;dy/=l;
+  let t=1e9;if(dx>1e-6)t=Math.min(t,(R-px)/dx);else if(dx<-1e-6)t=Math.min(t,(L-px)/dx);
+  if(dy>1e-6)t=Math.min(t,(B-py)/dy);else if(dy<-1e-6)t=Math.min(t,(T-py)/dy);
+  t=Math.max(0,t);const bob=Math.sin(now/260)*3*k,ax=px+dx*(t+bob),ay=py+dy*(t+bob),s=ARROW_SIZE*k;
+  c.save();c.setTransform(1,0,0,1,0,0);c.translate(ax,ay);c.rotate(Math.atan2(dy,dx));
+  c.globalAlpha=compass?1:.82;
+  c.beginPath();c.moveTo(s,0);c.lineTo(-s*.7,-s*.78);c.lineTo(-s*.3,0);c.lineTo(-s*.7,s*.78);c.closePath();
+  c.fillStyle=compass?'#ffd23f':'#fff1b8';c.fill();c.lineWidth=2*k;c.strokeStyle=compass?'#5a3a08':'rgba(90,58,8,.8)';c.lineJoin='round';c.stroke();
+  c.restore();
+}
+
 /* ================= 繪製：主畫面 ================= */
 let LCV=null,LCTX=null;
 function render(now){
@@ -1182,10 +1258,13 @@ function render(now){
   const t0=performance.now();
   const S=U*dpr,c=ctx;frameNo++;stat.frameBuilt=0;
   const vw=cw/S,vh=ch/S;
-  const cf=HOOKS.camera()||P;
-  const camX=C.w>vw?clamp(cf.x-vw/2,0,C.w-vw):(C.w-vw)/2,camY=C.h>vh?clamp(cf.y-vh/2,0,C.h-vh):(C.h-vh)/2;
+  const cf=HOOKS.camera()||P,portrait=ch>cw;
+  // 直式：鏡頭中心放在主角下方，主角（身體中心）落在可視高度的 HERO_SCREEN_Y；到地圖邊界照常夾住
+  const fy=portrait?HERO_SCREEN_Y:.5,cfy=cf.y-(portrait&&cf===P?HERO_BODY_DY:0);
+  const camX=C.w>vw?clamp(cf.x-vw/2,0,C.w-vw):(C.w-vw)/2,camY=C.h>vh?clamp(cfy-vh*fy,0,C.h-vh):(C.h-vh)/2;
   camDX=Math.round(camX*S);camDY=Math.round(camY*S);
-  c.setTransform(1,0,0,1,0,0);c.globalAlpha=1;c.globalCompositeOperation='source-over';c.fillStyle=BG;c.fillRect(0,0,cw,ch);
+  {const sk=HOOKS.shake();if(sk){camDX+=sk[0];camDY+=sk[1]}}   // 畫面震動：鏡頭定位（主角 42%）算完才加位移，不動主角座標與鏡頭目標
+  c.setTransform(1,0,0,1,0,0);c.globalAlpha=1;c.globalCompositeOperation='source-over';c.imageSmoothingEnabled=true;c.imageSmoothingQuality='high';c.fillStyle=BG;c.fillRect(0,0,cw,ch);
   // 地面區塊：只貼離屏圖
   const i0=Math.floor(camDX/BLK),i1=Math.floor((camDX+cw-1)/BLK),j0=Math.floor(camDY/BLK),j1=Math.floor((camDY+ch-1)/BLK);
   blkMax=Math.max(BLK_MIN_CACHE,(i1-i0+3)*(j1-j0+3)+4);
@@ -1228,10 +1307,14 @@ function render(now){
   HOOKS.actors(actors,c,now);actors.sort((a,b)=>a.sy-b.sy);
   let ai=0,ghost=false;
   const hy=P.y+.12,hx0=P.x-.34,hx1=P.x+.34,hy0=hy-HERO_H*.9;
+  const chestsUn=vis.filter(chestLeft);   // 還沒開的寶箱：被前景物件蓋住時，蓋住它的物件也變半透明
   for(const p of vis){
     while(ai<actors.length&&actors[ai].sy<p.sy)actors[ai++].draw();
     // 英雄被樹冠／屋子擋住時，擋住的那個物件明顯半透明，最後再補一層英雄剪影（看得出人在哪）
-    if(p.sy>hy&&(p.k==='tree1'||p.k==='tree2'||p.k==='giant'||p.k==='house'||p.k==='pillar')&&hx1>p.x-p.w*.42&&hx0<p.x+p.w*.42&&hy0<p.y-.25&&hy>p.y-p.h*.95){c.globalAlpha=.32;drawProp(c,p,now);c.globalAlpha=1;ghost=true}
+    const occ=OCC_KINDS.has(p.k);let hid=false;
+    if(occ&&p.sy>hy&&hx1>p.x-p.w*.42&&hx0<p.x+p.w*.42&&hy0<p.y-.25&&hy>p.y-p.h*.95){hid=true;ghost=true}
+    else if(occ&&chestsUn.some(q=>p.sy>q.sy&&q.x+.55>p.x-p.w*.42&&q.x-.55<p.x+p.w*.42&&q.y-1.05<p.y-.25&&q.y>p.y-p.h*.95))hid=true;
+    if(hid){c.globalAlpha=.32;drawProp(c,p,now);c.globalAlpha=1}
     else drawProp(c,p,now);
     if(p===nearTalk&&!dlgOpen)bubble(c,p.x,p.y-1.25+Math.sin(now/300)*.04);
   }
@@ -1241,7 +1324,10 @@ function render(now){
   drawLights(c,S,now,vx0,vy0);
   if(C.M.tint){c.setTransform(1,0,0,1,0,0);c.fillStyle=C.M.tint;c.fillRect(0,0,cw,ch)}
   {const amb=C.indoor?null:HOOKS.ambient();if(amb&&amb.tint){c.setTransform(1,0,0,1,0,0);c.fillStyle=amb.tint;c.fillRect(0,0,cw,ch)}}
-  c.setTransform(S,0,0,S,-camDX,-camDY);HOOKS.fx(c,S,now);c.globalAlpha=1;
+  c.setTransform(S,0,0,S,-camDX,-camDY);
+  for(const q of chestsUn)drawChestGlow(c,q,now);   // 未開寶箱的閃光：畫在樹冠、屋頂等前景之上，被擋住也看得到
+  HOOKS.fx(c,S,now);c.globalAlpha=1;
+  drawChestHints(c,S,now);
   if(DEBUG&&document.body.classList.contains('debug'))drawDebug(c,S);
   stat.renderMs=performance.now()-t0;
 }
@@ -1321,14 +1407,15 @@ function drawWorld(now){
   // 地名標籤（紙條）＋寶箱進度＋聖物圖示
   const relicIm=id=>{const rid=WORLD_RELIC[id];if(!rid||!(WI.relics||[]).includes(rid))return null;return sImg(ICON_OF[rid])||'dot'};
   for(const id of seen){
-    const [x,y]=P(id),R=RR(id),M=MAPS[id],c=WI.info&&WI.chest?WI.chest(id):null,note=c&&c.total?`${TEXT_W('chest')} ${c.open}/${c.total}`:null,ri=relicIm(id);
+    const [x,y]=P(id),R=RR(id),M=MAPS[id],c=WI.chest?WI.chest(id):null,note=c&&c.total?`${TEXT_W('chest')} ${c.open}/${c.total}`:null,tag=c&&c.tag?c.tag:null,ri=relicIm(id);   // 去過的區域免費顯示寶箱已開／總數；tag＝還有裂牆或機關的寶箱（village.js）
     g.font=`bold ${fs}px ${WORLD_FONT}`;const w1=g.measureText(M.name).width;g.font=`${fs*.86}px ${WORLD_FONT}`;const w2=note?g.measureText(note).width:0;
-    const iw=ri?fs*1.4+3:0,w=Math.max(w1,w2)+12+iw,h=fs*1.5+(note?fs*1.05:0);
+    const w3=tag?g.measureText(tag).width:0,iw=ri?fs*1.4+3:0,w=Math.max(w1,w2,w3)+12+iw,h=fs*1.5+(note?fs*1.05:0)+(tag?fs*.95:0);
     const lo=WORLD_LBL[id]||[0,.7],lx=clamp(x+R*lo[0],x0+w/2+2,x0+sz-w/2-2),ly=clamp(y+R*lo[1],y0+2,y0+sz-h-2);
     g.save();g.shadowColor='rgba(60,36,10,.35)';g.shadowBlur=4;g.shadowOffsetY=1;worldRR(g,lx-w/2,ly,w,h,5);g.fillStyle='rgba(247,235,198,.92)';g.fill();g.restore();
     worldRR(g,lx-w/2,ly,w,h,5);g.strokeStyle='#7a5628';g.lineWidth=1.2;g.stroke();
     const tx=lx+iw/2;g.textAlign='center';g.fillStyle='#3b2410';g.font=`bold ${fs}px ${WORLD_FONT}`;g.fillText(M.name,tx,ly+fs*1.12);
     if(note){g.font=`${fs*.86}px ${WORLD_FONT}`;g.fillStyle='#8a4b0e';g.fillText(note,tx,ly+fs*2.08)}
+    if(tag){g.font=`${fs*.8}px ${WORLD_FONT}`;g.fillStyle='#a2561a';g.fillText(tag,tx,ly+fs*3.0)}
     if(ri){const s=fs*1.4,ix=lx-w/2+5,iy=ly+(h-s)/2;
       if(ri==='dot'){g.fillStyle=ALTAR_COL[id]||'#ffd84a';g.beginPath();g.moveTo(ix+s/2,iy);g.lineTo(ix+s,iy+s/2);g.lineTo(ix+s/2,iy+s);g.lineTo(ix,iy+s/2);g.closePath();g.fill()}
       else g.drawImage(ri,ix,iy,s,s)}
@@ -1477,6 +1564,7 @@ function audit(){
     for(const [what,x,y,rad] of targets)if(!reach(x,y,rad+PLAYER_R+.4)){
       if(reach2(x,y,rad+PLAYER_R+.4))r.locked.push(what+'（機關後）');else r.problems.push(what+' 到不了');
     }
+    {const ax=HOOKS.audit(c,reach,reach2);if(ax){r.problems.push(...(ax.problems||[]));r.locked.push(...(ax.locked||[]))}}   // 石塊獎勵寶箱、裂牆後的寶箱（adventure.js）
     // 出口成對：對面地圖有回來的出口、而且回來的落點就在這個出口附近
     c.exits.forEach(e=>{const B=MAPS[e.to];if(!B){r.problems.push('出口指向不存在的地圖 '+e.to);return}
       const back=(B.exits||[]).filter(b=>b.to===id);if(!back.length){r.problems.push(e.to+' 沒有回來的出口');return}
@@ -1499,7 +1587,9 @@ function loop(now){
 function resize(){
   const r=$('#app').getBoundingClientRect(),nd=Math.min(DPR_MAX,window.devicePixelRatio||1),cv=$('#cv');
   cw=Math.round(r.width*nd);ch=Math.round(r.height*nd);cv.width=cw;cv.height=ch;
-  if(nd!==dpr||!TMP.length){dpr=nd;tmpReset();buildTextures();for(const k in SPR)SPR[k]=null;SHADOW=SHADOW||shadowSprite();clearBlocks();GEN++;forceFull=true}
+  // 1 單位的畫面像素：直式看得到 VIEW_UNITS_PORTRAIT 單位寬；橫式／桌機以短邊為準；取整數裝置像素
+  const u0=clamp(r.height>r.width?r.width/VIEW_UNITS_PORTRAIT:Math.min(r.width,r.height)/VIEW_UNITS_SHORT,U_MIN,U_MAX),nu=Math.max(1,Math.round(u0*nd))/nd;
+  if(nd!==dpr||nu!==U||!TMP.length){dpr=nd;U=nu;tmpReset();buildTextures();for(const k in SPR)SPR[k]=null;SHADOW=SHADOW||shadowSprite();clearBlocks();GEN++;forceFull=true}
   if(worldOpen)drawWorld(performance.now());
 }
 
@@ -1520,12 +1610,43 @@ addEventListener('blur',()=>{Object.keys(keys).forEach(k=>keys[k]=false)});
 addEventListener('touchstart',()=>document.body.classList.add('touch'),{passive:true});
 if(matchMedia('(pointer:coarse)').matches)document.body.classList.add('touch');
 (function(){   // 虛擬搖桿
-  const el=$('#joy'),kb=$('#knob'),R=46;let id=null,cx=0,cy=0;
-  const set=(x,y)=>{let dx=x-cx,dy=y-cy;const l=Math.hypot(dx,dy);if(l>R){dx*=R/l;dy*=R/l}kb.style.transform=`translate(${dx}px,${dy}px)`;joy.x=dx/R;joy.y=dy/R};
-  el.addEventListener('pointerdown',e=>{id=e.pointerId;el.setPointerCapture(id);const r=el.getBoundingClientRect();cx=r.left+r.width/2;cy=r.top+r.height/2;set(e.clientX,e.clientY)});
-  el.addEventListener('pointermove',e=>{if(e.pointerId===id)set(e.clientX,e.clientY)});
-  const end=e=>{if(e.pointerId!==id)return;id=null;joy.x=joy.y=0;kb.style.transform=''};
-  el.addEventListener('pointerup',end);el.addEventListener('pointercancel',end);
+  // 浮動搖桿：在搖桿區按下的位置就是搖桿中心；放開後底座回到左下角待機位置
+  const JOY_ZONE_W=0.55;    // 搖桿區寬度占畫面比例（左側）
+  const JOY_ZONE_H=0.60;    // 搖桿區高度占畫面比例（下方；上方留給左上角 HUD）
+  const JOY_FOLLOW=1.15;    // 手指離中心超過半徑的這個倍數時，底座跟著手指平移（跟隨式）
+  const BASE_HALF=65;       // 底座半徑（130px 的一半），用來把底座夾在畫面內
+  const el=$('#joy'),kb=$('#knob'),zone=$('#joyZone'),map=$('#sMap'),R=46;
+  let id=null,cx=0,cy=0;
+  zone.style.width=(JOY_ZONE_W*100)+'%';zone.style.height=(JOY_ZONE_H*100)+'%';
+  // safe-area 邊距：用探針元素讀 env() 的實際像素
+  const probe=document.createElement('div');
+  probe.style.cssText='position:absolute;visibility:hidden;pointer-events:none;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)';
+  map.appendChild(probe);
+  const inset=()=>{const s=getComputedStyle(probe);return {t:parseFloat(s.paddingTop)||0,r:parseFloat(s.paddingRight)||0,b:parseFloat(s.paddingBottom)||0,l:parseFloat(s.paddingLeft)||0}};
+  const place=(x,y)=>{   // x,y：視窗座標的底座中心；夾在畫面內並移動底座
+    const m=map.getBoundingClientRect(),s=inset();
+    cx=Math.min(Math.max(x,m.left+s.l+BASE_HALF),m.right-s.r-BASE_HALF);
+    cy=Math.min(Math.max(y,m.top+s.t+BASE_HALF),m.bottom-s.b-BASE_HALF);
+    el.style.left=(cx-m.left-BASE_HALF)+'px';el.style.top=(cy-m.top-BASE_HALF)+'px';el.style.bottom='auto';
+  };
+  const set=(x,y)=>{
+    let dx=x-cx,dy=y-cy;const l=Math.hypot(dx,dy);
+    if(l>R*JOY_FOLLOW){place(cx+dx*(1-R/l),cy+dy*(1-R/l));dx=x-cx;dy=y-cy}   // 底座往手指方向平移，讓手指落在半徑邊緣
+    const l2=Math.hypot(dx,dy);if(l2>R){dx*=R/l2;dy*=R/l2}
+    kb.style.transform=`translate(${dx}px,${dy}px)`;joy.x=dx/R;joy.y=dy/R;
+  };
+  const reset=()=>{id=null;joy.x=joy.y=0;kb.style.transform='';el.classList.remove('act');el.style.left=el.style.top=el.style.bottom=''};   // 清掉行內位置＝回到 CSS 的待機位置
+  zone.addEventListener('pointerdown',e=>{
+    if(id!==null||dlgOpen||panelOpen||worldOpen)return;   // 只跟第一根手指；對話／面板／地圖開著不作用
+    id=e.pointerId;try{zone.setPointerCapture(id)}catch(_){}
+    el.classList.add('act');place(e.clientX,e.clientY);set(e.clientX,e.clientY);
+  });
+  zone.addEventListener('pointermove',e=>{if(e.pointerId===id)set(e.clientX,e.clientY)});
+  const end=e=>{if(e.pointerId===id)reset()};
+  zone.addEventListener('pointerup',end);zone.addEventListener('pointercancel',end);
+  zone.addEventListener('lostpointercapture',end);
+  addEventListener('blur',reset);
+  document.addEventListener('visibilitychange',()=>{if(document.hidden)reset()});
 })();
 $('#actBtn').addEventListener('click',talk);
 $('#mapBtn').addEventListener('click',()=>{if(!dlgOpen&&!lock&&!panelOpen&&!FADING())openWorld()});
