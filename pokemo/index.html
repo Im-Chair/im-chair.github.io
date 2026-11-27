@@ -47,8 +47,8 @@ body.btn-art #sTitle button::before,body.btn-art #sTitle button::after{display:n
 #mapView{position:relative;flex:1;min-height:0;overflow:hidden}
 #mapCv{position:absolute;inset:0;width:100%;height:100%;display:block}
 #dbgBox{position:absolute;left:4px;bottom:4px;z-index:5;max-width:calc(100% - 8px);box-sizing:border-box;padding:3px 6px;border-radius:6px;background:#000b;color:#cfe8ff;font:10px/1.35 ui-monospace,Menlo,Consolas,monospace;white-space:pre-wrap;pointer-events:none}
-#sMap:not(.pt) #dbgBox{bottom:auto;top:calc(48px + env(safe-area-inset-top))}   /* 橫向：操作鈕疊在左下，改放地名下方 */
-#hud{position:absolute;top:calc(8px + env(safe-area-inset-top));left:8px;right:8px;display:flex;justify-content:space-between;align-items:center;pointer-events:none}
+#sMap:not(.pt) #dbgBox{bottom:auto;top:calc(var(--top) + 40px)}   /* 橫向：操作鈕疊在左下，改放地名下方 */
+#hud{position:absolute;top:var(--top);left:8px;right:8px;display:flex;justify-content:space-between;align-items:center;pointer-events:none}
 #hud *{pointer-events:auto}
 #hudName{background:#0009;padding:6px 12px;border-radius:20px;font-size:14px}
 #hud button{padding:8px 16px;background:#0009;border:1px solid #fff4}
@@ -84,7 +84,7 @@ body.btn-art #sTitle button::before,body.btn-art #sTitle button::after{display:n
 .rb.dn{filter:brightness(1.35);transform:scale(.94)}
 #btnA{right:0;top:6px;width:68px;height:68px;font-size:26px}
 #btnB{left:0;top:62px;width:58px;height:58px;font-size:22px}
-#toast{position:absolute;left:50%;top:70px;transform:translateX(-50%);background:#000c;padding:8px 16px;border-radius:20px;font-size:14px;opacity:0;transition:opacity .25s;pointer-events:none;white-space:nowrap}
+#toast{position:absolute;left:50%;top:calc(var(--top) + 50px);transform:translateX(-50%);background:#000c;padding:8px 16px;border-radius:20px;font-size:14px;opacity:0;transition:opacity .25s;pointer-events:none;white-space:nowrap}
 #toast.on{opacity:1}
 
 /* starter */
@@ -99,7 +99,7 @@ body.btn-art #sTitle button::before,body.btn-art #sTitle button::after{display:n
 
 /* battle */
 #sBattle{background:linear-gradient(#1c2a55,#101728 55%)}
-#bTop{position:relative;flex:1;min-height:0;padding:calc(10px + env(safe-area-inset-top)) 12px 4px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;gap:4px}
+#bTop{position:relative;flex:1;min-height:0;padding:var(--top) 12px 4px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;gap:4px}
 #eInfo{width:100%;font-size:14px}
 #eSprWrap{position:relative;margin:2px 0}
 #foeWrap{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;background:#0a0e27cc;z-index:5}
@@ -161,7 +161,7 @@ body.ptmap #dlg{bottom:var(--padh,260px);padding-bottom:12px}
 
 /* bag */
 #sBag{background:#0e1428}
-#bagTabs{display:flex;gap:2px;padding:calc(max(env(safe-area-inset-top),12px) + 28px) 6px 0;overflow-x:auto;touch-action:pan-x;flex:none}
+#bagTabs{display:flex;gap:2px;padding:var(--top) 6px 0;overflow-x:auto;touch-action:pan-x;flex:none}
 #bagTabs button{flex:1;min-width:54px;padding:8px 4px;border-radius:10px 10px 0 0;background:#1a2447;font-size:13px}
 #bagTabs button.on{background:#3b55d6;font-weight:700}
 #bagBody{flex:1;padding:10px;background:#17213f}
@@ -176,7 +176,7 @@ body.ptmap #dlg{bottom:var(--padh,260px);padding-bottom:12px}
 .note{font-size:12px;color:#9aa8d8;margin:6px 0}
 
 /* ===== 素材（沿用《轉珠之塔》） ===== */
-:root{--bosses:url(art/bosses.webp);--bg-water:url(art/bg-water.webp);--bg-fire:url(art/bg-fire.webp);--bg-wood:url(art/bg-wood.webp);--bg-light:url(art/bg-light.webp);--bg-dark:url(art/bg-dark.webp);--bg-coast:url(art/bg-coast.webp);--bg-ember:url(art/bg-ember.webp);--bg-marsh:url(art/bg-marsh.webp);--bg-sky:url(art/bg-sky.webp);--bg-abyss:url(art/bg-abyss.webp);--bg-title:url(art/bg-title.webp)}
+:root{--top:max(env(safe-area-inset-top),20px);/* 各畫面頂端共用留白：Safari 20px，PWA 至少避開動態島 */--bosses:url(art/bosses.webp);--bg-water:url(art/bg-water.webp);--bg-fire:url(art/bg-fire.webp);--bg-wood:url(art/bg-wood.webp);--bg-light:url(art/bg-light.webp);--bg-dark:url(art/bg-dark.webp);--bg-coast:url(art/bg-coast.webp);--bg-ember:url(art/bg-ember.webp);--bg-marsh:url(art/bg-marsh.webp);--bg-sky:url(art/bg-sky.webp);--bg-abyss:url(art/bg-abyss.webp);--bg-title:url(art/bg-title.webp)}
 .s-water{background-image:url(art/sheet-water.webp)}.s-fire{background-image:url(art/sheet-fire.webp)}.s-wood{background-image:url(art/sheet-wood.webp)}.s-light{background-image:url(art/sheet-light.webp)}.s-dark{background-image:url(art/sheet-dark.webp)}
 .sp{display:block;flex:none;background-repeat:no-repeat;background-size:600% 400%;filter:drop-shadow(0 2px 3px rgba(0,0,0,.55))}
 .sp.sb{background-image:var(--bosses);background-size:400% 200%}
@@ -205,7 +205,7 @@ body.ptmap #dlg{bottom:var(--padh,260px);padding-bottom:12px}
     <button class="pri" id="btnCont" style="display:none">繼續遊戲</button>
     <button class="pri" id="btnNew">新遊戲</button>
     <button id="btnImp">匯入存檔碼</button>
-    <div class="ver">原型 v1.26 ・ 110 種怪物 ・ 前九章可玩</div>
+    <div class="ver">原型 v1.27 ・ 110 種怪物 ・ 前九章可玩</div>
   </div>
 
   <div id="sMap" class="screen">
