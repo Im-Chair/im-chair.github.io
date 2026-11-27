@@ -207,7 +207,7 @@ body.ptmap #dlg{bottom:var(--padh,260px);padding-bottom:12px}
     <button class="pri" id="btnCont" style="display:none">繼續遊戲</button>
     <button class="pri" id="btnNew">新遊戲</button>
     <button id="btnImp">匯入存檔碼</button>
-    <div class="ver">原型 v1.31 ・ 110 種怪物 ・ 前九章可玩</div>
+    <div class="ver">原型 v1.32 ・ 110 種怪物 ・ 前九章可玩</div>
   </div>
 
   <div id="sMap" class="screen">
@@ -583,29 +583,40 @@ function parseRows(rows,w,h){
   return Array.from({length:h},(_,y)=>Array.from({length:w},(_,x)=>{const c=(rows[y]||'')[x];return c in TCH?TCH[c]:T.G}));
 }
 function addHouse(m,x,y){for(let j=y;j<=y+2;j++)for(let i=x;i<=x+2;i++)m[j][i]=T.HOUSE;m[y+2][x+1]=T.DOOR}
-function buildGrass(){ // 第 1 章：翠風草原（程式產生，保留原本的配置）
+function buildGrass(){ // 第 1 章：翠風草原（程式產生；畫面只看得到約 7 格寬，所以側邊樹林實心、高草切成小塊）
   const MW=28,MH=36;
   const m=Array.from({length:MH},()=>Array(MW).fill(T.G));
   const rect=(x1,y1,x2,y2,t)=>{for(let y=y1;y<=y2;y++)for(let x=x1;x<=x2;x++)m[y][x]=t};
-  // 邊界與側邊樹林
+  // 邊界與側邊樹林：北段（y<=9，關口一帶）維持原樣；野外（y=10～25）兩側實心，內緣 x=5、x=22 不規則；小鎮（y>=26）兩側實心
   for(let y=0;y<MH;y++)for(let x=0;x<MW;x++){
     if(x<=1||x>=MW-2||y<=1||y>=MH-2)m[y][x]=T.TREE;
-    else if((x<=4||x>=23)&&hash(x,y)<38)m[y][x]=T.TREE;
+    else if(y<=9){if((x<=4||x>=23)&&hash(x,y)<38)m[y][x]=T.TREE}
+    else if(y<=25){if(x<=4||x>=23||((x===5||x===22)&&hash(x*5+1,y*3+2)<40))m[y][x]=T.TREE}
+    else if(x<=3||x>=24)m[y][x]=T.TREE;
   }
-  // 高草區
-  const patches=[[3,20,11,25],[16,17,24,24],[4,9,10,15],[16,6,23,13],[8,15,12,19]];
-  patches.forEach(([a,b,c,d])=>{for(let y=b;y<=d;y++)for(let x=a;x<=c;x++)if(m[y][x]===T.G&&hash(x+3,y+7)<88)m[y][x]=T.TG});
-  rect(18,14,21,16,T.WATER);
+  rect(5,17,7,20,T.G);   // 古碑 (6,18) 的林間空地：遺跡地標
+  // 高草：北段舊有的兩塊（只留 y<=9 的部分，原樣）
+  [[4,9,10,15],[16,6,23,13]].forEach(([a,b,c,d])=>{for(let y=b;y<=Math.min(d,9);y++)for(let x=a;x<=c;x++)if(m[y][x]===T.G&&hash(x+3,y+7)<88)m[y][x]=T.TG});
+  // 高草：野外小塊（x1,y1,x2,y2；實心），塊與塊、塊與主道之間都留 1 格以上的走道
+  const patches=[[6,11,10,14],[16,11,20,14],[8,18,11,21],[16,18,20,21],[7,23,11,25],[18,23,21,25]];
+  patches.forEach(([a,b,c,d])=>{for(let y=b;y<=d;y++)for(let x=a;x<=c;x++)if(m[y][x]===T.G)m[y][x]=T.TG});
+  rect(18,15,21,17,T.WATER);
   // 野花點綴
   for(let y=2;y<MH-2;y++)for(let x=2;x<MW-2;x++)if(m[y][x]===T.G&&hash(x*3,y*5)<5)m[y][x]=T.FLOWER;
-  // 散置灌木、石頭（實心裝飾）
-  const npcPos=[[11,31],[17,26],[11,16],[13,8],[6,18]];
-  for(let y=10;y<=33;y++)for(let x=5;x<=22;x++){
-    if(m[y][x]!==T.G||Math.abs(x-13.5)<3.2||npcPos.some(([a,b])=>Math.abs(a-x)<=1&&Math.abs(b-y)<=1))continue;
+  // 散置灌木、石頭（實心裝飾）：只在野外，不靠近高草塊（走道不被堵）、不靠近 NPC 與古碑空地
+  const npcPos=[[11,16],[13,8],[6,18]];
+  const nearTG=(x,y)=>{for(let j=-1;j<=1;j++)for(let i=-1;i<=1;i++)if(m[y+j]&&m[y+j][x+i]===T.TG)return true;return false};
+  for(let y=10;y<=25;y++)for(let x=5;x<=22;x++){
+    if(m[y][x]!==T.G||Math.abs(x-13.5)<3.2||nearTG(x,y)||(x<=8&&y>=16&&y<=21)||npcPos.some(([a,b])=>Math.abs(a-x)<=1&&Math.abs(b-y)<=1))continue;
     const h=hash(x*7+1,y*11+3);if(h<2)m[y][x]=T.BUSH;else if(h<4)m[y][x]=T.ROCK;
   }
+  // 地標點綴：古碑旁、水池旁的固定石頭與花（都不擋古碑四鄰與走道）
+  m[17][5]=T.ROCK;m[20][7]=T.ROCK;m[20][5]=T.BUSH;m[17][7]=T.FLOWER;m[19][5]=T.FLOWER;
+  m[17][17]=T.ROCK;m[16][22]=T.ROCK;m[15][17]=T.FLOWER;m[17][22]=T.FLOWER;
   // 主道
   rect(13,10,14,33,T.PATH);rect(12,26,15,33,T.PATH);rect(13,2,13,9,T.PATH);
+  // 小鎮：三間房子門口各鋪一條 1 格寬小路接到廣場（房子見 MAPS.grass.houses：[5,26] 門 (6,28)、[5,30] 門 (6,32)、[20,27] 門 (21,29)）
+  rect(6,29,11,29,T.PATH);rect(6,33,11,33,T.PATH);rect(16,30,21,30,T.PATH);
   // 關口：封住兩側
   for(let x=2;x<=25;x++){m[5][x]=T.TREE;m[4][x]=T.TREE}
   rect(13,5,13,9,T.PATH);rect(12,6,12,9,T.TREE);rect(14,6,14,9,T.TREE);
@@ -615,35 +626,58 @@ function buildGrass(){ // 第 1 章：翠風草原（程式產生，保留原本
   return m;
 }
 
-function buildEmber(){ // 第 3 章：赤燼荒原
+function buildEmber(){ // 第 3 章：赤燼荒原（畫面只看得到約 7 格寬：兩側實心、主道 2 格、高草切成小塊；熔岩湖是東側的實心邊界）
  const W=30,H=34,m=Array.from({length:H},()=>Array(W).fill(T.G));
  const rect=(x1,y1,x2,y2,t)=>{for(let y=y1;y<=y2;y++)for(let x=x1;x<=x2;x++)m[y][x]=t};
- for(let y=0;y<H;y++)for(let x=0;x<W;x++)if(x<2||x>W-3||y<1||y>H-2)m[y][x]=T.TREE;
- rect(20,5,26,20,T.WATER);rect(19,4,27,4,T.ROCK);rect(19,21,27,21,T.ROCK);
- rect(3,8,7,14,T.TG);rect(10,8,17,12,T.TG);rect(4,16,7,21,T.TG);
- rect(9,15,11,17,T.ROCK);rect(17,16,19,18,T.ROCK);rect(23,22,26,24,T.ROCK);
+ // 外框；北牆（y<=3，只留 (14,3)(15,3) 兩格關門）與南牆（y>=31）
+ for(let y=0;y<H;y++)for(let x=0;x<W;x++)if(x<2||x>W-3||y<1||y>H-2||y<=3||y>=31)m[y][x]=T.TREE;
+ // 側邊樹林：野外（y=4..26）左界 lb(y) 以內全是樹，lb+1 那格用 hash 做不規則邊；東側是熔岩湖（x=20..26）與右牆
+ const lb=y=>y<=10?7:y<=11?5:y<=21?3:y<=26?8:-1;
+ for(let y=4;y<=26;y++){
+  for(let x=2;x<=lb(y);x++)m[y][x]=T.TREE;
+  if(hash(lb(y)+1,y*3+1)<40)m[y][lb(y)+1]=T.TREE;
+ }
+ rect(20,5,26,20,T.WATER);rect(19,4,26,4,T.ROCK);rect(19,21,26,21,T.ROCK);rect(27,4,27,21,T.TREE);
+ for(let y=22;y<=26;y++){rect(25,y,27,y,T.TREE);if(hash(24*3,y*5+2)<40)m[y][24]=T.TREE}
+ // 高草：實心小塊，塊與塊、塊與道路之間留 1 格以上；靠湖那塊（17..19,9..11）維持「靠水」
+ [[9,5,12,8],[4,12,7,15],[9,12,12,15],[10,22,12,24],[17,9,19,11]].forEach(([a,b,c,d])=>rect(a,b,c,d,T.TG));
  for(let y=2;y<H-2;y++)for(let x=2;x<W-2;x++)if(m[y][x]===T.G&&hash(x*13+7,y*17+3)<7)m[y][x]=T.FLOWER;
- rect(2,27,27,30,T.PATH);rect(13,3,16,27,T.PATH);rect(7,18,13,19,T.PATH);rect(16,22,23,23,T.PATH);
+ // 道路：主道 2 格；油桶支路 y=18..19；東側支路 y=22..23（通往慰問隊名單）；村子廣場 4 格寬，兩端只留 2 格寬小路
+ rect(14,4,15,26,T.PATH);rect(7,18,13,19,T.PATH);rect(16,22,22,23,T.PATH);
+ rect(10,27,20,30,T.PATH);rect(2,28,9,29,T.PATH);rect(21,28,25,29,T.PATH);
  m[3][14]=T.GATE;m[3][15]=T.GATE;m[27][15]=T.FOUNT;m[20][13]=T.SIGN;m[18][8]=T.SIGN;m[24][22]=T.SIGN;
- for(let y=5;y<25;y++)for(let x=3;x<28;x++)if(m[y][x]===T.G&&((hash(x*23,y*19)<4)||(x<6&&y>8))&&![[14,20],[8,18],[22,24]].some(([a,b])=>Math.abs(a-x)<2&&Math.abs(b-y)<2))m[y][x]=hash(x,y)<65?T.TREE:T.ROCK;
- [[14,20],[8,18],[22,24],[15,3],[15,7],[23,27],[5,27],[8,21],[13,27],[17,27],[15,28],[3,29]].forEach(([x,y])=>{if(y!==3)m[y][x]=T.G});
- rect(13,4,16,27,T.PATH);rect(2,27,27,30,T.PATH);rect(7,18,13,19,T.PATH);rect(16,22,23,23,T.PATH);
- m[3][14]=T.GATE;m[3][15]=T.GATE;m[27][15]=T.FOUNT;m[20][13]=T.SIGN;m[18][8]=T.SIGN;m[24][22]=T.SIGN;return m;
+ // 地標點綴（固定位置，都不堵走道、不在高草旁）：油桶旁的碎石、湖岸石、村口灌木
+ [[11,17,T.ROCK],[6,17,T.ROCK],[5,18,T.BUSH],[19,6,T.ROCK],[19,14,T.ROCK],[18,18,T.ROCK],[23,24,T.ROCK],[24,23,T.ROCK],[11,26,T.BUSH],[17,25,T.BUSH]].forEach(([x,y,t])=>{if(m[y][x]===T.G||m[y][x]===T.FLOWER)m[y][x]=t});
+ return m;
 }
 
-function buildMarsh(){ // 第 4 章：霧語沼林
+function buildMarsh(){ // 第 4 章：霧語沼林（畫面只看得到約 7 格寬：兩側實心、主道 2 格、高草切成小塊；東側是大湖，西側有池塘與墓碑）
  const W=30,H=34,m=Array.from({length:H},()=>Array(W).fill(T.G));
  const rect=(x1,y1,x2,y2,t)=>{for(let y=y1;y<=y2;y++)for(let x=x1;x<=x2;x++)m[y][x]=t};
- for(let y=0;y<H;y++)for(let x=0;x<W;x++)if(x<2||x>W-3||y<1||y>H-2)m[y][x]=T.TREE;
- rect(21,6,26,19,T.WATER);rect(6,11,9,15,T.WATER);rect(20,20,26,24,T.TG);
- rect(3,9,8,13,T.TG);rect(13,14,18,18,T.TG);rect(9,14,11,16,T.ROCK);rect(17,18,19,20,T.ROCK);
+ // 外框；北牆（y<=3，只留 (14,3)(15,3) 兩格關門）與南牆（y>=31）
+ for(let y=0;y<H;y++)for(let x=0;x<W;x++)if(x<2||x>W-3||y<1||y>H-2||y<=3||y>=31)m[y][x]=T.TREE;
+ // 側邊樹林：左界 lb(y) 以內全是樹，lb+1 那格用 hash 做不規則邊；右界 rb(y) 以外全是樹（y=6..19 是大湖，岸邊 x=20 可走）
+ const lb=y=>y<=6?8:y<=26?3:-1;
+ const rb=y=>y<=5?19:y<=19?27:y<=26?20:99;
+ for(let y=4;y<=26;y++){
+  for(let x=2;x<=lb(y);x++)m[y][x]=T.TREE;
+  if(hash(lb(y)+1,y*3+1)<40)m[y][lb(y)+1]=T.TREE;
+  for(let x=rb(y)+1;x<=W-3;x++)m[y][x]=T.TREE;
+  if(y!==20&&y<=26&&rb(y)<27&&hash(rb(y)*5,y*7+2)<40)m[y][rb(y)]=T.TREE;
+ }
+ rect(21,6,26,19,T.WATER);rect(6,11,9,15,T.WATER);rect(9,14,11,16,T.ROCK);
+ // 阿澈（22,15）原本被水整圈包住走不到：從岸邊 (20,15) 接一格地過去（兩側各一棵「樹根」）
+ m[15][21]=T.G;m[15][22]=T.G;m[14][22]=T.TREE;m[16][22]=T.TREE;
+ // 高草：實心小塊，塊與塊、塊與道路之間留 1 格以上
+ [[4,8,6,10],[4,17,6,20],[18,9,20,11],[17,14,19,16],[9,21,12,24]].forEach(([a,b,c,d])=>rect(a,b,c,d,T.TG));
  for(let y=2;y<H-2;y++)for(let x=2;x<W-2;x++)if(m[y][x]===T.G&&hash(x*11+9,y*13+5)<8)m[y][x]=T.FLOWER;
- rect(2,27,27,30,T.PATH);rect(13,3,16,27,T.PATH);rect(7,18,13,19,T.PATH);rect(16,22,23,23,T.PATH);
+ // 道路：主道 2 格；墓碑支路 y=18..19；東側支路 y=22..23（通往獵牙家）；村子廣場 4 格寬，兩端只留 2 格寬小路
+ rect(14,4,15,26,T.PATH);rect(8,18,13,19,T.PATH);rect(16,22,20,23,T.PATH);
+ rect(10,27,20,30,T.PATH);rect(2,29,9,30,T.PATH);rect(21,29,25,30,T.PATH);
  m[3][14]=T.GATE;m[3][15]=T.GATE;m[28][14]=T.FOUNT;m[17][10]=T.SIGN;m[18][19]=T.SIGN;
- for(let y=5;y<25;y++)for(let x=3;x<28;x++)if(m[y][x]===T.G&&hash(x*19+1,y*23+2)<5&&![[10,17],[19,18],[15,7],[6,27],[23,27],[22,15]].some(([a,b])=>Math.abs(a-x)<2&&Math.abs(b-y)<2))m[y][x]=hash(x,y)<65?T.TREE:T.ROCK;
- [[10,17],[19,18],[15,7],[6,27],[23,27],[22,15],[18,27],[14,28],[3,29]].forEach(([x,y])=>m[y][x]=T.G);
- rect(13,4,16,27,T.PATH);rect(2,27,27,30,T.PATH);rect(7,18,13,19,T.PATH);rect(16,22,23,23,T.PATH);
- m[3][14]=T.GATE;m[3][15]=T.GATE;m[28][14]=T.FOUNT;m[17][10]=T.SIGN;m[18][19]=T.SIGN;return m;
+ // 地標點綴（固定位置，都不堵走道、不在高草旁）：獵牙家族譜旁的石頭、湖岸石、村口灌木
+ [[17,18,T.ROCK],[18,18,T.ROCK],[17,19,T.ROCK],[19,19,T.ROCK],[20,7,T.ROCK],[12,12,T.BUSH],[11,6,T.BUSH],[11,26,T.BUSH],[18,25,T.BUSH]].forEach(([x,y,t])=>{if(m[y][x]===T.G||m[y][x]===T.FLOWER)m[y][x]=t});
+ return m;
 }
 
 /* ================= 地圖資料 =================
@@ -654,77 +688,127 @@ function buildMarsh(){ // 第 4 章：霧語沼林
    warps [{x,y,to,tx,ty,face,need}] 踩到 (x,y) 格就傳送到地圖 to 的 (tx,ty)；need＝需要的旗標
    state(m,flags) 依劇情旗標修改圖塊（例：關門打開）｜signs {'x,y':[對話]}｜onTile(t,x,y) 特殊圖塊互動，回傳對話或 null
    art {原素材名:替換素材名} 之後有該地圖專屬地磚／物件圖時使用（例：{tiles:'tiles_coast'}） */
-function buildSky(){ // 第 5 章：天穹浮島
- const W=30,H=34,m=Array.from({length:H},()=>Array(W).fill(T.G));
+function buildSky(){ // 第 5 章：天穹浮島（畫面只看得到約 7 格寬：兩側岩壁實心、主道 2 格、高草切成小塊；西側是湖，東側是湖）
+ const W=30,H=34,m=Array.from({length:H},()=>Array(W).fill(T.ROCK));
  const rect=(x1,y1,x2,y2,t)=>{for(let y=y1;y<=y2;y++)for(let x=x1;x<=x2;x++)m[y][x]=t};
- for(let y=0;y<H;y++)for(let x=0;x<W;x++)if(x<2||x>W-3||y<1||y>H-2)m[y][x]=T.ROCK;
- rect(3,7,7,16,T.WATER);rect(22,8,26,19,T.WATER);rect(19,20,26,23,T.TG);rect(4,11,8,14,T.TG);rect(10,14,13,18,T.TG);
- rect(2,27,27,30,T.PATH);rect(13,3,16,27,T.PATH);rect(7,18,13,19,T.PATH);rect(16,21,23,22,T.PATH);
+ // 可走範圍：每段列 y1..y2 只開 x=L..R，最外側那格用 hash 做不規則邊，其餘全是岩壁
+ const carve=(y1,y2,L,R)=>{for(let y=y1;y<=y2;y++){rect(L,y,R,y,T.G);if(hash(L*5+1,y*3+2)<40)m[y][L]=T.ROCK;if(hash(R*5,y*7+2)<40)m[y][R]=T.ROCK}};
+ carve(4,6,10,19);carve(7,7,8,19);carve(8,19,8,21);carve(20,21,8,24);carve(22,23,8,21);carve(24,26,4,20);
+ rect(3,7,7,16,T.WATER);rect(22,8,26,19,T.WATER);
+ m[27][6]=m[27][7]=T.G;m[27][22]=T.G;   // 雲雀、小豆站的小凹口
+ // 高草：實心小塊，塊與塊、塊與道路之間留 1 格以上；N 開頭靠湖、F 開頭不靠水
+ [[8,8,10,11],[19,9,21,11],[19,13,21,15],[18,23,20,25],[8,21,10,23]].forEach(([a,b,c,d])=>rect(a,b,c,d,T.TG));
  for(let y=2;y<H-2;y++)for(let x=2;x<W-2;x++)if(m[y][x]===T.G&&hash(x*17+5,y*11+3)<8)m[y][x]=T.FLOWER;
+ // 道路：主道 2 格，瑟菲前空地 4 格；西側小徑通往借閱簿與紙魚；東側支路通往小屋；雲港廣場 4 格寬，兩端只留 2 格寬
+ rect(14,4,15,26,T.PATH);rect(13,6,16,8,T.PATH);rect(10,18,13,19,T.PATH);rect(10,13,10,17,T.PATH);rect(16,20,23,21,T.PATH);
+ rect(10,27,20,30,T.PATH);rect(2,28,9,29,T.PATH);rect(21,28,25,29,T.PATH);
  m[3][14]=T.GATE;m[3][15]=T.GATE;m[28][14]=T.FOUNT;m[15][9]=T.SIGN;m[17][20]=T.SIGN;
- [[14,20],[8,18],[20,17],[9,15],[15,3],[15,7],[23,27],[5,27],[13,27],[17,27],[22,27],[15,28],[3,29]].forEach(([x,y])=>{if(y!==3)m[y][x]=T.G});
- rect(13,4,16,27,T.PATH);rect(2,27,27,30,T.PATH);rect(7,18,13,19,T.PATH);rect(16,21,23,22,T.PATH);m[3][14]=T.GATE;m[3][15]=T.GATE;m[28][14]=T.FOUNT;m[15][9]=T.SIGN;m[17][20]=T.SIGN;return m;
+ // 地標點綴（固定位置，不在高草塊內、不堵走道）
+ [[12,14],[17,16],[12,22],[19,19]].forEach(([x,y])=>{if(m[y][x]===T.G||m[y][x]===T.FLOWER)m[y][x]=T.ROCK});
+ m[24][5]=T.G;   // 小屋（5,24）的圖要畫在可走的格子上
+ return m;
 }
-function buildAbyss(){ // 第 6 章：無光深淵
- const W=30,H=34,m=Array.from({length:H},()=>Array(W).fill(T.G));
+function buildAbyss(){ // 第 6 章：無光深淵（畫面只看得到約 7 格寬：兩側岩壁實心、主道 2 格、高草切成小塊；東側是裂縫水域，西側有小水池）
+ const W=30,H=34,m=Array.from({length:H},()=>Array(W).fill(T.ROCK));
  const rect=(x1,y1,x2,y2,t)=>{for(let y=y1;y<=y2;y++)for(let x=x1;x<=x2;x++)m[y][x]=t};
- for(let y=0;y<H;y++)for(let x=0;x<W;x++)if(x<2||x>W-3||y<1||y>H-2)m[y][x]=T.ROCK;
- rect(21,6,26,18,T.WATER);rect(3,9,6,14,T.WATER);rect(18,20,25,23,T.TG);rect(4,15,8,18,T.TG);rect(12,13,16,17,T.ROCK);
- rect(2,27,27,30,T.PATH);rect(13,3,16,27,T.PATH);rect(7,18,13,19,T.PATH);rect(16,21,23,22,T.PATH);
+ const carve=(y1,y2,L,R)=>{for(let y=y1;y<=y2;y++){rect(L,y,R,y,T.G);if(hash(L*5+1,y*3+2)<40)m[y][L]=T.ROCK;if(hash(R*5,y*7+2)<40)m[y][R]=T.ROCK}};
+ carve(4,5,10,19);carve(6,8,10,20);carve(9,19,7,20);carve(20,20,8,21);carve(21,23,8,24);carve(24,26,5,21);
+ rect(21,6,26,18,T.WATER);rect(3,9,6,14,T.WATER);rect(12,13,12,17,T.ROCK);   // 壁畫旁的一排石柱維持原樣
+ m[27][6]=m[27][7]=T.G;m[27][22]=T.G;   // 灰鴉、小豆站的小凹口
+ [[8,14,10,16],[18,12,20,14],[18,8,20,10],[8,22,10,25]].forEach(([a,b,c,d])=>rect(a,b,c,d,T.TG));
  for(let y=2;y<H-2;y++)for(let x=2;x<W-2;x++)if(m[y][x]===T.G&&hash(x*19+7,y*13+1)<7)m[y][x]=T.FLOWER;
+ // 道路：主道 2 格，黑鋒前空地 4 格；西側支路通往小苗；東側支路 y=21..22 通往夜梟，再分一格小徑通到刮痕石板；營地廣場 4 格寬，兩端只留 2 格寬
+ rect(14,4,15,26,T.PATH);rect(13,6,16,8,T.PATH);rect(8,18,13,19,T.PATH);rect(16,21,23,22,T.PATH);rect(20,19,20,20,T.PATH);
+ rect(10,27,16,30,T.PATH);rect(2,28,9,29,T.PATH);rect(17,28,25,29,T.PATH);
  m[3][14]=T.GATE;m[3][15]=T.GATE;m[28][14]=T.FOUNT;m[10][13]=T.SIGN;m[18][20]=T.SIGN;
- [[14,20],[8,18],[20,18],[13,10],[15,3],[15,7],[23,27],[5,27],[8,21],[13,27],[17,27],[22,27],[15,28],[3,29]].forEach(([x,y])=>{if(y!==3)m[y][x]=T.G});
- rect(13,4,16,27,T.PATH);rect(2,27,27,30,T.PATH);rect(7,18,13,19,T.PATH);rect(16,21,23,22,T.PATH);m[3][14]=T.GATE;m[3][15]=T.GATE;m[28][14]=T.FOUNT;m[10][13]=T.SIGN;m[18][20]=T.SIGN;return m;
+ [[10,12],[18,16],[12,21],[17,24]].forEach(([x,y])=>{if(m[y][x]===T.G||m[y][x]===T.FLOWER)m[y][x]=T.ROCK});
+ m[24][5]=T.G;   // 營地小屋（5,24）的圖要畫在可走的格子上
+ return m;
 }
-function buildRoyal(){ // 第 7 章：守界盟王都
- const W=30,H=34,m=Array.from({length:H},()=>Array(W).fill(T.G));
+function buildRoyal(){ // 第 7 章：守界盟王都（街道為主：兩側實心、主街 2 格；兩間房子只剩 3×3 本體，門口各鋪一條小路接到主街）
+ const W=30,H=34,m=Array.from({length:H},()=>Array(W).fill(T.ROCK));
  const rect=(x1,y1,x2,y2,t)=>{for(let y=y1;y<=y2;y++)for(let x=x1;x<=x2;x++)m[y][x]=t};
- for(let y=0;y<H;y++)for(let x=0;x<W;x++)if(x<2||x>W-3||y<1||y>H-2)m[y][x]=T.ROCK;
- // 市民區、檔案廳與城堡庭院分層排列
- rect(3,26,26,29,T.PATH);rect(13,3,16,27,T.PATH);rect(5,22,13,23,T.PATH);rect(16,19,24,20,T.PATH);rect(7,16,13,17,T.PATH);rect(16,15,22,16,T.PATH);
- rect(4,7,11,12,T.HOUSE);rect(19,7,26,12,T.HOUSE);rect(18,7,27,7,T.PATH);rect(7,13,11,15,T.FLOWER);rect(19,13,23,14,T.FLOWER);
- rect(3,19,11,21,T.TG);rect(21,22,26,25,T.TG);rect(12,18,17,22,T.PATH);
+ const carve=(y1,y2,L,R)=>{for(let y=y1;y<=y2;y++){rect(L,y,R,y,T.G);if(hash(L*5+1,y*3+2)<40)m[y][L]=T.ROCK;if(hash(R*5,y*7+2)<40)m[y][R]=T.ROCK}};
+ // 可走範圍：城門前、王城庭院、檔案廳（y=13..25）三段，其餘是岩壁
+ carve(2,2,13,16);carve(4,4,10,19);carve(5,5,10,22);carve(6,7,7,22);carve(8,9,7,18);carve(10,10,5,20);carve(11,11,8,20);carve(13,25,6,22);
+ rect(17,12,18,12,T.G);   // 內門東側的窄道（原本就繞得過內門，連通性維持不變）
+ m[5][22]=m[6][22]=m[7][22]=T.G;   // 繞過賽倫（21,6）、通到盟長書房告示牌（22,8）的路
+ // 檔案廳：高草切成小塊，花叢在西北
+ rect(7,13,11,15,T.FLOWER);
+ [[6,20,10,23],[18,22,22,24],[20,13,22,16]].forEach(([a,b,c,d])=>rect(a,b,c,d,T.TG));
  for(let y=2;y<31;y++)for(let x=2;x<28;x++)if(m[y][x]===T.G&&hash(x*13+5,y*17+3)<5)m[y][x]=T.FLOWER;
- rect(13,12,16,13,T.GATE);rect(13,3,16,5,T.PATH);rect(13,26,16,31,T.PATH);
- m[3][14]=T.GATE;m[3][15]=T.GATE;
+ // 街道：主街 2 格；檔案廳中間的告示牌處 4 格寬；西側小街通往修訂令・甲；東側小街通往修訂令・乙；平民街 4 格寬
+ rect(14,4,15,31,T.PATH);rect(13,20,16,22,T.PATH);rect(8,16,13,17,T.PATH);rect(16,19,21,20,T.PATH);rect(7,26,23,29,T.PATH);
+ // 兩間房子（MAPS.capital.houses：[4,7] 門 (5,9)、[19,7] 門 (20,9)）：門口鋪 1 格寬小路，沿 y=10 接到主街
+ rect(5,10,13,10,T.PATH);rect(16,10,20,10,T.PATH);
+ m[3][13]=T.PATH;m[3][16]=T.PATH;m[3][14]=T.GATE;m[3][15]=T.GATE;
+ rect(13,12,16,13,T.GATE);
  if(P&&P.flags.c7_archive){m[12][14]=T.PATH;m[12][15]=T.PATH;m[13][14]=T.PATH;m[13][15]=T.PATH}
  if(P&&P.flags.c7_steel){rect(13,6,16,9,T.PATH)}
  m[28][14]=T.FOUNT;m[18][8]=T.SIGN;m[18][21]=T.SIGN;m[21][14]=T.SIGN;m[8][22]=T.SIGN;
+ [[12,14],[18,16],[12,24]].forEach(([x,y])=>{if(m[y][x]===T.G||m[y][x]===T.FLOWER)m[y][x]=T.ROCK});
  return m;
 }
-function buildThrone(){ // 五核回聲的交會處
+function buildThrone(){ // 五核回聲的交會處（畫面只看得到約 7 格寬：兩側岩壁實心、主道與橫道各 2 格、高草切成小塊；四個回憶入口是嵌在兩側水岸與橫道上的告示牌）
  const W=30,H=34,m=Array.from({length:H},()=>Array(W).fill(T.ROCK));
  const rect=(x1,y1,x2,y2,t)=>{for(let y=y1;y<=y2;y++)for(let x=x1;x<=x2;x++)m[y][x]=t};
- rect(3,3,26,30,T.G);rect(12,25,17,33,T.PATH);rect(12,3,17,26,T.PATH);rect(4,14,25,18,T.PATH);
- rect(5,5,10,10,T.TG);rect(19,5,24,10,T.TG);rect(5,21,10,25,T.TG);rect(19,21,24,25,T.TG);
- rect(3,13,5,19,T.WATER);rect(24,13,26,19,T.WATER);rect(12,4,17,7,T.FLOWER);
+ // 場地 x=7~22；內緣各有一欄不規則（x=6 或 x=23，同一列最多開一邊，每列寬度 ≤17）
+ for(let y=3;y<=30;y++){
+  rect(7,y,22,y,T.G);
+  const l=hash(6,y*3+1)<40,r=!l&&hash(23,y*3+2)<40;
+  if(l)m[y][6]=T.G;if(r)m[y][23]=T.G;
+ }
+ rect(5,13,6,19,T.WATER);rect(23,13,24,19,T.WATER);   // 兩側水岸（原本的邊界地形，回憶入口牌就嵌在水岸上）
+ rect(14,3,15,33,T.PATH);rect(7,14,22,15,T.PATH);       // 主道、橫道各 2 格
+ rect(13,4,16,6,T.FLOWER);                              // 北端花壇（最寬 4 格）
+ // 高草：實心小塊，塊與塊、塊與主道、橫道之間都留走道
+ [[8,5,12,8],[17,5,21,8],[7,10,11,12],[18,10,22,12],[8,22,12,25],[17,22,21,25],[8,27,11,29],[18,27,21,29]].forEach(([a,b,c,d])=>rect(a,b,c,d,T.TG));
+ // 地標：橫道南側岔口的兩顆石頭
+ m[18][11]=T.ROCK;m[18][18]=T.ROCK;
  m[14][6]=T.SIGN;m[14][11]=T.SIGN;m[14][18]=T.SIGN;m[14][23]=T.SIGN;m[25][14]=T.FOUNT;
  return m;
 }
-function buildMemory(stage){ // 四張可步行的回憶小地圖
+function buildMemory(stage){ // 四張可步行的回憶小地圖（畫面只看得到約 7 格寬：兩側岩壁實心、主道與橫道各 2 格）
  const W=26,H=30,m=Array.from({length:H},()=>Array(W).fill(T.ROCK));
  const rect=(x1,y1,x2,y2,t)=>{for(let y=y1;y<=y2;y++)for(let x=x1;x<=x2;x++)m[y][x]=t};
- rect(2,2,23,27,T.G);rect(12,22,15,29,T.PATH);rect(12,3,15,23,T.PATH);rect(5,12,20,15,T.PATH);
+ // 場地 x=6~21；內緣各有一欄不規則（x=5 或 x=22，同一列最多開一邊，每列寬度 ≤17）
+ for(let y=2;y<=27;y++){
+  rect(6,y,21,y,T.G);
+  const l=hash(5,y*3+1)<40,r=!l&&hash(22,y*3+2)<40;
+  if(l)m[y][5]=T.G;if(r)m[y][22]=T.G;
+ }
+ rect(13,3,14,29,T.PATH);rect(7,13,20,14,T.PATH);
  // 每段回憶有不同的地形重心，仍保留一條可通行的探索路線。
- if(stage===1){rect(4,5,8,10,T.TG);rect(18,5,21,10,T.TG);rect(4,18,8,21,T.FLOWER);rect(18,18,21,21,T.FLOWER);rect(9,7,11,9,T.ROCK);rect(16,7,18,9,T.ROCK)}
- if(stage===2){rect(4,5,9,9,T.WATER);rect(17,5,22,9,T.WATER);rect(4,18,8,22,T.ROCK);rect(18,18,22,22,T.ROCK);rect(9,6,11,8,T.FLOWER);rect(15,6,17,8,T.FLOWER)}
- if(stage===3){rect(4,5,8,10,T.ROCK);rect(18,5,22,10,T.ROCK);rect(4,18,9,22,T.WATER);rect(17,18,22,22,T.WATER);rect(10,10,11,11,T.ROCK);rect(15,10,16,11,T.ROCK)}
- if(stage===4){rect(4,5,9,10,T.FLOWER);rect(17,5,22,10,T.FLOWER);rect(4,18,9,22,T.TG);rect(17,18,22,22,T.TG);rect(11,5,15,7,T.WATER);rect(10,20,15,21,T.ROCK)}
+ if(stage===1){[[6,4,10,7],[17,4,21,7],[8,9,10,11],[17,9,19,11]].forEach(([a,b,c,d])=>rect(a,b,c,d,T.TG));rect(7,18,10,21,T.FLOWER);rect(17,18,20,21,T.FLOWER)}
+ if(stage===2){rect(6,5,10,8,T.WATER);rect(17,5,21,8,T.WATER);rect(11,6,12,8,T.FLOWER);rect(15,6,16,8,T.FLOWER);rect(6,18,10,21,T.ROCK);rect(17,18,21,21,T.ROCK)}
+ if(stage===3){rect(6,5,10,9,T.ROCK);rect(17,5,21,9,T.ROCK);rect(10,10,11,11,T.ROCK);rect(16,10,17,11,T.ROCK);rect(6,18,10,21,T.WATER);rect(17,18,21,21,T.WATER)}
+ if(stage===4){rect(6,5,10,9,T.FLOWER);rect(17,5,21,9,T.FLOWER);[[6,18,9,21],[18,18,21,21],[7,23,10,25],[17,23,20,25]].forEach(([a,b,c,d])=>rect(a,b,c,d,T.TG));rect(11,5,15,7,T.WATER);rect(11,20,15,21,T.ROCK)}
+ m[16][11]=T.ROCK;m[16][16]=T.ROCK;   // 橫道南側的兩顆地標石
  m[12][13]=T.SIGN;m[27][13]=T.PATH;
  return m;
 }
-function buildTower(){ // 第 9 章：樓層隨存檔狀態推進的無盡之塔
+function buildTower(){ // 第 9 章：樓層隨存檔狀態推進的無盡之塔（畫面只看得到約 7 格寬：兩側岩壁實心、主道與橫道各 2 格）
  const W=30,H=34,m=Array.from({length:H},()=>Array(W).fill(T.ROCK));
  const rect=(x1,y1,x2,y2,t)=>{for(let y=y1;y<=y2;y++)for(let x=x1;x<=x2;x++)m[y][x]=t};
- rect(2,2,27,32,T.G);rect(12,2,17,32,T.PATH);rect(5,7,12,9,T.PATH);rect(17,7,24,9,T.PATH);rect(5,18,12,20,T.PATH);rect(17,18,24,20,T.PATH);rect(8,12,21,15,T.PATH);rect(8,23,21,25,T.PATH);
- for(let y=3;y<31;y++)for(let x=3;x<27;x++)if(m[y][x]===T.G&&hash(x*23+9,y*11+7)<13)m[y][x]=hash(x,y)<40?T.ROCK:T.FLOWER;
- rect(12,26,17,33,T.PATH);m[3][14]=T.SIGN;m[27][5]=T.FOUNT;m[12][8]=T.SIGN;m[32][14]=T.PATH;
+ // 場地 x=6~22（噴泉一帶 y=25~29 往西多開一欄、東緣內縮一欄，寬度仍是 17）；其餘列內緣用 hash 內縮一欄
+ for(let y=3;y<=30;y++){
+  const town=y>=25&&y<=29,keep=town||(y>=12&&y<=14)||(y>=22&&y<=24);
+  const L=town?5:6,R=town?21:22;
+  rect(L,y,R,y,T.G);
+  if(!keep){const sl=hash(6,y*3+1)<35;if(sl)m[y][6]=T.ROCK;else if(hash(22,y*3+2)<35)m[y][22]=T.ROCK}
+ }
+ rect(14,2,15,33,T.PATH);                      // 主道 2 格（塔門在北，入口在南）
+ rect(7,8,13,9,T.PATH);rect(16,8,22,9,T.PATH);rect(7,18,13,19,T.PATH);rect(16,18,22,19,T.PATH);   // 四條側廊（2 格）
+ rect(8,13,21,14,T.PATH);rect(8,24,21,25,T.PATH);   // 兩條橫道（2 格）：挑戰者／卷頁回聲一帶、入口小鎮
+ // 地標：岔口的石頭、告示牌兩側的花
+ m[10][11]=T.ROCK;m[10][18]=T.ROCK;m[22][11]=T.ROCK;m[22][18]=T.ROCK;m[12][7]=T.FLOWER;m[12][9]=T.FLOWER;
+ m[3][14]=T.SIGN;m[27][5]=T.FOUNT;m[12][8]=T.SIGN;
  return m;
 }
 const MAPS={
  grass:{
   ch:1,name:'翠風草原',w:28,h:36,build:buildGrass,
-  houses:[[5,26],[19,28],[5,29]],
+  houses:[[5,26],[5,30],[20,27]],
   gates:[{x:13.5,y:5.0}],
   spawn:{x:13.5,y:31.5},home:{x:13.5,y:31.5},homeName:'初芽鎮',
   area:(x,y)=>y>=26?'初芽鎮':y<=10?'守界關口':'翠風草原',
@@ -766,31 +850,31 @@ const MAPS={
    '##rrr===============~~~~~~~~~~',
    '##rrr===============~~~~~~~~~~',
    '###############G#######~~~~~~~',
-   '##S...........==.....==~~~~~~~',
-   '=r==,,rr,.....==.........=S~~~',
-   '=r==,,,,,.,,,.=============~~~',
-   '##,.,,,rr,,,,.==.........==~~~',
-   '##,rr..,,,,,,.==..,,,==~~~~~~~',
-   '##.rrr,.r,,,,.==.,,,,==~~~~~~~',
-   '##,rr.,,r,,,,.==.,,,,==~~~~~~~',
-   '##,.,r,,.,,,,.==.,,,,==~~~~~~~',
-   '##.,.,.rr,,,..==.,,,,==~~~~~~~',
-   '##,,,.,,,.....==.,,,,==~~~~~~~',
-   '##,,..,,......==.,,,.==~~~~~~~',
-   '##rr,,,,r.....==.....==~~~~~~~',
-   '##........b...==...b..==~~~~~~',
-   '##......*.....==.....*==~~~~~~',
-   '##.........*..==......==~~~~~~',
-   '##............==......==~~~~~~',
-   '##............==.....S==~~~~~~',
-   '##............==......==~~~~~~',
+   '##S...........==.....##~~~~~~~',
+   '=r==..........==.........=S~~~',
+   '=r==..........=============~~~',
+   '##rrr,,,,.,,,.==.........==~~~',
+   '##rrr,,,,.,,,.==.,,,.=~~~~~~~~',
+   '##rrr,,,,.,,,.==.,,,.=~~~~~~~~',
+   '##rrr,,,,.,,,.==.,,,.=~~~~~~~~',
+   '##rrr.........==.,,,.=~~~~~~~~',
+   '##rrr,,,,.,,,.==.....=~~~~~~~~',
+   '##rrr,,,,.,,,.==.,,,.=~~~~~~~~',
+   '##rrr,,,,.,,,.==.,,,.=~~~~~~~~',
+   '##rrr,,,,.,,,.==.,,,.=~~~~~~~~',
+   '##rrrrrr..b...==.,,,..=~~~~~~~',
+   '##rrrrrr*.....==....r.=~~~~~~~',
+   '##.........*..==......=~~~~~~~',
+   '##............==......=~~~~~~~',
+   '##............==.....S=~~~~~~~',
+   '##............==......=~~~~~~~',
    '##............==========dddd~~',
    '##............==========dddd~~',
-   '##............==.F....==~~~~~~',
-   '##.*..........==......==~~~~~~',
-   '##............==....*.==~~~~~~',
-   '##...........S==......==~~~~~~',
-   '##............==......==~~~~~~',
+   '##rrrrrr......==.F....=~~~~~~~',
+   '##rrrrrr......==......=~~~~~~~',
+   '##rrrrrrrb....==....*.=~~~~~~~',
+   '##rrrrrr.....S==......=~~~~~~~',
+   '##rrrrrrr.....==......=~~~~~~~',
    '##############==##############',
    '##############==##############'
   ],
@@ -1613,7 +1697,9 @@ function drawMapCore(now,full){
     if(blkCache.size>BLOCK_MAX)for(const [k,e] of blkCache){if(blkCache.size<=BLOCK_MAX)break;if(e.t!==blkFrame){freeCv(e.cv);blkCache.delete(k)}}   // 淘汰最久沒用的（Map 依最近使用排序，且只刪本幀沒用到的），畫布寬高設 0 立刻放掉
   }
   // 立體物件：邏輯錨點換成畫面位置畫；排序鍵也用畫面 y（遮擋跟著畫面走）
-  const ents=[],art=(key,qx,qy,ky,sc)=>{const v=toView(qx,qy);ents.push({y:toView(qx,ky)[1],f:()=>drawArt(c,key,v[0],v[1],camX,camY,sc)})};
+  // 美術物件的 f(a) 可帶透明度 a（擋住主角時用）；r() 回傳它實際畫出的矩形（格單位，畫面世界座標），圖沒載入回傳 null
+  const ents=[],art=(key,qx,qy,ky,sc)=>{const v=toView(qx,qy);ents.push({y:toView(qx,ky)[1],f:a=>{if(a!=null)c.globalAlpha=a;drawArt(c,key,v[0],v[1],camX,camY,sc);if(a!=null)c.globalAlpha=1},
+    r:()=>{const im=ART[artKey(key)];if(!im)return null;const w=(ARTW[artKey(key)]||ARTW[key])*(sc||1),h=w*im.height/im.width;return[v[0]-w/2,v[1]-h,v[0]+w/2,v[1]]}})};
   if(ART[artKey('tiles')]){
     const pd=Math.ceil(WP?WP.maxD:0);   // 往上／兩側多掃一些格（含世界變形位移），避免高大的圖在畫面邊緣被切掉
     for(let ty=Math.max(0,y0-pd);ty<=Math.min(MH-1,y1+4+pd);ty++)for(let tx=Math.max(0,x0-2-pd);tx<=Math.min(MW-1,x1+2+pd);tx++){
@@ -1629,9 +1715,17 @@ function drawMapCore(now,full){
     (CUR.houses||[]).forEach(([hx,hy])=>art('house',hx+1.5,hy+3.08,hy+3));
     (CUR.gates||[]).forEach(g=>art('gate',g.x,g.y,g.y-.1));
   }
-  activeNpcs().forEach(n=>{const v=toView(n.x+.5,n.y+.5);ents.push({y:v[1],f:()=>n.obj?drawStele(c,n,camX,camY,now):drawChar(c,n.ch,v[0]*TS-camX,v[1]*TS-camY+TS*.3,faceTo(n),n.name,0,0,n.col,n.hair)})});
-  ents.push({y:pv[1],f:()=>drawChar(c,'main',pv[0]*TS-camX,pv[1]*TS-camY+TS*.3,G.face,P.name,0,G.fr)});
-  ents.sort((a,b)=>a.y-b.y).forEach(e=>e.f());
+  // 角色排序鍵用「腳」的位置（格底附近 y+.95，經世界變形換成畫面 y），同一列隔壁的樹（鍵 ty+.9）才會畫在角色下面
+  activeNpcs().forEach(n=>{const v=toView(n.x+.5,n.y+.5);ents.push({y:toView(n.x+.5,n.y+.95)[1],f:()=>n.obj?drawStele(c,n,camX,camY,now):drawChar(c,n.ch,v[0]*TS-camX,v[1]*TS-camY+TS*.3,faceTo(n),n.name,0,0,n.col,n.hair)})});
+  ents.push({me:1,y:toView(P.x,P.y+.45)[1],f:()=>drawChar(c,'main',pv[0]*TS-camX,pv[1]*TS-camY+TS*.3,G.face,P.name,0,G.fr)});
+  // 畫在主角上面、又蓋到主角身體中心的美術物件（樹、房子…）改用半透明畫，主角才看得到
+  const bx=pv[0],by=pv[1]+.3-CH.main.h*1.2/2;   // 主角身體中心（格單位）：腳往上約半個身高
+  let after=false;
+  ents.sort((a,b)=>a.y-b.y).forEach(e=>{
+    if(e.me){after=true;e.f();return}
+    if(after&&e.r){const r=e.r();if(r&&bx>=r[0]&&bx<=r[2]&&by>=r[1]&&by<=r[3]){e.f(.45);return}}
+    e.f();
+  });
   if(G.hint&&!G.lock)drawHint(c,G.hint,camX,camY,now);
 }
 let mapRunning=false;
@@ -2907,7 +3001,56 @@ async function continueGame(){
     });
   };
   addEventListener('resize',()=>{if(cur==='sMap')resizeMap();else mapStale=true;if(cur==='sBattle')resizeBoard()});
-  window.__dbg={get P(){return P},get B(){return B},G,findGroups:()=>findGroups(),setGrid:g=>{grid=g}};
+  // 地圖檢查（開發用）：每張圖在「旗標全無」「旗標全開」兩種狀態下，從出生點／傳送落點四方向 BFS（實心與 NPC 所在格不可走），回報可達格數、高草與問題清單
+  function auditMaps(){
+    const out=[],saveP=P,ids=Object.keys(MAPS);
+    const flagsOf=d=>{   // 這張圖用到的旗標：build／state／onTile 原始碼裡的 flags.x／f.x、warps 的 need、NPC 的 hideIf／showIf
+      const set=new Set(),src=[d.build,d.state,d.onTile].map(f=>f?String(f):'').join(' ');
+      for(const mm of src.matchAll(/(?:flags|\bf)\.(\w+)/g))set.add(mm[1]);
+      (d.warps||[]).forEach(w=>typeof w.need==='string'&&set.add(w.need));
+      (d.npcs||[]).forEach(n=>[n.hideIf,n.showIf].forEach(v=>typeof v==='string'&&set.add(v)));
+      return [...set];
+    };
+    try{
+      for(const id of ids){
+        const d=MAPS[id];
+        for(const st of ['無旗標','全開']){
+          const fl={};if(st==='全開')flagsOf(d).forEach(k=>fl[k]=true);
+          const rec={map:id,state:st,reach:0,tg:0,tgReach:0,issues:[]};out.push(rec);
+          try{
+            P=Object.assign({team:[],items:{},box:[],dex:{}},saveP||{},{flags:fl});
+            const m=buildMapData(d),W=d.w,H=d.h,inb=(x,y)=>x>=0&&y>=0&&x<W&&y<H;
+            const npcs=(d.npcs||[]).filter(n=>{try{return !npcFlag(n.hideIf)&&(!n.showIf||npcFlag(n.showIf))}catch(e){return true}});
+            const blocked=new Set(npcs.map(n=>n.x+','+n.y)),walk=(x,y)=>inb(x,y)&&!SOLID.has(m[y][x])&&!blocked.has(x+','+y);
+            const landings=[];   // 其他圖傳進本圖的落點
+            for(const oid of ids)for(const w of (MAPS[oid].warps||[]))if(w.to===id)landings.push({from:oid,x:Math.floor(w.tx),y:Math.floor(w.ty)});
+            landings.forEach(l=>{if(!walk(l.x,l.y))rec.issues.push(`傳送落點 ${l.from}→(${l.x},${l.y}) 落在不可走格`)});
+            const seeds=d.spawn?[[Math.floor(d.spawn.x),Math.floor(d.spawn.y)]]:landings.map(l=>[l.x,l.y]);
+            if(!seeds.length)rec.issues.push('沒有出生點也沒有傳送落點，無法 BFS');
+            const seen=new Uint8Array(W*H),q=[];
+            seeds.forEach(([x,y])=>{if(walk(x,y)&&!seen[y*W+x]){seen[y*W+x]=1;q.push([x,y])}});
+            for(let i=0;i<q.length;i++){const [x,y]=q[i];for(let k=0;k<4;k++){const nx=x+DX[k],ny=y+DY[k];if(walk(nx,ny)&&!seen[ny*W+nx]){seen[ny*W+nx]=1;q.push([nx,ny])}}}
+            rec.reach=q.length;
+            const ok=(x,y)=>inb(x,y)&&seen[y*W+x]===1;
+            const nb=(x,y)=>DX.some((_,k)=>ok(x+DX[k],y+DY[k]));
+            for(let y=0;y<H;y++)for(let x=0;x<W;x++)if(m[y][x]===T.TG){rec.tg++;if(ok(x,y))rec.tgReach++}
+            (d.warps||[]).forEach(w=>{if(st==='全開'&&!ok(w.x,w.y))rec.issues.push(`warp 觸發格 (${w.x},${w.y})→${w.to} 不可達`)});
+            npcs.forEach(n=>{if(!nb(n.x,n.y))rec.issues.push(`${n.obj?'古碑':'NPC'} ${n.name||n.id} (${n.x},${n.y}) 四鄰無可達格`)});
+            const signKeys=new Set(Object.keys(d.signs||{}));
+            for(let y=0;y<H;y++)for(let x=0;x<W;x++){
+              const t=m[y][x],label=t===T.SIGN?'告示牌':t===T.FOUNT?'泉水':t===T.DOOR?'門':t===T.GATE?'關門':null;
+              if(label||signKeys.has(x+','+y)){if(label)signKeys.delete(x+','+y);if(!nb(x,y))rec.issues.push(`${label||'告示牌'} (${x},${y}) 四鄰無可達格`)}
+            }
+            signKeys.forEach(k=>{const [x,y]=k.split(',').map(Number);if(!nb(x,y))rec.issues.push(`告示牌 (${k}) 四鄰無可達格`)});
+          }catch(err){rec.issues.push('檢查時出錯：'+(err&&err.message||err))}
+        }
+      }
+    }finally{P=saveP}
+    console.table(out.map(r=>({map:r.map,state:r.state,reach:r.reach,tg:r.tg,tgReach:r.tgReach,issues:r.issues.length})));
+    out.filter(r=>r.issues.length).forEach(r=>console.log(r.map+'／'+r.state+'：\n  '+r.issues.join('\n  ')));
+    return out;
+  }
+  window.__dbg={get P(){return P},get B(){return B},G,findGroups:()=>findGroups(),setGrid:g=>{grid=g},audit:auditMaps};
 })();
 </script>
 </body>
