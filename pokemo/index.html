@@ -44,13 +44,34 @@ body.btn-art #sTitle button::before,body.btn-art #sTitle button::after{display:n
 
 /* map */
 #sMap{background:#000}
-#mapCv{width:100%;height:100%;display:block}
+#mapView{position:relative;flex:1;min-height:0;overflow:hidden}
+#mapCv{position:absolute;inset:0;width:100%;height:100%;display:block}
 #hud{position:absolute;top:calc(8px + env(safe-area-inset-top));left:8px;right:8px;display:flex;justify-content:space-between;align-items:center;pointer-events:none}
 #hud *{pointer-events:auto}
 #hudName{background:#0009;padding:6px 12px;border-radius:20px;font-size:14px}
 #hud button{padding:8px 16px;background:#0009;border:1px solid #fff4}
-#joy{position:absolute;left:22px;bottom:calc(30px + env(safe-area-inset-bottom));width:130px;height:130px;border-radius:50%;background:#ffffff18;border:2px solid #ffffff44}
-#knob{position:absolute;left:41px;top:41px;width:48px;height:48px;border-radius:50%;background:#ffffffaa;box-shadow:0 2px 8px #0008}
+/* 掌機式操作面板：直向（#sMap.pt）時在遊戲視窗下方、不透明；橫向／桌機時半透明疊在畫面左下、右下 */
+#pad{position:relative;flex:none;height:var(--padh,260px);box-sizing:border-box;padding:12px 18px calc(12px + env(safe-area-inset-bottom));display:flex;justify-content:space-between;align-items:center;background:linear-gradient(#1b2650,#0e1430);border-top:3px solid #3b4a7c;touch-action:none;user-select:none;-webkit-user-select:none}
+#sMap:not(.pt) #pad{position:absolute;left:0;right:0;bottom:0;height:auto;background:none;border:0;padding:0 22px calc(24px + env(safe-area-inset-bottom));align-items:flex-end;pointer-events:none}
+#sMap:not(.pt) #dpad,#sMap:not(.pt) #abtns{pointer-events:auto;opacity:.55}
+#dpad{position:relative;width:140px;height:140px;flex:none;touch-action:none}
+#dpad::before,#dpad::after{content:"";position:absolute;box-sizing:border-box;background:linear-gradient(#34447f,#222d5c);border:2px solid #6f86d6;border-radius:10px;box-shadow:0 3px 8px #0009}
+#dpad::before{left:0;top:47px;width:140px;height:46px}
+#dpad::after{left:47px;top:0;width:46px;height:140px}
+#dpad b{position:absolute;left:49px;top:49px;width:42px;height:42px;border-radius:50%;background:linear-gradient(#222d5c,#1a2247);z-index:1}
+#dpad i{position:absolute;z-index:2;width:0;height:0;border:9px solid transparent;pointer-events:none}
+#dpad i.u{left:61px;top:10px;border-bottom:13px solid #9fb0ee;border-top:0}
+#dpad i.d{left:61px;bottom:10px;border-top:13px solid #9fb0ee;border-bottom:0}
+#dpad i.l{top:61px;left:10px;border-right:13px solid #9fb0ee;border-left:0}
+#dpad i.r{top:61px;right:10px;border-left:13px solid #9fb0ee;border-right:0}
+#dpad[data-d="1"] i.u{border-bottom-color:#ffd84a}#dpad[data-d="0"] i.d{border-top-color:#ffd84a}
+#dpad[data-d="2"] i.l{border-right-color:#ffd84a}#dpad[data-d="3"] i.r{border-left-color:#ffd84a}
+#abtns{position:relative;width:150px;height:130px;flex:none}
+.rb{position:absolute;border-radius:50%;border:3px solid #a98a4e;color:#fff6d8;font-weight:900;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0;line-height:1.1;background:radial-gradient(circle at 35% 30%,#6f86e8,#2c3fa8 60%,#18246e);box-shadow:inset 0 0 0 2px #0a0e27,0 4px 10px #000a;touch-action:none}
+.rb small{font-size:11px;font-weight:400;letter-spacing:.1em;color:#d9dcf0}
+.rb.dn{filter:brightness(1.35);transform:scale(.94)}
+#btnA{right:0;top:6px;width:68px;height:68px;font-size:26px}
+#btnB{left:0;top:62px;width:58px;height:58px;font-size:22px}
 #toast{position:absolute;left:50%;top:70px;transform:translateX(-50%);background:#000c;padding:8px 16px;border-radius:20px;font-size:14px;opacity:0;transition:opacity .25s;pointer-events:none;white-space:nowrap}
 #toast.on{opacity:1}
 
@@ -111,6 +132,7 @@ body.btn-art #sTitle button::before,body.btn-art #sTitle button::after{display:n
 /* dialog / modal */
 #dlg{position:absolute;left:0;right:0;bottom:0;display:none;padding:12px 12px calc(16px + env(safe-area-inset-bottom));z-index:20;background:linear-gradient(transparent,#000a 25%)}
 #dlg.on{display:block}
+body.ptmap #dlg{bottom:var(--padh,260px);padding-bottom:12px}
 #dlgBox{background:#141c3acc;border:2px solid #6f86d6;border-radius:14px;padding:14px;min-height:110px;position:relative;font-size:16px;line-height:1.6}
 #dlgName{position:absolute;top:-14px;left:14px;background:#3b55d6;border-radius:10px;padding:2px 12px;font-size:13px;font-weight:700}
 #dlgP{position:absolute;right:14px;bottom:calc(100% - 4px);height:150px;display:none;pointer-events:none;filter:drop-shadow(0 3px 5px #000b)}
@@ -171,13 +193,16 @@ body.btn-art #sTitle button::before,body.btn-art #sTitle button::after{display:n
     <button class="pri" id="btnCont" style="display:none">繼續遊戲</button>
     <button class="pri" id="btnNew">新遊戲</button>
     <button id="btnImp">匯入存檔碼</button>
-    <div class="ver">原型 v1.22 ・ 110 種怪物 ・ 前九章可玩</div>
+    <div class="ver">原型 v1.23 ・ 110 種怪物 ・ 前九章可玩</div>
   </div>
 
   <div id="sMap" class="screen">
-    <canvas id="mapCv"></canvas>
+    <div id="mapView"><canvas id="mapCv"></canvas></div>
     <div id="hud"><span id="hudName"></span><button id="btnBag">背包</button></div>
-    <div id="joy"><i id="knob"></i></div>
+    <div id="pad">
+      <div id="dpad" data-d="-1"><b></b><i class="u"></i><i class="d"></i><i class="l"></i><i class="r"></i></div>
+      <div id="abtns"><button class="rb" id="btnB">B<small>跑步</small></button><button class="rb" id="btnA">A<small>互動</small></button></div>
+    </div>
     <div id="toast"></div>
   </div>
 
@@ -419,8 +444,10 @@ function importCode(c){try{const o=JSON.parse(decodeURIComponent(escape(atob(c.t
   P=n;save();return true}catch(e){return false}}
 
 /* ================= 介面工具 ================= */
-let cur='sTitle';
-function show(id){document.querySelectorAll('.screen').forEach(e=>e.classList.toggle('on',e.id===id));cur=id}
+let cur='sTitle',mapPortrait=false,mapStale=false;
+function show(id){document.querySelectorAll('.screen').forEach(e=>e.classList.toggle('on',e.id===id));cur=id;
+  if(id==='sMap'&&mapStale){mapStale=false;resizeMap()}   // 離開地圖期間視窗大小變過：回來時重算版面
+  document.body.classList.toggle('ptmap',id==='sMap'&&mapPortrait)}
 async function fade(on){$('#fade').classList.toggle('on',on);await sleep(300)}
 let toastT=0;
 function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>e.classList.remove('on'),1800)}
@@ -880,11 +907,14 @@ function loadMap(id){
 }
 const refreshMap=()=>{map=buildMapData(CUR);tileCacheClear()};   // 劇情旗標改變後重算圖塊（map 只會在這兩處整張重建，快取一併作廢）
 const artKey=k=>(CUR&&CUR.art&&CUR.art[k])||k;
-const G={face:0,moving:false,lock:true,keys:{},joy:{x:0,y:0},bump:0,stepAcc:0,grace:WARP_GRACE,last:0,saveT:0};
+const G={face:0,moving:false,lock:true,keys:{},joy:{x:0,y:0},bump:0,stepAcc:0,grace:WARP_GRACE,last:0,saveT:0,
+  st:null,kd:[],padDir:-1,runKey:false,runBtn:false,act:0,hint:null,fr:1,wpar:0,holdDir:-1,holdT:0,turning:false,queued:-1};   // joy／stepAcc 已不用，留著讓其他地方的歸零寫法不出錯
+const DX=[0,0,-1,1],DY=[1,-1,0,0];   // 面向 0下 1上 2左 3右 的格子位移
+const STEP_WALK=0.22,STEP_RUN=0.133,TURN_HOLD=0.07;   // 每格秒數、原地轉向後要持續按多久才邁步
 async function changeMap(id,x,y,face){
   G.lock=true;G.joy.x=G.joy.y=0;G.moving=false;
   await fade(true);
-  loadMap(id);P.x=x;P.y=y;G.face=face||0;G.grace=WARP_GRACE;G.stepAcc=0;
+  loadMap(id);P.x=x;P.y=y;snapP();G.face=face||0;G.grace=WARP_GRACE;G.stepAcc=0;G.holdDir=-1;G.queued=-1;
   await mapArtReady();
   save();$('#hudName').textContent=areaName();drawMap(performance.now(),1);
   await fade(false);
@@ -899,9 +929,14 @@ async function changeMap(id,x,y,face){
 const mapCv=$('#mapCv'),mctx=mapCv.getContext('2d');
 let mw=300,mh=600,TS=36,mdpr=1;
 function resizeMap(){
+  const sm=$('#sMap'),W=sm.clientWidth,H=sm.clientHeight;if(!W||!H)return;
+  mapPortrait=H>W*1.2;   // 直向：上方遊戲視窗＋下方操作面板
+  sm.classList.toggle('pt',mapPortrait);document.body.classList.toggle('ptmap',cur==='sMap'&&mapPortrait);
+  $('#app').style.setProperty('--padh',`calc(${clamp(Math.round(H*.36),230,320)}px + env(safe-area-inset-bottom))`);
   mdpr=Math.min(2,window.devicePixelRatio||1);
-  mw=mapCv.clientWidth;mh=mapCv.clientHeight;
-  mapCv.width=mw*mdpr;mapCv.height=mh*mdpr;TS=Math.max(30,Math.round(mw/10));
+  mw=mapCv.clientWidth;mh=mapCv.clientHeight;   // 讀取時會依新 class 重排，量到的是遊戲視窗大小
+  mapCv.width=Math.round(mw*mdpr);mapCv.height=Math.round(mh*mdpr);
+  TS=mapPortrait?Math.max(30,Math.round(mw/8)):Math.max(30,Math.round(Math.min(mw/12,mh/8)));   // 直向約 8 格寬
   tileCacheClear();   // TS／mdpr 改變，快取失效
 }
 const solidAt=(tx,ty)=>tx<0||ty<0||tx>=MW||ty>=MH||SOLID.has(map[ty][tx]);
@@ -912,6 +947,20 @@ function canStand(x,y){
   const r=0.27;
   for(const [dx,dy] of [[-r,-r],[r,-r],[-r,r],[r,r]])if(solidAt(Math.floor(x+dx),Math.floor(y+dy)))return false;
   return !npcNear(x,y,0.68);
+}
+/* 格子移動用：某格能不能站（地形＋NPC 佔格；NPC 不在格子中心時以四捨五入後的格子算） */
+const npcAtTile=(tx,ty)=>activeNpcs().find(n=>Math.round(n.x)===tx&&Math.round(n.y)===ty);
+const tileFree=(tx,ty)=>!solidAt(tx,ty)&&!npcAtTile(tx,ty);   // 格子中心的可站判定（canStand 的四角在同一格內，等於地形判定）
+function snapP(){   // 把主角吸附到最近的可站格中心（舊存檔座標、換圖落點、戰敗回家）
+  const bx=clamp(Math.floor(P.x),0,MW-1),by=clamp(Math.floor(P.y),0,MH-1);let tx=bx,ty=by;
+  if(!tileFree(bx,by)){
+    let best=1e9;
+    for(let r=1;r<=8&&best>=1e9;r++)for(let y=by-r;y<=by+r;y++)for(let x=bx-r;x<=bx+r;x++){
+      if(Math.max(Math.abs(x-bx),Math.abs(y-by))!==r||!tileFree(x,y))continue;
+      const d=Math.hypot(x+.5-P.x,y+.5-P.y);if(d<best){best=d;tx=x;ty=y}
+    }
+  }
+  P.x=tx+.5;P.y=ty+.5;G.st=null;G.moving=false;G.fr=1;
 }
 function areaName(){return CUR.area?CUR.area(P.x,P.y):CUR.name}
 
@@ -1434,10 +1483,11 @@ function propOff(tx,ty){   // 樹石灌木的格內偏移 [dx,dy,縮放]（固�
   if(s>1&&!(L&&Rt))s=1;
   return [dx,dy,s];
 }
+const rp=v=>Math.round(v*mdpr)/mdpr;   // 取整到裝置像素，角色、物件與地形塊同一套取整
 function drawArt(c,key,cx,bottom,camX,camY,sc){
   const im=ART[artKey(key)];if(!im){needArt(artKey(key));return}
   const w=(ARTW[artKey(key)]||ARTW[key])*TS*(sc||1),h=w*im.height/im.width;
-  c.drawImage(im,Math.round(cx*TS-camX-w/2),Math.round(bottom*TS-camY-h),Math.round(w),Math.round(h));
+  c.drawImage(im,rp(cx*TS-camX-w/2),rp(bottom*TS-camY-h),Math.round(w),Math.round(h));
 }
 /* ===== 角色圖（ChatGPT 生成；每張 4 格：正面/背面/左/右） ===== */
 const CH={liechya:{src:'art/ch-liechya.webp',p:'art/p-liechya.webp',cw:113,ch:202,h:1.25},taiyi:{src:'art/ch-taiyi.webp',p:'art/p-taiyi.webp',cw:111,ch:202,h:1.12},ache:{src:'art/ch-ache.webp',p:'art/p-ache.webp',cw:111,ch:202,h:1.28},qizhua:{src:'art/ch-qizhua.webp',p:'art/p-qizhua.webp',cw:110,ch:202,h:1.42},jin:{src:'art/ch-jin.webp',p:'art/p-jin.webp',cw:85,ch:202,h:1.28},huipo:{src:'art/ch-huipo.webp',p:'art/p-huipo.webp',cw:115,ch:202,h:1.1},xiaohuo:{src:'art/ch-xiaohuo.webp',cw:84,ch:202,h:1.05},moen:{src:'art/ch-moen.webp',p:'art/p-moen.webp',cw:89,ch:202,h:1.3},adu:{src:'art/ch-adu.webp',p:'art/p-adu.webp',cw:99,ch:202,h:1.25},main:{src:'art/ch-main.webp',p:'art/p-main.webp',walk:1,cw:120,ch:202,h:1.313},xiaodou:{src:'art/ch-xiaodou.webp',p:'art/p-xiaodou.webp',cw:115,ch:202,h:1.05},chaosheng:{src:'art/ch-chaosheng.webp',p:'art/p-chaosheng.webp',cw:98,ch:202,h:1.6},ajing:{src:'art/ch-ajing.webp',p:'art/p-ajing.webp',cw:88,ch:202,h:1.3},yanpo:{src:'art/ch-yanpo.webp',p:'art/p-yanpo.webp',cw:110,ch:202,h:1.15},bo:{src:'art/ch-bo.webp',p:'art/p-bo.webp',cw:82,ch:202,h:1.35},zhou:{src:'art/ch-zhou.webp',p:'art/p-zhou.webp',cw:94,ch:202,h:1.212},hana:{src:'art/ch-hana.webp',p:'art/p-hana.webp',cw:114,ch:202,h:1.212},guard:{src:'art/ch-guard.webp',p:'art/p-guard.webp',cw:114,ch:202,h:1.566},cloak:{src:'art/ch-cloak.webp',p:'art/p-cloak.webp',cw:116,ch:202,h:1.364},sefei:{src:'art/ch-sefei.webp',p:'art/p-sefei.webp',cw:95,ch:202,h:1.3},yunque:{src:'art/ch-yunque.webp',p:'art/p-yunque.webp',cw:92,ch:202,h:1.25},jiale:{src:'art/ch-jiale.webp',p:'art/p-jiale.webp',cw:98,ch:202,h:1.28},zhiyu:{src:'art/ch-zhiyu.webp',p:'art/p-zhiyu.webp',cw:88,ch:202,h:1.1},heifeng:{src:'art/ch-heifeng.webp',p:'art/p-heifeng.webp',cw:109,ch:202,h:1.4},huiya:{src:'art/ch-huiya.webp',p:'art/p-huiya.webp',cw:115,ch:202,h:1.3},xiaomiao:{src:'art/ch-xiaomiao.webp',p:'art/p-xiaomiao.webp',cw:95,ch:202,h:1.05},yexiao:{src:'art/ch-yexiao.webp',p:'art/p-yexiao.webp',cw:100,ch:202,h:1.3}};
@@ -1454,7 +1504,7 @@ function drawChar(c,key,px,py,face,label,bob,fr,col,hair){
   c.fillStyle='rgba(0,0,0,.28)';c.beginPath();c.ellipse(px,py,TS*.3,TS*.1,0,0,7);c.fill();
   const h=ch.h*TS*1.2,w=h*ch.cw/ch.ch;
   const sx=ch.walk?(fr||0)*ch.cw:face*ch.cw,sy=ch.walk?face*ch.ch:0;
-  c.drawImage(ch.img,sx,sy,ch.cw,ch.ch,Math.round(px-w/2),Math.round(py-h-bob),Math.round(w),Math.round(h));
+  c.drawImage(ch.img,sx,sy,ch.cw,ch.ch,rp(px-w/2),rp(py-h-bob),Math.round(w),Math.round(h));
   coverGrass(c,px,py);
   if(label){c.font='bold 11px sans-serif';c.textAlign='center';const ty=py-h-bob-3;c.fillStyle='#000b';c.fillText(label,px+1,ty+1);c.fillStyle='#fff';c.fillText(label,px,ty)}
 }
@@ -1465,10 +1515,18 @@ function drawStele(c,n,camX,camY,now){
   c.fillStyle=tower?'rgba(255,214,94,.95)':seen?'rgba(120,220,255,.9)':'rgba(220,230,255,.6)';c.font='bold '+Math.round(TS*.4)+'px serif';c.textAlign='center';c.fillText(tower?'塔':'歸',cx,by-TS*.28);if(tower){c.font='bold 11px sans-serif';c.fillStyle='#000b';c.fillText('無盡之塔',cx+1,by-TS*1.05+1);c.fillStyle='#fff';c.fillText('無盡之塔',cx,by-TS*1.05)}
   if(P.flags.q1&&!seen){c.font='bold 11px sans-serif';c.fillStyle='#000b';c.fillText('古碑',cx+1,by-TS*1.05+1);c.fillStyle='#fff';c.fillText('古碑',cx,by-TS*1.05)}
 }
+function drawHint(c,h,camX,camY,now){   // 面前可互動的對象頭上顯示小小的「A」
+  let x,y;
+  if(h.npc){const n=h.npc,v=toView(n.x+.5,n.y+.5),ch=CH[n.ch];x=v[0]*TS-camX;y=v[1]*TS-camY+TS*.3-(n.obj?TS*.9:(ch?ch.h:1.2)*TS*1.2)-22}
+  else{const v=toView(h.tx+.5,h.ty+.5);x=v[0]*TS-camX;y=v[1]*TS-camY-TS*.75}
+  y+=Math.sin(now/220)*2;const r=Math.max(9,Math.round(TS*.2));
+  c.fillStyle='#ffd84a';c.strokeStyle='#000a';c.lineWidth=2;c.beginPath();c.arc(x,y,r,0,7);c.fill();c.stroke();
+  c.fillStyle='#2a1b00';c.font='bold '+Math.round(r*1.3)+'px sans-serif';c.textAlign='center';c.textBaseline='middle';c.fillText('A',x,y+1);c.textBaseline='alphabetic';
+}
 function drawMap(now,full){   // full：不限制本幀新建幾塊地面快取（換圖、圖集剛載入時用）
   const c=mctx;c.setTransform(mdpr,0,0,mdpr,0,0);
   warpData();const pv=toView(P.x,P.y);   // 玩家的畫面位置（世界變形後）；鏡頭跟著它
-  const camX=clamp(pv[0]*TS-mw/2,0,Math.max(0,MW*TS-mw)),camY=clamp(pv[1]*TS-mh/2,0,Math.max(0,MH*TS-mh));
+  const camX=rp(clamp(pv[0]*TS-mw/2,0,Math.max(0,MW*TS-mw))),camY=rp(clamp(pv[1]*TS-mh/2,0,Math.max(0,MH*TS-mh)));   // 主角置中於遊戲視窗，鏡頭取整到裝置像素
   camXg=camX;camYg=camY;
   c.fillStyle='#000';c.fillRect(0,0,mw,mh);
   const x0=Math.floor(camX/TS),y0=Math.floor(camY/TS),x1=Math.min(MW-1,Math.ceil((camX+mw)/TS)),y1=Math.min(MH-1,Math.ceil((camY+mh)/TS));
@@ -1518,8 +1576,9 @@ function drawMap(now,full){   // full：不限制本幀新建幾塊地面快取�
     (CUR.gates||[]).forEach(g=>art('gate',g.x,g.y,g.y-.1));
   }
   activeNpcs().forEach(n=>{const v=toView(n.x+.5,n.y+.5);ents.push({y:v[1],f:()=>n.obj?drawStele(c,n,camX,camY,now):drawChar(c,n.ch,v[0]*TS-camX,v[1]*TS-camY+TS*.3,faceTo(n),n.name,0,0,n.col,n.hair)})});
-  ents.push({y:pv[1],f:()=>drawChar(c,'main',pv[0]*TS-camX,pv[1]*TS-camY+TS*.3,G.face,P.name,0,G.moving?[1,0,1,2][Math.floor(now/140)%4]:1)});
+  ents.push({y:pv[1],f:()=>drawChar(c,'main',pv[0]*TS-camX,pv[1]*TS-camY+TS*.3,G.face,P.name,0,G.fr)});
   ents.sort((a,b)=>a.y-b.y).forEach(e=>e.f());
+  if(G.hint&&!G.lock)drawHint(c,G.hint,camX,camY,now);
 }
 let mapRunning=false;
 function mapLoop(now){
@@ -1529,64 +1588,135 @@ function mapLoop(now){
   requestAnimationFrame(mapLoop);
 }
 function startMapLoop(){G.last=0;if(!mapRunning){mapRunning=true;requestAnimationFrame(mapLoop)}}
-function dirVec(){
-  let x=G.joy.x,y=G.joy.y;
-  const k=G.keys;
-  if(k.ArrowLeft||k.a)x-=1;if(k.ArrowRight||k.d)x+=1;if(k.ArrowUp||k.w)y-=1;if(k.ArrowDown||k.s)y+=1;
-  const l=Math.hypot(x,y);
-  if(l>1){x/=l;y/=l}
-  return[x,y];
+/* ===== 格子移動（寶可夢式）：主角永遠站在格子中心，一步一格，補間平滑；連按時步與步無縫銜接 ===== */
+const FRAMES=[1,0,1,2];   // 走路動畫格；一步換兩格（雙數步用前兩格、單數步用後兩格）
+function wantDir(){return G.padDir>=0?G.padDir:G.kd.length?G.kd[G.kd.length-1]:-1}   // 十字鍵以手指所在方向為準；鍵盤以最後按下的為準
+function facingTarget(){   // 面前那一格可互動的東西：NPC／告示牌／泉水／門
+  const tx=Math.floor(P.x)+DX[G.face],ty=Math.floor(P.y)+DY[G.face];
+  const n=npcAtTile(tx,ty);if(n)return{npc:n,tx,ty,show:true};
+  if(tx<0||ty<0||tx>=MW||ty>=MH)return null;
+  const tt=map[ty][tx];
+  if(tt===T.FOUNT||tt===T.SIGN)return{tt,tx,ty,show:true};
+  if(tt===T.GATE||tt===T.DOOR)return{tt,tx,ty,show:false};
+  return null;
+}
+function stepDone(){   // 每完成一步：先看傳送點，再算暗雷。回傳 true＝已離開地圖流程
+  const tx=Math.floor(P.x),ty=Math.floor(P.y);
+  const wp=(CUR.warps||[]).find(w=>w.x===tx&&w.y===ty&&(!w.need||P.flags[w.need]));
+  if(wp){changeMap(wp.to,wp.tx,wp.ty,wp.face);return true}
+  if(map[ty][tx]===T.TG){
+    if(G.grace>0)G.grace--;
+    else if(Math.random()<(CUR.encRate??ENC_RATE)){startWild();return true}
+  }
+  return false;
 }
 function update(dt){
   G.bump-=dt;G.saveT+=dt;
-  G.moving=false;
-  if(G.lock)return;
-  const[dx,dy]=dirVec();
-  if(Math.abs(dx)+Math.abs(dy)<0.15)return;
-  G.face=Math.abs(dx)>Math.abs(dy)?(dx<0?2:3):(dy<0?1:0);   // 面向跟畫面方向
-  warpData();const pv=toView(P.x,P.y),J=warpJ(pv[0],pv[1],[0,0,0,0]),qx=J[0]*dx+J[1]*dy,qy=J[2]*dx+J[3]*dy;   // 輸入是畫面方向：dq＝(I+∇D)·dp，畫面上速度恆定
-  const sp=3.6,mx=qx*sp*dt,my=qy*sp*dt;
-  let moved=0;
-  if(canStand(P.x+mx,P.y)){P.x+=mx;moved+=Math.abs(mx)}
-  if(canStand(P.x,P.y+my)){P.y+=my;moved+=Math.abs(my)}
-  G.moving=moved>0;
-  // 碰撞互動
-  const l=Math.hypot(qx,qy)||1,px=P.x+qx/l*0.55,py=P.y+qy/l*0.55;   // 面前那一格：沿邏輯位移方向
-  if(G.bump<=0){
-    const n=npcNear(px,py,0.85);
-    const itx=clamp(Math.floor(px),0,MW-1),ity=clamp(Math.floor(py),0,MH-1),tt=map[ity][itx];
-    if(n){G.bump=1;interactNpc(n)}
-    else if(tt===T.FOUNT||tt===T.GATE||tt===T.SIGN||tt===T.DOOR){G.bump=1;interactTile(tt,itx,ity)}
-  }
-  // 傳送點（換地圖）
-  const ftx=Math.floor(P.x),fty=Math.floor(P.y);
-  const wp=(CUR.warps||[]).find(w=>w.x===ftx&&w.y===fty&&(!w.need||P.flags[w.need]));
-  if(wp&&!G.lock){changeMap(wp.to,wp.tx,wp.ty,wp.face);return}
-  // 草叢遇敵
-  if(moved>0&&map[Math.floor(P.y)][Math.floor(P.x)]===T.TG){
-    G.stepAcc+=moved;
-    if(G.stepAcc>=1){G.stepAcc-=1;if(G.grace>0)G.grace--;else if(Math.random()<(CUR.encRate??ENC_RATE)){startWild();return}}
-  }
-  if(G.saveT>20){G.saveT=0;save()}
+  moveStep(dt);
+  G.hint=(!G.lock&&!G.st)?facingTarget():null;
+  if(G.hint&&!G.hint.show)G.hint=null;
+  if(!G.lock&&G.saveT>20){G.saveT=0;save()}
   $('#hudName').textContent=areaName();
 }
-
-/* ================= 摇桿 ================= */
-(function(){
-  const joy=$('#joy'),knob=$('#knob');let id=null;
-  function set(e){
-    const r=joy.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;
-    let dx=e.clientX-cx,dy=e.clientY-cy;const R=r.width/2,l=Math.hypot(dx,dy);
-    if(l>R){dx=dx/l*R;dy=dy/l*R}
-    knob.style.transform=`translate(${dx}px,${dy}px)`;
-    const nx=dx/R,ny=dy/R;G.joy.x=Math.hypot(nx,ny)<0.2?0:nx;G.joy.y=Math.hypot(nx,ny)<0.2?0:ny;
+function moveStep(dt){
+  if(G.lock){   // 事件／背包接手：走到一半就直接落在目標格，不留在格子之間
+    if(G.st){P.x=G.st.tx+.5;P.y=G.st.ty+.5;G.st=null}
+    G.moving=false;G.fr=1;G.act=0;G.queued=-1;G.holdDir=-1;return;
   }
-  joy.addEventListener('pointerdown',e=>{id=e.pointerId;joy.setPointerCapture(id);set(e)});
-  joy.addEventListener('pointermove',e=>{if(e.pointerId===id)set(e)});
-  const end=e=>{if(e.pointerId===id){id=null;G.joy.x=G.joy.y=0;knob.style.transform=''}};
-  joy.addEventListener('pointerup',end);joy.addEventListener('pointercancel',end);
-  addEventListener('keydown',e=>{G.keys[e.key]=true;G.keys[e.key.toLowerCase()]=true});
-  addEventListener('keyup',e=>{G.keys[e.key]=false;G.keys[e.key.toLowerCase()]=false});
+  const want=wantDir(),run=G.runKey||G.runBtn;let carry=0,fin=false;
+  if(G.st){
+    const s=G.st;
+    if(want>=0&&want!==s.d)G.queued=want;   // 移動中換方向：記住，這一步走完立刻套用
+    s.t+=dt;
+    if(s.t<s.dur){
+      const k=s.t/s.dur;P.x=s.fx+.5+(s.tx-s.fx)*k;P.y=s.fy+.5+(s.ty-s.fy)*k;
+      G.fr=FRAMES[G.wpar*2+(k<.5?0:1)];G.moving=true;return;
+    }
+    carry=s.t-s.dur;P.x=s.tx+.5;P.y=s.ty+.5;G.st=null;G.wpar^=1;fin=true;
+    if(stepDone())return;
+  }
+  G.moving=false;
+  // A 鈕／空白／Enter／Z：對面前一格互動（不在步伐中才處理；每步結束的那一刻就會處理）
+  if(G.act){
+    const fresh=performance.now()-G.act<400;G.act=0;
+    const h=fresh&&facingTarget();
+    if(h){G.holdDir=-1;G.queued=-1;G.fr=1;if(h.npc)interactNpc(h.npc);else interactTile(h.tt,h.tx,h.ty);return}
+  }
+  let d=want;if(d<0&&G.queued>=0)d=G.queued;
+  G.queued=-1;
+  if(d<0){G.holdDir=-1;G.turning=false;G.fr=1;return}
+  if(fin){G.holdDir=d;G.holdT=0;G.turning=false}   // 連續行走：沒有轉向延遲
+  else if(d!==G.holdDir){G.holdDir=d;G.holdT=0;G.turning=d!==G.face}
+  else G.holdT+=dt;
+  G.face=d;
+  if(G.turning&&G.holdT<TURN_HOLD){G.fr=1;return}   // 靜止時方向與面向不同：先原地轉向，持續按超過 70ms 才邁步（輕點只轉向）
+  const fx=Math.floor(P.x),fy=Math.floor(P.y),tx=fx+DX[d],ty=fy+DY[d];
+  if(tileFree(tx,ty)){
+    G.st={fx,fy,tx,ty,t:Math.min(carry,.05),dur:run?STEP_RUN:STEP_WALK,d};
+    const k=G.st.t/G.st.dur;P.x=fx+.5+(tx-fx)*k;P.y=fy+.5+(ty-fy)*k;
+    G.fr=FRAMES[G.wpar*2];G.moving=true;
+  }else{   // 撞牆：原地不動（面向已轉過去，不會卡住）；門、關卡門走進去就觸發
+    G.fr=1;
+    if(tx>=0&&ty>=0&&tx<MW&&ty<MH&&G.bump<=0){
+      const tt=map[ty][tx];
+      if(tt===T.GATE||tt===T.DOOR){G.bump=1;interactTile(tt,tx,ty)}
+    }
+  }
+}
+
+/* ================= 十字鍵／A·B 鈕／鍵盤 ================= */
+(function(){
+  const dp=$('#dpad');let pid=null;
+  function setDir(d){G.padDir=d;dp.dataset.d=d}
+  function fromEvent(e){
+    const r=dp.getBoundingClientRect(),dx=e.clientX-(r.left+r.width/2),dy=e.clientY-(r.top+r.height/2);
+    if(Math.hypot(dx,dy)<14)return -1;   // 中心死區
+    const ax=Math.abs(dx),ay=Math.abs(dy),cur=G.padDir;
+    if(cur>=0&&ax>0&&ay>0){   // 軸向切換加一點遲滯，手指在對角線附近不會一直跳
+      const curHoriz=cur>=2;if(curHoriz&&ax>=ay*.8)return dx<0?2:3;if(!curHoriz&&ay>=ax*.8)return dy<0?1:0;
+    }
+    return ax>ay?(dx<0?2:3):(dy<0?1:0);
+  }
+  dp.addEventListener('pointerdown',e=>{e.preventDefault();pid=e.pointerId;dp.setPointerCapture(pid);setDir(fromEvent(e))});
+  dp.addEventListener('pointermove',e=>{if(e.pointerId===pid)setDir(fromEvent(e))});
+  const end=e=>{if(e.pointerId===pid){pid=null;setDir(-1)}};
+  dp.addEventListener('pointerup',end);dp.addEventListener('pointercancel',end);dp.addEventListener('lostpointercapture',end);
+  dp.addEventListener('contextmenu',e=>e.preventDefault());
+  // A：對話中＝翻下一句；否則互動。B：按住才跑
+  const A=$('#btnA'),B=$('#btnB');
+  const hold=(el,on,off)=>{
+    let id=null;
+    el.addEventListener('pointerdown',e=>{e.preventDefault();id=e.pointerId;el.setPointerCapture(id);el.classList.add('dn');on()});
+    const up=e=>{if(e.pointerId===id){id=null;el.classList.remove('dn');off()}};
+    el.addEventListener('pointerup',up);el.addEventListener('pointercancel',up);el.addEventListener('lostpointercapture',up);
+    el.addEventListener('contextmenu',e=>e.preventDefault());
+  };
+  hold(A,pressA,()=>{});
+  hold(B,()=>{G.runBtn=true},()=>{G.runBtn=false});
+  function pressA(){
+    if($('#modal').classList.contains('on'))return;
+    const d=$('#dlg');
+    if(d.classList.contains('on')){if(d.onclick)d.onclick();return}
+    if(cur==='sMap'&&!G.lock)G.act=performance.now();
+  }
+  const DK={ArrowDown:0,s:0,ArrowUp:1,w:1,ArrowLeft:2,a:2,ArrowRight:3,d:3};
+  addEventListener('keydown',e=>{
+    const k=e.key,lk=k.toLowerCase();G.keys[k]=true;G.keys[lk]=true;
+    if(cur!=='sMap')return;
+    if(k==='Shift')G.runKey=true;
+    if(lk in DK||k in DK){const d=k in DK?DK[k]:DK[lk],i=G.kd.indexOf(d);if(i>=0)G.kd.splice(i,1);G.kd.push(d);return}
+    if((k===' '||k==='Enter'||lk==='z')&&!e.repeat){
+      if($('#modal').classList.contains('on')||$('#dlg').classList.contains('on'))return;   // 對話中由 say() 自己的按鍵處理
+      e.preventDefault();if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();
+      if(!G.lock)G.act=performance.now();
+    }
+  });
+  addEventListener('keyup',e=>{
+    const k=e.key,lk=k.toLowerCase();G.keys[k]=false;G.keys[lk]=false;
+    if(k==='Shift')G.runKey=false;
+    const d=k in DK?DK[k]:lk in DK?DK[lk]:-1;if(d>=0){const i=G.kd.indexOf(d);if(i>=0)G.kd.splice(i,1)}
+  });
+  addEventListener('blur',()=>{G.kd.length=0;G.runKey=false;G.runBtn=false;G.keys={}});
 })();
 
 /* ================= 劇情與互動 ================= */
@@ -2497,7 +2627,7 @@ async function endBattle(res,extra){
     if(B.kind==='wild'&&Math.random()<.3){if(Math.random()<.8){P.items.potion++;drop='撿到了回復藥 ×1'}else{P.items.candy++;drop='撿到了經驗糖 ×1'}}
     report=`<h3>${res==='capture'?'收服成功':'勝利'}</h3>${extra?`<p>${extra}</p>`:''}<p>全隊獲得 ${B.exp} 經驗值${drop?'<br>'+drop:''}</p>${ups.length?'<p style="color:#ffd84a">'+ups.join('<br>')+'</p>':''}`;
   }else if(res==='lose'){
-    P.hpFrac=1;P.x=CUR.home.x;P.y=CUR.home.y;
+    P.hpFrac=1;P.x=CUR.home.x;P.y=CUR.home.y;snapP();
     report=`<h3>戰敗</h3><p>你在${CUR.homeName}醒來。夥伴們的體力恢復了。</p>`;
   }else if(res==='run'){
     P.hpFrac=clamp(B.teamHp/B.teamMax,0.05,1);
@@ -2603,7 +2733,7 @@ $('#btnBag').onclick=()=>{if(!G.lock)openBag()};
 
 /* ================= 開場 ================= */
 async function newGame(){
-  P=freshPlayer();loadMap('grass');
+  P=freshPlayer();loadMap('grass');snapP();
   await fade(true);await mapArtReady();show('sMap');resizeMap();$('#hudName').textContent=areaName();drawMap(0,1);await fade(false);
   G.lock=true;
   await say([
@@ -2652,6 +2782,7 @@ function chooseStarter(){
 }
 async function continueGame(){
   loadMap(P.map||'grass');   // 舊存檔沒有 map 欄位：視為第 1 張地圖
+  snapP();G.holdDir=-1;G.queued=-1;
   await fade(true);await mapArtReady();show('sMap');resizeMap();$('#hudName').textContent=areaName();drawMap(0,1);await fade(false);
   G.lock=false;startMapLoop();
 }
@@ -2675,7 +2806,7 @@ async function continueGame(){
       if(r===1){if(importCode($('#impBox').value)){location.reload()}else modal('<h3>存檔碼無效</h3><p>請確認貼上的是完整的存檔碼。</p>')}
     });
   };
-  addEventListener('resize',()=>{if(cur==='sMap')resizeMap();if(cur==='sBattle')resizeBoard()});
+  addEventListener('resize',()=>{if(cur==='sMap')resizeMap();else mapStale=true;if(cur==='sBattle')resizeBoard()});
   window.__dbg={get P(){return P},get B(){return B},G,findGroups:()=>findGroups(),setGrid:g=>{grid=g}};
 })();
 </script>
