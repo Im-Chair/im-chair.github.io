@@ -205,7 +205,7 @@ body.ptmap #dlg{bottom:var(--padh,260px);padding-bottom:12px}
     <button class="pri" id="btnCont" style="display:none">繼續遊戲</button>
     <button class="pri" id="btnNew">新遊戲</button>
     <button id="btnImp">匯入存檔碼</button>
-    <div class="ver">原型 v1.28 ・ 110 種怪物 ・ 前九章可玩</div>
+    <div class="ver">原型 v1.29 ・ 110 種怪物 ・ 前九章可玩</div>
   </div>
 
   <div id="sMap" class="screen">
@@ -563,7 +563,7 @@ const snapPx=v=>Math.round(v*mdpr)/mdpr;            // 對齊裝置像素
 let blkCache=new Map(),ftCache=new Map(),maskCv=new Map(),blkFrame=0,TEXC=null,shpTmp=null;
 // 網址參數：?zoom=N 直向改成 N 格寬（6～9，可帶小數；測試用，預設 8）；?debug=1 顯示地面快取診斷
 const QS=new URLSearchParams(location.search),MAP_DEBUG=QS.get('debug')==='1';
-const MAP_ZOOM=(z=>z>=6&&z<=9?z:8)(parseFloat(QS.get('zoom')));
+const MAP_ZOOM=(z=>z>=6&&z<=9?z:7)(parseFloat(QS.get('zoom')));
 const DBG={cv:0,nul:0,clr:0,err:''};   // 累計建立畫布數、getContext 回傳 null 次數、tileCacheClear 次數、最後一次例外
 function newCv(w,h){const cv=document.createElement('canvas');cv.width=w;cv.height=h;DBG.cv++;return cv}
 function ctx2d(cv,o){const g=cv.getContext('2d',o);if(!g)DBG.nul++;return g}
@@ -967,7 +967,7 @@ function resizeMap(){
   mw=mapCv.clientWidth;mh=mapCv.clientHeight;   // 讀取時會依新 class 重排，量到的是遊戲視窗大小
   mapCv.width=Math.round(mw*mdpr);mapCv.height=Math.round(mh*mdpr);
   TS=mapPortrait?Math.max(30,Math.round(mw/MAP_ZOOM)):Math.max(30,Math.round(Math.min(mw/(MAP_ZOOM*1.5),mh/MAP_ZOOM)));
-  TS=2*Math.round(TS/2);   // 一律取偶數：iPhone 實測奇數格寬（57、61）地面會出現格線，偶數（54、66）不會   // 直向約 8 格寬（MAP_ZOOM；?zoom=N 測試用）；橫向等比例（8 → 12 格寬、8 格高）
+  TS=4*Math.round((TS-2)/4)+2;   // 取「除以 4 餘 2」的邊長：iPhone 15 Pro Max 實測 54、62、66 地面正常，57、60、61 會出現格線（原因未確定，先照實測規律避開）   // 直向約 8 格寬（MAP_ZOOM；?zoom=N 測試用）；橫向等比例（8 → 12 格寬、8 格高）
   const bw=Math.ceil(BLOCK*TS*mdpr)+1;BLOCK_MAX=clamp(Math.floor(BLK_PX_BUDGET/(bw*bw)),BLK_MAX_RANGE[0],BLK_MAX_RANGE[1]);   // 塊越大、快取塊數越少
   padSync(true);
   tileCacheClear();   // TS／mdpr 改變，快取失效
