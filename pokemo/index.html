@@ -46,6 +46,8 @@ body.btn-art #sTitle button::before,body.btn-art #sTitle button::after{display:n
 #sMap{background:#000}
 #mapView{position:relative;flex:1;min-height:0;overflow:hidden}
 #mapCv{position:absolute;inset:0;width:100%;height:100%;display:block}
+#dbgBox{position:absolute;left:4px;bottom:4px;z-index:5;max-width:calc(100% - 8px);box-sizing:border-box;padding:3px 6px;border-radius:6px;background:#000b;color:#cfe8ff;font:10px/1.35 ui-monospace,Menlo,Consolas,monospace;white-space:pre-wrap;pointer-events:none}
+#sMap:not(.pt) #dbgBox{bottom:auto;top:calc(48px + env(safe-area-inset-top))}   /* 橫向：操作鈕疊在左下，改放地名下方 */
 #hud{position:absolute;top:calc(8px + env(safe-area-inset-top));left:8px;right:8px;display:flex;justify-content:space-between;align-items:center;pointer-events:none}
 #hud *{pointer-events:auto}
 #hudName{background:#0009;padding:6px 12px;border-radius:20px;font-size:14px}
@@ -203,7 +205,7 @@ body.ptmap #dlg{bottom:var(--padh,260px);padding-bottom:12px}
     <button class="pri" id="btnCont" style="display:none">繼續遊戲</button>
     <button class="pri" id="btnNew">新遊戲</button>
     <button id="btnImp">匯入存檔碼</button>
-    <div class="ver">原型 v1.25 ・ 110 種怪物 ・ 前九章可玩</div>
+    <div class="ver">原型 v1.26 ・ 110 種怪物 ・ 前九章可玩</div>
   </div>
 
   <div id="sMap" class="screen">
@@ -522,7 +524,9 @@ let MW=28,MH=36,map=[],CUR=null,CURID='',NPCS=[];
 /* ===== 地面繪製參數（地面分塊快取；調觀感改這裡） =====
    地形交界用「形狀」畫：把水／樹林／高草／路的格子各當成 0、1 的指示場，高斯平滑＋座標擾動＋雜訊後取等值線，
    轉角變圓、直邊帶低頻擺動、路有寬窄與碎邊。碰撞、遭遇、事件仍是逐格判定，這裡只改畫面。 */
-const BLOCK=8,BLOCK_MAX=24,BLOCK_BUILD=2;   // 每塊 8×8 格；快取上限（只淘汰本幀沒用到的）；每幀最多新建幾塊
+const BLOCK=8,BLOCK_BUILD=2;   // 每塊 8×8 格；每幀最多新建幾塊
+const BLK_PX_BUDGET=24e6,BLK_MAX_RANGE=[8,24];   // 地面塊快取的像素預算（裝置像素，約 96MB）；實際上限＝預算÷每塊像素，夾在範圍內（resizeMap 算）
+let BLOCK_MAX=24;   // 快取上限（只淘汰本幀沒用到的）
 const FEATHER_SCALE=1.7;      // 羽化圖格的放大倍率（相對一格）
 const FEATHER_CORE=.56;       // 圖格中心起、完全不透明的半徑（格）；須 > .5 + FEATHER_JITTER 才不會露縫
 const FEATHER_JITTER=.05;     // 每格位置的雜湊偏移（格），打散規律感；高草不偏移
@@ -556,8 +560,23 @@ const WARP_R=4,WARP_AMP=1,WARP_OCT=[{l:12,a:.5},{l:6,a:.3}],WARP_WAVE=[{l:9,a:.7
 const WARP_MAP_AMP={throne:.5,tower:.5,memory1:.5,memory2:.5,memory3:.5,memory4:.5};
 const PROP_JIT=.16,PROP_JIT_IN=.24,PROP_JIT_Y=.1,PROP_SCALE=[.86,1.1];   // 樹石灌木的格內偏移（格；四周都不可走時用 _IN）與大小變化
 const snapPx=v=>Math.round(v*mdpr)/mdpr;            // 對齊裝置像素
-let blkCache=new Map(),ftCache=new Map(),maskCv=new Map(),blkFrame=0,TEXC=null;
-function tileCacheClear(){blkCache.clear();ftCache.clear();maskCv.clear();TEXC=null}
+let blkCache=new Map(),ftCache=new Map(),maskCv=new Map(),blkFrame=0,TEXC=null,shpTmp=null;
+// 網址參數：?zoom=N 直向改成 N 格寬（6～9，可帶小數；測試用，預設 8）；?debug=1 顯示地面快取診斷
+const QS=new URLSearchParams(location.search),MAP_DEBUG=QS.get('debug')==='1';
+const MAP_ZOOM=(z=>z>=6&&z<=9?z:8)(parseFloat(QS.get('zoom')));
+const DBG={cv:0,nul:0,clr:0,err:''};   // 累計建立畫布數、getContext 回傳 null 次數、tileCacheClear 次數、最後一次例外
+function newCv(w,h){const cv=document.createElement('canvas');cv.width=w;cv.height=h;DBG.cv++;return cv}
+function ctx2d(cv,o){const g=cv.getContext('2d',o);if(!g)DBG.nul++;return g}
+function freeCv(cv){if(cv&&cv.width){cv.width=cv.height=0}}   // 丟掉前把寬高設 0：iOS 不必等 GC 才放掉畫布記憶體
+function freeTex(t){if(t)['ground','tg','path','wb','wt'].forEach(k=>freeCv(t[k]))}
+function tileCacheClear(){
+  DBG.clr++;
+  for(const e of blkCache.values())freeCv(e.cv);
+  for(const cv of ftCache.values())freeCv(cv);
+  for(const cv of maskCv.values())freeCv(cv);
+  freeTex(TEXC);freeCv(shpTmp);shpTmp=null;
+  blkCache.clear();ftCache.clear();maskCv.clear();TEXC=null;
+}
 function parseRows(rows,w,h){
   return Array.from({length:h},(_,y)=>Array.from({length:w},(_,x)=>{const c=(rows[y]||'')[x];return c in TCH?TCH[c]:T.G}));
 }
@@ -947,7 +966,8 @@ function resizeMap(){
   mdpr=Math.min(2,window.devicePixelRatio||1);
   mw=mapCv.clientWidth;mh=mapCv.clientHeight;   // 讀取時會依新 class 重排，量到的是遊戲視窗大小
   mapCv.width=Math.round(mw*mdpr);mapCv.height=Math.round(mh*mdpr);
-  TS=mapPortrait?Math.max(30,Math.round(mw/8)):Math.max(30,Math.round(Math.min(mw/12,mh/8)));   // 直向約 8 格寬（7 格寬在實機上地面會畫壞，先退回）
+  TS=mapPortrait?Math.max(30,Math.round(mw/MAP_ZOOM)):Math.max(30,Math.round(Math.min(mw/(MAP_ZOOM*1.5),mh/MAP_ZOOM)));   // 直向約 8 格寬（MAP_ZOOM；?zoom=N 測試用）；橫向等比例（8 → 12 格寬、8 格高）
+  const bw=Math.ceil(BLOCK*TS*mdpr)+1;BLOCK_MAX=clamp(Math.floor(BLK_PX_BUDGET/(bw*bw)),BLK_MAX_RANGE[0],BLK_MAX_RANGE[1]);   // 塊越大、快取塊數越少
   padSync(true);
   tileCacheClear();   // TS／mdpr 改變，快取失效
 }
@@ -1105,7 +1125,7 @@ function getMask(v,soft){   // 羽化遮罩：中央不透明、四邊漸淡（�
   const key=(soft?'s':'n')+v,hit=maskCv.get(key);if(hit)return hit;
   const N=96,H=FEATHER_SCALE/2,p=u=>Math.max(0,Math.min(1,(u+H)/FEATHER_SCALE));
   const sp=s=>{if(soft){const c=SOFT_CORE[(v+s)%6];return [c,H-c]}return [FEATHER_CORE,FEATHER_BANDS[v][s]]};   // 這一邊的 [不透明半徑, 漸淡寬度]
-  const m=document.createElement('canvas');m.width=m.height=N;const g=m.getContext('2d');
+  const m=newCv(N,N),g=ctx2d(m);
   if(soft){   // 散斑：圓形漸淡（不透明半徑依變體），不會看出方塊
     const c=SOFT_CORE[v%6],gr=g.createRadialGradient(N/2,N/2,0,N/2,N/2,N/2);
     gr.addColorStop(0,'#fff');gr.addColorStop(c/H,'#fff');gr.addColorStop(Math.min(1,c/H+(1-c/H)*.5),'rgba(255,255,255,.45)');gr.addColorStop(1,'rgba(255,255,255,0)');
@@ -1123,9 +1143,9 @@ function getMask(v,soft){   // 羽化遮罩：中央不透明、四邊漸淡（�
 }
 function featherTile(im,k,col,row,v,soft){   // 羽化圖格（同圖格＋同遮罩只做一次）
   const key=k+'|'+col+','+row+'|'+(soft?'s':'n')+v,hit=ftCache.get(key);if(hit)return hit;
-  if(ftCache.size>FT_MAX)ftCache.clear();   // 變體組合太多時整批重來，避免記憶體無限長
-  const D=Math.round(FEATHER_SCALE*TS*mdpr),cv=document.createElement('canvas');cv.width=cv.height=D;
-  const g=cv.getContext('2d'),s=128-2*TILE_INSET;
+  if(ftCache.size>FT_MAX){for(const c of ftCache.values())freeCv(c);ftCache.clear()}   // 變體組合太多時整批重來，避免記憶體無限長
+  const D=Math.round(FEATHER_SCALE*TS*mdpr),cv=newCv(D,D);
+  const g=ctx2d(cv),s=128-2*TILE_INSET;
   g.drawImage(im,col*128+TILE_INSET,row*128+TILE_INSET,s,s,0,0,D,D);g.globalCompositeOperation='destination-in';g.drawImage(getMask(v,soft),0,0,D,D);
   ftCache.set(key,cv);return cv;
 }
@@ -1318,7 +1338,7 @@ function shapeAt(x,y){   // 畫面世界座標某一點各層畫出來的不透�
 const SHP_BUF={};
 function shpBuf(name,n){   // 低解析度遮罩畫布（每種一張，建塊時重複使用）
   let b=SHP_BUF[name];
-  if(!b||b.n!==n){const cv=document.createElement('canvas');cv.width=cv.height=n;const g=cv.getContext('2d'),img=g.createImageData(n,n);img.data.fill(255);b=SHP_BUF[name]={cv,g,img,n}}
+  if(!b||b.n!==n){if(b)freeCv(b.cv);const cv=newCv(n,n),g=ctx2d(cv),img=g.createImageData(n,n);img.data.fill(255);b=SHP_BUF[name]={cv,g,img,n}}
   return b;
 }
 function shapeMasks(bx,by){   // 這一塊的各種遮罩：低解析度畫布、true（整塊都有）或 null（整塊都沒有）
@@ -1350,13 +1370,14 @@ function shapeMasks(bx,by){   // 這一塊的各種遮罩：低解析度畫布�
 }
 /* --- 路、水的無縫紋理：圖集格羽化成圓印章，隨機位置／旋轉印滿一張可平鋪的圖（打散圖格重複的直紋、斜紋） --- */
 function avgCol(im,col,row){
-  try{const cv=document.createElement('canvas');cv.width=cv.height=1;const g=cv.getContext('2d',{willReadFrequently:true});g.drawImage(im,col*128+TILE_INSET,row*128+TILE_INSET,128-2*TILE_INSET,128-2*TILE_INSET,0,0,1,1);const d=g.getImageData(0,0,1,1).data;return [d[0],d[1],d[2]]}catch(e){return [120,140,160]}
+  const cv=newCv(1,1);
+  try{const g=ctx2d(cv,{willReadFrequently:true});g.drawImage(im,col*128+TILE_INSET,row*128+TILE_INSET,128-2*TILE_INSET,128-2*TILE_INSET,0,0,1,1);const d=g.getImageData(0,0,1,1).data;return [d[0],d[1],d[2]]}catch(e){return [120,140,160]}finally{freeCv(cv)}
 }
 function mkTex(im,slots,seed,rot){   // slots：[[欄,列],…] 隨機混用；rot：印章旋轉角產生器，null＝照格子平鋪（人造鋪面）
-  const N=Math.round(TEX_CELLS*TS*mdpr),cv=document.createElement('canvas');cv.width=cv.height=N;const g=cv.getContext('2d'),R=rng(seed);
+  const N=Math.round(TEX_CELLS*TS*mdpr),cv=newCv(N,N),g=ctx2d(cv),R=rng(seed);
   g.fillStyle=`rgb(${avgCol(im,slots[0][0],slots[0][1])})`;g.fillRect(0,0,N,N);
   if(!rot){const C=N/TEX_CELLS;for(let y=0;y<TEX_CELLS;y++)for(let x=0;x<TEX_CELLS;x++){const [col,row]=slots[Math.floor(R()*slots.length)];g.drawImage(im,col*128,row*128,128,128,x*C,y*C,C,C)}return cv}   // 人造鋪面（木棧道、石板）：照格子平鋪、不旋轉
-  const sz=Math.round(TEX_STAMP*TS*mdpr),stamps=slots.map(([col,row])=>{const st=document.createElement('canvas');st.width=st.height=sz;const sg=st.getContext('2d');
+  const sz=Math.round(TEX_STAMP*TS*mdpr),stamps=slots.map(([col,row])=>{const st=newCv(sz,sz),sg=ctx2d(st);
     sg.drawImage(im,col*128+TILE_INSET,row*128+TILE_INSET,128-2*TILE_INSET,128-2*TILE_INSET,0,0,sz,sz);
     const gr=sg.createRadialGradient(sz/2,sz/2,0,sz/2,sz/2,sz/2);gr.addColorStop(0,'#fff');gr.addColorStop(.5,'#fff');gr.addColorStop(1,'rgba(255,255,255,0)');
     sg.globalCompositeOperation='destination-in';sg.fillStyle=gr;sg.fillRect(0,0,sz,sz);return st});
@@ -1367,22 +1388,24 @@ function mkTex(im,slots,seed,rot){   // slots：[[欄,列],…] 隨機混用；r
     const px=x+dx,py=y+dy;if(px<-sz||py<-sz||px>N+sz||py>N+sz)continue;
     g.save();g.translate(px,py);g.rotate(a);g.scale(s,s);g.drawImage(st,-sz/2,-sz/2);g.restore();
   }
+  stamps.forEach(freeCv);   // 印章只在這裡用，印完就放掉
   return cv;
 }
 function shapeTex(){
   const k=artKey('tiles'),im=ART[k],key=k+'|'+TS+'|'+mdpr+'|'+CURID;
   if(TEXC&&TEXC.key===key)return TEXC;
+  freeTex(TEXC);TEXC=null;   // 換鍵（圖集、TS、地圖）時舊紋理直接放掉
   const wv=CUR.water||WATER_DEF,s=strHash(key),wr=R=>(R()<.5?0:Math.PI)+(R()-.5)*.6,pr=R=>R()*Math.PI*2,wa=avgCol(im,wv[1][0],wv[1][1]);
   const free=PATH_FREE_ROT.includes(k),gv=CUR.ground||GROUND_DEF,soft=CUR.groundSoft||GROUND_SOFT_DEF,gs=gv.filter(g=>!soft.some(t=>t[0]===g[0]&&t[1]===g[1]));
   return TEXC={key,ground:mkTex(im,gs.length?gs:[CUR.groundBase||gv[0]],s+4,free?pr:null),tg:mkTex(im,[[3,0]],s+5,()=>0),
     path:mkTex(im,[[0,1]],s+1,free?pr:null),wb:mkTex(im,[wv[0]],s+2,wr),wt:mkTex(im,[wv[1]],s+3,wr),
     light:wa.map(v=>Math.round(v+(255-v)*SHALLOW_MIX)).join(',')};
 }
-let shpTmp=null;
-function buildBlock(bx,by){
+function buildBlock(bx,by){   // 回傳 {cv,water,t}；拿不到畫布 context 時回 null（呼叫端用墊底紋理頂著）
   const k=artKey('tiles'),im=ART[k],W=Math.ceil(BLOCK*TS*mdpr)+1;
-  const mkCv=()=>{const cv=document.createElement('canvas');cv.width=cv.height=W;const c=cv.getContext('2d');c.scale(mdpr,mdpr);return [cv,c]};
-  const [cv,c]=mkCv();
+  const mkCv=()=>{const cv=newCv(W,W),c=ctx2d(cv);if(!c){freeCv(cv);return null}c.scale(mdpr,mdpr);return [cv,c]};
+  const made=mkCv();if(!made)return null;
+  const [cv,c]=made;
   const ox=bx*BLOCK,oy=by*BLOCK,cells=[],M=shapeMasks(bx,by),tex=shapeTex();
   const pd=1+Math.ceil(WP?WP.maxD:0),pv=[0,0];   // 逐格的東西畫在邏輯格中心的「畫面位置」；落在本塊外擴一格內的才畫（塊邊界才不會變接縫）
   for(let ty=Math.max(0,oy-pd);ty<=Math.min(MH-1,oy+BLOCK+pd-1);ty++)for(let tx=Math.max(0,ox-pd);tx<=Math.min(MW-1,ox+BLOCK+pd-1);tx++){
@@ -1400,8 +1423,9 @@ function buildBlock(bx,by){
     for(const e of cells){const g=gv[e.h%gv.length];if(isSoft(g))put(c,featherTile(im,k,g[0],g[1],e.v,true),e,jit(e,0)*SOFT_JITTER,jit(e,1)*SOFT_JITTER)}
     for(const e of cells)if(e.t===T.FLOWER){const inner=[[-1,0],[1,0],[0,-1],[0,1]].every(([dx,dy])=>tileAt(e.tx+dx,e.ty+dy)===T.FLOWER);put(c,featherTile(im,k,2,e.h%2?3:1,e.v,!inner),e,jit(e,1)*FLOWER_JITTER,jit(e,0)*FLOWER_JITTER)}   // 花叢外緣用散斑遮罩，邊界不成直線
     // 圖層工具：暫存畫布填色／紋理／圖格 → 乘上形狀遮罩 → 疊到陸地圖
-    if(!shpTmp||shpTmp.width!==W){shpTmp=document.createElement('canvas');shpTmp.width=shpTmp.height=W}
-    const tc=shpTmp.getContext('2d'),sc=TS*mdpr/SHAPE_S,n=BLOCK*SHAPE_S+1;
+    if(!shpTmp||shpTmp.width!==W){freeCv(shpTmp);shpTmp=newCv(W,W)}
+    const tc=ctx2d(shpTmp);if(!tc){freeCv(cv);freeCv(shpTmp);shpTmp=null;return null}
+    const sc=TS*mdpr/SHAPE_S,n=BLOCK*SHAPE_S+1;
     const mask=(g,m)=>{g.save();g.setTransform(1,0,0,1,0,0);g.globalCompositeOperation='destination-in';g.drawImage(m,0,0,n,n,-sc/2,-sc/2,n*sc,n*sc);g.restore()};   // 樣本 i 對齊塊內 i/SHAPE_S 格
     const layer=(m,fill,a)=>{
       if(!m)return;
@@ -1425,18 +1449,17 @@ function buildBlock(bx,by){
   }
   // 6) 碼頭：人造木板，硬邊，蓋在最上面
   for(const e of cells)if(e.t===T.DOCK)c.drawImage(im,DOCK_SLOT[0]*128,DOCK_SLOT[1]*128,128,128,e.x,e.y,TS+1,TS+1);
-  // 7) 水底圖＋水閃動圖：整塊鋪無縫水紋理，陸地圖挖掉的地方才看得到
-  const out={cv,wb:null,wt:null,t:0};
-  if(M.st[0]){
-    const [wb,wc]=mkCv(),[wt,wtc]=mkCv();
-    wc.setTransform(1,0,0,1,0,0);wtc.setTransform(1,0,0,1,0,0);fillTex(wc,tex.wb);fillTex(wtc,tex.wt);
-    out.wb=wb;out.wt=wt;
-  }
-  return out;
+  // 7) 水：不再每塊存水底圖／水閃動圖（只是世界座標平鋪的水紋理），只記這塊有沒有水，drawMap 直接用 pattern 鋪在陸地圖底下
+  return {cv,water:!!M.st[0],t:0};
 }
-function getBlock(bx,by,canBuild){   // 取快取塊；沒有且還有額度就新建；沒有就回 null（呼叫端用逐格畫法頂著）
+function getBlock(bx,by,canBuild){   // 取快取塊；沒有且還有額度就新建；建不出來（拿不到 context、例外）回 null，呼叫端用墊底紋理頂著
   const key=bx+','+by;let e=blkCache.get(key);
-  if(!e){if(!canBuild)return null;e=buildBlock(bx,by);blkCache.set(key,e)}
+  if(!e){
+    if(!canBuild)return null;
+    try{e=buildBlock(bx,by)}catch(err){DBG.err=String(err&&err.message||err);e=null}
+    if(!e)return null;
+    blkCache.set(key,e);
+  }
   e.t=blkFrame;blkCache.delete(key);blkCache.set(key,e);   // 移到最後 ＝ 最近使用
   return e;
 }
@@ -1466,7 +1489,7 @@ function coverGrass(c,px,py){
   pts.push([x1,bot]);
   // 暫存畫布：座標與主畫布相同（CSS 像素），只是原點移到蓋層左上
   const bx0=Math.floor(x0-st-2),by0=Math.floor(top-2),bw=Math.ceil((x1+st+2-bx0)*mdpr)+2,bh=Math.ceil((bot+2-by0)*mdpr)+2;
-  if(!cgBuf){cgBuf=document.createElement('canvas')}
+  if(!cgBuf){cgBuf=newCv(300,150)}
   if(cgBuf.width<bw||cgBuf.height<bh){cgBuf.width=Math.max(bw,cgBuf.width);cgBuf.height=Math.max(bh,cgBuf.height)}
   const g=cgBuf.getContext('2d');g.setTransform(1,0,0,1,0,0);g.globalCompositeOperation='source-over';g.globalAlpha=1;g.clearRect(0,0,bw,bh);
   g.setTransform(mdpr,0,0,mdpr,-bx0*mdpr,-by0*mdpr);
@@ -1477,7 +1500,7 @@ function coverGrass(c,px,py){
   g.strokeStyle='rgba(8,48,20,.4)';g.lineWidth=1.5;g.beginPath();pts.slice(1,-1).forEach((p,i)=>i?g.lineTo(p[0],p[1]):g.moveTo(p[0],p[1]));g.stroke();
   // 遮罩：在分塊遮罩的同一組格點上取樣高草形狀，雙線性放大後挖掉形狀外的部分
   const S=SHAPE_S,i0=Math.floor((bx0+camXg)/TS*S)-1,j0=Math.floor((by0+camYg)/TS*S)-1,n=Math.ceil(TS*1.5/TS*S)+4,m=Math.ceil(TS*1.2/TS*S)+4;   // 取樣格數固定（約 1.5×1.2 格見方），遮罩畫布不必一直重建
-  if(!cgMask||cgMask.width!==n||cgMask.height!==m){cgMask=document.createElement('canvas');cgMask.width=n;cgMask.height=m;cgMask.img=cgMask.getContext('2d').createImageData(n,m);cgMask.img.data.fill(255)}
+  if(!cgMask||cgMask.width!==n||cgMask.height!==m){freeCv(cgMask);cgMask=newCv(n,m);cgMask.img=cgMask.getContext('2d').createImageData(n,m);cgMask.img.data.fill(255)}
   const d=cgMask.img.data;
   for(let j=0;j<m;j++)for(let i=0;i<n;i++){const v=cgShape(sd,(i0+i)/S,(j0+j)/S);d[(j*n+i)*4+3]=255*v}
   cgMask.getContext('2d').putImageData(cgMask.img,0,0);
@@ -1535,7 +1558,12 @@ function drawHint(c,h,camX,camY,now){   // 面前可互動的對象頭上顯示�
   c.fillStyle='#ffd84a';c.strokeStyle='#000a';c.lineWidth=2;c.beginPath();c.arc(x,y,r,0,7);c.fill();c.stroke();
   c.fillStyle='#2a1b00';c.font='bold '+Math.round(r*1.3)+'px sans-serif';c.textAlign='center';c.textBaseline='middle';c.fillText('A',x,y+1);c.textBaseline='alphabetic';
 }
-function drawMap(now,full){   // full：不限制本幀新建幾塊地面快取（換圖、圖集剛載入時用）
+let dbgVis=[];   // 診斷用：本幀可視的已建塊（只在 ?debug=1 記錄）
+function drawMap(now,full){   // full：不限制本幀新建幾塊地面快取（換圖、圖集剛載入時用）；例外只記下來，不讓主迴圈或換圖流程中斷
+  try{drawMapCore(now,full)}catch(err){DBG.err=String(err&&err.message||err);console.error(err)}
+  finally{mctx.globalAlpha=1;mctx.globalCompositeOperation='source-over'}
+}
+function drawMapCore(now,full){
   const c=mctx;c.setTransform(mdpr,0,0,mdpr,0,0);
   warpData();const pv=toView(P.x,P.y);   // 玩家的畫面位置（世界變形後）；鏡頭跟著它
   const camX=rp(clamp(pv[0]*TS-mw/2,0,Math.max(0,MW*TS-mw))),camY=rp(clamp(pv[1]*TS-mh/2,0,Math.max(0,MH*TS-mh)));   // 主角置中於遊戲視窗，鏡頭取整到裝置像素
@@ -1545,30 +1573,41 @@ function drawMap(now,full){   // full：不限制本幀新建幾塊地面快取�
   if(!ART[artKey('tiles')]){   // 圖還沒載入：備援逐格畫法
     for(let ty=y0;ty<=y1;ty++)for(let tx=x0;tx<=x1;tx++)drawTile(c,map[ty][tx],Math.floor(tx*TS-camX),Math.floor(ty*TS-camY),tx,ty,now);
   }else{
-    // 先貼各塊的水底圖、再以正弦透明度貼水閃動圖（全圖同一個透明度，塊與塊之間才不會有階差），最後貼陸地塊；都整塊對齊裝置像素
+    // 先鋪有水的塊的水底紋理、再以正弦透明度鋪水閃動紋理（全圖同一個透明度，塊與塊之間才不會有階差），最後貼陸地塊；都整塊對齊裝置像素
     blkFrame++;let budget=full?1e9:BLOCK_BUILD;const list=[],miss=[];
     for(let by=Math.floor(y0/BLOCK);by<=Math.floor(y1/BLOCK);by++)for(let bx=Math.floor(x0/BLOCK);bx<=Math.floor(x1/BLOCK);bx++){
-      const had=blkCache.has(bx+','+by),e=getBlock(bx,by,budget>0);
-      if(e){list.push([bx,by,e]);if(!had)budget--}else miss.push([bx,by]);
+      const had=blkCache.has(bx+','+by),can=budget>0,e=getBlock(bx,by,can);
+      if(!had&&can)budget--;   // 試建就扣額度（建失敗也扣），免得每幀反覆重試拖慢
+      if(e)list.push([bx,by,e]);else miss.push([bx,by]);
     }
-    c.setTransform(1,0,0,1,0,0);
-    const blit=(img,bx,by)=>{   // 以相鄰塊起點的差當寬高，相鄰塊不重疊也不留縫
-      const px=Math.round((bx*BLOCK*TS-camX)*mdpr),py=Math.round((by*BLOCK*TS-camY)*mdpr),w=Math.round(((bx+1)*BLOCK*TS-camX)*mdpr)-px,h=Math.round(((by+1)*BLOCK*TS-camY)*mdpr)-py;
-      c.drawImage(img,0,0,w,h,px,py,w,h)};
-    for(const [bx,by,e] of list)if(e.wb)blit(e.wb,bx,by);
-    const wa=CUR.waterAlpha||WATER_ALPHA_DEF;c.globalAlpha=wa[0]+(wa[1]-wa[0])*(.5+.5*Math.sin(now/900));
-    for(const [bx,by,e] of list)if(e.wt)blit(e.wt,bx,by);
-    c.globalAlpha=1;
-    c.setTransform(mdpr,0,0,mdpr,0,0);
-    if(miss.length){   // 還沒建好的塊：這一幀先鋪世界空間的無縫地面紋理頂著（不畫逐格方塊，免得閃出方格）
-      const gt=shapeTex().ground;c.save();c.setTransform(1,0,0,1,-Math.round(camX*mdpr),-Math.round(camY*mdpr));c.fillStyle=c.createPattern(gt,'repeat');
-      for(const [bx,by] of miss)c.fillRect(Math.round(bx*BLOCK*TS*mdpr),Math.round(by*BLOCK*TS*mdpr),Math.ceil(BLOCK*TS*mdpr)+1,Math.ceil(BLOCK*TS*mdpr)+1);
+    if(MAP_DEBUG)dbgVis=list;
+    const cxd=Math.round(camX*mdpr),cyd=Math.round(camY*mdpr);   // 鏡頭的裝置像素位移（camX 已取整到裝置像素）
+    const rect=(bx,by)=>{   // 塊在畫面上的裝置像素範圍：以相鄰塊起點的差當寬高，相鄰塊不重疊也不留縫
+      const px=Math.round((bx*BLOCK*TS-camX)*mdpr),py=Math.round((by*BLOCK*TS-camY)*mdpr);
+      return [px,py,Math.round(((bx+1)*BLOCK*TS-camX)*mdpr)-px,Math.round(((by+1)*BLOCK*TS-camY)*mdpr)-py]};
+    const blit=(img,bx,by)=>{const [px,py,w,h]=rect(bx,by);c.drawImage(img,0,0,w,h,px,py,w,h)};
+    const wet=list.filter(b=>b[2].water);
+    if(wet.length){   // 水：世界座標平鋪（圖樣原點＝世界 0,0，與舊版每塊水圖的相位相同），只鋪有水的塊；陸地圖挖掉的地方才看得到
+      const tex=shapeTex(),wa=CUR.waterAlpha||WATER_ALPHA_DEF;
+      if(!tex.pwb){tex.pwb=c.createPattern(tex.wb,'repeat');tex.pwt=c.createPattern(tex.wt,'repeat')}
+      c.save();c.setTransform(1,0,0,1,-cxd,-cyd);
+      c.fillStyle=tex.pwb;for(const [bx,by] of wet){const [px,py,w,h]=rect(bx,by);c.fillRect(px+cxd,py+cyd,w,h)}
+      c.globalAlpha=wa[0]+(wa[1]-wa[0])*(.5+.5*Math.sin(now/900));
+      c.fillStyle=tex.pwt;for(const [bx,by] of wet){const [px,py,w,h]=rect(bx,by);c.fillRect(px+cxd,py+cyd,w,h)}
       c.restore();
+    }
+    if(miss.length){   // 還沒建好（或建不出來）的塊：這一幀先鋪世界空間的無縫地面紋理頂著（不畫逐格方塊，免得閃出方格）
+      c.save();
+      try{
+        const gt=shapeTex().ground;c.setTransform(1,0,0,1,-cxd,-cyd);c.fillStyle=c.createPattern(gt,'repeat');
+        for(const [bx,by] of miss)c.fillRect(Math.round(bx*BLOCK*TS*mdpr),Math.round(by*BLOCK*TS*mdpr),Math.ceil(BLOCK*TS*mdpr)+1,Math.ceil(BLOCK*TS*mdpr)+1);
+      }catch(err){DBG.err=String(err&&err.message||err)}
+      finally{c.restore()}
     }
     c.setTransform(1,0,0,1,0,0);
     for(const [bx,by,e] of list)blit(e.cv,bx,by);
     c.setTransform(mdpr,0,0,mdpr,0,0);
-    if(blkCache.size>BLOCK_MAX)for(const [k,e] of blkCache){if(blkCache.size<=BLOCK_MAX)break;if(e.t!==blkFrame)blkCache.delete(k)}   // 淘汰最久沒用的（Map 依最近使用排序，且只刪本幀沒用到的）
+    if(blkCache.size>BLOCK_MAX)for(const [k,e] of blkCache){if(blkCache.size<=BLOCK_MAX)break;if(e.t!==blkFrame){freeCv(e.cv);blkCache.delete(k)}}   // 淘汰最久沒用的（Map 依最近使用排序，且只刪本幀沒用到的），畫布寬高設 0 立刻放掉
   }
   // 立體物件：邏輯錨點換成畫面位置畫；排序鍵也用畫面 y（遮擋跟著畫面走）
   const ents=[],art=(key,qx,qy,ky,sc)=>{const v=toView(qx,qy);ents.push({y:toView(qx,ky)[1],f:()=>drawArt(c,key,v[0],v[1],camX,camY,sc)})};
@@ -1596,10 +1635,44 @@ let mapRunning=false;
 function mapLoop(now){
   if(cur!=='sMap'){mapRunning=false;return}
   const dt=Math.min(0.05,(now-(G.last||now))/1000);G.last=now;
-  update(dt);drawMap(now);
-  requestAnimationFrame(mapLoop);
+  try{update(dt);drawMap(now)}
+  catch(err){DBG.err=String(err&&err.message||err);console.error(err)}
+  finally{requestAnimationFrame(mapLoop)}   // 不管這一幀有沒有出錯，下一幀照排，主迴圈不會停
 }
 function startMapLoop(){G.last=0;if(!mapRunning){mapRunning=true;requestAnimationFrame(mapLoop)}}
+/* ===== 診斷面板（?debug=1）：地面快取的畫布數、記憶體、內容是否遺失；遊戲視窗左下角，約每秒更新。沒帶參數時完全不建立、不讀像素 ===== */
+if(MAP_DEBUG){
+  const box=document.createElement('div');box.id='dbgBox';$('#mapView').appendChild(box);
+  let probe=null,pg=null;
+  const alphaAt=(src,x,y)=>{   // 讀畫布某一點的 alpha；-1＝讀不到
+    try{if(!src||!src.width)return -1;if(!probe){probe=newCv(1,1);pg=ctx2d(probe,{willReadFrequently:true})}
+      pg.clearRect(0,0,1,1);pg.drawImage(src,Math.floor(x),Math.floor(y),1,1,0,0,1,1);return pg.getImageData(0,0,1,1).data[3]}catch(e){return -1}};
+  const pxOf=cv=>cv&&cv.width?cv.width*cv.height:0;
+  const iosVer=(()=>{const u=navigator.userAgent,m=u.match(/OS (\d+)[_.](\d+)(?:[_.](\d+))? like Mac OS X/);if(m)return 'iOS '+m[1]+'.'+m[2]+(m[3]?'.'+m[3]:'');const v=u.match(/Version\/([\d.]+).*Safari/);return v?'Safari '+v[1]+'（UA 非 iPhone）':'非 iOS'})();
+  setInterval(()=>{
+    if(cur!=='sMap'){box.style.display='none';return}
+    box.style.display='';
+    let tot=pxOf(mapCv)+pxOf(shpTmp);
+    for(const e of blkCache.values())tot+=pxOf(e.cv);
+    for(const cv of ftCache.values())tot+=pxOf(cv);
+    for(const cv of maskCv.values())tot+=pxOf(cv);
+    if(TEXC)['ground','tg','path','wb','wt'].forEach(k=>tot+=pxOf(TEXC[k]));
+    const W=Math.ceil(BLOCK*TS*mdpr)+1,gt=TEXC&&TEXC.ground,ga=gt?alphaAt(gt,gt.width/2,gt.height/2):'—';
+    let bad=0,n=0;   // 可視塊中心（取塊在地圖內那一段的中心）：形狀上不是水、陸地圖卻是全透明 ＝ 內容丟失
+    for(const [bx,by,e] of dbgVis){
+      if(!e.cv||!e.cv.width)continue;
+      const ax=bx*BLOCK,ay=by*BLOCK,ex=Math.min(ax+BLOCK,MW),ey=Math.min(ay+BLOCK,MH);if(ex<=ax||ey<=ay)continue;
+      const cx=(ax+ex)/2,cy=(ay+ey)/2;n++;
+      if(shapeAt(cx,cy).water<.5&&alphaAt(e.cv,(cx-ax)*TS*mdpr,(cy-ay)*TS*mdpr)===0)bad++;
+    }
+    box.textContent=`${iosVer}　dpr ${+(window.devicePixelRatio||1).toFixed(2)}／mdpr ${mdpr}\n`+
+      `視窗 ${mw}×${mh}　TS ${TS}（${MAP_ZOOM} 格寬）　W ${W}\n`+
+      `地面塊 ${blkCache.size}/${BLOCK_MAX}　羽化圖格 ${ftCache.size}　快取 ${(tot*4/1048576).toFixed(1)}MB\n`+
+      `累計建畫布 ${DBG.cv}　getContext=null ${DBG.nul}　清快取 ${DBG.clr}\n`+
+      `地面紋理中心 α ${ga}　可視塊空白 ${bad}/${n}\n`+
+      `最後錯誤：${DBG.err?DBG.err.slice(0,90):'無'}`;
+  },1000);
+}
 /* ===== 格子移動（寶可夢式）：主角永遠站在格子中心，一步一格，補間平滑；連按時步與步無縫銜接 ===== */
 const FRAMES=[1,0,1,2];   // 走路動畫格；一步換兩格（雙數步用前兩格、單數步用後兩格）
 function wantDir(){return G.padDir>=0?G.padDir:G.kd.length?G.kd[G.kd.length-1]:-1}   // 十字鍵以手指所在方向為準；鍵盤以最後按下的為準
