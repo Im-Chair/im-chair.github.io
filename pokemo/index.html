@@ -205,7 +205,7 @@ body.ptmap #dlg{bottom:var(--padh,260px);padding-bottom:12px}
     <button class="pri" id="btnCont" style="display:none">繼續遊戲</button>
     <button class="pri" id="btnNew">新遊戲</button>
     <button id="btnImp">匯入存檔碼</button>
-    <div class="ver">原型 v1.27 ・ 110 種怪物 ・ 前九章可玩</div>
+    <div class="ver">原型 v1.28 ・ 110 種怪物 ・ 前九章可玩</div>
   </div>
 
   <div id="sMap" class="screen">
@@ -966,7 +966,8 @@ function resizeMap(){
   mdpr=Math.min(2,window.devicePixelRatio||1);
   mw=mapCv.clientWidth;mh=mapCv.clientHeight;   // 讀取時會依新 class 重排，量到的是遊戲視窗大小
   mapCv.width=Math.round(mw*mdpr);mapCv.height=Math.round(mh*mdpr);
-  TS=mapPortrait?Math.max(30,Math.round(mw/MAP_ZOOM)):Math.max(30,Math.round(Math.min(mw/(MAP_ZOOM*1.5),mh/MAP_ZOOM)));   // 直向約 8 格寬（MAP_ZOOM；?zoom=N 測試用）；橫向等比例（8 → 12 格寬、8 格高）
+  TS=mapPortrait?Math.max(30,Math.round(mw/MAP_ZOOM)):Math.max(30,Math.round(Math.min(mw/(MAP_ZOOM*1.5),mh/MAP_ZOOM)));
+  TS=2*Math.round(TS/2);   // 一律取偶數：iPhone 實測奇數格寬（57、61）地面會出現格線，偶數（54、66）不會   // 直向約 8 格寬（MAP_ZOOM；?zoom=N 測試用）；橫向等比例（8 → 12 格寬、8 格高）
   const bw=Math.ceil(BLOCK*TS*mdpr)+1;BLOCK_MAX=clamp(Math.floor(BLK_PX_BUDGET/(bw*bw)),BLK_MAX_RANGE[0],BLK_MAX_RANGE[1]);   // 塊越大、快取塊數越少
   padSync(true);
   tileCacheClear();   // TS／mdpr 改變，快取失效
