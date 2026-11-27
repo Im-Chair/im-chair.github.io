@@ -203,7 +203,7 @@ body.ptmap #dlg{bottom:var(--padh,260px);padding-bottom:12px}
     <button class="pri" id="btnCont" style="display:none">繼續遊戲</button>
     <button class="pri" id="btnNew">新遊戲</button>
     <button id="btnImp">匯入存檔碼</button>
-    <div class="ver">原型 v1.24 ・ 110 種怪物 ・ 前九章可玩</div>
+    <div class="ver">原型 v1.25 ・ 110 種怪物 ・ 前九章可玩</div>
   </div>
 
   <div id="sMap" class="screen">
@@ -947,7 +947,7 @@ function resizeMap(){
   mdpr=Math.min(2,window.devicePixelRatio||1);
   mw=mapCv.clientWidth;mh=mapCv.clientHeight;   // 讀取時會依新 class 重排，量到的是遊戲視窗大小
   mapCv.width=Math.round(mw*mdpr);mapCv.height=Math.round(mh*mdpr);
-  TS=mapPortrait?Math.max(30,Math.round(mw/7)):Math.max(30,Math.round(Math.min(mw/10.5,mh/7)));   // 直向約 7 格寬
+  TS=mapPortrait?Math.max(30,Math.round(mw/8)):Math.max(30,Math.round(Math.min(mw/12,mh/8)));   // 直向約 8 格寬（7 格寬在實機上地面會畫壞，先退回）
   padSync(true);
   tileCacheClear();   // TS／mdpr 改變，快取失效
 }
