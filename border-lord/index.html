@@ -15,6 +15,20 @@
             --gold-accent: #d4af37;
             --crimson: #9e2a2b;
             --forest: #2d6a4f;
+            /* 畫風統一：羊皮紙＋深褐＋金 */
+            --bl-panel: #fff6e0;       /* 右側面板、詳情 */
+            --bl-paper: #fffaf0;       /* 格子紙色（比面板略亮） */
+            --bl-paper-sel: #f1e2c0;   /* 選取中的格子 */
+            --bl-ink: #3b2818;         /* 主要文字（深褐） */
+            --bl-line: rgba(92, 64, 40, .55); /* 褐色細框 */
+            --bl-gold: #d4af37;        /* 金邊、選取框 */
+            --bl-gold-soft: #b58938;
+            --bl-wood: #6b7f3a;        /* 木：橄欖綠 */
+            --bl-clay: #a0523a;        /* 磚：磚紅褐 */
+            --bl-iron: #6f7f8c;        /* 鐵：灰藍褐 */
+            --bl-crop: #c9a227;        /* 糧：麥黃 */
+            --bl-ok: #3f6b3f;          /* 狀態提示的沉綠（可升級點、正成長） */
+            --bl-bad: #8a2b24;         /* 暗紅褐（警示、缺料） */
         }
         body {
             font-family: 'Noto Sans TC', sans-serif;
@@ -59,26 +73,23 @@
             cursor: not-allowed;
             border-color: #6b5b4b;
         }
-        .btn-green {
-            background: linear-gradient(180deg, #388e3c 0%, #1b5e20 100%);
-            border: 1px solid #81c784;
-            color: white;
+        /* 主要行動鈕：深褐底金字金邊；次要鈕：淺紙色褐框；危險鈕：暗紅褐。綠色只留給狀態提示 */
+        .bl-btn-primary {
+            background: linear-gradient(180deg, #5c4028 0%, #3b2818 100%);
+            border: 1px solid var(--bl-gold); color: #f7e7b0; font-weight: 800;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        .bl-btn-ghost { background: #efe0bd; border: 1px solid #8c6239; color: var(--bl-ink); font-weight: 700; }
+        .bl-btn-danger {
+            background: linear-gradient(180deg, #7a2e2a 0%, #4a1c19 100%);
+            border: 1px solid #c98a80; color: #fde2d4; font-weight: 800;
         }
         @media (hover: hover) {
-        .btn-green:hover:not(:disabled) {
-            background: linear-gradient(180deg, #43a047 0%, #2e7d32 100%);
+            .bl-btn-primary:hover:not(:disabled) { filter: brightness(1.18); }
+            .bl-btn-ghost:hover:not(:disabled) { background: #e6d3a6; }
+            .bl-btn-danger:hover:not(:disabled) { filter: brightness(1.15); }
         }
-        }
-        .btn-red {
-            background: linear-gradient(180deg, #c62828 0%, #8e0000 100%);
-            border: 1px solid #ef9a9a;
-            color: white;
-        }
-        @media (hover: hover) {
-        .btn-red:hover:not(:disabled) {
-            background: linear-gradient(180deg, #d32f2f 0%, #b71c1c 100%);
-        }
-        }
+        .bl-btn-primary:disabled, .bl-btn-ghost:disabled, .bl-btn-danger:disabled { opacity: .5; cursor: not-allowed; filter: saturate(.6); }
         /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: #2e1e11; }
@@ -232,27 +243,11 @@ button, a, select, input, label, [onclick], .nav-tab {
 /* --- 觸控裝置沒有真正的 hover：點過後 Tailwind 的 hover 底色會殘留。
    這裡用「hover 類別＋原底色類別」的複合選擇器（權重高於 Tailwind 的 :hover），把底色還原成原本顏色 --- */
 @media (hover: none) {
-    .hover\:bg-amber-50:hover.bg-\[\#fffaf0\] { background-color: #fffaf0; }
-    .hover\:bg-emerald-600:hover.bg-emerald-700 { background-color: #047857; }
     .hover\:bg-stone-700:hover.bg-stone-800 { background-color: #292524; }
     .hover\:bg-red-900:hover.bg-red-950 { background-color: #450a0a; }
     .hover\:bg-\[\#4e3621\]:hover.bg-\[\#3b2818\] { background-color: #3b2818; }
     .hover\:bg-\[\#4e3621\]:hover.bg-\[\#f7efe0\] { background-color: #f7efe0; }
-    .hover\:bg-amber-200:hover.bg-amber-100 { background-color: #fef3c7; }
-    .hover\:bg-red-600:hover.bg-red-700 { background-color: #b91c1c; }
-    .hover\:bg-red-100:hover.bg-red-50 { background-color: #fef2f2; }
-    .hover\:bg-amber-300:hover.bg-amber-200 { background-color: #fde68a; }
     .hover\:bg-stone-400:hover.bg-stone-300 { background-color: #d6d3d1; }
-    /* 世界地圖格子 */
-    .hover\:bg-\[\#7fa653\]:hover.bg-\[\#6b8e45\] { background-color: #6b8e45; }
-    .hover\:bg-blue-600:hover.bg-blue-700 { background-color: #1d4ed8; }
-    .hover\:bg-purple-800:hover.bg-purple-900 { background-color: #581c87; }
-    .hover\:bg-teal-600:hover.bg-teal-700 { background-color: #0f766e; }
-    .hover\:bg-amber-100:hover.bg-amber-200 { background-color: #fde68a; }
-    .hover\:bg-red-700:hover.bg-red-800 { background-color: #991b1b; }
-    .hover\:bg-slate-500:hover.bg-slate-600 { background-color: #475569; }
-    .hover\:bg-amber-400:hover.bg-amber-500\/80 { background-color: rgba(245,158,11,.8); }
-    .hover\:bg-lime-400:hover.bg-lime-500\/70 { background-color: rgba(132,204,22,.7); }
 }
 
 /* ==================== 版面 v2：頂列加速下拉、資源列置頂、直列升級清單 ==================== */
@@ -274,6 +269,8 @@ button, a, select, input, label, [onclick], .nav-tab {
    z-index 36：低於底部導覽（40）、modal、toast；⋯ 選單在頂列內 z-index 50，會蓋過資源列與內容 --- */
 body { padding-top: var(--topbar-h, 0px); }
 #setup-screen:not(.hidden) ~ #top-fixed { display: none; }
+/* 開局畫面底色改成不透明，免得後面還沒載入的空遊戲畫面透出來 */
+#setup-screen { background-color: #1a120b; }
 #top-fixed {
     position: fixed; top: 0; left: 0; right: 0; z-index: 36;
     padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);
@@ -303,11 +300,11 @@ body { padding-top: var(--topbar-h, 0px); }
 /* --- 直列升級清單（資源田、村莊建築共用） --- */
 .up-wrap { width: 100%; max-width: 640px; margin: 0 auto; }
 .up-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
-.up-sub { font-size: 12px; color: #57534e; margin-bottom: 10px; }
+.up-sub { font-size: 12px; color: #57483a; margin-bottom: 10px; }
 .up-card { display: flex; flex-direction: column; gap: 8px; }
-.up-prog { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #b91c1c; font-weight: 700; }
-.up-bar { flex: 1 1 auto; height: 6px; border-radius: 3px; background: #d6d3d1; overflow: hidden; }
-.up-bar > i { display: block; height: 100%; width: 0; background: #d97706; }
+.up-prog { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--bl-bad); font-weight: 700; }
+.up-bar { flex: 1 1 auto; height: 6px; border-radius: 3px; background: #d8c8a6; overflow: hidden; }
+.up-bar > i { display: block; height: 100%; width: 0; background: var(--bl-gold-soft); }
 /* --- 資源田：左半＝三欄六排格子（只有圖示與等級），右半＝固定詳情面板（預設顯示每小時產出總覽） --- */
 .fp-wrap {
     display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); gap: 8px;
@@ -318,22 +315,22 @@ body { padding-top: var(--topbar-h, 0px); }
 #buildings-list { --fg-rows: 5; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .fg-cell {
     position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
-    min-width: 44px; min-height: 0; padding: 4px 2px 6px 5px; color: #3b2818; cursor: pointer;
-    border: 2px solid rgba(140,98,57,.45); border-left-width: 4px; border-radius: 9px;
+    min-width: 44px; min-height: 0; padding: 4px 2px 6px 5px; color: var(--bl-ink); cursor: pointer;
+    background: var(--bl-paper); border: 2px solid var(--bl-line); border-left-width: 5px; border-radius: 9px;
     scroll-margin-top: calc(var(--topbar-h, 0px) + 8px);
 }
-.fg-cell.t-wood { background: #ecfdf5; border-left-color: #059669; }
-.fg-cell.t-clay { background: #fff1e6; border-left-color: #c2410c; }
-.fg-cell.t-iron { background: #eef2f6; border-left-color: #64748b; }
-.fg-cell.t-crop { background: #fefce8; border-left-color: #ca8a04; }
-.fg-cell.is-sel { outline: 3px solid #d97706; outline-offset: -1px; z-index: 1; }
-.fg-cell.t-bld { background: #fffaf0; border-left-color: #8c6239; }
+.fg-cell.t-wood { border-left-color: var(--bl-wood); }
+.fg-cell.t-clay { border-left-color: var(--bl-clay); }
+.fg-cell.t-iron { border-left-color: var(--bl-iron); }
+.fg-cell.t-crop { border-left-color: var(--bl-crop); }
+.fg-cell.is-sel { background: var(--bl-paper-sel); outline: 3px solid var(--bl-gold); outline-offset: -1px; z-index: 1; }
+.fg-cell.t-bld { border-left-color: #8c6239; }
 .fg-cell.is-unbuilt { filter: saturate(.35); opacity: .75; }
 .fg-ico { font-size: 22px; line-height: 1.25; }
 .fg-name { font-size: 11px; font-weight: 800; line-height: 1.15; text-align: center; margin-top: 3px; overflow-wrap: anywhere; }
 .fg-lv { font-size: 12px; font-weight: 800; line-height: 1.2; }
 .fg-rsv { position: absolute; top: 1px; right: 2px; font-size: 9px; line-height: 1; }
-.fg-dot { display: none; position: absolute; top: 3px; left: 3px; width: 7px; height: 7px; border-radius: 50%; background: #16a34a; }
+.fg-dot { display: none; position: absolute; top: 3px; left: 3px; width: 7px; height: 7px; border-radius: 50%; background: var(--bl-ok); }
 .fg-cell.can-up .fg-dot { display: block; }
 .fg-cell .up-prog { position: absolute; left: 3px; right: 3px; bottom: 2px; }
 .fg-cell .up-bar { height: 4px; }
@@ -355,10 +352,10 @@ body { padding-top: var(--topbar-h, 0px); }
 .fp-panel .up-select { font-size: 13px; padding: 0 4px; }
 .fp-panel .up-sec { padding: 6px; }
 .fp-row { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; font-weight: 700; }
-.fp-row b { color: #047857; font-weight: 800; white-space: nowrap; }
-.fp-row.is-sub { font-size: 11px; font-weight: 500; color: #57534e; }
-.fp-row.is-neg b { color: #dc2626; }
-.fp-tip { font-size: 11px; color: #78716c; line-height: 1.4; }
+.fp-row b { color: var(--bl-ok); font-weight: 800; white-space: nowrap; }
+.fp-row.is-sub { font-size: 11px; font-weight: 500; color: #57483a; }
+.fp-row.is-neg b { color: var(--bl-bad); }
+.fp-tip { font-size: 11px; color: #6b5a48; line-height: 1.4; }
 @media (min-width: 640px) {
     .fg-grid { gap: 8px; }
     .fp-wrap { height: 460px; }
@@ -370,25 +367,26 @@ body { padding-top: var(--topbar-h, 0px); }
 .up-eta { font-family: ui-monospace, Menlo, Consolas, monospace; white-space: nowrap; }
 .up-line { line-height: 1.5; }
 .up-line b { font-weight: 800; }
-.up-good { color: #047857; }
-.up-cost { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; padding: 8px; border-radius: 8px; background: #fffbeb; border: 1px solid #fcd34d; }
+.up-good { color: var(--bl-ok); }
+.up-benefit { color: #3f4a24; }
+.up-cost { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; padding: 8px; border-radius: 8px; background: #f6ecd2; border: 1px solid #cdb58a; }
 .up-cost > span { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px; font-weight: 600; }
-.up-cost > span.is-lack { color: #dc2626; font-weight: 800; }
+.up-cost > span.is-lack { color: var(--bl-bad); font-weight: 800; }
 .up-cost em { font-style: normal; font-size: 11px; font-weight: 700; }
 .up-actions { display: flex; gap: 8px; }
 .up-btn { flex: 1 1 0; min-height: 44px; padding: 0 12px; border-radius: 8px; font-size: 14px; font-weight: 800; }
 .up-btn.is-sub { flex: 0 1 auto; font-size: 12px; white-space: nowrap; }
-.up-hint { font-size: 12px; line-height: 1.45; font-weight: 700; white-space: pre-line; color: #b91c1c; }
-.up-hint.is-ok { color: #047857; }
+.up-hint { font-size: 12px; line-height: 1.45; font-weight: 700; white-space: pre-line; color: var(--bl-bad); }
+.up-hint.is-ok { color: var(--bl-ok); }
 .up-off { display: none !important; }
-.up-desc { font-size: 12px; color: #44403c; line-height: 1.5; }
-.up-sec { padding: 8px; border-radius: 8px; border: 1px solid #d6d3d1; background: #fff; display: flex; flex-direction: column; gap: 6px; }
-.up-sec.is-red { background: #fef2f2; border-color: #fca5a5; }
-.up-sec.is-green { background: #ecfdf5; border-color: #6ee7b7; color: #022c22; }
+.up-desc { font-size: 12px; color: #4a3b2c; line-height: 1.5; }
+.up-sec { padding: 8px; border-radius: 8px; border: 1px solid #cdb58a; background: #fffaf0; display: flex; flex-direction: column; gap: 6px; }
+.up-sec.is-red { background: #f1ddd0; border-color: #c98a80; }
+.up-sec.is-green { background: #e8edd5; border-color: #a5b27a; color: #2f3d1c; }
 .up-train { display: flex; flex-direction: column; gap: 6px; }
 .up-train-btns { display: flex; gap: 6px; }
 .up-train-btns button { flex: 1 1 0; min-height: 44px; border-radius: 6px; font-weight: 800; font-size: 13px; }
-.up-select { width: 100%; min-height: 44px; padding: 0 8px; border-radius: 6px; border: 1px solid #f87171; background: #fff; font-weight: 700; color: #292524; }
+.up-select { width: 100%; min-height: 44px; padding: 0 8px; border-radius: 6px; border: 1px solid #8c6239; background: #fffaf0; font-weight: 700; color: var(--bl-ink); }
 /* ==================== 第三排資訊列、精簡顧問、世界地圖一個畫面 ==================== */
 #info-bar {
     position: relative; display: flex; align-items: center; justify-content: space-between; gap: 8px;
@@ -421,22 +419,23 @@ body { padding-top: var(--topbar-h, 0px); }
 #queue-menu.open { min-width: 250px; max-width: calc(100vw - 16px); gap: 8px; color: #fde68a; font-size: 12px; align-items: stretch; }
 .qm-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
 .qm-name { flex: 1 1 100%; font-weight: 800; }
-.qm-t { flex: 1 1 auto; font-family: ui-monospace, Menlo, Consolas, monospace; color: #fca5a5; }
-.qm-row button { min-height: 44px; padding: 0 12px; border-radius: 6px; border: 1px solid #ef4444; background: #450a0a; color: #fecaca; font-weight: 700; font-size: 12px; }
+.qm-t { flex: 1 1 auto; font-family: ui-monospace, Menlo, Consolas, monospace; color: #e8b4a8; }
+.qm-row button { min-height: 44px; padding: 0 12px; border-radius: 6px; border: 1px solid #c98a80; background: #4a1c19; color: #fde2d4; font-weight: 700; font-size: 12px; }
 .qm-empty, .qm-note { color: #a8a29e; font-size: 11px; }
 
 /* 村莊顧問：固定高度一列，說明用浮層，不推動版面 */
-.adv-card { position: relative; height: 52px; margin-bottom: 8px; }
+.adv-card { position: relative; height: 52px; margin-bottom: 8px; background: var(--bl-paper); border: 2px solid var(--bl-line); border-left: 6px solid var(--bl-gold-soft); border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,.2); }
+.adv-card.is-urgent { border-left-color: var(--bl-bad); }
 .adv-row { display: flex; align-items: center; gap: 6px; height: 100%; padding: 0 6px; }
 .adv-icon { font-size: 18px; line-height: 1; flex-shrink: 0; }
-.adv-label { font-size: 11px; font-weight: 800; color: #92400e; flex-shrink: 0; }
+.adv-label { font-size: 11px; font-weight: 800; color: #7a3e12; flex-shrink: 0; }
 .adv-title { flex: 1 1 0; min-width: 0; font-size: 13px; font-weight: 700; color: #3b2818; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .adv-btn { flex-shrink: 0; padding: 0 10px; min-width: 40px; min-height: 40px; border-radius: 8px; }
-.adv-toggle { background: #fef3c7; border: 1px solid #b45309; color: #78350f; }
+.adv-toggle { font-size: 12px; }
 .adv-pop {
     display: none; position: absolute; left: -2px; right: -2px; top: calc(100% + 4px); z-index: 30;
-    padding: 10px; border-radius: 8px; background: #fffbeb; border: 2px solid #d97706; box-shadow: 0 8px 20px rgba(0,0,0,.35);
-    font-size: 12px; line-height: 1.5; color: #44403c;
+    padding: 10px; border-radius: 8px; background: var(--bl-paper); border: 2px solid var(--bl-line); border-left: 6px solid var(--bl-gold-soft); box-shadow: 0 8px 20px rgba(0,0,0,.35);
+    font-size: 12px; line-height: 1.5; color: #4a3b2c;
 }
 .adv-card.is-open .adv-pop { display: block; }
 
@@ -449,50 +448,170 @@ body { padding-top: var(--topbar-h, 0px); }
 .mp-left { flex: 55 1 0; min-height: 270px; display: flex; flex-direction: column; gap: 4px; }
 .mp-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 32px; flex-shrink: 0; }
 .mp-coord { font-size: 12px; font-weight: 800; color: #3b2818; white-space: nowrap; }
-.mp-coord b { color: #92400e; }
+.mp-coord b { color: #7a3e12; }
 .mp-home { min-height: 30px; padding: 0 10px; border-radius: 8px; font-size: 12px; font-weight: 700; white-space: nowrap; }
 #view-map .mp-home:not(#_) { min-height: 32px; min-width: 0; }
 .mp-scroll {
     flex: 1 1 0; min-height: 240px; overflow: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
-    background: #3d5229; padding: 6px; border-radius: 12px; border: 4px solid #5c4028; box-shadow: inset 0 2px 4px rgba(0,0,0,.2);
+    background: #cbb78c; padding: 6px; border-radius: 10px; border: 2px solid #d4bfa0; box-shadow: inset 0 2px 6px rgba(92,64,40,.25);
 }
 .mp-detail {
     flex: 45 1 0; min-height: 200px; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
-    padding: 10px; background: #fffaf0; border: 2px solid #8c6239; border-radius: 12px;
+    padding: 10px; background: var(--bl-panel); border: 2px solid #d4bfa0; border-radius: 10px;
 }
 .mp-detail .max-h-\[210px\] { max-height: none; overflow: visible; }
 .mp-legend { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 8px; font-size: 12px; color: #292524; }
 .mp-legend span { display: flex; align-items: center; gap: 6px; min-width: 0; }
-.mp-legend i { width: 14px; height: 14px; border-radius: 3px; border: 1px solid rgba(0,0,0,.35); flex-shrink: 0; }
-#world-map-grid button.ring-2 { outline: 3px solid #facc15; outline-offset: -1px; }
+.mp-legend i { width: 14px; height: 14px; border-radius: 3px; border: 1px solid rgba(60,40,24,.5); flex-shrink: 0; }
+/* 世界地圖：手繪地圖感（低飽和底色＋細框／內陰影＋圖示；顏色變數見 :root 與下方） */
+#world-map-grid button {
+    border: 1px solid rgba(60, 40, 24, .4); border-radius: 3px; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.65);
+}
+.mt-empty { background: #9ea77b; }
+.mt-oasis { background: #7f9d95; border-color: #4e6b64; box-shadow: inset 0 0 0 1px rgba(255,255,255,.25); }
+.mt-fertile { background: #c9b36f; border-color: #8f7a3c; }
+.mt-fertile2 { background: #c2a24a; border-color: var(--bl-gold); box-shadow: inset 0 0 0 1px var(--bl-gold); }
+.mt-sheep { background: #d9c3a0; border-color: #6b4a2b; box-shadow: inset 0 0 0 1px rgba(107,74,43,.45); text-shadow: none; }
+.mt-wolf { background: #7a3b36; border-color: #4a1f1c; box-shadow: inset 0 0 0 1px rgba(255,255,255,.18); }
+.mt-fort { background: #5b564f; border-color: #2f2b27; box-shadow: inset 0 0 0 1px rgba(255,255,255,.15); }
+.mt-wonder { background: #4a2c4d; border-color: var(--bl-gold); box-shadow: inset 0 0 0 1px var(--bl-gold); }
+.mt-player { background: #35465a; border-color: var(--bl-gold); box-shadow: inset 0 0 0 1px var(--bl-gold), 0 0 4px rgba(212,175,55,.8); }
+.mt-axis { filter: brightness(.94); }
+.mt-sel { outline: 3px solid var(--bl-gold); outline-offset: -1px; z-index: 10; transform: scale(1.1); filter: drop-shadow(0 0 3px var(--bl-gold)); }
+@media (hover: hover) { #world-map-grid button:hover { filter: brightness(1.1); } }
 @media (min-width: 640px) {
     .mp-wrap { flex-direction: row; height: 460px; min-height: 0; }
     .mp-left { flex: 3 1 0; min-height: 0; }
     .mp-scroll { min-height: 0; }
     .mp-detail { flex: 2 1 0; min-height: 0; }
 }
+/* ==================== 畫風統一：標籤、toast ==================== */
+.bl-tag { font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 6px; background: var(--bl-paper); border: 1px solid var(--bl-line); color: var(--bl-ink); }
+.bl-toast { background: #2e1e11; color: #fdf6e3; border: 2px solid var(--bl-gold-soft); border-left-width: 6px; border-left-color: var(--bl-gold); }
+.bl-toast-good { border-left-color: #6a9a5a; }
+.bl-toast-bad { border-left-color: #c0564a; }
+/* ==================== 圖示（game-icons.net）與畫風補充 ==================== */
+.gi { display: inline-block; width: 1em; height: 1em; vertical-align: -0.125em; fill: currentColor; flex-shrink: 0; }
+.gi-wood { color: var(--bl-wood); } .gi-clay { color: var(--bl-clay); } .gi-iron { color: var(--bl-iron); } .gi-crop { color: var(--bl-crop); }
+/* 深色底（頂部三排、浮層、toast）用較亮的同色系 */
+#top-fixed .gi-wood, .hdr-pop .gi-wood, .bl-toast .gi-wood { color: #a9c45f; }
+#top-fixed .gi-clay, .hdr-pop .gi-clay, .bl-toast .gi-clay { color: #e0906e; }
+#top-fixed .gi-iron, .hdr-pop .gi-iron, .bl-toast .gi-iron { color: #b4c2cd; }
+#top-fixed .gi-crop, .hdr-pop .gi-crop, .bl-toast .gi-crop { color: #ecc94b; }
+.gi-alert { color: var(--bl-bad); }
+#info-bar .gi-alert, .ib-alert .gi-alert { color: #fff; }
+.hdr-btn .gi { width: 1.35em; height: 1.35em; }
+.tab-ico .gi { width: 1.1em; height: 1.1em; }
+.fg-ico .gi { width: 1em; height: 1em; }
+.adv-icon .gi { width: 1.1em; height: 1.1em; color: #7a3e12; }
+.mp-legend .gi, .bl-tag .gi { margin-right: 2px; }
+#world-map-grid .gi { filter: drop-shadow(0 1px 1px rgba(0,0,0,.5)); }
+.mt-sheep, .mt-fertile, .mt-fertile2 { color: #3b2a12; } .mt-sheep .gi, .mt-fertile .gi, .mt-fertile2 .gi { filter: none; }
+#world-map-grid .mt-oasis { color: #16302b; } #world-map-grid .mt-oasis .gi { filter: none; }
+/* 地圖格上的圖示一律用格子指定的墨色，不套資源色（麥黃圖示在麥黃格上會看不見） */
+#world-map-grid .gi { color: #fff7e0 !important; }
+#world-map-grid .mt-sheep .gi, #world-map-grid .mt-fertile .gi, #world-map-grid .mt-fertile2 .gi, #world-map-grid .mt-empty .gi { color: #3b2a12 !important; }
+#world-map-grid .mt-oasis .gi { color: #16302b !important; }
+#world-map-grid .mt-player .gi { color: #f0cf6a !important; }
+#world-map-grid .mt-player, #world-map-grid .mt-wonder { color: var(--bl-gold); }
+#world-map-grid .mt-wolf { color: #f3d9d4; } #world-map-grid .mt-fort { color: #ebe5d8; }
+.bl-credit { padding: 6px 12px calc(var(--nav-total, 0px) + 6px); text-align: center; font-size: 10px; color: #a8977a; }
+.bl-credit a { color: #d4af37; text-decoration: underline; }
+@media (min-width: 640px) { .bl-credit { padding-bottom: 12px; } }
+body[data-tab="map"] .bl-credit { display: none; }
+
+/* 卡片、進度條、小框（取代 Tailwind 的亮色 emerald／red／amber） */
+.bl-card { background: var(--bl-paper); border: 1px solid #cdb58a; border-left: 5px solid var(--bl-gold-soft); }
+.bl-card-good { border-left-color: var(--bl-ok); }
+.bl-card-bad { border-left-color: var(--bl-bad); }
+.bl-track { background: #d8c8a6; }
+.bl-bar-go { background: var(--bl-gold-soft); } .bl-bar-back { background: var(--bl-ok); } .bl-bar-atk { background: var(--bl-bad); } .bl-bar-trade { background: var(--bl-iron); }
+.bl-note { background: #f6ecd2; border: 1px solid #cdb58a; color: var(--bl-ink); }
+.bl-note-bad { background: #f1ddd0; border-color: #c98a80; color: var(--bl-bad); }
+.bl-note-gold { background: var(--bl-paper-sel); border: 2px solid var(--bl-gold); }
+.bl-ok-text { color: var(--bl-ok); } .bl-bad-text { color: var(--bl-bad); } .bl-warn-text { color: #7a3e12; } .bl-sub { color: #6b5a48; }
+.bl-input { background: #fffaf0; border-color: #8c6239; }
+.tag-sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; border: 1px solid rgba(60,40,24,.5); margin-right: 5px; vertical-align: -1px; }
+.up-unit { padding: 8px; border-radius: 6px; border: 1px solid #cdb58a; background: var(--bl-paper); }
+.up-unit.is-locked { background: #efe6cf; opacity: .7; }
+.up-need { color: var(--bl-bad); font-weight: 700; }
+.tribe-card, .quad-btn { background: var(--bl-paper); border: 2px solid var(--bl-line); }
+.tribe-card.is-active, .quad-btn.is-active { background: var(--bl-paper-sel); border-color: var(--bl-gold); box-shadow: 0 0 0 1px var(--bl-gold); }
+/* 開局畫面：手機上種族卡精簡（只有選取中的那張展開優缺點） */
+@media (max-width: 639.98px) {
+    .tribe-card { padding: 10px 12px; }
+    .tribe-card:not(.is-active) ul { display: none; }
+    .tribe-card:not(.is-active) p { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 0; }
+}
 </style>
 </head>
 <body class="min-h-screen flex flex-col">
+<!-- 圖示 sprite：game-icons.net（CC BY 3.0），作者見頁面底部標註 -->
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+<symbol id="gi-wood" viewBox="0 0 512 512"><path d="M405 28.42c-1.1 0-2.2 0-3.3.1-1.1 0-2.3.11-3.4.2l-63.5 57.52 19.5-45.12c-19.6 9.56-37.3 23.94-48.8 41.1L93 399.5c9.7-4.8 19.7-8.1 29.6-9.9l31.5-44.7-12.1 43.2c2.7 0 5.4.1 8.1.4 17 1.7 33.4 7.5 48.7 16.8l82.8-118.1-56.8 138.4c14.9 14.5 28 32.8 38.3 53.8L475.7 88.03a100.7 100.7 0 0 0-4.3-15.14L350.6 224.7 459.3 51.46c-3.2-3.77-6.6-7.03-10.3-9.8-12.2-9.13-27.5-13.33-44-13.24zM337.1 117L192.6 344.2 243.1 222zM140.7 406h-3.5l-4.5 40.5-19.9-36.1c-26.68 8.9-53.28 31.6-76.49 73.2l48.97-.2 33.62-22.6-5.6 22.5 131.4-.4c-9.4-18-20.9-33.2-33.7-45.3l-36.6 20.9 16.3-36.9c-13.6-8.5-27.9-13.7-42.4-15.2-2.5-.2-5.1-.3-7.6-.4z"/></symbol>
+<symbol id="gi-clay" viewBox="0 0 512 512"><path d="M329.3 99.64l-39.7 10.46c-30.2 26.1-62.7 50.9-96.7 75.1l-6.7 21-34.1 7.3c-22.6 15.3-45.6 30.4-68.82 45.5l120.32 18.4 213.9-167.1c-27.7-3.8-56.9-7.5-88.2-10.66zm103.4 21.56l-61.4 47.9-43 53.1-45 15.7-65 50.7 20.8 115.1c65.6-54.6 127.6-109.4 187-163.1l-5.6-31.2 42.1-1.9c8.3-7.4 16.5-14.9 24.6-22.3zM61.58 277.6c-21.15 39.9-32.01 70.6-36.83 95.8 9.21 1.1 18.3 2.2 27.28 3.5l16.76-30.6 5.52 34c53.29 8.6 103.09 20.5 152.19 32.1l-26.9-117.6-66-10.1z"/></symbol>
+<symbol id="gi-iron" viewBox="0 0 512 512"><path d="M322.248 85.684L61.432 224.717l-41.145 109.94 7.233 3.85 153.673 81.8 308.495-164.215-37.752-99.903-129.688-70.506zm119.035 95.187l25.11 66.45-102.56 54.594L430.39 186.64l10.893-5.77zm-89.576 47.417L284.957 343.9l-41.67 22.182 72.195-118.62 36.225-19.175zM72.38 248.78l28.21 14.933-54.012 54.012L72.38 248.78zm210.827 15.767L211.19 382.87l.26.16-17.208 9.16 5.795-83.618 83.17-44.025zm-165.334 8.312l16.963 8.98-60.445 60.445-16.93-9.012 60.413-60.414zM181.42 306.9l-6.174 89.07-54.1-28.798 60.274-60.272z"/></symbol>
+<symbol id="gi-crop" viewBox="0 0 512 512"><path d="M98.344 16.688C79.692 43.785 68.498 69.01 65.5 89.56l23.938 39.157 28.624-33.47c.868-21.213-5.49-48.677-19.718-78.563zM472.5 19.625C444.04 36.055 423.112 54 411.562 71.25l4.75 45.688L456.563 99c9.89-18.777 15.938-46.29 15.938-79.375zm-91.75 27.28c-10.153 21.036-16.8 40.84-20.156 58.314l18.375 57.686 19.78-34.25-6.5-62.22h.03c-3.422-6.392-7.252-12.906-11.53-19.53zM27.25 80.782c-.125 23.364 2.393 44.102 6.875 61.314L75.5 186.25l3.125-39.406L46 93.47l.03-.032c-5.83-4.287-12.08-8.52-18.78-12.657zm132.844 10.532c-8.415 3.504-16.29 7.213-23.594 11.094l-39.25 45.97-3.094 39.374 50.438-39.094c6.712-15.904 12.09-35.263 15.5-57.344zm177.22 21.626c-24.024 58.09-16.16 97.86 7.873 108.5l21.157-36.625-19.594-61.438c-2.973-3.46-6.108-6.943-9.438-10.438zm146.03.218c-4.55-.028-8.97.084-13.28.28L414.935 138l-19.78 34.28 62.343-13.655c12.897-11.47 26.09-26.626 38.656-45.094-4.358-.216-8.64-.348-12.812-.374zm-226.094 8.72c-23.24 23.238-38.832 46.003-45.53 65.655l16.436 42.907 34.22-27.75c4.695-20.704 3.436-48.856-5.126-80.812zM16.406 159.06c3.28 62.77 27.482 95.31 53.75 94.594l3.344-42.22-44.063-47c-4.175-1.844-8.515-3.647-13.03-5.374zm143.22 11.375c-6.457 1.354-12.63 2.896-18.5 4.563l-48.97 37.938-3.312 41.75c26.492 7.51 57.16-20.567 70.78-84.25zm16.06 1.563c-4.36 22.935-5.65 43.762-4.374 61.5l32.688 51 10.22-38.188-22.407-58.437h.03c-4.952-5.28-10.318-10.592-16.155-15.875zm267.408 8.938l-60.563 13.218-20.936 36.25c20.682 18.195 60.438 6.035 100.125-45.625-6.413-1.552-12.62-2.823-18.626-3.843zm-138.688 25.53c-8.912 1.92-17.304 4.16-25.187 6.657l-46.97 38.03-10.22 38.19 56.69-29.283c9.493-14.424 18.323-32.49 25.686-53.593zm155.125 25.063c-25.85 20.324-44.046 41.06-53.03 59.782l11.22 44.532 37.28-23.47c7.126-19.99 9.236-48.088 4.53-80.843zm-123.342 8.595c-34.435 77.573-59.394 159.06-62.97 253.03h18.72c3.558-90.792 27.573-169.428 61.312-245.436l-17.063-7.595zm-185.375 6.906c-8.173 62.347 9.714 98.713 35.687 102.75l10.97-40.874-34.814-54.25c-3.77-2.57-7.713-5.105-11.844-7.625zm221.75 24.532c-7.053 22.243-10.817 42.77-11.657 60.532l26.406 54.594L402 349.967l-15.28-60.687h.06c-4.3-5.848-9.033-11.76-14.217-17.717zm-302.47 1.532c-8.664 74.584-8.13 147.835 12.188 220.062h19.44c-20.877-70.772-21.764-143.02-13.064-217.906l-18.562-2.156zm219.47 11.094c-6.613.16-12.953.54-19.032 1.125L215.5 313.78l-10.844 40.408c24.69 12.23 59.938-9.82 84.906-70zm206.718 36.937c-9.072.844-17.664 2.052-25.78 3.594l-51.156 32.217-14.688 36.657 59.75-22.313c11.14-13.193 22.055-30.075 31.875-50.155zm-157.31 22c-15.528 60.938-2.096 99.19 23.217 106.28l15.72-39.28-28.094-58.03c-3.43-3-7.053-5.985-10.844-8.97zM183.25 368.72c-12.674 41.233-22.26 82.547-26.844 124.436h18.813c4.507-39.722 13.69-79.23 25.905-118.97l-17.875-5.467zm270 26.655l-58 21.688-15.563 38.875c23.056 15.098 60.673-2.606 92.625-59.407-6.594-.627-12.95-1.003-19.062-1.155zM356.5 469.03c-1.874 7.713-3.185 15.757-3.656 24.126h18.687c.45-6.686 1.55-13.206 3.126-19.687l-18.156-4.44z"/></symbol>
+<symbol id="gi-pop" viewBox="0 0 512 512"><path d="M250.882 22.802c-23.366 3.035-44.553 30.444-44.553 65.935 0 19.558 6.771 36.856 16.695 48.815l11.84 14.263-18.217 3.424c-12.9 2.425-22.358 9.24-30.443 20.336-8.085 11.097-14.266 26.558-18.598 44.375-7.843 32.28-9.568 71.693-9.842 106.436h42.868l11.771 157.836c29.894 6.748 61.811 6.51 90.602.025l10.414-157.86h40.816c-.027-35.169-.477-75.126-7.584-107.65-3.918-17.934-9.858-33.372-18.04-44.343-8.185-10.97-18.08-17.745-32.563-19.989l-18.592-2.88 11.736-14.704c9.495-11.897 15.932-28.997 15.932-48.082 0-37.838-23.655-65.844-49.399-65.844z"/></symbol>
+<symbol id="gi-wall" viewBox="0 0 512 512"><path d="M18.08 23l.1 18H494V23H18.08zM254.3 54.93L133 61.6l30.1 68.5 98.1-3.6-6.9-71.57zm115.9.28l-92.9.53 3 71.96 96.8-.9-6.9-71.59zM18.23 56.43l.35 74.67 72.27-2.4 24.35-72.27H18.23zM393 64.24l-.5 47.16 15.7 21.5 85.8-6.3V64.93l-101-.69zM120.8 84.68l-17.6 49.82 41.1-1-8.2-34.02-15.3-14.8zm354.7 56.02l-4 75.5 22.5-.6v-74.9h-18.5zm-25.7 3.5l-97.3 10.7L346 219l110.7-3.2-6.9-71.6zm-243.8.7l-4 75.5 126.1-3.9 7-71.1-129.1-.5zm-145.33 2.7l-3.9 75.5 126.13-3.9-6.9-71.6H60.67zm-42 1.5l.33 72.4 24.77-.8-6.9-71.6h-18.2zm278.93 84.3L276 277.2l2.1 42 128.7-1.9-7.6-79.7-101.6-4.2zm-40.2 1.4l-127.2 6 8 69.5 124.7 6.6-5.5-82.1zm236.6 3.1l-66.5 2.9-7.5 75.8 74-5.2v-73.5zm-474.89 7l.31 65.8 100.78-3.1-6.9-62.7H19.11zm470.29 81.2l-115.9 10.5-3.3 65 121.5-3.5-2.3-72zm-422.36 4.1l-47.52 2 .34 72.9 51.1-1.3-3.92-73.6zm17.84 0l3.98 68.5 138.64 9.6-3-78.1H84.88zm161.22 4.3l-5.5 69 107.5 5.4-1-73.5-101-.9zm185.4 81.1l-4 75.5 66.5-.6v-73.8l-62.5-1.1zm-9.8 1.2l-39 3.6 27.4 28 11.6-31.6zm-399.46 1.8l-2.13 40.6.16 34.8H145.4v-68.9l-46.56-2.5-18.4 14L68.56 421l-46.32-2.4zm247.96.3l-111.3 1.5 3.5 72.5 114.7-2.4-6.9-71.6zm101.2 4.3l-72.2 5.9-8.9 62.1 125.6.6-6.2-27-38.3-41.6z"/></symbol>
+<symbol id="gi-cave" viewBox="0 0 512 512"><path d="M346.951 24.582L299.193 72.34l-101.136-7.024-40.97 80.737 68.688 25.35 37.153-19.936 8.511 15.861-44.293 23.768-79.7-29.416-70.19 55.341 35.117 58.995-.375.2 13.014 21.585 29.134 2.361 55.06-35.123 9.679 15.176-60.16 38.377-44.364-3.596-18.23-30.234-56.8 30.586 33.712 61.804-33.713 40.735L18 444.177V494h170.62l-5.6-45.592a260.658 260.658 0 0 1-5.147-4.512c-4.186-3.761-5.89-5.444-8.027-7.484l-73.13 21.797-21.339-20.484 12.467-12.985 13.777 13.225 73.068-21.78 3.784 3.667s4.24 4.09 9.216 8.636l37.797-37.248 8.133 79.54 6.3-93.444 10.364 28.387 6.281-45.112 3.14-3.091-.29-.233 22.486-27.974.465-.907.188.096 11.453-14.248 14.03 11.277-9.122 11.348 67.803 34.715 27.008-9.489 22.478 17.71 22.924-12.036 8.367 15.938-33.262 17.46-23.875-18.81-24.964 8.772-9.584-4.907 39.04 87.842L383.923 494H494v-28.512L462.713 478.2l-6.776-16.678L494 446.06V211.176l-23.438-26.463-21.654-67.371-33.547 32.666-107.77-13.873-28.019-29.096 12.967-12.486 23.629 24.539 92.867 11.953 31.442-30.615-52.79-61.801zm27.53 177.74l34.177 41.428 28.863-6.56-4.136-13.59 17.22-5.243 9.77 32.098-58.543 13.307-31.377-38.033-33.086 19.853-9.262-15.436z"/></symbol>
+<symbol id="gi-alert" viewBox="0 0 512 512"><path d="M256 41c-89.577 0-162 72.423-162 162s72.423 162 162 162 162-72.423 162-162S345.577 41 256 41zm151.883 9.932l-12.248 13.19c42.18 39.167 52.373 78.107 55.332 118.46l17.951-1.316c-3.13-42.694-15.447-88.002-61.035-130.334zm49.334.504l-13.16 12.279c16.636 17.828 28.995 43.23 32.785 64.402l17.719-3.172c-4.514-25.216-18.03-52.81-37.344-73.51zM256 158c27.401 0 50 22.599 50 50s-22.599 50-50 50-50-22.599-50-50 22.599-50 50-50zm0 36c-7.945 0-14 6.055-14 14s6.055 14 14 14 14-6.055 14-14-6.055-14-14-14zM61.19 219.252l-17.952 1.316c3.13 42.694 15.447 88.004 61.035 130.336l12.248-13.191c-42.18-39.168-52.373-78.108-55.332-118.461zm396.197 43.543c-13.7 0-25 11.3-25 25 0 12.561 9.5 23.097 21.638 24.764 7.8 43.445-6.374 94.946-45.025 131.992v23.86c52.635-41.742 72.756-105.706 62.557-160.083 6.52-4.534 10.83-12.074 10.83-20.533 0-13.7-11.3-25-25-25zM35.314 273.719l-17.716 3.172c4.513 25.216 18.027 52.81 37.341 73.51l13.16-12.282c-16.636-17.828-28.995-43.228-32.785-64.4zM137 337.965V407h238v-69.035C343.26 365.979 301.595 383 256 383s-87.26-17.021-119-45.035zM121 425v68h270v-68H121z"/></symbol>
+<symbol id="gi-hammer" viewBox="0 0 512 512"><path d="M215.97 27.813c-2.218.04-4.35.177-6.407.375l-.532.062c-2.774.266-5.796 1.01-9.124 1.844-4.418 1.11-8.096 2.607-11.125 4.406l77.782 59.313 7.375 5.656-5.593 7.405-13.72 18.156 67.595 51.626 14.217-18.812 9.47-12.53 6.5 14.342 19.656 43.47 60.593-80.095-47.187-7.124-15.533-2.312 9.47-12.563 14.28-18.843-67.593-51.624L310.78 50.78l-5.03 6.657-7.188-4.25c-28.635-16.917-58.02-25.157-80.343-25.374-.757-.008-1.512-.014-2.25 0zM453 127.124l-71.47 94.438 34.564 26.187c44.24-20.22 64.01-52.594 71.312-94.625l-34.406-26zm-193.688 25.03c-27.17 33.09-55.308 64.706-82.812 96.22l47.406 39.875c23.11-35.343 46.336-71.61 71.938-108.22l-36.53-27.874zM164.25 262.47c-11.355 13.115-22.564 26.254-33.5 39.5l48.375 52.717c11.707-16.6 23.107-33.515 34.438-50.687l-49.313-41.53zm-45.438 54.124c-7.884 9.808-15.59 19.71-23.093 29.72l33.468 73.842c13.586-16.22 26.434-32.893 38.843-49.937l-49.218-53.626zm-35.75 47.03c-12.108 16.978-23.57 34.335-34.124 52.282L98.53 454.47c5.882-6.166 11.622-12.4 17.22-18.72l-32.688-72.125zm-43.437 68.688c-5.185 9.492-10.105 19.145-14.75 29l37.375 28.313c7.976-7.11 15.672-14.348 23.125-21.72l-45.75-35.592z"/></symbol>
+<symbol id="gi-bell" viewBox="0 0 512 512"><path d="M254.125 26.188c-17.377-.003-31.66 14.28-31.656 31.656 0 7.617 2.733 14.64 7.28 20.125-10.79 3.876-19.043 10.963-26.906 22.06-13.057 18.43-23.687 49.03-35.406 92.782-10.257 38.29-24.345 57.012-34.657 70.563-10.31 13.55-16.252 20.325-16.25 42.688.002 3.5 1.975 7.314 8.44 12.03 6.463 4.717 16.877 9.383 29.905 13.188 26.055 7.612 62.442 11.962 100.25 11.97 19.384.004 38.368-1.15 55.78-3.28v.124c12.13-1.043 33.332-3.898 51.345-10.28 5.795-2.055 11.28-4.422 16.125-7.533 2.612-1.376 4.947-2.747 6.875-4.155 6.458-4.714 8.438-8.523 8.438-12.03-.004-22.363-5.935-29.135-16.25-42.69-10.316-13.553-24.42-32.27-34.688-70.56-11.732-43.757-22.343-74.35-35.406-92.782-8.225-11.607-16.895-18.836-28.438-22.594 4.31-5.41 6.908-12.24 6.906-19.626-.002-17.377-14.31-31.654-31.687-31.657zm0 18.687c7.278 0 13 5.694 13 12.97 0 7.272-5.722 12.97-13 12.968-7.278-.002-12.968-5.696-12.97-12.97 0-7.273 5.693-12.97 12.97-12.968zm9.22 43.22c34.616 10.188 49.56 64.686 58.124 101.56 14.99 64.56 45.652 82.98 53.03 111.25-.327.633-1.002 1.286-2.094 2.408-2.665 2.74-8.816 6.216-16.406 8.906-7.366 2.61-16 4.614-24.188 6.124-1.73-38.024-33.765-53.55-33.25-107.47.603-63.043-17.19-103.352-39.5-121.78 1.468-.233 2.886-.57 4.282-1zm-206.876 91.28C23.546 223.947 11.19 289.253 28.874 355.25c18.208 67.957 63.562 118.994 116.313 140.03-38.592-30.418-72.26-83.223-89.75-148.5-16.674-62.228-14.924-122.366 1.03-167.405zm399.436 0c15.955 45.04 17.705 105.177 1.03 167.406-17.49 65.277-51.157 118.082-89.748 148.5 52.75-21.036 98.135-72.073 116.343-140.03 17.686-65.997 5.298-131.303-27.624-175.875zM105.687 210.28c-29.71 34.43-42.433 83.74-29.343 132.595 13.478 50.306 50.845 87.082 95.5 101.156-32.19-21.55-59.46-60.02-72.406-108.342-12.344-46.066-8.896-91.175 6.25-125.407zm301.032 0c15.144 34.233 18.56 79.342 6.217 125.407-12.947 48.322-40.185 86.793-72.375 108.344 44.655-14.073 81.99-50.85 95.47-101.155 13.09-48.856.396-98.166-29.313-132.594zM146.53 348.25c1.218 12.736 11.944 22.686 25 22.688 9.422 0 17.642-5.173 21.94-12.844-15.986-2.11-30.823-5.08-43.814-8.875-1.06-.31-2.09-.65-3.125-.97z"/></symbol>
+<symbol id="gi-castle" viewBox="0 0 512 512"><path d="M255.95 27.11L180.6 107.614l150.7 1.168-75.35-81.674h-.003zM25 109.895v68.01l19.412 25.99h71.06l19.528-26v-68h-14v15.995h-18v-15.994H89v15.995H71v-15.994H57v15.995H39v-15.994H25zm352 0v68l19.527 26h71.06L487 177.906v-68.01h-14v15.995h-18v-15.994h-14v15.995h-18v-15.994h-14v15.995h-18v-15.994h-14zm-176 15.877V260.89h110V126.63l-110-.857zm55 20.118c8 0 16 4 16 12v32h-32v-32c0-8 8-12 16-12zM41 221.897V484.89h78V221.897H41zm352 0V484.89h78V221.897h-78zM56 241.89c4 0 8 4 8 12v32H48v-32c0-8 4-12 8-12zm400 0c4 0 8 4 8 12v32h-16v-32c0-8 4-12 8-12zm-303 37v23h-16v183h87v-55c0-24 16-36 32-36s32 12 32 36v55h87v-183h-16v-23h-14v23h-18v-23h-14v23h-18v-23h-14v23h-18v-23h-14v23h-18v-23h-14v23h-18v-23h-14v23h-18v-23h-14zm-49 43c4 0 8 4 8 12v32H96v-32c0-8 4-12 8-12zm72 0c8 0 16 4 16 12v32h-32v-32c0-8 8-12 16-12zm80 0c8 0 16 4 16 12v32h-32v-32c0-8 8-12 16-12zm80 0c8 0 16 4 16 12v32h-32v-32c0-8 8-12 16-12zm72 0c4 0 8 4 8 12v32h-16v-32c0-8 4-12 8-12zm-352 64c4 0 8 4 8 12v32H48v-32c0-8 4-12 8-12zm400 0c4 0 8 4 8 12v32h-16v-32c0-8 4-12 8-12z"/></symbol>
+<symbol id="gi-main" viewBox="0 0 512 512"><path d="M71 22.406v102.53h202.25v18.69h-73.22v36.968h-18.686v-36.97H79.156l43.375 53.782h180.44v18.688H180.905v36.97H162.22v-36.97h-39.407v163.562h58.53v-44.75H157.47V316.22h74.155V282.56H193.72v-18.687h97.218v18.688h-40.625v33.656h73.28v18.686h-32.437v44.75h26.313v18.688h-63.69l-2.686 74.03-18.688-.687 2.656-73.343H93.032V398h-.22l-28.687 92.844h79.844l9.81-70.688 18.5 2.563-9.468 68.124H453.25L424.562 398h-30.03V197.78l51.812-64.25V22.407h-64.406v52.438h-39.22V22.406h-65.124v52.438h-38.53V22.406h-65.126v52.438h-38.5V22.406H71zm129.03 312.5v44.75h72.44v-44.75h-72.44z"/></symbol>
+<symbol id="gi-map" viewBox="0 0 512 512"><path d="M227.4 34.7c-10.1 0-20.2.2-30.2.5l6.1 65.6-61.1-62.5c-31.3 2.5-62.5 6.6-93.8 12.5l34.2 28.4-48-.6c35.1 100.2 6.9 182.6-.3 292.1L130 476.5c10-1.3 19.9-2.4 29.6-3.3l21.5-42.2 18.6 28.8 41.5-33.5.8 43c82.9-.2 157.7 9.1 235.7 7.9-28.2-73-31.2-143.6-31.9-209.2l-33.3-19.1 32.7-33.9c-.4-21.3-1.3-42-3.6-61.9l-57.4.7 50.2-41.7c-3.8-15.5-9-30.4-16.1-44.7l-29.5-23.9C335 38 281.2 34.6 227.4 34.7zm58.7 37c10.6 24.75 21.1 49.5 31.7 74.3 7.5-10.5 14.9-21 22.4-31.5 16 27.2 32 54.3 48 81.5l-16.2 9.5-33.3-56.7-42.5 59.4-15.2-10.9 24-33.5-21.9-51.5-24.6 40.1 12 22.6-16.5 8.8-18.3-34.5-24.8 58.2-17.2-7.4 32.5-76.2 7.7-18c4.8 9.2 9.6 18.3 14.5 27.4 12.5-20.6 25.1-41.11 37.7-61.6zM91.2 128c6.72 1.6 13.4 3.4 19.2 5.3-2.1 5.9-4.1 11.8-6.2 17.6-5.79-1.6-11.72-3.4-16.9-4.7 1.39-6 2.62-12.1 3.9-18.2zm37.9 13.4c6.3 3.8 12 7.2 17 12.8L132.6 167c-4-3.7-8.6-7-12.8-9.4zm28.7 32.3c2.1 7.4 2.1 15.7 1.6 22.5l-18.5-2.4c.1-5.1.3-10-1-14.5zm-21.2 35.7l17.2 7.1c-3.3 6.6-5.1 12.7-8.6 17.8l-16.3-9c2.6-5.4 5.6-10.8 7.7-15.9zm-16.5 34.1l17.7 6.1c-1.5 5.4-3 11.2-3.6 16.2l-18.6-2c1.3-7.5 2.1-14 4.5-20.3zm207.8 17.4c8.5 1 14.6 3 21.7 7.1l-9.8 16c-4.1-2.8-9.4-3.8-13.5-4.5zm-21.2 1.5c1.1 6.1 2.5 12.2 3.9 18.3-5.9 1.3-11.7 3.3-16.5 5.1l-6.8-17.4c6.7-2.4 13.5-4.7 19.4-6zm-37.9 15.9l11 15.1c-5.6 4-11.8 7.8-16.8 10.6l-8.9-16.4c5.1-2.9 10.6-6.3 14.7-9.3zM135.3 281c1.5 4.7 4.2 9.2 6.9 12.1l-13.8 12.6c-5.5-5.7-9.5-13.5-11.2-20.1zm230.3 3.3c3.5 6.4 6.8 12.7 8.7 19.1l-17.8 5.6c-2-5.4-4.3-10.8-6.8-14.8zm-127.4 10.9l6.9 17.3c-6.4 2.7-12.9 4.8-18.6 6.5l-5-18c5.9-1.6 11.3-3.8 16.7-5.8zm-83.8 6.2c5.3 1.7 10.8 3.4 15.7 4.2-1.2 6.1-2 12.3-2.8 18.5-7-1-14.5-3.3-20.5-5.7zm50 3.5l2.8 18.5c-7.2 1.3-13.4 1.6-19.8 1.9l-.4-18.7c5.9-.2 11.6-.8 17.4-1.7zm174.5 18c1 6.4 1.6 12.9 2.2 19.3l-18.7 1.5c-.4-6-.9-11.9-2-17.8zm-67.6 30.8c18.9 3.5 44.9 16.2 68.9 33.9 7.4-9.9 14.4-20.4 21.3-31.1l30.1 12.9c-4.7 12.3-15 25.6-28.6 37.2 17 16.2 30.9 34.5 37 53-13.8-18.1-31.1-31.8-50.3-42.8-23.4 15.8-52.7 25.9-79.6 20.4 22.9-4.4 40.6-16.6 55.8-32.6-16.5-7.5-33.8-13.9-51.3-20.1z"/></symbol>
+<symbol id="gi-scroll" viewBox="0 0 512 512"><path d="M103.432 17.844c-1.118.005-2.234.032-3.348.08-2.547.11-5.083.334-7.604.678-20.167 2.747-39.158 13.667-52.324 33.67-24.613 37.4 2.194 98.025 56.625 98.025.536 0 1.058-.012 1.583-.022v.704h60.565c-10.758 31.994-30.298 66.596-52.448 101.43-2.162 3.4-4.254 6.878-6.29 10.406l34.878 35.733-56.263 9.423c-32.728 85.966-27.42 182.074 48.277 182.074v-.002l9.31.066c23.83-.57 46.732-4.298 61.325-12.887 4.174-2.458 7.63-5.237 10.467-8.42h-32.446c-20.33 5.95-40.8-6.94-47.396-25.922-8.956-25.77 7.52-52.36 31.867-60.452 5.803-1.93 11.723-2.834 17.565-2.834v-.406h178.33c-.57-44.403 16.35-90.125 49.184-126 23.955-26.176 42.03-60.624 51.3-94.846l-41.225-24.932 38.272-6.906-43.37-25.807h-.005l.002-.002.002.002 52.127-8.85c-5.232-39.134-28.84-68.113-77.37-68.113C341.14 32.26 222.11 35.29 149.34 28.496c-14.888-6.763-30.547-10.723-45.908-10.652zm.464 18.703c13.137.043 27.407 3.804 41.247 10.63l.033-.07c4.667 4.735 8.542 9.737 11.68 14.985H82.92l10.574 14.78c10.608 14.83 19.803 31.99 21.09 42.024.643 5.017-.11 7.167-1.814 8.836-1.705 1.67-6.228 3.875-15.99 3.875-40.587 0-56.878-44.952-41.012-69.06C66.238 46.64 79.582 39.22 95.002 37.12c2.89-.395 5.863-.583 8.894-.573zM118.5 80.78h46.28c4.275 15.734 3.656 33.07-.544 51.51H131.52c1.9-5.027 2.268-10.574 1.6-15.77-1.527-11.913-7.405-24.065-14.62-35.74zm101.553 317.095c6.44 6.84 11.192 15.31 13.37 24.914 3.797 16.736 3.092 31.208-1.767 43.204-4.526 11.175-12.576 19.79-22.29 26h237.19c14.448 0 24.887-5.678 32.2-14.318 7.312-8.64 11.2-20.514 10.705-32.352-.186-4.473-.978-8.913-2.407-13.18l-69.91-8.205 42.017-20.528c-8.32-3.442-18.64-5.537-31.375-5.537H220.053zm-42.668.506c-1.152-.003-2.306.048-3.457.153-2.633.242-5.256.775-7.824 1.63-15.11 5.02-25.338 21.54-20.11 36.583 3.673 10.57 15.347 17.71 25.654 13.938l1.555-.57h43.354c.946-6.36.754-13.882-1.358-23.192-3.71-16.358-20.543-28.483-37.815-28.54z"/></symbol>
+<symbol id="gi-crate" viewBox="0 0 512 512"><path d="M37.727 25l78 78h280.546l78-78H37.727zM25 37.727v436.546l78-78V115.727l-78-78zm462 0l-78 78v280.546l78 78V37.727zM79.957 40a8 8 0 0 1 8 8 8 8 0 0 1-8 8 8 8 0 0 1-8-8 8 8 0 0 1 8-8zM432 40.793a8 8 0 0 1 8 8 8 8 0 0 1-8 8 8 8 0 0 1-8-8 8 8 0 0 1 8-8zM112 72a8 8 0 0 1 8 8 8 8 0 0 1-8 8 8 8 0 0 1-8-8 8 8 0 0 1 8-8zm287.45 0a8 8 0 0 1 8 8 8 8 0 0 1-8 8 8 8 0 0 1-8-8 8 8 0 0 1 8-8zm63.42 0a8 8 0 0 1 8 8 8 8 0 0 1-8 8 8 8 0 0 1-8-8 8 8 0 0 1 8-8zM48 73.047a8 8 0 0 1 8 8 8 8 0 0 1-8 8 8 8 0 0 1-8-8 8 8 0 0 1 8-8zM79.395 104a8 8 0 0 1 8 8 8 8 0 0 1-8 8 8 8 0 0 1-8-8 8 8 0 0 1 8-8zm352.605.2a8 8 0 0 1 8 8 8 8 0 0 1-8 8 8 8 0 0 1-8-8 8 8 0 0 1 8-8zM121 121v193.273l53.7-53.7L174.065 121H121zm71.064 0l.555 121.654 54.38-54.38V121h-54.936zM265 121v49.273L314.273 121H265zm74.727 0L121 339.727V391h51.273L391 172.273V121h-51.273zM391 197.727l-53.023 53.023V391H391V197.727zm-71.023 71.023L265 323.727V391h54.977V268.75zM247 341.727L197.727 391H247v-49.273zM77.97 392a8 8 0 0 1 8 8 8 8 0 0 1-8 8 8 8 0 0 1-8-8 8 8 0 0 1 8-8zm354.03.658a8 8 0 0 1 8 8 8 8 0 0 1-8 8 8 8 0 0 1-8-8 8 8 0 0 1 8-8zM115.727 409l-78 78h436.546l-78-78H115.727zM48 423.752a8 8 0 0 1 8 8 8 8 0 0 1-8 8 8 8 0 0 1-8-8 8 8 0 0 1 8-8zm64 .8a8 8 0 0 1 8 8 8 8 0 0 1-8 8 8 8 0 0 1-8-8 8 8 0 0 1 8-8zm288 .712a8 8 0 0 1 8 8 8 8 0 0 1-8 8 8 8 0 0 1-8-8 8 8 0 0 1 8-8zm64 4.74a8 8 0 0 1 8 8 8 8 0 0 1-8 8 8 8 0 0 1-8-8 8 8 0 0 1 8-8zM432 456a8 8 0 0 1 8 8 8 8 0 0 1-8 8 8 8 0 0 1-8-8 8 8 0 0 1 8-8zm-352 2.56a8 8 0 0 1 8 8 8 8 0 0 1-8 8 8 8 0 0 1-8-8 8 8 0 0 1 8-8z"/></symbol>
+<symbol id="gi-barn" viewBox="0 0 512 512"><path d="M256 23.38L89.844 89.845l-64.9 162.254 14.85 5.943c20.312-50.766 40.62-101.535 60.93-152.304l1.432-3.58L256 40.616l153.844 61.54 1.43 3.58 60.93 152.305 14.853-5.942-64.9-162.254C366.77 67.69 311.386 45.534 256 23.38zm0 36.624l-139.996 55.998L72.8 224h.2v263h78V329h-39v-18h297v176h30V224h.2c-14.402-36-28.802-72-43.204-107.998L256 60.004zM151 135h210v114H151V135zm23.563 18L199 201.873V153h-24.438zM313 153v48.873L337.438 153H313zm-144 29.127V231h24.438L169 182.127zm174 0L318.562 231H343v-48.873zm-98.73 18.69c-1.207-.02-2.31.02-3.288.128-2.823.31-10.76 3.708-16.86 7.3-2.796 1.645-5.23 3.22-7.122 4.484V231h78v-16.97c-4.193-1.675-10.334-4.02-17.578-6.368-11.206-3.63-24.71-6.71-33.152-6.846zM160 263h192v18H160v-18zm15.16 66L208 389.205 240.84 329h-65.68zm144 0L352 389.205 384.84 329h-65.68zM169 355.295v105.41L197.748 408 169 355.295zm78 0L218.252 408 247 460.705v-105.41zm66 0v105.41L341.748 408 313 355.295zm78 0L362.252 408 391 460.705v-105.41zm-183 71.5L175.16 487h65.68L208 426.795zm144 0L319.16 487h65.68L352 426.795z"/></symbol>
+<symbol id="gi-flag" viewBox="0 0 512 512"><path d="M247 26v163.2c-15 .8-28.5 3.3-39.4 7.4-6.5 2.4-12.1 5.4-16.5 9.3-4.5 4-8.1 9.5-8.1 16.1 0 6.6 3.6 12.1 8.1 16.1 4.4 3.9 10 6.9 16.5 9.3 13 4.9 29.8 7.6 48.4 7.6 18.6 0 35.4-2.7 48.4-7.6 6.5-2.4 12.1-5.4 16.5-9.3 4.5-4 8.1-9.5 8.1-16.1 0-6.6-3.6-12.1-8.1-16.1-4.4-3.9-10-6.9-16.5-9.3-10.9-4.1-24.4-6.6-39.4-7.4V26zm38 .99v70.02L378.4 62zM247 207.3v29.4c-13.1-.7-24.8-3-33.1-6.2-5.1-1.9-8.9-4.1-10.9-5.9-2-1.8-2-2.5-2-2.6 0-.1 0-.8 2-2.6s5.8-4 10.9-5.9c8.3-3.2 20-5.5 33.1-6.2zm18 0c13.1.7 24.8 3 33.1 6.2 5.1 1.9 8.9 4.1 10.9 5.9 2 1.8 2 2.5 2 2.6 0 .1 0 .8-2 2.6s-5.8 4-10.9 5.9c-8.3 3.2-20 5.5-33.1 6.2zm-9 70.7L96 358l128-16-32 144h128l-32-144 128 16z"/></symbol>
+<symbol id="gi-swords" viewBox="0 0 512 512"><path d="M19.75 14.438c59.538 112.29 142.51 202.35 232.28 292.718l3.626 3.75.063-.062c21.827 21.93 44.04 43.923 66.405 66.25-18.856 14.813-38.974 28.2-59.938 40.312l28.532 28.53 68.717-68.717c42.337 27.636 76.286 63.646 104.094 105.81l28.064-28.06c-42.47-27.493-79.74-60.206-106.03-103.876l68.936-68.938-28.53-28.53c-11.115 21.853-24.413 42.015-39.47 60.593-43.852-43.8-86.462-85.842-130.125-125.47-.224-.203-.432-.422-.656-.625C183.624 122.75 108.515 63.91 19.75 14.437zm471.875 0c-83.038 46.28-154.122 100.78-221.97 161.156l22.814 21.562 56.81-56.812 13.22 13.187-56.438 56.44 24.594 23.186c61.802-66.92 117.6-136.92 160.97-218.72zm-329.53 125.906l200.56 200.53c-4.36 4.443-8.84 8.793-13.405 13.032L148.875 153.53l13.22-13.186zm-76.69 113.28l-28.5 28.532 68.907 68.906c-26.29 43.673-63.53 76.414-106 103.907l28.063 28.06c27.807-42.164 61.758-78.174 104.094-105.81l68.718 68.717 28.53-28.53c-20.962-12.113-41.08-25.5-59.937-40.313 17.865-17.83 35.61-35.433 53.157-52.97l-24.843-25.655-55.47 55.467c-4.565-4.238-9.014-8.62-13.374-13.062l55.844-55.844-24.53-25.374c-18.28 17.856-36.602 36.06-55.158 54.594-15.068-18.587-28.38-38.758-39.5-60.625z"/></symbol>
+<symbol id="gi-horse" viewBox="0 0 512 512"><path d="M236.156 19.906c-27 .295-52.444 5.788-75.75 15.938L210.22 141.5c9.623-5.683 20.014-10.723 31.186-15.03L258.47 20.843c-3.67-.34-7.32-.598-10.94-.75-3.815-.16-7.615-.23-11.374-.188zm40.813 3.407l-15.564 96.468c16.898-4.827 35.387-8.166 55.53-9.81l2.377-.19 68.03-41.843c-37.876-23.798-75.08-38.45-110.374-44.624zM143.655 44.156C124.946 54.62 107.858 68.31 92.812 84.97c-8.682 9.613-16.686 20.277-23.937 31.905l85.813 74.28c11.058-14.742 24.28-27.958 39.78-39.28l-50.812-107.72zm170 84.97c-98.41 9.502-148.772 59.09-172.437 127.718-23.358 67.732-18.883 154.58-1.814 235.97l232.22-.002c-13.15-51.313-36.813-75.542-55.532-96.53-10.04-11.257-19.156-21.87-22.75-35.97-2.973-11.657-1.41-24.738 5.156-40-11.903-3.81-26.067-3.973-43.125.188l-4.406-18.156c29.26-7.137 55.266-3.473 74.874 11.28 18.24 13.725 30.198 36.15 36.437 65.188 26.094 4.41 55.303 7.784 89.595 9.5 4.537-30.6 15.487-60.877 30.875-90.875-66.84-50.032-120.642-107.877-169.094-168.312zm-254.25 4.28c-12.305 23.56-21.735 50.528-27.75 80.563l93.28 32.968c5.143-14.15 11.484-27.632 19.19-40.22l-84.72-73.312zm220.938 42.344c13.897 0 25.156 11.26 25.156 25.156 0 13.898-11.26 25.156-25.156 25.156-13.897 0-25.156-11.258-25.156-25.156 0-13.897 11.26-25.156 25.156-25.156zM28.406 232.625c-3.147 21.435-4.62 44.283-4.218 68.438l84.75 16.375c2.073-18.17 5.39-35.827 10.218-52.72l-90.75-32.093zm-3.5 87.594c.968 17.276 2.856 35.174 5.75 53.655l75.688 1.47c-.246-13.2.05-26.307.906-39.19L24.906 320.22zm9 72.405c3.113 16.454 7.015 33.356 11.72 50.656l65.25-6.842c-1.765-14.152-3.054-28.315-3.814-42.407l-73.156-1.405zm79.53 62.344l-62.592 6.56c3.033 10.104 6.315 20.325 9.906 30.69h59.344c-2.515-12.318-4.75-24.754-6.656-37.25z"/></symbol>
+<symbol id="gi-catapult" viewBox="0 0 512 512"><path d="M197.746 30.38l-9.898 30.905-40.485 18.194-28.79 28.055 30.855 35.512 47.486-4.596 36.06 8.35 30.83-33.52-4.263-56.7-61.794-26.2zM25.902 133.32c-13.472 25.957-6.665 67.412 30.356 96.746 37.04 29.35 78.807 26.396 100.855 7.223L25.903 133.32zm359.174 68.99l-34.152 11.38 7.217 21.65-227.6 147.94c12.527 4.355 23.416 12.25 31.466 22.484L369.904 270.63l36.303 108.913c16.727.414 31.995 6.866 43.7 17.264l-64.83-194.498zM171.484 248.67c-9.358 9.058-21.296 15.425-34.656 18.715l63.496 49.064L232.3 295.67l-60.816-46.996zM292.66 342.31l-31.976 20.784L317.504 407h32.183c3.296-4.39 7.104-8.377 11.336-11.865L292.66 342.31zM108.166 397.5c-27.997 0-50.5 22.503-50.5 50.5s22.503 50.5 50.5 50.5 50.5-22.503 50.5-50.5-22.503-50.5-50.5-50.5zm296.334 0c-27.997 0-50.5 22.503-50.5 50.5s22.503 50.5 50.5 50.5S455 475.997 455 448s-22.503-50.5-50.5-50.5zM25 425v46h18.66c-2.58-7.196-3.994-14.937-3.994-23s1.415-15.804 3.994-23H25zm147.672 0c2.58 7.196 3.994 14.937 3.994 23s-1.415 15.804-3.994 23h167.322c-2.58-7.196-3.994-14.937-3.994-23s1.415-15.804 3.994-23H172.672zm296.334 0c2.58 7.196 3.994 14.937 3.994 23s-1.415 15.804-3.994 23H487v-46h-17.994zm-360.84 3.166A19.833 19.833 0 0 1 128 448a19.833 19.833 0 0 1-19.834 19.834A19.833 19.833 0 0 1 88.334 448a19.833 19.833 0 0 1 19.832-19.834zm296.334 0A19.833 19.833 0 0 1 424.334 448a19.833 19.833 0 0 1-19.834 19.834A19.833 19.833 0 0 1 384.666 448a19.833 19.833 0 0 1 19.834-19.834z"/></symbol>
+<symbol id="gi-crown" viewBox="0 0 512 512"><path d="M256 68.02L169.7 240.7l14.8 44.5-17 5.6-15.2-45.6-66.42-53-12.18 60.9 12.62 12.6-12.66 12.6-15.21-15.2-30.53-20.4 25.15 163.4 39.17-65.2 89.66 35.8 30.9 46.4h86.4l30.9-46.4 89.7-35.8 39.1 65.2 25.2-163.4-30.6 20.4-15.2 15.2-12.6-12.6 12.6-12.6-12.2-60.9-66.4 53-15.2 45.6-17-5.6 14.8-44.5zm0 122.58l55.7 92.8 1.9 3.2-17.5 70-20.4 20.3h-39.4l-20.4-20.3-17.5-70zm0 34.8l-38.4 64 14.5 58 11.6 11.7h24.6l11.6-11.7 14.5-58z"/></symbol>
+<symbol id="gi-palm" viewBox="0 0 512 512"><path d="M179.125 20.625c-28.052.12-54.046 5.813-66.72 9.78 0 0 114.968 19.51 124.532 98.876C149.573 3.32 54.28 155.657 54.28 155.657c19.868-5.212 76.76-20.682 114.75-14.156 25.992 4.465 51.33 28.03 50.236 27.733-61.943 15.24-160.35 290.92-143.64 313.308 14.9 17.12 29.816 11.28 44.718 2.595 7.376-58.425 64.938-314.765 135.375-294.072.01.003.02-.003.03 0 5.93 2.03 11.54 5.59 11.844 11.03.58 10.363-6.11 27.3-4.53 39.063 3.662 27.296 9.007 36.79 16.78 46.313 18.564-10.435 36.326-48.057 40-67.564 16.634 7.284 43.373 24.155 65.187 86.813 11.404-58.716-5.042-105.03-59.03-125.595 23.38-10.105 125.142 41.03 137.563 69.53C475.648 199.264 390.167 136.378 319 139.72c13.644-3.56 28.638.6 42.906-9.907 19.146-14.098 41.474-26.24 62.28-39.282-69.972-30.435-134.545-15.407-139.092 16.095-3.573-69.916-57.83-86.204-105.97-86z"/></symbol>
+<symbol id="gi-sheep" viewBox="0 0 512 512"><path d="M392.8 107.5c9.3 5.3 25.8 9.3 40 9.2 7.7-.1 14.6-1.2 19.5-3.2 5-1.8 6.9-4.9 8.9-8.8-9.2-6.08-22.1-12.27-31.8-12.87-14.9.53-28.8 8.13-36.6 15.67zm-253 20.2c-1.7 5.5-7.9 8.1-13 5.4-26.5-14.5-50.46-6.9-67.71 8.7-35.93 32.6-45.13 87.3-32.47 145.7 7.31 33.6 18.99 53 41.29 62.8 0 .1.1.1.15.1 2.22 1 4.21 1.9 6.09 2.8l4.61-22c1.02-4.9 5.8-8 10.66-7s7.98 5.8 6.96 10.7l-23.5 112c4.79 7.2 16.4 1.2 21.3-1.2l38.12-106.5c10.8-9.4 21.2-19 28.7-29.2 6.6-9.1 10.4-18.4 10.6-23.5.2-5 4.4-8.9 9.4-8.7 5 .2 9 4.6 8.6 9.6-.6 11.2-6.2 22.4-14 33.2-7.3 10-16.7 19.6-27.2 27.2l-3.3 8.9c6.9 8.7 13.4 13.8 19.6 16.8 8.8 4.1 17.7 4.6 28.5 3.3 16.4-1.9 34.6-12.9 43.5-37.2 2.8-7.7 13.6-8 16.8-.5 7.7 21.2 36.1 32.6 55.1 24l-3.9-23.3c-.8-4.9 2.5-9.6 7.4-10.4 4.9-.9 9.6 2.5 10.4 7.4l17.6 105.9c9.2 6.3 14.5 2.4 19.9-4.4l-13.8-114.4c-.7-5.3 3.3-10 8.6-10.2 4.8-.2 8.8 3.3 9.3 8l4.3 35.7c5.1-1.2 9.1-2.5 12.4-5 4.3-3.2 8.5-8.7 12.1-21.5 1.7-6 9-8.5 14.1-4.7 13.6 8.3 27.4-1.8 35.6-12.2 12.9-16.5 14.7-42.4 13.2-69.2-2.1.3-4.2.5-6.3.6-8.8.5-17.9-.9-25.7-4.4-12.4-7-22-18.4-28.2-28.9-3.9-6.8-7.3-13.7-10.5-20-5.4 9.9-11 23.1-19.2 25-12.5 2.1-23.9-3.7-29.8-12.7-5.9-8.9-7.4-20.2-4.8-31.1 2.7-11.7 9.8-38.3 22.6-56.1 2.2-2.9 4.5-5.3 6.8-7.4-7.5-3.1-16.2-3.8-22.9-3.8-5.8 0-13.5 1.8-19.7 5-6.2 3.3-10.7 7.8-12.2 11.8-3.2 8.5-15.5 7.5-17.3-1.3-3.8-22.78-53.9-17.8-65.6 2-3.8 7-14.1 5.9-16.5-1.7-8.1-22.61-62.7-21.3-66.7 5.9zm345-1.5c1.7 16.4 3.5 32.2 4.2 45.6 1.8 6.5 6 18.9 8.7 7.3.9-4.1.8-11-.4-18.6-.1-7.1-14.5-47.3-12.5-34.3zm-112.7-2.5c-11.9 15-19.2 37.4-23.3 53.7-.6 5.8-.6 12.6 2.3 17.1 2.3 3.4 4.8 5.2 9.4 5 5.8-9.4 12.1-19.8 15.6-28.2-1.2-7.9-2.8-19.9-3.6-31.4-.4-5.8-.6-11.2-.4-16.2zm94.4 2.4c-2.4 1.6-4.8 3.1-7.5 4.1-7.8 3.2-16.8 4.4-26 4.5-14.8.1-30.2-2.7-42.9-8.4 0 3.6.1 7.7.4 12.3.9 12.6 3 27.2 4 33.5 10.5 16.6 19.9 44.4 36.8 52.5 5.8 2 11.9 3.1 17.2 2.9 6-.4 10.6-2.6 11.5-3.7 3.5-8 5.9-15.2 7.3-22.3 2.1-10.9 3.4-23.3 3.6-31.6.3-6.4-.6-13.3-1.1-18.7-1.4 4.1-5.7 6.6-10 5.9-4.3-.7-7.5-4.4-7.5-8.8 0-5.1 4.2-9.2 9.3-9 3 0 5.8 1.7 7.4 4.3-.9-6.1-1.4-12-2.5-17.5zm-58.3 16.5c4.9.2 8.7 4.2 8.7 9 0 5-4 9-9 9-4.9 0-9-4-9-9s4.2-9.1 9.3-9zm47.5 48.3c3.7-.1 6.5 1.9 6.5 6.2 0 7.8-5.8 15-12.7 19l-1-23.1c2.5-1.4 5-2.1 7.2-2.1zm-24.1 2c1.8-.1 3.9.4 5.8 1.3l3.8 22.5c-6-3.7-15.4-3.6-16.5-16.1-.5-5.2 2.8-7.7 6.9-7.7zm-30.9 164.2c-3.7 5.1-7.6 9.1-12.6 12.1l16.6 62c7.6 1.5 15.9 1 19.2-5.1zm-241.2 33.7l1.5 46.8c7.9 7.9 12.9 4.8 19.7-3l-3.7-39.5c-6.3-.9-12.6-2.2-17.5-4.3z"/></symbol>
+<symbol id="gi-wolf" viewBox="0 0 512 512"><path d="M179.3 38.94C154.7 77.7 142.7 139.7 168.4 185.9l-16.3 9.2c-6.7-11.9-11.2-24.4-13.9-37.2-34.5-6.3-69.42-7.5-104.98-2.1 34.07 10.1 52.77 23.7 76.68 46.7-26.82 9.7-60.25 30.2-92.93 70.2 35.47-8.8 64.83-11.5 89.43-6.3-36.94 22.5-64.06 56.1-88.34 114.1 35.9-17.2 64.89-18.8 102.94-18.8-23.07 32.7-35.27 77.2-36.31 112.8 24.51-26 57.61-60.2 87.21-79 3 29.9 15 58.3 35.9 85.3-.2-43.9 10.3-88.3 31.6-133.4-18.8 9-32.4 18.1-49.9 29.3 6.2-27.9 12.4-55.8 18.7-83.7-23.3 2.4-39 10-60.5 18.5 16.3-33.1 32.7-66.1 49.1-99.2l16.8 8.3-28.4 57.4c18.4-4.4 28.7-4.1 45.7-1.3-4.5 20.4-9 40.7-13.6 61 65.3-36.2 148.3-45.9 226.7-50 7.6-12.9 13.8-24.2 18.8-34.8l-6.3-24.4-24.4 30.8-7.8-27.5-22.5 29.2-7.5-26.1-23.9 31.5-7.7-28.2-23.8 31.4 1.2-41.1 22.6-42.7 7.6 28.3 23.9-31.5 7.6 28.2 23.5-30 6.5 26.9 24.5-30.8 7.8 27.5 24.6-32c2.3-10.8 4.6-22.4 7.4-35.7-55.5-3.7-106.3 4.8-154 9.8-38-20.8-80.8-26.8-121.9-18.5-13.6-29.69-27.2-59.38-40.9-89.06zM325.5 158.3c-4.5 14.2-13 18.3-24.7 20.6-16.1-4.4-28.3-15.5-34.4-30.2 20.4-3.8 42.4 3.4 59.1 9.6z"/></symbol>
+<symbol id="gi-flame" viewBox="0 0 512 512"><path d="M245.05 15.514c34.29 48.815-23.535 320.54-90.302 136.72C106.796 325.11 38.956 332.518 38.876 252.55c-71.6 79.31 43.824 220.767 87.376 243.935h52.127c-45.92-40.016-76.784-78-82.176-135.968 47.312 9.423 71.855 20.96 81.263-62.048 60.736 86.59 100.944-49.376 137.184-107.12-1.647 40.32-3.343 93.456 22.848 129.888 8.736 12.143 33.232 16.11 54.736 15.807-9.92 16.08-44.848 69.376-17.008 89.2 27.84 19.824 33.072-.384 25.856 16.176-13.264 20.88-22.992 39.375-59.072 54.063h56.064c59.44-18.72 111.807-91.663 94.607-135.535-22.015 18.657-43.774 30.897-61.294 29.537 49.12-72.08 37.84-145.903 14.752-221.342-20.224 72.383-33.488 82.495-54.576 99.52 29.104-68.657-85.44-214.448-146.51-253.15z"/></symbol>
+<symbol id="gi-shield" viewBox="0 0 512 512"><path d="M256 32A224 224 0 0 0 32 256a224 224 0 0 0 224 224 224 224 0 0 0 224-224A224 224 0 0 0 256 32zm0 40a184 184 0 0 1 184 184 184 184 0 0 1-184 184A184 184 0 0 1 72 256 184 184 0 0 1 256 72zm0 48a136 136 0 0 0-136 136 136 136 0 0 0 136 136 136 136 0 0 0 136-136 136 136 0 0 0-136-136zm-.994 47.834c9.848-.197 19.708 1.524 29.002 4.752 26.805 8.13 47.273 30.513 55.82 56.678l-63.05-1.285L256 168.202l-20.777 59.776-63.27 1.288L222.38 267.5l-18.02 59.563c-20.54-15.486-34.84-39.655-36.673-65.24-4.02-48.442 39.505-94.682 87.32-93.99zm84.87 61.564c3.95 12.16 5.334 25.13 3.57 37.866-2.29 24.324-16.34 45.71-35.82 59.754L289.618 267.5l50.255-38.102zM256 291.926l51.04 35.515c-15.884 11.27-35.293 17.685-54.886 16.857-17.256-.38-33.59-6.7-47.234-16.826L256 291.927z"/></symbol>
+<symbol id="gi-pin" viewBox="0 0 512 512"><path d="M256 17.108c-75.73 0-137.122 61.392-137.122 137.122.055 23.25 6.022 46.107 11.58 56.262L256 494.892l119.982-274.244h-.063c11.27-20.324 17.188-43.18 17.202-66.418C393.122 78.5 331.73 17.108 256 17.108zm0 68.56a68.56 68.56 0 0 1 68.56 68.562A68.56 68.56 0 0 1 256 222.79a68.56 68.56 0 0 1-68.56-68.56A68.56 68.56 0 0 1 256 85.67z"/></symbol>
+<symbol id="gi-hourglass" viewBox="0 0 512 512"><path d="M92.656 19.188v41.5h331.72v-41.5H92.655zM119.5 79.374V433.53h22.28V79.376H119.5zm46.594 0c3.212 43.324 13.312 82.022 27.78 110.906 17.685 35.304 40.845 54.75 64.064 54.75 23.218 0 46.346-19.446 64.03-54.75 14.47-28.883 24.57-67.58 27.782-110.905H166.094zm209.156 0V433.53h22.28V79.376h-22.28zm-117.313 185.22c-23.218 0-46.378 19.415-64.062 54.717-14.835 29.614-25.098 69.562-28.03 114.22H350c-2.933-44.658-13.197-84.606-28.03-114.22-17.686-35.302-40.814-54.718-64.033-54.718zM92.657 452.218v41.467h331.718V452.22H92.655z"/></symbol>
+<symbol id="gi-growth" viewBox="0 0 512 512"><path d="M256 33.78C205.2 119.6 154.2 177 103.7 228.7c101.3-39.2 203.3-39.2 304.6 0C357.8 177 306.8 119.6 256 33.78zm0 183.02c-10.4 0-20.8.5-31.3 1.4 6.5 104.2-48.4 216.9-158.29 268.8H445.6c-109.9-51.9-164.8-164.6-158.3-268.8-10.5-.9-20.9-1.4-31.3-1.4z"/></symbol>
+<symbol id="gi-target" viewBox="0 0 512 512"><path d="M172.7 19.27l-25.4 25.46L256 153.5 364.7 44.73l-25.4-25.46L256 102.5l-83.3-83.23zM44.73 147.3l-25.46 25.4L102.5 256l-83.23 83.3 25.46 25.4L153.5 256 44.73 147.3zm422.47 0L358.6 256l108.6 108.7 25.4-25.4-83.2-83.3 83.2-83.3-25.4-25.4zM256 358.5L147.3 467.3l25.4 25.4 83.3-83.2 83.3 83.2 25.4-25.4L256 358.5z"/></symbol>
+<symbol id="gi-coins" viewBox="0 0 512 512"><path d="M264.4 95.01c-35.6-.06-80.2 11.19-124.2 34.09C96.27 152 61.45 182 41.01 211.3c-20.45 29.2-25.98 56.4-15.92 75.8 10.07 19.3 35.53 30.4 71.22 30.4 35.69.1 80.29-11.2 124.19-34 44-22.9 78.8-53 99.2-82.2 20.5-29.2 25.9-56.4 15.9-75.8-10.1-19.3-35.5-30.49-71.2-30.49zm91.9 70.29c-3.5 15.3-11.1 31-21.8 46.3-22.6 32.3-59.5 63.8-105.7 87.8-46.2 24.1-93.1 36.2-132.5 36.2-18.6 0-35.84-2.8-50.37-8.7l10.59 20.4c10.08 19.4 35.47 30.5 71.18 30.5 35.7 0 80.3-11.2 124.2-34.1 44-22.8 78.8-52.9 99.2-82.2 20.4-29.2 26-56.4 15.9-75.7zm28.8 16.8c11.2 26.7 2.2 59.2-19.2 89.7-18.9 27.1-47.8 53.4-83.6 75.4 11.1 1.2 22.7 1.8 34.5 1.8 49.5 0 94.3-10.6 125.9-27.1 31.7-16.5 49.1-38.1 49.1-59.9 0-21.8-17.4-43.4-49.1-59.9-16.1-8.4-35.7-15.3-57.6-20zm106.7 124.8c-10.2 11.9-24.2 22.4-40.7 31-35 18.2-82.2 29.1-134.3 29.1-21.2 0-41.6-1.8-60.7-5.2-23.2 11.7-46.5 20.4-68.9 26.1 1.2.7 2.4 1.3 3.7 2 31.6 16.5 76.4 27.1 125.9 27.1s94.3-10.6 125.9-27.1c31.7-16.5 49.1-38.1 49.1-59.9z"/></symbol>
+<symbol id="gi-check" viewBox="0 0 512 512"><path d="M17.47 250.9C88.82 328.1 158 397.6 224.5 485.5c72.3-143.8 146.3-288.1 268.4-444.37L460 26.06C356.9 135.4 276.8 238.9 207.2 361.9c-48.4-43.6-126.62-105.3-174.38-137z"/></symbol>
+<symbol id="gi-trash" viewBox="0 0 512 512"><path d="M199 103v50h-78v30h270v-30h-78v-50H199zm18 18h78v32h-78v-32zm-79.002 80l30.106 286h175.794l30.104-286H137.998zm62.338 13.38l.64 8.98 16 224 .643 8.976-17.956 1.283-.64-8.98-16-224-.643-8.976 17.956-1.283zm111.328 0l17.955 1.284-.643 8.977-16 224-.64 8.98-17.956-1.284.643-8.977 16-224 .64-8.98zM247 215h18v242h-18V215z"/></symbol>
+</svg>
+
 
     <!-- ==================== 開局種族與象限選擇畫面 ==================== -->
     <div id="setup-screen" class="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-3 overflow-y-auto">
         <div class="parchment-panel rounded-xl max-w-4xl w-full p-5 sm:p-8 my-auto shadow-2xl" style="position:relative">
             <a href="../" style="position:absolute;top:8px;left:12px;font-size:12px;font-weight:700;color:#5c4028;text-decoration:none;opacity:.8" aria-label="回 ARCADE 首頁">← ARCADE</a>
+            <button type="button" id="setup-back" onclick="setupBack()" class="hidden bl-btn-ghost" style="position:absolute;top:6px;right:10px;padding:2px 10px;border-radius:8px;font-size:12px;font-weight:700">← 返回</button>
             <div class="text-center border-b-2 border-[#8c6239] pb-4 mb-5">
-                <h1 class="text-2xl sm:text-4xl font-black font-serif-tc text-[#3b2818] tracking-wider">⚔️ 邊境領主：單機版 ⚔️</h1>
+                <h1 class="text-2xl sm:text-4xl font-black font-serif-tc text-[#3b2818] tracking-wider"><svg class="gi gi-swords" aria-hidden="true"><use href="#gi-swords"/></svg> 邊境領主：單機版 <svg class="gi gi-swords" aria-hidden="true"><use href="#gi-swords"/></svg></h1>
                 <p class="text-sm sm:text-base text-[#5c4028] mt-1">村莊經營與掠奪戰略 — 搶佔農田特別多的豐糧地、掠奪周邊村莊、問鼎世界奇觀！</p>
             </div>
 
-            <!-- 已有存檔提示 -->
-            <div id="existing-save-banner" class="hidden mb-5 p-3 bg-amber-100 border-2 border-amber-600 rounded-lg flex flex-col sm:flex-row items-center justify-between gap-3">
-                <div class="text-sm text-amber-950 font-medium">
-                    📜 偵測到本機存檔：<span id="save-summary" class="font-bold"></span>
+            <!-- 畫面一：入口（只在有存檔時出現） -->
+            <div id="setup-entry" class="hidden">
+                <div class="bl-card rounded-xl p-4 mb-5">
+                    <div class="text-xs bl-sub font-bold mb-1">本機存檔</div>
+                    <div id="entry-name" class="font-serif-tc font-black text-xl text-[#3b2818]"></div>
+                    <div class="flex flex-wrap items-center gap-2 mt-2 text-sm text-[#3b2818]">
+                        <span id="entry-tribe" class="bl-tag"></span>
+                        <span id="entry-meta"></span>
+                    </div>
                 </div>
-                <button onclick="loadGameFromStorage()" class="btn-green px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap">繼續上次戰局</button>
+                <div class="flex flex-col gap-3">
+                    <button type="button" onclick="loadGameFromStorage()" class="bl-btn-primary w-full py-3 rounded-xl text-lg font-black tracking-wider shadow-lg">繼續遊戲</button>
+                    <button type="button" onclick="openSetupNew()" class="bl-btn-ghost w-full py-3 rounded-xl text-lg font-bold">開新局</button>
+                </div>
             </div>
 
-            <div class="space-y-5">
+            <!-- 畫面二：新局設定 -->
+            <div id="setup-new" class="space-y-5">
                 <!-- 步驟 1：村莊/領主名稱 -->
                 <div>
                     <label class="block font-bold text-[#3b2818] mb-1">1. 輸入你的領主稱號：</label>
@@ -504,42 +623,42 @@ body { padding-top: var(--topbar-h, 0px); }
                     <label class="block font-bold text-[#3b2818] mb-2">2. 選擇你的文明種族：</label>
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-3" id="tribe-cards">
                         <!-- 曙光王國 -->
-                        <div onclick="selectTribe('roman')" id="tribe-roman" class="tribe-card cursor-pointer rounded-xl p-4 border-2 border-amber-600 bg-amber-50/90 shadow-md transition">
+                        <div onclick="selectTribe('roman')" id="tribe-roman" class="tribe-card is-active cursor-pointer rounded-xl p-4 transition">
                             <div class="flex items-center justify-between mb-2">
-                                <span class="text-xl font-black font-serif-tc text-red-900">🏛️ 曙光王國</span>
-                                <span class="text-xs px-2 py-0.5 rounded bg-red-800 text-white">均衡/雙線</span>
+                                <span class="text-xl font-black font-serif-tc text-[#3b2818]"><svg class="gi gi-main" aria-hidden="true"><use href="#gi-main"/></svg> 曙光王國</span>
+                                <span class="bl-tag">均衡/雙線</span>
                             </div>
                             <p class="text-xs text-stone-700 leading-relaxed mb-2">建築工藝與重裝部隊的巔峰，適合穩健發展與後期穩步推進。</p>
                             <ul class="text-xs space-y-1 text-stone-800 font-medium">
-                                <li>✅ <b>雙線建造</b>：資源田與村內建築可同時升級</li>
-                                <li>✅ <b>銳士/聖輝重騎</b>：攻防數值全遊戲最強</li>
-                                <li>⚠️ 造兵成本高、行軍速度較慢</li>
+                                <li><svg class="gi gi-check" aria-hidden="true"><use href="#gi-check"/></svg> <b>雙線建造</b>：資源田與村內建築可同時升級</li>
+                                <li><svg class="gi gi-check" aria-hidden="true"><use href="#gi-check"/></svg> <b>銳士/聖輝重騎</b>：攻防數值全遊戲最強</li>
+                                <li><svg class="gi gi-alert" aria-hidden="true"><use href="#gi-alert"/></svg> 造兵成本高、行軍速度較慢</li>
                             </ul>
                         </div>
                         <!-- 霜牙部族 -->
-                        <div onclick="selectTribe('teuton')" id="tribe-teuton" class="tribe-card cursor-pointer rounded-xl p-4 border-2 border-[#8c6239]/50 bg-[#fffaf0] hover:bg-amber-50 transition">
+                        <div onclick="selectTribe('teuton')" id="tribe-teuton" class="tribe-card cursor-pointer rounded-xl p-4 transition">
                             <div class="flex items-center justify-between mb-2">
-                                <span class="text-xl font-black font-serif-tc text-amber-900">🪓 霜牙部族</span>
-                                <span class="text-xs px-2 py-0.5 rounded bg-amber-800 text-white">掠奪/突襲</span>
+                                <span class="text-xl font-black font-serif-tc text-[#3b2818]"><svg class="gi gi-swords" aria-hidden="true"><use href="#gi-swords"/></svg> 霜牙部族</span>
+                                <span class="bl-tag">掠奪/突襲</span>
                             </div>
                             <p class="text-xs text-stone-700 leading-relaxed mb-2">天生為劫掠而生的好戰民族，開局大量徵兵，專門掠奪鄰近村莊。</p>
                             <ul class="text-xs space-y-1 text-stone-800 font-medium">
-                                <li>✅ <b>木棍兵海</b>：造價極便宜、訓練極快</li>
-                                <li>✅ <b>劫掠加成</b>：無視敵方山洞 33% 藏量</li>
-                                <li>⚠️ 防禦力較弱、容易被反攻</li>
+                                <li><svg class="gi gi-check" aria-hidden="true"><use href="#gi-check"/></svg> <b>木棍兵海</b>：造價極便宜、訓練極快</li>
+                                <li><svg class="gi gi-check" aria-hidden="true"><use href="#gi-check"/></svg> <b>劫掠加成</b>：無視敵方山洞 33% 藏量</li>
+                                <li><svg class="gi gi-alert" aria-hidden="true"><use href="#gi-alert"/></svg> 防禦力較弱、容易被反攻</li>
                             </ul>
                         </div>
                         <!-- 翠林聯盟 -->
-                        <div onclick="selectTribe('gaul')" id="tribe-gaul" class="tribe-card cursor-pointer rounded-xl p-4 border-2 border-[#8c6239]/50 bg-[#fffaf0] hover:bg-amber-50 transition">
+                        <div onclick="selectTribe('gaul')" id="tribe-gaul" class="tribe-card cursor-pointer rounded-xl p-4 transition">
                             <div class="flex items-center justify-between mb-2">
-                                <span class="text-xl font-black font-serif-tc text-emerald-900">🛡️ 翠林聯盟</span>
-                                <span class="text-xs px-2 py-0.5 rounded bg-emerald-800 text-white">高速/防禦</span>
+                                <span class="text-xl font-black font-serif-tc text-[#3b2818]"><svg class="gi gi-shield" aria-hidden="true"><use href="#gi-shield"/></svg> 翠林聯盟</span>
+                                <span class="bl-tag">高速/防禦</span>
                             </div>
                             <p class="text-xs text-stone-700 leading-relaxed mb-2">機動性與防禦兼備，閃電突襲與銅牆鐵壁的代表。</p>
                             <ul class="text-xs space-y-1 text-stone-800 font-medium">
-                                <li>✅ <b>全服最快</b>：騎兵與行軍速度冠絕三族</li>
-                                <li>✅ <b>陷阱機 & 山洞雙倍</b>：專門剋制初期來襲的掠奪者</li>
-                                <li>⚠️ 攻城武器造價昂貴</li>
+                                <li><svg class="gi gi-check" aria-hidden="true"><use href="#gi-check"/></svg> <b>全服最快</b>：騎兵與行軍速度冠絕三族</li>
+                                <li><svg class="gi gi-check" aria-hidden="true"><use href="#gi-check"/></svg> <b>陷阱機 & 山洞雙倍</b>：專門剋制初期來襲的掠奪者</li>
+                                <li><svg class="gi gi-alert" aria-hidden="true"><use href="#gi-alert"/></svg> 攻城武器造價昂貴</li>
                             </ul>
                         </div>
                     </div>
@@ -549,15 +668,15 @@ body { padding-top: var(--topbar-h, 0px); }
                 <div>
                     <label class="block font-bold text-[#3b2818] mb-2">3. 選擇降落象限（17x17 世界地圖）：</label>
                     <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                        <button type="button" onclick="selectQuadrant('NW')" id="quad-NW" class="quad-btn p-2.5 rounded-lg border-2 border-amber-600 bg-amber-100 font-bold text-sm text-[#3b2818]">↖ 西北 (-X, +Y)</button>
-                        <button type="button" onclick="selectQuadrant('NE')" id="quad-NE" class="quad-btn p-2.5 rounded-lg border-2 border-[#8c6239]/50 bg-[#fffaf0] font-bold text-sm text-[#3b2818]">↗ 東北 (+X, +Y)</button>
-                        <button type="button" onclick="selectQuadrant('SW')" id="quad-SW" class="quad-btn p-2.5 rounded-lg border-2 border-[#8c6239]/50 bg-[#fffaf0] font-bold text-sm text-[#3b2818]">↙ 西南 (-X, -Y)</button>
-                        <button type="button" onclick="selectQuadrant('SE')" id="quad-SE" class="quad-btn p-2.5 rounded-lg border-2 border-[#8c6239]/50 bg-[#fffaf0] font-bold text-sm text-[#3b2818]">↘ 東南 (+X, -Y)</button>
+                        <button type="button" onclick="selectQuadrant('NW')" id="quad-NW" class="quad-btn is-active p-2.5 rounded-lg font-bold text-sm text-[#3b2818]">↖ 西北 (-X, +Y)</button>
+                        <button type="button" onclick="selectQuadrant('NE')" id="quad-NE" class="quad-btn p-2.5 rounded-lg font-bold text-sm text-[#3b2818]">↗ 東北 (+X, +Y)</button>
+                        <button type="button" onclick="selectQuadrant('SW')" id="quad-SW" class="quad-btn p-2.5 rounded-lg font-bold text-sm text-[#3b2818]">↙ 西南 (-X, -Y)</button>
+                        <button type="button" onclick="selectQuadrant('SE')" id="quad-SE" class="quad-btn p-2.5 rounded-lg font-bold text-sm text-[#3b2818]">↘ 東南 (+X, -Y)</button>
                     </div>
                 </div>
 
                 <div class="pt-2 text-center">
-                    <button onclick="startNewGame()" class="btn-green px-8 py-3 rounded-xl text-lg font-black tracking-wider shadow-lg">🔥 建立首府，開啟霸業！</button>
+                    <button onclick="startNewGame()" class="bl-btn-primary px-8 py-3 rounded-xl text-lg font-black tracking-wider shadow-lg"><svg class="gi gi-flame" aria-hidden="true"><use href="#gi-flame"/></svg> 建立首府，開啟霸業！</button>
                 </div>
             </div>
         </div>
@@ -569,7 +688,7 @@ body { padding-top: var(--topbar-h, 0px); }
         <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
             <!-- 村莊切換器與種族標誌 -->
             <div class="hdr-left flex items-center gap-2">
-                <span id="ui-tribe-badge" class="hdr-hide-m px-2 py-1 rounded bg-amber-700/80 border border-amber-400 text-xs font-bold">🏛️ 曙光</span>
+                <span id="ui-tribe-badge" class="hdr-hide-m px-2 py-1 rounded bg-amber-700/80 border border-amber-400 text-xs font-bold"><svg class="gi gi-main" aria-hidden="true"><use href="#gi-main"/></svg> 曙光</span>
                 <select id="village-selector" onchange="switchActiveVillage(this.value)" class="min-w-0 max-w-[9.5rem] sm:max-w-none min-h-[40px] sm:min-h-0 bg-[#26170c] text-amber-200 border border-amber-500 rounded-lg px-2.5 py-1 text-sm font-bold focus:outline-none">
                 </select>
                 <span id="ui-village-type" class="hidden sm:inline-block text-xs px-2 py-0.5 rounded bg-stone-800 text-amber-300 border border-stone-600">普田 4:4:4:6</span>
@@ -578,20 +697,20 @@ body { padding-top: var(--topbar-h, 0px); }
             <!-- 音效與存檔選單 -->
             <div class="hdr-actions flex flex-wrap items-center gap-1.5">
                 <span id="ui-game-clock" class="text-xs font-mono text-amber-200/80 hidden lg:inline mr-1">第 1 天 00:00</span>
-                <button onclick="openNotifPanel()" id="btn-notif" class="hdr-btn relative" data-tip="通知紀錄：只收建造完成、行軍與戰鬥結果、遭襲等重要事件">🔔<span id="notif-dot" class="hidden absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-600 rounded-full border border-white"></span></button>
+                <button onclick="openNotifPanel()" id="btn-notif" aria-label="通知紀錄" class="hdr-btn relative" data-tip="通知紀錄：只收建造完成、行軍與戰鬥結果、遭襲等重要事件"><svg class="gi gi-bell" aria-hidden="true"><use href="#gi-bell"/></svg><span id="notif-dot" class="hidden absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-600 rounded-full border border-white"></span></button>
                 <button type="button" id="speed-btn" data-pop="speed-menu" onclick="toggleHdrPop('speed-menu', event)" aria-haspopup="menu" aria-expanded="false" aria-label="時間流速" class="hdr-btn">1x</button>
                 <div id="speed-menu" class="hdr-pop" role="menu">
-                    <button type="button" role="menuitem" data-speed="0" onclick="pickSpeed('0')" class="rounded bg-stone-800 hover:bg-stone-700 border border-stone-600 text-amber-200 font-bold">⏸ 暫停</button>
-                    <button type="button" role="menuitem" data-speed="1" onclick="pickSpeed('1')" class="is-cur rounded bg-stone-800 hover:bg-stone-700 border border-stone-600 text-amber-200 font-bold">▶ 1x</button>
-                    <button type="button" role="menuitem" data-speed="5" onclick="pickSpeed('5')" class="rounded bg-stone-800 hover:bg-stone-700 border border-stone-600 text-amber-200 font-bold">⏩ 5x</button>
-                    <button type="button" role="menuitem" data-speed="20" onclick="pickSpeed('20')" class="rounded bg-stone-800 hover:bg-stone-700 border border-stone-600 text-amber-200 font-bold">⚡ 20x</button>
-                    <button type="button" role="menuitem" data-speed="ff" onclick="pickSpeed('ff')" class="rounded bg-stone-800 hover:bg-stone-700 border border-stone-600 text-amber-200 font-bold">⏭ 快轉 5 分鐘</button>
+                    <button type="button" role="menuitem" data-speed="0" onclick="pickSpeed('0')" class="rounded bg-stone-800 hover:bg-stone-700 border border-stone-600 text-amber-200 font-bold">暫停</button>
+                    <button type="button" role="menuitem" data-speed="1" onclick="pickSpeed('1')" class="is-cur rounded bg-stone-800 hover:bg-stone-700 border border-stone-600 text-amber-200 font-bold">1x</button>
+                    <button type="button" role="menuitem" data-speed="5" onclick="pickSpeed('5')" class="rounded bg-stone-800 hover:bg-stone-700 border border-stone-600 text-amber-200 font-bold">5x</button>
+                    <button type="button" role="menuitem" data-speed="20" onclick="pickSpeed('20')" class="rounded bg-stone-800 hover:bg-stone-700 border border-stone-600 text-amber-200 font-bold">20x</button>
+                    <button type="button" role="menuitem" data-speed="ff" onclick="pickSpeed('ff')" class="rounded bg-stone-800 hover:bg-stone-700 border border-stone-600 text-amber-200 font-bold">快轉 5 分鐘</button>
                 </div>
                 <button type="button" id="btn-more" data-pop="hdr-menu" onclick="toggleHdrPop('hdr-menu', event)" aria-haspopup="menu" aria-label="更多選項（音效、存檔、新局）" aria-expanded="false" class="hdr-btn hdr-more-btn">⋯</button>
                 <div id="hdr-menu" class="hdr-menu hdr-pop">
-                <button onclick="toggleSound()" id="btn-sound" class="px-3 py-2 sm:px-2 sm:py-1 min-h-[40px] min-w-[40px] sm:min-h-0 sm:min-w-0 rounded bg-stone-800 hover:bg-stone-700 text-xs border border-stone-600" data-tip="切換音效（開／關）">🔊</button>
-                <button onclick="manualSave()" class="px-3 py-2 sm:px-2.5 sm:py-1 min-h-[40px] sm:min-h-0 rounded bg-stone-800 hover:bg-stone-700 text-xs border border-stone-600 font-medium">💾 存檔</button>
-                <button onclick="openResetModal()" class="px-3 py-2 sm:px-2 sm:py-1 min-h-[40px] sm:min-h-0 rounded bg-red-950 hover:bg-red-900 text-xs border border-red-700 text-red-200">新局</button>
+                <button onclick="toggleSound()" id="btn-sound" class="px-3 py-2 sm:px-2 sm:py-1 min-h-[40px] min-w-[40px] sm:min-h-0 sm:min-w-0 rounded bg-stone-800 hover:bg-stone-700 text-xs border border-stone-600" data-tip="切換音效（開／關）">音效：開</button>
+                <button onclick="manualSave()" class="px-3 py-2 sm:px-2.5 sm:py-1 min-h-[40px] sm:min-h-0 rounded bg-stone-800 hover:bg-stone-700 text-xs border border-stone-600 font-medium">存檔</button>
+                <button onclick="openNewGameFromGame()" class="px-3 py-2 sm:px-2 sm:py-1 min-h-[40px] sm:min-h-0 rounded bg-red-950 hover:bg-red-900 text-xs border border-red-700 text-red-200">新局</button>
                 </div>
             </div>
         </div>
@@ -601,22 +720,22 @@ body { padding-top: var(--topbar-h, 0px); }
     <div id="res-bar">
         <div class="res-grid">
             <div id="box-wood" class="res-box">
-                <span class="res-ico">🪵</span>
+                <span class="res-ico"><svg class="gi gi-wood" aria-hidden="true"><use href="#gi-wood"/></svg></span>
                 <span class="res-num"><span id="res-wood">0</span>/<span id="cap-wood">800</span></span>
                 <span id="rate-wood" class="res-rate"><span id="prod-wood">+0</span>/時</span>
             </div>
             <div id="box-clay" class="res-box">
-                <span class="res-ico">🧱</span>
+                <span class="res-ico"><svg class="gi gi-clay" aria-hidden="true"><use href="#gi-clay"/></svg></span>
                 <span class="res-num"><span id="res-clay">0</span>/<span id="cap-clay">800</span></span>
                 <span id="rate-clay" class="res-rate"><span id="prod-clay">+0</span>/時</span>
             </div>
             <div id="box-iron" class="res-box">
-                <span class="res-ico">⛓️</span>
+                <span class="res-ico"><svg class="gi gi-iron" aria-hidden="true"><use href="#gi-iron"/></svg></span>
                 <span class="res-num"><span id="res-iron">0</span>/<span id="cap-iron">800</span></span>
                 <span id="rate-iron" class="res-rate"><span id="prod-iron">+0</span>/時</span>
             </div>
             <div id="box-crop" class="res-box">
-                <span class="res-ico">🌾</span>
+                <span class="res-ico"><svg class="gi gi-crop" aria-hidden="true"><use href="#gi-crop"/></svg></span>
                 <span class="res-num"><span id="res-crop">0</span>/<span id="cap-crop">800</span></span>
                 <span id="rate-crop" class="res-rate"><span id="prod-crop">+0</span>/時</span>
                 <span class="res-extra">產:<span id="crop-gross">0</span> 耗:<span id="crop-upkeep">0</span></span>
@@ -626,12 +745,12 @@ body { padding-top: var(--topbar-h, 0px); }
     <!-- 第三排：人口／城牆防禦／山洞保護 + 建造佇列 chip（單行、固定高度；佇列完整內容在浮層） -->
     <div id="info-bar">
         <div class="ib-stats">
-            <span id="ib-pop" title="村莊人口" aria-label="村莊人口">👥 <b>0</b></span>
-            <span id="ib-wall" title="城牆防禦" aria-label="城牆防禦">🛡 <b>+0%</b></span>
-            <span id="ib-cranny" title="山洞保護" aria-label="山洞保護">🕳 <b>0</b></span>
+            <span id="ib-pop" title="村莊人口" aria-label="村莊人口"><svg class="gi gi-pop" aria-hidden="true"><use href="#gi-pop"/></svg> <b>0</b></span>
+            <span id="ib-wall" title="城牆防禦" aria-label="城牆防禦"><svg class="gi gi-wall" aria-hidden="true"><use href="#gi-wall"/></svg> <b>+0%</b></span>
+            <span id="ib-cranny" title="山洞保護" aria-label="山洞保護"><svg class="gi gi-cave" aria-hidden="true"><use href="#gi-cave"/></svg> <b>0</b></span>
         </div>
-        <button type="button" id="alert-chip" onclick="switchTab('reports')" class="ib-alert">🚨 <span id="ac-time"></span><span id="ac-more"></span></button>
-        <button type="button" id="queue-chip" data-pop="queue-menu" onclick="toggleHdrPop('queue-menu', event)" aria-haspopup="menu" aria-expanded="false" aria-label="建造佇列" class="ib-chip is-idle">🔨 <span id="qc-name" class="qc-name">無工程</span><span id="qc-time" class="qc-time"></span><span id="qc-more" class="qc-more"></span></button>
+        <button type="button" id="alert-chip" onclick="switchTab('reports')" class="ib-alert"><svg class="gi gi-alert" aria-hidden="true"><use href="#gi-alert"/></svg> <span id="ac-time"></span><span id="ac-more"></span></button>
+        <button type="button" id="queue-chip" data-pop="queue-menu" onclick="toggleHdrPop('queue-menu', event)" aria-haspopup="menu" aria-expanded="false" aria-label="建造佇列" class="ib-chip is-idle"><svg class="gi gi-hammer" aria-hidden="true"><use href="#gi-hammer"/></svg> <span id="qc-name" class="qc-name">無工程</span><span id="qc-time" class="qc-time"></span><span id="qc-more" class="qc-more"></span></button>
         <div id="queue-menu" class="hdr-pop" role="menu"></div>
     </div>
     </div>
@@ -640,16 +759,16 @@ body { padding-top: var(--topbar-h, 0px); }
     <nav id="main-nav" class="max-w-5xl w-full mx-auto px-2 pt-3">
         <div class="grid grid-cols-4 gap-1.5 sm:gap-3">
             <button onclick="switchTab('fields')" id="tab-fields" class="nav-tab nav-active py-2.5 px-2 rounded-t-xl font-bold text-xs sm:text-base border-t-2 border-x-2 border-[#8c6239] bg-[#f7efe0] text-[#3b2818] shadow">
-                <span class="tab-ico">🌾</span> <span class="tab-txt">資源田<span class="tab-extra"> (18格)</span></span>
+                <span class="tab-ico"><svg class="gi gi-crop" aria-hidden="true"><use href="#gi-crop"/></svg></span> <span class="tab-txt">資源田<span class="tab-extra"> (18格)</span></span>
             </button>
             <button onclick="switchTab('village')" id="tab-village" class="nav-tab py-2.5 px-2 rounded-t-xl font-bold text-xs sm:text-base border-t-2 border-x-2 border-[#5c4028] bg-[#3b2818] text-amber-200/80 hover:bg-[#4e3621]">
-                <span class="tab-ico">🏰</span> <span class="tab-txt">村莊中心</span>
+                <span class="tab-ico"><svg class="gi gi-castle" aria-hidden="true"><use href="#gi-castle"/></svg></span> <span class="tab-txt">村莊中心</span>
             </button>
             <button onclick="switchTab('map')" id="tab-map" class="nav-tab py-2.5 px-2 rounded-t-xl font-bold text-xs sm:text-base border-t-2 border-x-2 border-[#5c4028] bg-[#3b2818] text-amber-200/80 hover:bg-[#4e3621]">
-                <span class="tab-ico">🗺️</span> <span class="tab-txt">世界地圖</span>
+                <span class="tab-ico"><svg class="gi gi-map" aria-hidden="true"><use href="#gi-map"/></svg></span> <span class="tab-txt">世界地圖</span>
             </button>
             <button onclick="switchTab('reports')" id="tab-reports" class="nav-tab relative py-2.5 px-2 rounded-t-xl font-bold text-xs sm:text-base border-t-2 border-x-2 border-[#5c4028] bg-[#3b2818] text-amber-200/80 hover:bg-[#4e3621]">
-                <span class="tab-ico">📜</span> <span class="tab-txt">軍情戰報</span>
+                <span class="tab-ico"><svg class="gi gi-scroll" aria-hidden="true"><use href="#gi-scroll"/></svg></span> <span class="tab-txt">軍情戰報</span>
                 <span id="unread-badge" class="hidden absolute -top-1.5 -right-1 bg-red-600 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full border border-white">0</span>
             </button>
         </div>
@@ -660,13 +779,13 @@ body { padding-top: var(--topbar-h, 0px); }
         <div class="parchment-panel rounded-b-xl rounded-tr-xl p-3 sm:p-5 min-h-[540px]">
 
             <!-- 村莊顧問：固定高度的精簡一列（只在資源田、村莊中心顯示）；說明以浮層顯示，不推動版面 -->
-            <div id="advisor-card" class="adv-card border-2 border-amber-600 bg-amber-50 rounded-lg shadow-sm">
+            <div id="advisor-card" class="adv-card">
                 <div class="adv-row">
-                    <span id="advisor-icon" class="adv-icon">🧭</span>
+                    <span id="advisor-icon" class="adv-icon"><svg class="gi gi-map" aria-hidden="true"><use href="#gi-map"/></svg></span>
                     <span class="adv-label">村莊顧問</span>
                     <span id="advisor-title" class="adv-title">讀取中…</span>
-                    <button id="advisor-go" type="button" onclick="advisorGo()" class="btn-green adv-btn font-bold text-xs whitespace-nowrap">前往</button>
-                    <button id="advisor-toggle" type="button" onclick="toggleAdvisor()" aria-label="展開或收起顧問說明" aria-expanded="false" class="adv-btn adv-toggle font-bold text-xs">▾</button>
+                    <button id="advisor-go" type="button" onclick="advisorGo()" class="bl-btn-primary adv-btn font-bold text-xs whitespace-nowrap">前往</button>
+                    <button id="advisor-toggle" type="button" onclick="toggleAdvisor()" aria-label="展開或收起顧問說明" aria-expanded="false" class="bl-btn-ghost adv-btn adv-toggle font-bold text-xs">▾</button>
                 </div>
                 <div id="advisor-reason" class="adv-pop"></div>
             </div>
@@ -675,8 +794,8 @@ body { padding-top: var(--topbar-h, 0px); }
             <section id="view-fields" class="view-section">
                 <div class="up-wrap">
                     <div class="up-head">
-                        <h2 class="font-serif-tc font-black text-lg text-[#3b2818]">🌾 村外資源田</h2>
-                        <span id="ui-oasis-bonus" class="text-xs font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-400">綠洲加成: 無</span>
+                        <h2 class="font-serif-tc font-black text-lg text-[#3b2818]"><svg class="gi gi-crop" aria-hidden="true"><use href="#gi-crop"/></svg> 村外資源田</h2>
+                        <span id="ui-oasis-bonus" class="bl-tag">綠洲加成: 無</span>
                     </div>
                     <div class="fp-wrap">
                         <div id="fields-list" class="fg-grid"></div>
@@ -687,7 +806,7 @@ body { padding-top: var(--topbar-h, 0px); }
                     <!-- 本村駐軍總覽 -->
                     <div class="bg-[#fffaf0] border-2 border-[#8c6239] rounded-xl p-4 shadow mt-4">
                         <div class="flex items-center justify-between border-b border-[#d4bfa0] pb-1.5 mb-2">
-                            <h3 class="font-bold text-sm text-[#3b2818]">⚔️ 本村集結軍力</h3>
+                            <h3 class="font-bold text-sm text-[#3b2818]"><svg class="gi gi-swords" aria-hidden="true"><use href="#gi-swords"/></svg> 本村集結軍力</h3>
                             <button onclick="switchTab('map')" class="text-xs text-amber-800 font-bold hover:underline">前往地圖出征 ➔</button>
                         </div>
                         <div id="home-troops-list" class="grid grid-cols-2 gap-1.5 text-xs">
@@ -701,15 +820,15 @@ body { padding-top: var(--topbar-h, 0px); }
             <section id="view-village" class="view-section hidden">
                 <div class="up-wrap">
                     <div class="up-head">
-                        <h2 class="font-serif-tc font-black text-lg text-[#3b2818]">🏰 村莊中心建築</h2>
+                        <h2 class="font-serif-tc font-black text-lg text-[#3b2818]"><svg class="gi gi-castle" aria-hidden="true"><use href="#gi-castle"/></svg> 村莊中心建築</h2>
                         <span class="text-xs text-stone-600">大樓等級越高，施工越快</span>
                     </div>
                     <div class="fp-wrap">
                         <div id="buildings-list" class="fg-grid"></div>
                         <div id="buildings-panel" class="fp-panel"></div>
                     </div>
-                    <div class="bg-amber-50 p-2.5 rounded border border-amber-300 text-xs text-amber-950 mt-4">
-                        <b>🎯 掠奪入門：</b><br>
+                    <div class="bl-note p-2.5 rounded text-xs mt-4">
+                        <b><svg class="gi gi-target" aria-hidden="true"><use href="#gi-target"/></svg> 掠奪入門：</b><br>
                         1. 蓋出<b>兵營</b>訓練初期掠奪兵。<br>
                         2. 蓋出<b>攻城武器廠</b>製造<b>投石車</b>。<br>
                         3. 在<b>集結點</b>指定投石車目標，正規攻擊就能砸毀敵人建築！
@@ -722,7 +841,7 @@ body { padding-top: var(--topbar-h, 0px); }
                 <div class="mp-wrap">
                     <div class="mp-left">
                         <div class="mp-bar">
-                            <span class="mp-coord">📍 選取 <b id="map-hover-coord">—</b></span>
+                            <span class="mp-coord"><svg class="gi gi-pin" aria-hidden="true"><use href="#gi-pin"/></svg> 選取 <b id="map-hover-coord">—</b></span>
                             <button type="button" onclick="mapGoHome()" class="btn-medieval mp-home">回我的村莊</button>
                         </div>
                         <!-- 17x17 網格容器 -->
@@ -738,15 +857,15 @@ body { padding-top: var(--topbar-h, 0px); }
                         <h3 class="font-bold text-base text-[#3b2818] border-b border-[#d4bfa0] pb-2 mb-2">點擊地圖上的任意格子</h3>
                         <p class="text-xs text-stone-600 mb-2">點空地可建立分村，點周邊可掠奪的村莊可發動掠奪與投石車轟炸。</p>
                         <div class="mp-legend">
-                            <span><i style="background:#1d4ed8"></i>🚩 我方村莊</span>
-                            <span><i style="background:#fde68a"></i>🐑 可掠奪的村莊</span>
-                            <span><i style="background:#991b1b"></i>🐺 掠奪狼群</span>
-                            <span><i style="background:#475569"></i>🛡️ 重兵防守</span>
-                            <span><i style="background:#581c87"></i>👑 世界奇觀</span>
-                            <span><i style="background:#0f766e"></i>🌴 綠洲（+25%）</span>
-                            <span><i style="background:rgba(245,158,11,.8)"></i>🔥 極豐糧地</span>
-                            <span><i style="background:rgba(132,204,22,.7)"></i>🌾 豐糧地</span>
-                            <span><i style="background:#6b8e45"></i>無主空地</span>
+                            <span><i class="mt-player"></i><svg class="gi gi-flag" aria-hidden="true"><use href="#gi-flag"/></svg> 我方村莊</span>
+                            <span><i class="mt-sheep"></i><svg class="gi gi-sheep" aria-hidden="true"><use href="#gi-sheep"/></svg> 可掠奪的村莊</span>
+                            <span><i class="mt-wolf"></i><svg class="gi gi-wolf" aria-hidden="true"><use href="#gi-wolf"/></svg> 掠奪狼群</span>
+                            <span><i class="mt-fort"></i><svg class="gi gi-shield" aria-hidden="true"><use href="#gi-shield"/></svg> 重兵防守</span>
+                            <span><i class="mt-wonder"></i><svg class="gi gi-crown" aria-hidden="true"><use href="#gi-crown"/></svg> 世界奇觀</span>
+                            <span><i class="mt-oasis"></i><svg class="gi gi-palm" aria-hidden="true"><use href="#gi-palm"/></svg> 綠洲（+25%）</span>
+                            <span><i class="mt-fertile2"></i><svg class="gi gi-flame" aria-hidden="true"><use href="#gi-flame"/></svg> 極豐糧地</span>
+                            <span><i class="mt-fertile"></i><svg class="gi gi-crop" aria-hidden="true"><use href="#gi-crop"/></svg> 豐糧地</span>
+                            <span><i class="mt-empty"></i>無主空地</span>
                         </div>
                     </div>
                 </div>
@@ -757,7 +876,7 @@ body { padding-top: var(--topbar-h, 0px); }
                 <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
                     <!-- 左側 2/5：行軍動態 -->
                     <div class="md:col-span-2 bg-[#fffaf0] border-2 border-[#8c6239] rounded-xl p-3.5 shadow">
-                        <h3 class="font-serif-tc font-black text-base text-[#3b2818] border-b border-[#d4bfa0] pb-2 mb-2">🚩 部隊行軍動態</h3>
+                        <h3 class="font-serif-tc font-black text-base text-[#3b2818] border-b border-[#d4bfa0] pb-2 mb-2"><svg class="gi gi-flag" aria-hidden="true"><use href="#gi-flag"/></svg> 部隊行軍動態</h3>
                         <div id="active-marches-list" class="space-y-2 max-h-[440px] overflow-y-auto text-xs">
                             <p class="text-stone-500 text-center py-6">目前沒有正在行軍的部隊</p>
                         </div>
@@ -766,7 +885,7 @@ body { padding-top: var(--topbar-h, 0px); }
                     <!-- 右側 3/5：戰鬥與事件戰報 -->
                     <div class="md:col-span-3 bg-[#fffaf0] border-2 border-[#8c6239] rounded-xl p-3.5 shadow">
                         <div class="flex items-center justify-between border-b border-[#d4bfa0] pb-2 mb-2">
-                            <h3 class="font-serif-tc font-black text-base text-[#3b2818]">📜 戰鬥與偵察戰報</h3>
+                            <h3 class="font-serif-tc font-black text-base text-[#3b2818]"><svg class="gi gi-scroll" aria-hidden="true"><use href="#gi-scroll"/></svg> 戰鬥與偵察戰報</h3>
                             <button onclick="clearReports()" class="text-xs text-red-700 hover:underline">清空戰報</button>
                         </div>
                         <div id="battle-reports-list" class="space-y-2.5 max-h-[440px] overflow-y-auto text-xs">
@@ -778,6 +897,7 @@ body { padding-top: var(--topbar-h, 0px); }
 
         </div>
     </main>
+    <footer class="bl-credit">圖示：<a href="https://game-icons.net" rel="noopener" target="_blank">game-icons.net</a>（CC BY 3.0）— 作者：Lorc、Delapouite、Heavenly-Dog、Carl Olsen</footer>
 
     <!-- ==================== 通用自訂確認/提示對話框 (不使用 alert/confirm) ==================== -->
     <div id="custom-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
@@ -862,10 +982,10 @@ body { padding-top: var(--topbar-h, 0px); }
     };
 
     const FIELD_TYPES = {
-        wood: { name: '伐木場', icon: '🪵', color: 'bg-emerald-800 border-emerald-400', baseCost: [40, 100, 50, 60] },
-        clay: { name: '磚窯', icon: '🧱', color: 'bg-amber-800 border-amber-400', baseCost: [80, 40, 80, 50] },
-        iron: { name: '鐵礦場', icon: '⛓️', color: 'bg-slate-700 border-slate-300', baseCost: [100, 80, 30, 60] },
-        crop: { name: '農場', icon: '🌾', color: 'bg-yellow-600 border-yellow-200', baseCost: [70, 90, 70, 20] }
+        wood: { name: '伐木場', icon: '🪵', baseCost: [40, 100, 50, 60] },
+        clay: { name: '磚窯', icon: '🧱', baseCost: [80, 40, 80, 50] },
+        iron: { name: '鐵礦場', icon: '⛓️', baseCost: [100, 80, 30, 60] },
+        crop: { name: '農場', icon: '🌾', baseCost: [70, 90, 70, 20] }
     };
 
     // 經典資源田每級每小時產量表 (Lv.0 ~ Lv.15)
@@ -883,7 +1003,7 @@ body { padding-top: var(--topbar-h, 0px); }
         { id: 'stable', name: '馬廄', icon: '🐎', maxLv: 15, baseCost: [260, 140, 220, 100], baseTime: 28, desc: '訓練偵察騎兵與主力攻擊騎兵。' },
         { id: 'workshop', name: '攻城武器廠', icon: '💣', maxLv: 10, baseCost: [460, 510, 600, 320], baseTime: 35, desc: '製造衝撞車（拆城牆）與投石車（砸毀敵方建築）。' },
         { id: 'residence', name: '行宮', icon: '👑', maxLv: 15, baseCost: [580, 460, 350, 180], baseTime: 35, desc: '升至 10 級可訓練 3 名拓荒者，前往地圖空地建立分村！' },
-        { id: 'wall', name: '防禦城牆', icon: '🧱', maxLv: 15, baseCost: [120, 200, 80, 60], baseTime: 22, desc: '大幅提升村莊所有守軍的防禦加成（翠林聯盟可額外設置陷阱）。' }
+        { id: 'wall', name: '防禦城牆', icon: '[gi:wall]', maxLv: 15, baseCost: [120, 200, 80, 60], baseTime: 22, desc: '大幅提升村莊所有守軍的防禦加成（翠林聯盟可額外設置陷阱）。' }
     ];
 
     // ----------------------------------------------------------------------------
@@ -892,6 +1012,43 @@ body { padding-top: var(--topbar-h, 0px); }
     const RES_KEYS = ['wood', 'clay', 'iron', 'crop'];
     const RES_LABEL = { wood: '木', clay: '磚', iron: '鐵', crop: '糧' };
     const NOTIF_MAX = 50;
+
+    // ----------------------------------------------------------------------------
+    // 圖示：game-icons.net（CC BY 3.0）單色 SVG，sprite 內嵌在 <body> 開頭，顏色跟文字（currentColor）
+    //   · gi(name, cls)：回傳 <svg><use></svg> 字串
+    //   · 資料與舊存檔裡的表情符號，在寫進畫面時由 giifyDom 轉成圖示；純文字（toast、通知）用 stripEmoji 改成文字或移除
+    // ----------------------------------------------------------------------------
+    const GI_MAP = {'🪵': 'wood', '🧱': 'clay', '⛓': 'iron', '🌾': 'crop', '👥': 'pop', '🛡': 'shield', '🕳': 'cave', '🚨': 'alert', '🔨': 'hammer', '🏗': 'hammer', '🔔': 'bell', '🏰': 'castle', '🏛': 'main', '🗺': 'map', '📜': 'scroll', '📦': 'crate', '🚩': 'flag', '⚔': 'swords', '🪓': 'swords', '🐎': 'horse', '💣': 'catapult', '👑': 'crown', '🏆': 'crown', '🌴': 'palm', '🐑': 'sheep', '🐺': 'wolf', '🔥': 'flame', '🏚': 'barn', '📌': 'pin', '📍': 'pin', '⏱': 'hourglass', '⏳': 'hourglass', '📈': 'growth', '📊': 'growth', '🎯': 'target', '💰': 'coins', '🧭': 'map', '✅': 'check', '⚠': 'alert', '🗑': 'trash', '🚚': 'crate', '🏠': 'castle', '🏘': 'castle'};
+    const GI_KEEP = '➔✖✕'; // 純符號字元保留
+    const GI_RE = /\[gi:([a-z-]+)\]|([\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B50}\u{23E9}-\u{23F3}\u{2705}\u{274C}])\uFE0F?/gu;
+    const GI_RES_LABEL = { '🪵': '木', '🧱': '磚', '⛓': '鐵', '🌾': '糧' };
+    function gi(name, cls) { return `<svg class="gi gi-${name}${cls ? ' ' + cls : ''}" aria-hidden="true"><use href="#gi-${name}"/></svg>`; }
+    function giText(plain) { // 純文字（不含 HTML）→ HTML，表情符號換成圖示
+        return escHtml(plain).replace(GI_RE, (m, tok, ch) => {
+            if (tok) return gi(tok);
+            if (GI_KEEP.includes(ch)) return ch;
+            const n = GI_MAP[ch];
+            return n ? gi(n) : '';
+        });
+    }
+    function giHtml(plain) { return giText(plain); }
+    // 把元素內文字節點裡的表情符號換成圖示（不動屬性、不動標籤）
+    function giifyDom(root) {
+        if (!root) return;
+        const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+        const hits = [];
+        let n;
+        while ((n = w.nextNode())) { if (/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B50}\u{23E9}-\u{23F3}\u{2705}\u{274C}]|\[gi:/u.test(n.data)) hits.push(n); }
+        hits.forEach(t => {
+            const html = giText(t.data);
+            if (html !== escHtml(t.data)) t.replaceWith(document.createRange().createContextualFragment(html));
+        });
+    }
+    // 純文字訊息用：資源符號改成「木／磚／鐵／糧」，其他表情符號移除
+    function stripEmoji(str) {
+        return String(str).replace(GI_RE, (m, tok, ch) => (tok ? '' : GI_KEEP.includes(ch) ? ch : (GI_RES_LABEL[ch] || '')))
+            .replace(/️/g, '').replace(/ {2,}/g, ' ').replace(/^\s+/, '');
+    }
 
     // 千分位（小數捨去）：fmtNum(12345.9) → "12,345"
     function fmtNum(n) {
@@ -1429,12 +1586,11 @@ body { padding-top: var(--topbar-h, 0px); }
         const s = getAdvisorSuggestion(v, getVillageStats(v));
         advisorCurrent = s;
         if (!s) return;
-        setTextIfChanged(document.getElementById('advisor-icon'), s.icon);
-        setTextIfChanged(document.getElementById('advisor-title'), s.title);
-        setTextIfChanged(document.getElementById('advisor-reason'), s.reason);
+        setHtmlIfChanged(document.getElementById('advisor-icon'), giHtml(s.icon));
+        setTextIfChanged(document.getElementById('advisor-title'), stripEmoji(s.title));
+        setTextIfChanged(document.getElementById('advisor-reason'), stripEmoji(s.reason));
         document.getElementById('advisor-go').classList.toggle('hidden', !s.go);
-        document.getElementById('advisor-card').classList.toggle('border-red-600', s.id === 'incoming');
-        document.getElementById('advisor-card').classList.toggle('border-amber-600', s.id !== 'incoming');
+        document.getElementById('advisor-card').classList.toggle('is-urgent', s.id === 'incoming');
     }
 
     // 顧問說明浮層：只在記憶體記狀態；展開時浮在內容上方、不推動版面，再按一次或點別處收起
@@ -1482,7 +1638,7 @@ body { padding-top: var(--topbar-h, 0px); }
     // 預約按鈕文字：已預約這項→取消預約；已預約別項→改預約這項；沒預約→預約
     function reserveLabel(v, type, key) {
         if (isReservedTarget(v, type, key)) return '✖ 取消預約';
-        return gameState.reservation ? '📌 改預約這項' : '📌 預約';
+        return gameState.reservation ? '改預約這項' : '預約';
     }
 
     // 預約是否仍然有效？回傳 null＝有效，否則回傳失效原因
@@ -1642,7 +1798,7 @@ body { padding-top: var(--topbar-h, 0px); }
     }
 
     function showOfflineSummary(summary) {
-        document.getElementById('modal-title').textContent = '🌙 歡迎回來';
+        document.getElementById('modal-title').textContent = '歡迎回來';
         const body = document.getElementById('modal-body');
         body.textContent = '';
         const head = document.createElement('p');
@@ -1651,7 +1807,7 @@ body { padding-top: var(--topbar-h, 0px); }
         body.appendChild(head);
         summary.villages.forEach(vs => {
             const box = document.createElement('div');
-            box.className = 'mb-2 p-2 rounded bg-amber-50 border border-amber-300 text-xs leading-relaxed';
+            box.className = 'mb-2 p-2 rounded bl-note text-xs leading-relaxed';
             const name = document.createElement('div');
             name.className = 'font-bold';
             name.textContent = vs.name;
@@ -1668,7 +1824,7 @@ body { padding-top: var(--topbar-h, 0px); }
             + (summary.starved ? '糧食在離線期間見底，已暫時保護士兵 5 分鐘，請盡快升級農場或輸送糧食。' : '');
         body.appendChild(note);
         document.getElementById('modal-actions').innerHTML = `
-            <button onclick="closeCustomModal()" class="btn-green px-4 py-2 rounded font-bold text-sm">知道了</button>
+            <button onclick="closeCustomModal()" class="bl-btn-primary px-4 py-2 rounded font-bold text-sm">知道了</button>
         `;
         document.getElementById('custom-modal').classList.remove('hidden');
     }
@@ -1797,7 +1953,7 @@ body { padding-top: var(--topbar-h, 0px); }
 
     function toggleSound() {
         soundEnabled = !soundEnabled;
-        document.getElementById('btn-sound').textContent = soundEnabled ? '🔊' : '🔇';
+        document.getElementById('btn-sound').textContent = soundEnabled ? '音效：開' : '音效：關';
         if (soundEnabled) playSound('click');
     }
 
@@ -1850,7 +2006,7 @@ body { padding-top: var(--topbar-h, 0px); }
 
     // 檢查是否有存檔
     window.addEventListener('DOMContentLoaded', () => {
-        checkExistingSave();
+        initSetupScreen();
         initTips();
         // 頁面切到背景或關閉時存檔，確保「上次存檔時間」夠新（離線補算以此為準）
         document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') saveOnLeave(); });
@@ -1860,44 +2016,93 @@ body { padding-top: var(--topbar-h, 0px); }
         setInterval(gameLoop, 250); // 每 0.25 秒更新一次邏輯與畫面
     });
 
-    function checkExistingSave() {
+    // ----------------------------------------------------------------------------
+    // 開局畫面：畫面一「入口」（有存檔才出現）／畫面二「新局設定」
+    //   setupFrom：'none' 沒存檔直接設定｜'entry' 從入口進來｜'game' 從遊戲內「新局」進來
+    //   種族、象限只是表單狀態（selectedTribe／selectedQuadrant），按下「建立首府」才寫進 gameState
+    // ----------------------------------------------------------------------------
+    let setupFrom = 'none';
+    let setupPrevSpeed = 1; // 從遊戲內進設定頁前的速度，返回時還原
+
+    // 讀存檔摘要；沒有存檔、損毀或讀取失敗都回傳 null（當作沒有存檔）
+    function getSaveInfo() {
         try {
             const raw = readSaveRaw();
-            if (raw) {
-                const parsed = JSON.parse(raw);
-                if (parsed && parsed.playerName && parsed.villages && parsed.villages.length > 0) {
-                    const banner = document.getElementById('existing-save-banner');
-                    const summary = document.getElementById('save-summary');
-                    const tribeName = TRIBES[parsed.tribe]?.name || '未知';
-                    summary.textContent = `${parsed.playerName} (${tribeName}) - 擁有 ${parsed.villages.length} 座村莊`;
-                    banner.classList.remove('hidden');
-                }
-            }
-        } catch (e) { console.error(e); }
+            if (!raw) return null;
+            const parsed = JSON.parse(raw);
+            if (!(parsed && parsed.playerName && parsed.villages && parsed.villages.length > 0)) return null;
+            return {
+                name: parsed.playerName,
+                tribe: TRIBES[parsed.tribe]?.name || '未知',
+                villages: parsed.villages.length,
+                day: Math.floor((Number(parsed.elapsedSec) || 0) / 86400) + 1
+            };
+        } catch (e) { console.error(e); return null; }
+    }
+
+    function showSetupPage(page) { // 'entry' | 'new'
+        document.getElementById('setup-entry').classList.toggle('hidden', page !== 'entry');
+        document.getElementById('setup-new').classList.toggle('hidden', page !== 'new');
+        document.getElementById('setup-back').classList.toggle('hidden', !(page === 'new' && setupFrom !== 'none'));
+        document.getElementById('setup-screen').scrollTop = 0;
+    }
+
+    // 開遊戲（或從設定頁返回入口）：有存檔→入口；沒有→直接新局設定
+    function initSetupScreen() {
+        const info = getSaveInfo();
+        if (info) {
+            setupFrom = 'entry';
+            document.getElementById('entry-name').textContent = info.name;
+            document.getElementById('entry-tribe').textContent = info.tribe;
+            document.getElementById('entry-meta').textContent = `${info.villages} 座村莊・第 ${info.day} 天`;
+            showSetupPage('entry');
+        } else {
+            setupFrom = 'none';
+            showSetupPage('new');
+        }
+    }
+
+    function openSetupNew() { // 入口的「開新局」：只切畫面，不動存檔
+        playSound('click');
+        setupFrom = 'entry';
+        showSetupPage('new');
+    }
+
+    // 遊戲內「⋯」選單的「新局」：切到設定頁（遊戲狀態不變、時間暫停），存檔要到「建立首府」並確認後才覆蓋
+    function openNewGameFromGame() {
+        if (!gameState) return;
+        playSound('click');
+        setupPrevSpeed = gameSpeed;
+        gameSpeed = 0;
+        setupFrom = 'game';
+        document.getElementById('setup-screen').classList.remove('hidden');
+        showSetupPage('new');
+    }
+
+    function setupBack() {
+        playSound('click');
+        if (setupFrom === 'game') {
+            setGameSpeed(setupPrevSpeed);
+            lastTickTime = Date.now();
+            document.getElementById('setup-screen').classList.add('hidden');
+            refreshAllUI();
+        } else {
+            initSetupScreen();
+        }
     }
 
     function selectTribe(t) {
         playSound('click');
         selectedTribe = t;
-        document.querySelectorAll('.tribe-card').forEach(el => {
-            el.classList.remove('border-amber-600', 'bg-amber-50/90', 'shadow-md');
-            el.classList.add('border-[#8c6239]/50', 'bg-[#fffaf0]');
-        });
-        const active = document.getElementById('tribe-' + t);
-        active.classList.remove('border-[#8c6239]/50', 'bg-[#fffaf0]');
-        active.classList.add('border-amber-600', 'bg-amber-50/90', 'shadow-md');
+        document.querySelectorAll('.tribe-card').forEach(el => el.classList.remove('is-active'));
+        document.getElementById('tribe-' + t).classList.add('is-active');
     }
 
     function selectQuadrant(q) {
         playSound('click');
         selectedQuadrant = q;
-        document.querySelectorAll('.quad-btn').forEach(el => {
-            el.classList.remove('border-amber-600', 'bg-amber-100');
-            el.classList.add('border-[#8c6239]/50', 'bg-[#fffaf0]');
-        });
-        const active = document.getElementById('quad-' + q);
-        active.classList.remove('border-[#8c6239]/50', 'bg-[#fffaf0]');
-        active.classList.add('border-amber-600', 'bg-amber-100');
+        document.querySelectorAll('.quad-btn').forEach(el => el.classList.remove('is-active'));
+        document.getElementById('quad-' + q).classList.add('is-active');
     }
 
     // ----------------------------------------------------------------------------
@@ -1947,7 +2152,25 @@ body { padding-top: var(--topbar-h, 0px); }
         };
     }
 
+    // 「建立首府」：有存檔就先確認會覆蓋；沒有存檔直接建立
     function startNewGame() {
+        const info = getSaveInfo() || (gameState ? { name: gameState.playerName, villages: gameState.villages.length } : null);
+        if (!info) { doStartNewGame(); return; }
+        playSound('click');
+        document.getElementById('modal-title').textContent = '覆蓋存檔確認';
+        document.getElementById('modal-body').textContent = `這會覆蓋目前的存檔（${info.name}，${info.villages} 座村莊），確定要開新局嗎？`;
+        document.getElementById('modal-actions').innerHTML = `
+            <button onclick="closeCustomModal()" class="bl-btn-ghost px-4 py-1.5 rounded font-bold text-sm">取消</button>
+            <button onclick="confirmStartNewGame()" class="bl-btn-danger px-4 py-1.5 rounded font-bold text-sm">確定開新局</button>
+        `;
+        document.getElementById('custom-modal').classList.remove('hidden');
+    }
+    function confirmStartNewGame() {
+        closeCustomModal();
+        doStartNewGame();
+    }
+
+    function doStartNewGame() {
         playSound('horn');
         const pName = document.getElementById('player-name-input').value.trim() || '荒野霸主';
 
@@ -2079,6 +2302,7 @@ body { padding-top: var(--topbar-h, 0px); }
         selectedMapCoord = { x: px, y: py };
 
         document.getElementById('setup-screen').classList.add('hidden');
+        setGameSpeed(1); // 從遊戲內進設定頁時速度被暫停，新局要恢復
         saveGameToStorage(true);
         refreshAllUI();
         showToast(`歡迎來到邊境領主！你的首府建立於 (${px}, ${py})`, 'good');
@@ -2479,7 +2703,7 @@ body { padding-top: var(--topbar-h, 0px); }
         if (wallDrop > 0) {
             targetTile.buildings.wall -= wallDrop;
             wallLv = targetTile.buildings.wall;
-            wallLog = `<div class="text-amber-900 font-bold">🪵 衝撞車撞毀了敵方城牆，使其從 Lv.${wallLv + wallDrop} 降至 Lv.${wallLv}！</div>`;
+            wallLog = `<div class="bl-warn-text font-bold">[gi:wall] 衝撞車撞毀了敵方城牆，使其從 Lv.${wallLv + wallDrop} 降至 Lv.${wallLv}！</div>`;
         }
 
         // 計算敵方總防禦力
@@ -2557,15 +2781,15 @@ body { padding-top: var(--topbar-h, 0px); }
                 targetTile.buildings[targetKey] = Math.max(0, oldLv - dmgLv);
                 const newLv = targetTile.buildings[targetKey];
                 const bLabel = bNames[targetKey] || targetKey;
-                cataLog = `<div class="mt-1 p-1.5 bg-red-100 border border-red-400 rounded text-red-950 font-bold">🔥 投石車精準命中！敵方【${bLabel}】被從 Lv.${oldLv} 砸毀降至 Lv.${newLv}！</div>`;
+                cataLog = `<div class="mt-1 p-1.5 bl-note bl-note-bad rounded font-bold">🔥 投石車精準命中！敵方【${bLabel}】被從 Lv.${oldLv} 砸毀降至 Lv.${newLv}！</div>`;
             } else {
-                cataLog = `<div class="mt-1 text-amber-900 font-bold">💥 投石車持續轟炸，該村莊已是一片焦土瓦礫！</div>`;
+                cataLog = `<div class="mt-1 bl-warn-text font-bold">💥 投石車持續轟炸，該村莊已是一片焦土瓦礫！</div>`;
             }
         }
 
         // 檢查是否攻克中央世界奇觀
         if (targetTile.kind === 'wonder' && playerWon && targetTile.troops.inf === 0 && targetTile.troops.cav === 0) {
-            cataLog += `<div class="mt-2 p-2 bg-amber-200 border-2 border-amber-600 rounded text-amber-950 font-black">🏆 史詩勝利！你已徹底擊潰星冕遺族奇觀守軍，稱霸整座大陸！</div>`;
+            cataLog += `<div class="mt-2 p-2 bl-note bl-note-gold rounded font-black">🏆 史詩勝利！你已徹底擊潰星冕遺族奇觀守軍，稱霸整座大陸！</div>`;
         }
 
         // 戰鬥後敵情已變，先前偵察的情報作廢（下次要預估得重新偵察）
@@ -2584,11 +2808,11 @@ body { padding-top: var(--topbar-h, 0px); }
 
         const reportHtml = `
             <div>我軍對 <b>${targetTile.name} (${targetTile.x}, ${targetTile.y})</b> 發動【${modeName}】！</div>
-            <div class="mt-1">💀 我方戰損：<span class="text-red-800 font-bold">${lossStr}</span></div>
+            <div class="mt-1">💀 我方戰損：<span class="bl-bad-text font-bold">${lossStr}</span></div>
             <div>⚔️ 戰果統計：${enemyLossText}</div>
             ${wallLog}
             ${cataLog}
-            <div class="mt-1 font-bold text-emerald-900">💰 搶奪戰利品：🪵${fmtNum(loot.wood)} 🧱${fmtNum(loot.clay)} ⛓️${fmtNum(loot.iron)} 🌾${fmtNum(loot.crop)}</div>
+            <div class="mt-1 font-bold bl-ok-text">💰 搶奪戰利品：🪵${fmtNum(loot.wood)} 🧱${fmtNum(loot.clay)} ⛓️${fmtNum(loot.iron)} 🌾${fmtNum(loot.crop)}</div>
         `;
         addReport(`${totalSurvivors > 0 ? '⚔️ 凱旋' : '💀 全軍覆沒'}：${modeName} ${targetTile.name}`, reportHtml, totalSurvivors > 0 ? 'good' : 'bad');
         showToast(`${totalSurvivors > 0 ? '⚔️ 凱旋' : '💀 全軍覆沒'}：${modeName} ${targetTile.name}（我方戰損：${lossStr}；搶得 🪵${fmtNum(loot.wood)} 🧱${fmtNum(loot.clay)} ⛓️${fmtNum(loot.iron)} 🌾${fmtNum(loot.crop)}）`, totalSurvivors > 0 ? 'good' : 'bad', { log: true });
@@ -2655,12 +2879,12 @@ body { padding-top: var(--topbar-h, 0px); }
             }
         }
 
-        const trapMsg = trapped > 0 ? `<div class="text-emerald-800 font-bold">🪤 翠林陷阱機成功捕獲了 ${trapped} 名來犯敵兵！</div>` : '';
+        const trapMsg = trapped > 0 ? `<div class="bl-ok-text font-bold">🪤 翠林陷阱機成功捕獲了 ${trapped} 名來犯敵兵！</div>` : '';
         const html = `
             <div><b>${m.sourceName} (${m.fromCoord.x}, ${m.fromCoord.y})</b> 襲擊了你的 <b>${defV.name}</b>！</div>
             ${trapMsg}
             <div>🛡️ 我方守軍戰損：${defLosses.join('、') || '無陣亡（成功躲兵或無守軍）'}</div>
-            <div>🕳️ 山洞有效保護了部分庫存，被搶走資源：<span class="text-red-800 font-bold">🪵${fmtNum(stolen.wood)} 🧱${fmtNum(stolen.clay)} ⛓️${fmtNum(stolen.iron)} 🌾${fmtNum(stolen.crop)}</span></div>
+            <div>🕳️ 山洞有效保護了部分庫存，被搶走資源：<span class="bl-bad-text font-bold">🪵${fmtNum(stolen.wood)} 🧱${fmtNum(stolen.clay)} ⛓️${fmtNum(stolen.iron)} 🌾${fmtNum(stolen.crop)}</span></div>
         `;
         addReport(`🚨 村莊遭襲：${defV.name} 被掠奪`, html, 'bad');
         showToast(`🚨 ${defV.name} 遭 ${m.sourceName} 襲擊！守軍戰損：${defLosses.join('、') || '無'}；被搶走 🪵${fmtNum(stolen.wood)} 🧱${fmtNum(stolen.clay)} ⛓️${fmtNum(stolen.iron)} 🌾${fmtNum(stolen.crop)}`, 'bad', { important: true, log: true });
@@ -2928,6 +3152,7 @@ body { padding-top: var(--topbar-h, 0px); }
 
         document.querySelectorAll('.view-section').forEach(sec => sec.classList.add('hidden'));
         document.getElementById('view-' + tab).classList.remove('hidden');
+        document.body.dataset.tab = tab;
         setAdvisorOpen(false);
         document.getElementById('advisor-card').classList.toggle('hidden', tab === 'map' || tab === 'reports');
 
@@ -3007,7 +3232,7 @@ body { padding-top: var(--topbar-h, 0px); }
         // 同步速度鈕文字與暫停樣式、選單中的目前檔位（讀檔後、暫停後都要對）
         const btn = document.getElementById('speed-btn');
         if (btn) {
-            setTextIfChanged(btn, spd === 0 ? '⏸' : spd + 'x');
+            setTextIfChanged(btn, spd === 0 ? '暫停' : spd + 'x');
             btn.classList.toggle('is-paused', spd === 0);
         }
         document.querySelectorAll('#speed-menu [data-speed]').forEach(b => b.classList.toggle('is-cur', b.dataset.speed === String(spd)));
@@ -3031,9 +3256,9 @@ body { padding-top: var(--topbar-h, 0px); }
         const tribeObj = TRIBES[gameState.tribe];
 
         // 頂部種族與遊戲時間
-        document.getElementById('ui-tribe-badge').textContent = `${tribeObj.icon} ${tribeObj.name}`;
+        setHtmlIfChanged(document.getElementById('ui-tribe-badge'), giHtml(tribeObj.icon) + ' ' + escHtml(tribeObj.name));
         const fLabelMap = { '4446': '普田 4:4:4:6', '3339': '🔥 豐糧地 3:3:3:9', '11115': '👑 極豐糧地 1:1:1:15' };
-        document.getElementById('ui-village-type').textContent = `${fLabelMap[v.fieldTypeCode] || '普田'} (${v.x}, ${v.y})`;
+        setTextIfChanged(document.getElementById('ui-village-type'), stripEmoji(`${fLabelMap[v.fieldTypeCode] || '普田'} (${v.x}, ${v.y})`));
 
         document.getElementById('ui-game-clock').textContent = fmtGameClock(gameState.elapsedSec);
 
@@ -3192,6 +3417,7 @@ body { padding-top: var(--topbar-h, 0px); }
         if (el._blSig === html) return false;
         el.innerHTML = html;
         el._blSig = html;
+        giifyDom(el);
         return true;
     }
 
@@ -3318,14 +3544,14 @@ body { padding-top: var(--topbar-h, 0px); }
     function upActionsHtml(type, key, label) {
         const k = type === 'field' ? key : `'${key}'`;
         return `<div class="up-actions">
-            <button type="button" data-up-go onclick="startUpgrade('${type}', ${k})" disabled class="btn-green up-btn">${label}</button>
-            <button type="button" data-up-reserve onclick="toggleReservation('${type}', ${k})" class="btn-medieval up-btn is-sub up-off"></button>
+            <button type="button" data-up-go onclick="startUpgrade('${type}', ${k})" disabled class="bl-btn-primary up-btn">${label}</button>
+            <button type="button" data-up-reserve onclick="toggleReservation('${type}', ${k})" class="bl-btn-ghost up-btn is-sub up-off"></button>
         </div>`;
     }
 
     function cancelJobHtml(job) {
         return `<div class="up-line">🔨 施工中：${job.name} ➔ Lv.${job.targetLv}，完成後可繼續升級。</div>
-            <div class="up-actions"><button type="button" onclick="cancelBuild('${job.uid}')" class="btn-red up-btn">✖ 取消建造（全額退還）</button></div>`;
+            <div class="up-actions"><button type="button" onclick="cancelBuild('${job.uid}')" class="bl-btn-danger up-btn">✖ 取消建造（全額退還）</button></div>`;
     }
 
     function fieldProdOf(stats, f, lv) { return Math.round((FIELD_PROD_TABLE[lv] || 8) * (1 + stats.oasisBonus[f.type])); }
@@ -3394,7 +3620,7 @@ body { padding-top: var(--topbar-h, 0px); }
         if (stats.oasisBonus.clay > 0) oTexts.push(`🧱+${Math.round(stats.oasisBonus.clay * 100)}%`);
         if (stats.oasisBonus.iron > 0) oTexts.push(`⛓️+${Math.round(stats.oasisBonus.iron * 100)}%`);
         if (stats.oasisBonus.crop > 0) oTexts.push(`🌾+${Math.round(stats.oasisBonus.crop * 100)}%`);
-        document.getElementById('ui-oasis-bonus').textContent = `周邊綠洲加成: ${oTexts.length ? oTexts.join(' ') : '無 (清剿周邊綠洲野獸可獲得)'}`;
+        setTextIfChanged(document.getElementById('ui-oasis-bonus'), stripEmoji(`周邊綠洲加成: ${oTexts.length ? oTexts.join(' ') : '無 (清剿周邊綠洲野獸可獲得)'}`));
 
         const panel = document.getElementById('fields-panel');
         if (!isListBusy(list)) setHtmlIfChanged(list, buildFieldsListHtml(v, stats));
@@ -3410,7 +3636,7 @@ body { padding-top: var(--topbar-h, 0px); }
             setHtmlIfChanged(troopsDiv, '<div class="col-span-2 text-stone-500 py-1">目前本村無駐軍（請至村莊中心建造兵營訓練）</div>');
         } else {
             setHtmlIfChanged(troopsDiv, activeTroops.map(u =>
-                `<div class="bg-amber-50 px-2 py-1 rounded border border-amber-300 flex justify-between">
+                `<div class="bl-note px-2 py-1 rounded flex justify-between">
                     <span>${u.name}</span><b class="text-amber-950">${v.troops[u.id]}</b>
                 </div>`
             ).join(''));
@@ -3437,7 +3663,7 @@ body { padding-top: var(--topbar-h, 0px); }
             const reqLv = u.req[b.id] || 1;
             const unlocked = lv >= reqLv;
             return `
-                <div class="p-2 rounded border ${unlocked ? 'bg-white border-stone-300' : 'bg-stone-100 border-stone-200 opacity-60'} text-xs">
+                <div class="up-unit${unlocked ? '' : ' is-locked'} text-xs">
                     <div class="flex justify-between font-bold text-[#3b2818]">
                         <span>${u.name} (現有: ${v.troops[u.id] || 0})</span>
                         <span class="text-[10px] text-stone-500">攻:${u.atk} 負重:${u.carry}</span>
@@ -3445,11 +3671,11 @@ body { padding-top: var(--topbar-h, 0px); }
                     <div class="text-[11px] text-stone-600 my-1">🪵${fmtNum(u.cost[0])} 🧱${fmtNum(u.cost[1])} ⛓️${fmtNum(u.cost[2])} 🌾${fmtNum(u.cost[3])}</div>
                     ${unlocked ? `
                         <div class="up-train-btns">
-                            <button type="button" data-train-u="${u.id}" data-train-n="1" onclick="trainUnit('${u.id}', 1)" disabled class="btn-medieval">+1</button>
-                            ${u.id !== 'settler' ? `<button type="button" data-train-u="${u.id}" data-train-n="5" onclick="trainUnit('${u.id}', 5)" disabled class="btn-medieval">+5</button>
-                            <button type="button" data-train-u="${u.id}" data-train-n="max" onclick="trainMax('${u.id}')" disabled class="btn-green">最大(0)</button>` : ''}
+                            <button type="button" data-train-u="${u.id}" data-train-n="1" onclick="trainUnit('${u.id}', 1)" disabled class="bl-btn-ghost">+1</button>
+                            ${u.id !== 'settler' ? `<button type="button" data-train-u="${u.id}" data-train-n="5" onclick="trainUnit('${u.id}', 5)" disabled class="bl-btn-ghost">+5</button>
+                            <button type="button" data-train-u="${u.id}" data-train-n="max" onclick="trainMax('${u.id}')" disabled class="bl-btn-primary">最大(0)</button>` : ''}
                         </div>
-                    ` : `<div class="text-[11px] text-red-700 font-bold">需要 ${b.name} Lv.${reqLv}</div>`}
+                    ` : `<div class="text-[11px] up-need">需要 ${b.name} Lv.${reqLv}</div>`}
                 </div>`;
         }).join('') + `</div>`;
     }
@@ -3466,7 +3692,7 @@ body { padding-top: var(--topbar-h, 0px); }
             h += `<div class="up-card" data-up-type="building" data-up-key="${b.id}">
                 <div class="up-line"><b>${lv === 0 ? '建造新建築' : `升級至 Lv.${upg.nextLv}`}</b>　⏱️ ${fmtDur(upg.timeSec)}</div>
                 ${costBoxHtml(upg.cost)}
-                <div class="up-line text-emerald-900"><b>升級後：</b>${describeUpgradeBenefit(b.id, lv, v)}</div>
+                <div class="up-line up-benefit"><b>升級後：</b>${describeUpgradeBenefit(b.id, lv, v)}</div>
                 ${upActionsHtml('building', b.id, lv === 0 ? '🔨 立即建造' : `🔨 升級 Lv.${upg.nextLv}`)}
                 <div class="up-hint" data-up-hint></div>
             </div>`;
@@ -3483,7 +3709,7 @@ body { padding-top: var(--topbar-h, 0px); }
                 { id: 'main', label: '🏛️ 敵方大樓 (徹底夷平村莊)' }
             ];
             h += `<div class="up-sec is-red">
-                <div class="font-bold text-red-950">🎯 投石車瞄準目標設定 (正規攻擊生效)：</div>
+                <div class="font-bold text-[#3b2818]">🎯 投石車瞄準目標設定 (正規攻擊生效)：</div>
                 <select onchange="setCataTarget(this.value)" class="up-select">
                     ${targets.map(t => `<option value="${t.id}" ${v.cataTarget === t.id ? 'selected' : ''}>${t.label}</option>`).join('')}
                 </select>
@@ -3515,7 +3741,7 @@ body { padding-top: var(--topbar-h, 0px); }
         if (b) return buildingDetailHtml(v, b, v.buildQueue.find(q => q.targetType === 'building' && q.indexOrId === b.id));
         return `<div class="up-line" style="font-size:14px"><b>🏘️ 村莊概況</b></div>
             <div class="fp-row"><span>👥 人口</span><b data-bp="pop"></b></div>
-            <div class="fp-row"><span>🛡️ 城牆防禦</span><b data-bp="wall"></b></div>
+            <div class="fp-row"><span>[gi:wall] 城牆防禦</span><b data-bp="wall"></b></div>
             <div class="fp-row"><span>🕳️ 山洞保護</span><b data-bp="cranny"></b></div>
             <div class="fp-row"><span>📦 倉庫上限</span><b data-bp="capWood"></b></div>
             <div class="fp-row"><span>🏚️ 穀倉上限</span><b data-bp="capCrop"></b></div>
@@ -3564,42 +3790,42 @@ body { padding-top: var(--topbar-h, 0px); }
             for (let x = -8; x <= 8; x++) {
                 const tile = gameState.mapTiles[`${x},${y}`];
                 const isSel = selectedMapCoord && selectedMapCoord.x === x && selectedMapCoord.y === y;
-                let bg = 'bg-[#6b8e45] hover:bg-[#7fa653]';
+                let bg = 'mt-empty';
                 let icon = '';
 
                 if (tile.kind === 'player') {
-                    bg = 'bg-blue-700 hover:bg-blue-600 text-white';
+                    bg = 'mt-player';
                     icon = '🚩';
                 } else if (tile.kind === 'wonder') {
-                    bg = 'bg-purple-900 hover:bg-purple-800 text-amber-300';
+                    bg = 'mt-wonder';
                     icon = '👑';
                 } else if (tile.kind === 'oasis') {
-                    bg = 'bg-teal-700 hover:bg-teal-600 text-white';
+                    bg = 'mt-oasis';
                     icon = '🌴';
                 } else if (tile.kind === 'ai') {
                     if (tile.aiType === 'sheep') {
-                        bg = 'bg-amber-200 hover:bg-amber-100';
+                        bg = 'mt-sheep';
                         icon = '🐑';
                     } else if (tile.aiType === 'wolf') {
-                        bg = 'bg-red-800 hover:bg-red-700 text-white';
+                        bg = 'mt-wolf';
                         icon = '🐺';
                     } else {
-                        bg = 'bg-slate-600 hover:bg-slate-500 text-white';
+                        bg = 'mt-fort';
                         icon = '🛡️';
                     }
                 } else if (tile.kind === 'empty') {
                     if (tile.fieldTypeCode === '11115') {
-                        bg = 'bg-amber-500/80 hover:bg-amber-400';
+                        bg = 'mt-fertile2';
                         icon = '🔥';
                     } else if (tile.fieldTypeCode === '3339') {
-                        bg = 'bg-lime-500/70 hover:bg-lime-400';
+                        bg = 'mt-fertile';
                         icon = '🌾';
                     }
                 }
 
                 // 象限分隔線提示
-                const axisBorder = (x === 0 || y === 0) ? 'border border-amber-300/40' : '';
-                const selRing = isSel ? 'ring-2 ring-white z-10 scale-110' : '';
+                const axisBorder = (x === 0 || y === 0) ? 'mt-axis' : '';
+                const selRing = isSel ? 'mt-sel' : '';
                 const tip = escHtml(describeTileForTip(tile, x, y));
 
                 html += `
@@ -3653,6 +3879,11 @@ body { padding-top: var(--topbar-h, 0px); }
     }
 
     function renderSelectedMapTileDetail(x, y) {
+        renderSelectedMapTileDetailRaw(x, y);
+        giifyDom(document.getElementById('map-tile-detail'));
+    }
+
+    function renderSelectedMapTileDetailRaw(x, y) {
         const tile = gameState.mapTiles[`${x},${y}`];
         const v = getActiveVillage();
         const panel = document.getElementById('map-tile-detail');
@@ -3672,7 +3903,7 @@ body { padding-top: var(--topbar-h, 0px); }
             const isSameVillage = targetV && targetV.id === v.id;
             panel.innerHTML = `
                 <div class="border-b border-[#d4bfa0] pb-2 mb-3">
-                    <div class="text-xs text-blue-800 font-bold">🚩 我方領地 (${quadName}象限)</div>
+                    <div class="text-xs bl-sub font-bold">🚩 我方領地 (${quadName}象限)</div>
                     <h3 class="font-serif-tc font-black text-lg text-[#3b2818]">${targetV?.name || '我方村莊'} (${x}, ${y})</h3>
                     <div class="text-xs text-stone-600">距離當前村莊：${dist} 格</div>
                 </div>
@@ -3682,12 +3913,12 @@ body { padding-top: var(--topbar-h, 0px); }
                     <div class="space-y-2 text-xs">
                         <div class="font-bold text-[#3b2818]">📦 輸送資源給此分村：</div>
                         <div class="grid grid-cols-2 gap-1.5">
-                            <label>🪵 木材: <input type="number" id="trans-wood" value="500" min="0" class="w-full p-1 border rounded bg-white"></label>
-                            <label>🧱 磚塊: <input type="number" id="trans-clay" value="500" min="0" class="w-full p-1 border rounded bg-white"></label>
-                            <label>⛓️ 鋼鐵: <input type="number" id="trans-iron" value="500" min="0" class="w-full p-1 border rounded bg-white"></label>
-                            <label>🌾 穀物: <input type="number" id="trans-crop" value="500" min="0" class="w-full p-1 border rounded bg-white"></label>
+                            <label>🪵 木材: <input type="number" id="trans-wood" value="500" min="0" class="w-full p-1 border rounded bl-input"></label>
+                            <label>🧱 磚塊: <input type="number" id="trans-clay" value="500" min="0" class="w-full p-1 border rounded bl-input"></label>
+                            <label>⛓️ 鋼鐵: <input type="number" id="trans-iron" value="500" min="0" class="w-full p-1 border rounded bl-input"></label>
+                            <label>🌾 穀物: <input type="number" id="trans-crop" value="500" min="0" class="w-full p-1 border rounded bl-input"></label>
                         </div>
-                        <button onclick="dispatchMarch('transport', ${x}, ${y})" class="btn-green w-full py-2 rounded-lg font-bold mt-2">🚚 派出商隊運送資源</button>
+                        <button onclick="dispatchMarch('transport', ${x}, ${y})" class="bl-btn-primary w-full py-2 rounded-lg font-bold mt-2">🚚 派出商隊運送資源</button>
                     </div>
                 `}
             `;
@@ -3703,11 +3934,11 @@ body { padding-top: var(--topbar-h, 0px); }
             const settlers = v.troops.settler || 0;
             panel.innerHTML = `
                 <div class="border-b border-[#d4bfa0] pb-2 mb-3">
-                    <div class="text-xs text-emerald-800 font-bold">🌿 無主荒野 (${quadName}象限)</div>
+                    <div class="text-xs bl-sub font-bold">🌿 無主荒野 (${quadName}象限)</div>
                     <h3 class="font-serif-tc font-black text-lg text-[#3b2818]">可開闢空地 (${x}, ${y})</h3>
                     <div class="text-xs text-stone-600">距離當前村莊：${dist} 格</div>
                 </div>
-                <div class="p-3 rounded-lg bg-amber-100 border border-amber-400 text-xs font-bold text-amber-950 mb-3">
+                <div class="p-3 rounded-lg bl-note text-xs font-bold mb-3">
                     資源田分佈：${fDesc}
                 </div>
                 <div class="text-xs text-stone-700 space-y-1 mb-4">
@@ -3715,7 +3946,7 @@ body { padding-top: var(--topbar-h, 0px); }
                     <div>• 需要 <b>3 名拓荒者</b> (目前擁有: <b class="${settlers >= 3 ? 'text-emerald-700' : 'text-red-700'}">${settlers}/3</b>)</div>
                     <div>• 建村基金：<b>木/磚/鐵/糧 各 750</b></div>
                 </div>
-                <button onclick="dispatchMarch('settle', ${x}, ${y})" ${settlers < 3 ? 'disabled' : ''} class="btn-green w-full py-2.5 rounded-lg font-bold text-sm">
+                <button onclick="dispatchMarch('settle', ${x}, ${y})" ${settlers < 3 ? 'disabled' : ''} class="bl-btn-primary w-full py-2.5 rounded-lg font-bold text-sm">
                     🚩 派遣拓荒者建立分村
                 </button>
             `;
@@ -3724,11 +3955,11 @@ body { padding-top: var(--topbar-h, 0px); }
 
         // 3. AI 村莊 / 綠洲 / 世界奇觀 (出征介面)
         let badge = '';
-        if (tile.kind === 'oasis') badge = `<span class="px-2 py-0.5 rounded bg-teal-800 text-white text-xs">🌴 綠洲 (+25% ${FIELD_TYPES[tile.bonusType].name})</span>`;
-        else if (tile.kind === 'wonder') badge = `<span class="px-2 py-0.5 rounded bg-purple-900 text-amber-300 text-xs">👑 終局奇觀要塞</span>`;
-        else if (tile.aiType === 'sheep') badge = `<span class="px-2 py-0.5 rounded bg-amber-600 text-white text-xs">🐑 可掠奪的村莊 (多金無防)</span>`;
-        else if (tile.aiType === 'wolf') badge = `<span class="px-2 py-0.5 rounded bg-red-800 text-white text-xs">🐺 掠奪狼群</span>`;
-        else badge = `<span class="px-2 py-0.5 rounded bg-slate-700 text-white text-xs">🛡️ 重兵防守者</span>`;
+        if (tile.kind === 'oasis') badge = `<span class="bl-tag"><i class="tag-sw mt-oasis"></i>🌴 綠洲 (+25% ${FIELD_TYPES[tile.bonusType].name})</span>`;
+        else if (tile.kind === 'wonder') badge = `<span class="bl-tag"><i class="tag-sw mt-wonder"></i>👑 終局奇觀要塞</span>`;
+        else if (tile.aiType === 'sheep') badge = `<span class="bl-tag"><i class="tag-sw mt-sheep"></i>🐑 可掠奪的村莊 (多金無防)</span>`;
+        else if (tile.aiType === 'wolf') badge = `<span class="bl-tag"><i class="tag-sw mt-wolf"></i>🐺 掠奪狼群</span>`;
+        else badge = `<span class="bl-tag"><i class="tag-sw mt-fort"></i>🛡️ 重兵防守者</span>`;
 
         const units = TRIBES[gameState.tribe].units.filter(u => u.id !== 'settler');
         const sendKey = `${v.id}|${x},${y}`;
@@ -3740,10 +3971,10 @@ body { padding-top: var(--topbar-h, 0px); }
                 <div class="flex flex-wrap items-center justify-between gap-1 text-xs bg-white px-2 py-1 rounded border border-stone-300">
                     <span class="font-medium">${u.name} <span class="text-stone-500">(${avail})</span></span>
                     <div class="flex items-center gap-1 ml-auto">
-                        <button type="button" data-step-unit="${u.id}" data-step-d="-1" aria-label="減少${u.name}" class="step-btn bg-amber-100 hover:bg-amber-200 rounded font-black border border-amber-400">−</button>
+                        <button type="button" data-step-unit="${u.id}" data-step-d="-1" aria-label="減少${u.name}" class="step-btn bl-btn-ghost rounded font-black">−</button>
                         <input type="number" id="send-unit-${u.id}" min="0" max="${avail}" value="${keep}" oninput="updateSendPreview()" class="w-14 px-1 py-1 border rounded text-right font-bold">
-                        <button type="button" data-step-unit="${u.id}" data-step-d="1" aria-label="增加${u.name}" class="step-btn bg-amber-100 hover:bg-amber-200 rounded font-black border border-amber-400">＋</button>
-                        <button type="button" onclick="fillSendUnit('${u.id}', ${avail})" class="px-2 py-1.5 sm:px-1.5 sm:py-0.5 min-h-[32px] sm:min-h-0 bg-amber-200 hover:bg-amber-300 rounded text-[10px] font-bold">全選</button>
+                        <button type="button" data-step-unit="${u.id}" data-step-d="1" aria-label="增加${u.name}" class="step-btn bl-btn-ghost rounded font-black">＋</button>
+                        <button type="button" onclick="fillSendUnit('${u.id}', ${avail})" class="bl-btn-ghost px-2 py-1.5 sm:px-1.5 sm:py-0.5 min-h-[32px] sm:min-h-0 rounded text-[10px] font-bold">全選</button>
                     </div>
                 </div>
             `;
@@ -3762,12 +3993,12 @@ body { padding-top: var(--topbar-h, 0px); }
             </div>
 
             <!-- 出兵前預估：輸入兵力即時更新（不必送出） -->
-            <div id="send-preview" class="mb-3 p-2 rounded-lg bg-stone-100 border border-stone-300 text-[11px] leading-relaxed space-y-0.5"></div>
+            <div id="send-preview" class="mb-3 p-2 rounded-lg bl-note text-[11px] leading-relaxed space-y-0.5"></div>
 
             <div class="grid grid-cols-3 gap-1.5">
-                <button onclick="dispatchMarch('scout', ${x}, ${y})" class="btn-medieval py-2 min-h-[40px] rounded-lg font-bold text-xs">🔭 偵察</button>
-                <button onclick="dispatchMarch('raid', ${x}, ${y})" class="btn-green py-2 min-h-[40px] rounded-lg font-bold text-xs">💰 掠奪</button>
-                <button onclick="dispatchMarch('attack', ${x}, ${y})" class="btn-red py-2 min-h-[40px] rounded-lg font-bold text-xs">🔥 正規攻擊</button>
+                <button onclick="dispatchMarch('scout', ${x}, ${y})" class="bl-btn-ghost py-2 min-h-[40px] rounded-lg font-bold text-xs">🔭 偵察</button>
+                <button onclick="dispatchMarch('raid', ${x}, ${y})" class="bl-btn-primary py-2 min-h-[40px] rounded-lg font-bold text-xs">💰 掠奪</button>
+                <button onclick="dispatchMarch('attack', ${x}, ${y})" class="bl-btn-danger py-2 min-h-[40px] rounded-lg font-bold text-xs">🔥 正規攻擊</button>
             </div>
         `;
         panel.dataset.sendTarget = sendKey;
@@ -3850,7 +4081,7 @@ body { padding-top: var(--topbar-h, 0px); }
         updateSendPreview();
     }
 
-    const LEVEL_TEXT = { good: ['優勢', 'text-emerald-700'], even: ['勢均力敵', 'text-amber-700'], bad: ['劣勢', 'text-red-700'] };
+    const LEVEL_TEXT = { good: ['優勢', 'bl-ok-text'], even: ['勢均力敵', 'bl-warn-text'], bad: ['劣勢', 'bl-bad-text'] };
     function renderSendPreviewHtml(p) {
         if (p.totalSent <= 0) return '<div class="text-stone-500">在上方輸入出兵數量，這裡會顯示行軍時間、戰力與勝算預估。</div>';
         const lines = [];
@@ -3877,7 +4108,7 @@ body { padding-top: var(--topbar-h, 0px); }
         } else if (p.atk <= 0) {
             lines.push('<span class="text-stone-500">只派偵察兵（或攻擊力為 0）：不會交戰，沒有勝算可估。</span>');
         }
-        if (p.warn) lines.push(`<span class="text-red-700 font-bold">⚠️ ${p.warn}</span>`);
+        if (p.warn) lines.push(`<span class="bl-bad-text font-bold">⚠️ ${p.warn}</span>`);
         return lines.map(l => `<div>${l}</div>`).join('');
     }
 
@@ -3888,7 +4119,7 @@ body { padding-top: var(--topbar-h, 0px); }
         const { x, y } = selectedMapCoord;
         const tile = gameState.mapTiles[`${x},${y}`];
         const html = renderSendPreviewHtml(calcSendPreview(v, tile, readSendTroops(v), x, y));
-        if (box.innerHTML !== html) box.innerHTML = html;
+        setHtmlIfChanged(box, html);
     }
 
     // --- 渲染視圖 D：軍情與戰報 ---
@@ -3902,11 +4133,9 @@ body { padding-top: var(--topbar-h, 0px); }
         }
 
         repList.innerHTML = gameState.reports.map(r => {
-            const borderCol = r.type === 'good' ? 'border-emerald-500 bg-emerald-50/70'
-                            : r.type === 'bad' ? 'border-red-500 bg-red-50/70'
-                            : 'border-amber-500 bg-amber-50/70';
+            const borderCol = r.type === 'good' ? 'bl-card-good' : r.type === 'bad' ? 'bl-card-bad' : 'bl-card-info';
             return `
-                <div class="p-3 rounded-lg border-l-4 ${borderCol} shadow-sm">
+                <div class="p-3 rounded-lg shadow-sm bl-card ${borderCol}">
                     <div class="flex items-center justify-between font-bold text-[#3b2818] mb-1">
                         <span>${r.title}</span>
                         <span class="text-[10px] font-mono text-stone-500">${r.timeStr}</span>
@@ -3915,6 +4144,7 @@ body { padding-top: var(--topbar-h, 0px); }
                 </div>
             `;
         }).join('');
+        giifyDom(repList);
     }
 
     // 行軍動態：行軍組成改變才重建清單；平常（每 0.25 秒）只更新倒數文字與進度條，捲動位置不會跳
@@ -3944,23 +4174,24 @@ body { padding-top: var(--topbar-h, 0px); }
         list.innerHTML = gameState.marches.map((m, mi) => {
             const pct = Math.max(5, Math.min(100, Math.round((1 - m.remainingSec / m.totalSec) * 100)));
             let badge = '🚩 出征中';
-            let barCol = 'bg-amber-600';
-            if (m.dir === 'in') { badge = '🏠 凱旋返航'; barCol = 'bg-emerald-600'; }
-            else if (m.dir === 'ai_atk') { badge = '🚨 敵軍來襲'; barCol = 'bg-red-600'; }
-            else if (m.mission === 'transport') { badge = '📦 商隊運送'; barCol = 'bg-blue-600'; }
+            let barCol = 'bl-bar-go';
+            if (m.dir === 'in') { badge = '🏠 凱旋返航'; barCol = 'bl-bar-back'; }
+            else if (m.dir === 'ai_atk') { badge = '🚨 敵軍來襲'; barCol = 'bl-bar-atk'; }
+            else if (m.mission === 'transport') { badge = '📦 商隊運送'; barCol = 'bl-bar-trade'; }
 
             return `
-                <div class="p-2.5 rounded-lg bg-amber-50 border border-amber-300">
+                <div class="p-2.5 rounded-lg bl-card bl-card-info">
                     <div class="flex justify-between font-bold mb-1">
                         <span>${badge} ➔ ${m.targetName}</span>
-                        <span data-m-time="${mi}" class="font-mono text-red-700">${fmtDur(m.remainingSec)}</span>
+                        <span data-m-time="${mi}" class="font-mono bl-bad-text">${fmtDur(m.remainingSec)}</span>
                     </div>
-                    <div class="w-full h-2 bg-stone-300 rounded-full overflow-hidden">
+                    <div class="w-full h-2 bl-track rounded-full overflow-hidden">
                         <div data-m-bar="${mi}" class="${barCol} h-full transition-all" style="width: ${pct}%"></div>
                     </div>
                 </div>
             `;
         }).join('');
+        giifyDom(list);
     }
 
     function addReport(title, html, type = 'info') {
@@ -3982,11 +4213,11 @@ body { padding-top: var(--topbar-h, 0px); }
             showToast('目前沒有戰報可以清空。', 'info');
             return;
         }
-        document.getElementById('modal-title').textContent = '🗑️ 清空戰報確認';
+        document.getElementById('modal-title').textContent = '清空戰報確認';
         document.getElementById('modal-body').textContent = `確定要清空全部 ${gameState.reports.length} 則戰報嗎？清空後無法復原。`;
         document.getElementById('modal-actions').innerHTML = `
             <button onclick="closeCustomModal()" class="px-4 py-1.5 rounded bg-stone-300 hover:bg-stone-400 font-bold text-sm">取消</button>
-            <button onclick="confirmClearReports()" class="btn-red px-4 py-1.5 rounded font-bold text-sm">清空戰報</button>
+            <button onclick="confirmClearReports()" class="bl-btn-danger px-4 py-1.5 rounded font-bold text-sm">清空戰報</button>
         `;
         document.getElementById('custom-modal').classList.remove('hidden');
     }
@@ -4071,25 +4302,6 @@ body { padding-top: var(--topbar-h, 0px); }
         }
     }
 
-    function openResetModal() {
-        playSound('click');
-        const modal = document.getElementById('custom-modal');
-        document.getElementById('modal-title').textContent = '⚠️ 開啟新戰局確認';
-        document.getElementById('modal-body').textContent = '確定要返回開局設定畫面嗎？建議先點擊「存檔」保留目前進度。';
-        document.getElementById('modal-actions').innerHTML = `
-            <button onclick="closeCustomModal()" class="px-4 py-1.5 rounded bg-stone-300 hover:bg-stone-400 font-bold text-sm">取消</button>
-            <button onclick="confirmReturnSetup()" class="btn-red px-4 py-1.5 rounded font-bold text-sm">返回開局設定</button>
-        `;
-        modal.classList.remove('hidden');
-    }
-
-    function confirmReturnSetup() {
-        closeCustomModal();
-        gameSpeed = 0;
-        checkExistingSave();
-        document.getElementById('setup-screen').classList.remove('hidden');
-    }
-
     function closeCustomModal() {
         document.getElementById('custom-modal').classList.add('hidden');
     }
@@ -4099,14 +4311,13 @@ body { padding-top: var(--topbar-h, 0px); }
     //           「已存檔」「歡迎」「音效開關」這類小提示只跳 toast
     const TOAST_MAX = 4;
     function showToast(msg, type = 'info', opts = {}) {
+        msg = stripEmoji(msg);
         if (opts.log) pushNotification(msg, type);
         const important = !!opts.important;
         const container = document.getElementById('toast-container');
         const el = document.createElement('div');
-        const colors = type === 'good' ? 'bg-emerald-900 border-emerald-400 text-emerald-50'
-                     : type === 'bad' ? 'bg-red-900 border-red-400 text-red-50'
-                     : 'bg-[#2e1e11] border-amber-400 text-amber-50';
-        el.className = `px-4 py-2.5 rounded-lg border-2 shadow-xl text-xs sm:text-sm font-bold transition-all duration-300 ${colors}` + (important ? ' pointer-events-auto cursor-pointer' : '');
+        const colors = type === 'good' ? 'bl-toast bl-toast-good' : type === 'bad' ? 'bl-toast bl-toast-bad' : 'bl-toast';
+        el.className = `px-4 py-2.5 rounded-lg shadow-xl text-xs sm:text-sm font-bold transition-all duration-300 ${colors}` + (important ? ' pointer-events-auto cursor-pointer' : '');
         el.textContent = msg;
         let gone = false;
         const dismiss = () => {
@@ -4146,7 +4357,7 @@ body { padding-top: var(--topbar-h, 0px); }
     function openNotifPanel() {
         playSound('click');
         const list = (gameState && Array.isArray(gameState.notifications)) ? gameState.notifications : [];
-        document.getElementById('modal-title').textContent = `🔔 通知紀錄（最近 ${list.length} 則）`;
+        document.getElementById('modal-title').textContent = `通知紀錄（最近 ${list.length} 則）`;
         const body = document.getElementById('modal-body');
         body.textContent = '';
         if (list.length === 0) {
@@ -4159,16 +4370,14 @@ body { padding-top: var(--topbar-h, 0px); }
             wrap.className = 'max-h-80 overflow-y-auto space-y-1.5 pr-1';
             list.forEach(n => {
                 const row = document.createElement('div');
-                const col = n.type === 'good' ? 'border-emerald-500 bg-emerald-50/70'
-                          : n.type === 'bad' ? 'border-red-500 bg-red-50/70'
-                          : 'border-amber-500 bg-amber-50/70';
-                row.className = `px-2.5 py-1.5 rounded border-l-4 text-xs leading-snug ${col}`;
+                const col = n.type === 'good' ? 'bl-card-good' : n.type === 'bad' ? 'bl-card-bad' : 'bl-card-info';
+                row.className = `px-2.5 py-1.5 rounded text-xs leading-snug bl-card ${col}`;
                 const time = document.createElement('div');
                 time.className = 'text-[10px] font-mono text-stone-500';
                 time.textContent = fmtGameClock(n.t) + (n.seen ? '' : '　● 新');
                 const msg = document.createElement('div');
                 msg.className = n.seen ? '' : 'font-bold';
-                msg.textContent = n.msg;
+                msg.textContent = stripEmoji(n.msg);
                 row.appendChild(time);
                 row.appendChild(msg);
                 wrap.appendChild(row);
