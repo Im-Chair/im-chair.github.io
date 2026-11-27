@@ -207,7 +207,7 @@ body.ptmap #dlg{bottom:var(--padh,260px);padding-bottom:12px}
     <button class="pri" id="btnCont" style="display:none">繼續遊戲</button>
     <button class="pri" id="btnNew">新遊戲</button>
     <button id="btnImp">匯入存檔碼</button>
-    <div class="ver">原型 v1.30 ・ 110 種怪物 ・ 前九章可玩</div>
+    <div class="ver">原型 v1.31 ・ 110 種怪物 ・ 前九章可玩</div>
   </div>
 
   <div id="sMap" class="screen">
@@ -964,7 +964,7 @@ function resizeMap(){
   const sm=$('#sMap'),W=sm.clientWidth,H=sm.clientHeight;if(!W||!H)return;
   mapPortrait=H>W*1.2;   // 直向：上方遊戲視窗＋下方操作面板
   sm.classList.toggle('pt',mapPortrait);document.body.classList.toggle('ptmap',cur==='sMap'&&mapPortrait);
-  $('#app').style.setProperty('--padh',`calc(${Math.min(clamp(Math.round(H*.36)+54,284,340),Math.round(H*.44))}px + env(safe-area-inset-bottom))`);   // 面板高含頂端狀態牌（上緣 10px＋牌高 64px＝74px，另留 12px 間距）；公式沿用舊值不加高，避免壓縮遊戲視窗（至少約 56%）
+  $('#app').style.setProperty('--padh',`calc(${clamp(Math.round(H*.29),252,276)}px + env(safe-area-inset-bottom))`);   // 面板高＝狀態牌（上緣 10px＋牌高 64px＋間距 12px）＋方向鍵 140px＋上下少量留白；不留大片空白，多的高度都給遊戲視窗
   mdpr=Math.min(2,window.devicePixelRatio||1);
   mw=mapCv.clientWidth;mh=mapCv.clientHeight;   // 讀取時會依新 class 重排，量到的是遊戲視窗大小
   mapCv.width=Math.round(mw*mdpr);mapCv.height=Math.round(mh*mdpr);
