@@ -54,16 +54,18 @@ body.btn-art #sTitle button::before,body.btn-art #sTitle button::after{display:n
 #hud button{padding:8px 16px;background:#0009;border:1px solid #fff4}
 /* 掌機式操作面板：直向（#sMap.pt）時在遊戲視窗下方、不透明；橫向／桌機時半透明疊在畫面左下、右下 */
 #pad{position:relative;flex:none;height:var(--padh,260px);box-sizing:border-box;padding:12px 18px calc(12px + env(safe-area-inset-bottom));display:flex;justify-content:space-between;align-items:center;background:linear-gradient(#1b2650,#0e1430);border-top:3px solid #3b4a7c;touch-action:none;user-select:none;-webkit-user-select:none}
-#sMap.pt #pad{padding-top:calc(12px + 54px)}
+#sMap.pt #pad{padding-top:calc(12px + 74px)}
 #sMap.pt #btnBag{display:none}
-#padInfo{display:none;position:absolute;left:0;right:0;top:0;height:54px;box-sizing:border-box;padding:4px 10px;align-items:center;gap:10px;border-bottom:1px solid #3b4a7c;background:#0e1430}
+#padInfo{display:none;position:absolute;left:14px;right:14px;top:10px;height:64px;box-sizing:border-box;padding:6px 8px 6px 12px;align-items:center;gap:10px;border:1px solid #3b4a7c;border-radius:14px;background:#0a0f26;box-shadow:inset 0 2px 8px #000a}
 #sMap.pt #padInfo{display:flex}
 #padTeam{flex:1;min-width:0;height:100%;padding:0;border:0;background:none;display:flex;flex-direction:column;justify-content:center;gap:3px;text-align:left}
-#padMons{display:flex;gap:4px}
-#padMons .sp{width:30px;height:30px}
+#padMons{display:flex;gap:4px;min-width:0}
+#padMons .sp{width:36px!important;height:auto!important;aspect-ratio:1;min-width:30px;flex:0 1 36px}   /* 6 隻 236px；窄螢幕等比縮小，不低於 30px */
 #padHpRow{display:flex;align-items:center;gap:6px;font-size:11px;color:#c9d2f5}
-#padHpRow .bar{flex:1;height:8px}
-#padBag{flex:none;height:40px;padding:0 18px;border:1px solid #a98a4e;border-radius:10px;background:linear-gradient(#34447f,#222d5c);color:#fff6d8;font-weight:700}
+#padHpRow .bar{flex:1;height:9px}
+#padHpTxt{white-space:nowrap}
+#padBag{flex:none;width:48px;height:48px;padding:0;border-radius:50%;border:3px solid #a98a4e;color:#fff6d8;font-size:13px;font-weight:900;white-space:nowrap;line-height:1;background:radial-gradient(circle at 35% 30%,#6f86e8,#2c3fa8 60%,#18246e);box-shadow:inset 0 0 0 2px #0a0e27,0 4px 10px #000a}
+#padBag:active{filter:brightness(1.35);transform:scale(.94)}
 #sMap:not(.pt) #pad{position:absolute;left:0;right:0;bottom:0;height:auto;background:none;border:0;padding:0 22px calc(24px + env(safe-area-inset-bottom));align-items:flex-end;pointer-events:none}
 #sMap:not(.pt) #dpad,#sMap:not(.pt) #abtns{pointer-events:auto;opacity:.55}
 #dpad{position:relative;width:140px;height:140px;flex:none;touch-action:none}
@@ -205,7 +207,7 @@ body.ptmap #dlg{bottom:var(--padh,260px);padding-bottom:12px}
     <button class="pri" id="btnCont" style="display:none">繼續遊戲</button>
     <button class="pri" id="btnNew">新遊戲</button>
     <button id="btnImp">匯入存檔碼</button>
-    <div class="ver">原型 v1.29 ・ 110 種怪物 ・ 前九章可玩</div>
+    <div class="ver">原型 v1.30 ・ 110 種怪物 ・ 前九章可玩</div>
   </div>
 
   <div id="sMap" class="screen">
@@ -962,7 +964,7 @@ function resizeMap(){
   const sm=$('#sMap'),W=sm.clientWidth,H=sm.clientHeight;if(!W||!H)return;
   mapPortrait=H>W*1.2;   // 直向：上方遊戲視窗＋下方操作面板
   sm.classList.toggle('pt',mapPortrait);document.body.classList.toggle('ptmap',cur==='sMap'&&mapPortrait);
-  $('#app').style.setProperty('--padh',`calc(${Math.min(clamp(Math.round(H*.36)+54,284,340),Math.round(H*.44))}px + env(safe-area-inset-bottom))`);   // 含頂端 54px 資訊列；遊戲視窗至少約 56%
+  $('#app').style.setProperty('--padh',`calc(${Math.min(clamp(Math.round(H*.36)+54,284,340),Math.round(H*.44))}px + env(safe-area-inset-bottom))`);   // 面板高含頂端狀態牌（上緣 10px＋牌高 64px＝74px，另留 12px 間距）；公式沿用舊值不加高，避免壓縮遊戲視窗（至少約 56%）
   mdpr=Math.min(2,window.devicePixelRatio||1);
   mw=mapCv.clientWidth;mh=mapCv.clientHeight;   // 讀取時會依新 class 重排，量到的是遊戲視窗大小
   mapCv.width=Math.round(mw*mdpr);mapCv.height=Math.round(mh*mdpr);
@@ -1711,8 +1713,8 @@ function padSync(force){
   if(!mapPortrait||!P||!P.team)return;
   const mx=teamMax(),hp=Math.round(P.hpFrac*mx),sig=P.team.map(m=>m.id+':'+m.lv).join(',')+'|'+hp+'/'+mx;
   if(!force&&sig===padSig)return;padSig=sig;
-  $('#padMons').innerHTML=P.team.map(m=>spr(SP[m.id],30)).join('');
-  $('#padHp').style.width=clamp(P.hpFrac*100,0,100)+'%';$('#padHpTxt').textContent=`${hp}/${mx}`;
+  $('#padMons').innerHTML=P.team.map(m=>spr(SP[m.id],36)).join('');
+  $('#padHp').style.width=clamp(P.hpFrac*100,0,100)+'%';$('#padHpTxt').textContent=`HP ${hp}/${mx}`;
 }
 $('#padTeam').onclick=()=>{if(!G.lock){bagTab='team';openBag()}};
 $('#padBag').onclick=()=>{if(!G.lock)openBag()};
