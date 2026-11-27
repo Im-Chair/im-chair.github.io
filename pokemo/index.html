@@ -52,6 +52,16 @@ body.btn-art #sTitle button::before,body.btn-art #sTitle button::after{display:n
 #hud button{padding:8px 16px;background:#0009;border:1px solid #fff4}
 /* 掌機式操作面板：直向（#sMap.pt）時在遊戲視窗下方、不透明；橫向／桌機時半透明疊在畫面左下、右下 */
 #pad{position:relative;flex:none;height:var(--padh,260px);box-sizing:border-box;padding:12px 18px calc(12px + env(safe-area-inset-bottom));display:flex;justify-content:space-between;align-items:center;background:linear-gradient(#1b2650,#0e1430);border-top:3px solid #3b4a7c;touch-action:none;user-select:none;-webkit-user-select:none}
+#sMap.pt #pad{padding-top:calc(12px + 54px)}
+#sMap.pt #btnBag{display:none}
+#padInfo{display:none;position:absolute;left:0;right:0;top:0;height:54px;box-sizing:border-box;padding:4px 10px;align-items:center;gap:10px;border-bottom:1px solid #3b4a7c;background:#0e1430}
+#sMap.pt #padInfo{display:flex}
+#padTeam{flex:1;min-width:0;height:100%;padding:0;border:0;background:none;display:flex;flex-direction:column;justify-content:center;gap:3px;text-align:left}
+#padMons{display:flex;gap:4px}
+#padMons .sp{width:30px;height:30px}
+#padHpRow{display:flex;align-items:center;gap:6px;font-size:11px;color:#c9d2f5}
+#padHpRow .bar{flex:1;height:8px}
+#padBag{flex:none;height:40px;padding:0 18px;border:1px solid #a98a4e;border-radius:10px;background:linear-gradient(#34447f,#222d5c);color:#fff6d8;font-weight:700}
 #sMap:not(.pt) #pad{position:absolute;left:0;right:0;bottom:0;height:auto;background:none;border:0;padding:0 22px calc(24px + env(safe-area-inset-bottom));align-items:flex-end;pointer-events:none}
 #sMap:not(.pt) #dpad,#sMap:not(.pt) #abtns{pointer-events:auto;opacity:.55}
 #dpad{position:relative;width:140px;height:140px;flex:none;touch-action:none}
@@ -149,7 +159,7 @@ body.ptmap #dlg{bottom:var(--padh,260px);padding-bottom:12px}
 
 /* bag */
 #sBag{background:#0e1428}
-#bagTabs{display:flex;gap:2px;padding:calc(8px + env(safe-area-inset-top)) 6px 0;overflow-x:auto;touch-action:pan-x;flex:none}
+#bagTabs{display:flex;gap:2px;padding:calc(max(env(safe-area-inset-top),12px) + 28px) 6px 0;overflow-x:auto;touch-action:pan-x;flex:none}
 #bagTabs button{flex:1;min-width:54px;padding:8px 4px;border-radius:10px 10px 0 0;background:#1a2447;font-size:13px}
 #bagTabs button.on{background:#3b55d6;font-weight:700}
 #bagBody{flex:1;padding:10px;background:#17213f}
@@ -193,13 +203,14 @@ body.ptmap #dlg{bottom:var(--padh,260px);padding-bottom:12px}
     <button class="pri" id="btnCont" style="display:none">繼續遊戲</button>
     <button class="pri" id="btnNew">新遊戲</button>
     <button id="btnImp">匯入存檔碼</button>
-    <div class="ver">原型 v1.23 ・ 110 種怪物 ・ 前九章可玩</div>
+    <div class="ver">原型 v1.24 ・ 110 種怪物 ・ 前九章可玩</div>
   </div>
 
   <div id="sMap" class="screen">
     <div id="mapView"><canvas id="mapCv"></canvas></div>
     <div id="hud"><span id="hudName"></span><button id="btnBag">背包</button></div>
     <div id="pad">
+      <div id="padInfo"><button id="padTeam"><div id="padMons"></div><div id="padHpRow"><div class="bar green"><i id="padHp"></i></div><small id="padHpTxt"></small></div></button><button id="padBag">背包</button></div>
       <div id="dpad" data-d="-1"><b></b><i class="u"></i><i class="d"></i><i class="l"></i><i class="r"></i></div>
       <div id="abtns"><button class="rb" id="btnB">B<small>跑步</small></button><button class="rb" id="btnA">A<small>互動</small></button></div>
     </div>
@@ -932,11 +943,12 @@ function resizeMap(){
   const sm=$('#sMap'),W=sm.clientWidth,H=sm.clientHeight;if(!W||!H)return;
   mapPortrait=H>W*1.2;   // 直向：上方遊戲視窗＋下方操作面板
   sm.classList.toggle('pt',mapPortrait);document.body.classList.toggle('ptmap',cur==='sMap'&&mapPortrait);
-  $('#app').style.setProperty('--padh',`calc(${clamp(Math.round(H*.36),230,320)}px + env(safe-area-inset-bottom))`);
+  $('#app').style.setProperty('--padh',`calc(${Math.min(clamp(Math.round(H*.36)+54,284,340),Math.round(H*.44))}px + env(safe-area-inset-bottom))`);   // 含頂端 54px 資訊列；遊戲視窗至少約 56%
   mdpr=Math.min(2,window.devicePixelRatio||1);
   mw=mapCv.clientWidth;mh=mapCv.clientHeight;   // 讀取時會依新 class 重排，量到的是遊戲視窗大小
   mapCv.width=Math.round(mw*mdpr);mapCv.height=Math.round(mh*mdpr);
-  TS=mapPortrait?Math.max(30,Math.round(mw/8)):Math.max(30,Math.round(Math.min(mw/12,mh/8)));   // 直向約 8 格寬
+  TS=mapPortrait?Math.max(30,Math.round(mw/7)):Math.max(30,Math.round(Math.min(mw/10.5,mh/7)));   // 直向約 7 格寬
+  padSync(true);
   tileCacheClear();   // TS／mdpr 改變，快取失效
 }
 const solidAt=(tx,ty)=>tx<0||ty<0||tx>=MW||ty>=MH||SOLID.has(map[ty][tx]);
@@ -1617,7 +1629,19 @@ function update(dt){
   if(G.hint&&!G.hint.show)G.hint=null;
   if(!G.lock&&G.saveT>20){G.saveT=0;save()}
   $('#hudName').textContent=areaName();
+  padSync();
 }
+/* 直向面板的隊伍資訊列：隊伍頭像＋全隊共用血條（P.hpFrac）；內容簽名變了才重畫 */
+let padSig='';
+function padSync(force){
+  if(!mapPortrait||!P||!P.team)return;
+  const mx=teamMax(),hp=Math.round(P.hpFrac*mx),sig=P.team.map(m=>m.id+':'+m.lv).join(',')+'|'+hp+'/'+mx;
+  if(!force&&sig===padSig)return;padSig=sig;
+  $('#padMons').innerHTML=P.team.map(m=>spr(SP[m.id],30)).join('');
+  $('#padHp').style.width=clamp(P.hpFrac*100,0,100)+'%';$('#padHpTxt').textContent=`${hp}/${mx}`;
+}
+$('#padTeam').onclick=()=>{if(!G.lock){bagTab='team';openBag()}};
+$('#padBag').onclick=()=>{if(!G.lock)openBag()};
 function moveStep(dt){
   if(G.lock){   // 事件／背包接手：走到一半就直接落在目標格，不留在格子之間
     if(G.st){P.x=G.st.tx+.5;P.y=G.st.ty+.5;G.st=null}
