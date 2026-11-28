@@ -207,7 +207,7 @@ body.ptmap #dlg{bottom:var(--padh,260px);padding-bottom:12px}
     <button class="pri" id="btnCont" style="display:none">繼續遊戲</button>
     <button class="pri" id="btnNew">新遊戲</button>
     <button id="btnImp">匯入存檔碼</button>
-    <div class="ver">原型 v1.33 ・ 110 種怪物 ・ 前九章可玩</div>
+    <div class="ver">原型 v1.34 ・ 110 種怪物 ・ 前九章可玩</div>
   </div>
 
   <div id="sMap" class="screen">
@@ -975,7 +975,7 @@ const MAPS={
   signs:{'13,10':['【五人之環壁畫】'],'20,18':['【刮痕石板】']},
   onTile(t,x,y){if(t===T.SIGN&&x===13&&y===10)return c6Site('mural');if(t===T.SIGN&&x===20&&y===18)return c6Site('will');if(t===T.GATE&&y===3)return['【裂痕底層】','北邊的岩壁把路封死了。'];return null},
   state(m,f){if(f.c6_done){m[3][14]=T.PATH;m[3][15]=T.PATH}},
-  warps:[{x:2,y:29,to:'sky',tx:3.5,ty:29.5,face:3},{x:14,y:3,to:'capital',tx:14.5,ty:31.5,face:1,need:'c6_done'},{x:15,y:3,to:'capital',tx:14.5,ty:31.5,face:1,need:'c6_done'}]
+  warps:[{x:2,y:29,to:'sky',tx:3.5,ty:29.5,face:3},{x:14,y:3,to:'capital',tx:14.5,ty:29.5,face:1,need:'c6_done'},{x:15,y:3,to:'capital',tx:14.5,ty:29.5,face:1,need:'c6_done'}]
  },
  capital:{
   ch:7,name:'守界盟王都',w:30,h:34,build:buildRoyal,encBase:[1,1,1,4,1],edges:[{side:'s',attr:4},{side:'n',attr:3}],encRate:.13,
@@ -1612,7 +1612,7 @@ function drawArt(c,key,cx,bottom,camX,camY,sc){
   c.drawImage(im,rp(cx*TS-camX-w/2),rp(bottom*TS-camY-h),Math.round(w),Math.round(h));
 }
 /* ===== 角色圖（ChatGPT 生成；每張 4 格：正面/背面/左/右） ===== */
-const CH={liechya:{src:'art/ch-liechya.webp',p:'art/p-liechya.webp',cw:113,ch:202,h:1.25},taiyi:{src:'art/ch-taiyi.webp',p:'art/p-taiyi.webp',cw:111,ch:202,h:1.12},ache:{src:'art/ch-ache.webp',p:'art/p-ache.webp',cw:111,ch:202,h:1.28},qizhua:{src:'art/ch-qizhua.webp',p:'art/p-qizhua.webp',cw:110,ch:202,h:1.42},jin:{src:'art/ch-jin.webp',p:'art/p-jin.webp',cw:85,ch:202,h:1.28},huipo:{src:'art/ch-huipo.webp',p:'art/p-huipo.webp',cw:115,ch:202,h:1.1},xiaohuo:{src:'art/ch-xiaohuo.webp',cw:84,ch:202,h:1.05},moen:{src:'art/ch-moen.webp',p:'art/p-moen.webp',cw:89,ch:202,h:1.3},adu:{src:'art/ch-adu.webp',p:'art/p-adu.webp',cw:99,ch:202,h:1.25},main:{src:'art/ch-main.webp',p:'art/p-main.webp',walk:1,cw:120,ch:202,h:1.313},xiaodou:{src:'art/ch-xiaodou.webp',p:'art/p-xiaodou.webp',cw:115,ch:202,h:1.05},chaosheng:{src:'art/ch-chaosheng.webp',p:'art/p-chaosheng.webp',cw:98,ch:202,h:1.6},ajing:{src:'art/ch-ajing.webp',p:'art/p-ajing.webp',cw:88,ch:202,h:1.3},yanpo:{src:'art/ch-yanpo.webp',p:'art/p-yanpo.webp',cw:110,ch:202,h:1.15},bo:{src:'art/ch-bo.webp',p:'art/p-bo.webp',cw:82,ch:202,h:1.35},zhou:{src:'art/ch-zhou.webp',p:'art/p-zhou.webp',cw:94,ch:202,h:1.212},hana:{src:'art/ch-hana.webp',p:'art/p-hana.webp',cw:114,ch:202,h:1.212},guard:{src:'art/ch-guard.webp',p:'art/p-guard.webp',cw:114,ch:202,h:1.566},cloak:{src:'art/ch-cloak.webp',p:'art/p-cloak.webp',cw:116,ch:202,h:1.364},sefei:{src:'art/ch-sefei.webp',p:'art/p-sefei.webp',cw:95,ch:202,h:1.3},yunque:{src:'art/ch-yunque.webp',p:'art/p-yunque.webp',cw:92,ch:202,h:1.25},jiale:{src:'art/ch-jiale.webp',p:'art/p-jiale.webp',cw:98,ch:202,h:1.28},zhiyu:{src:'art/ch-zhiyu.webp',p:'art/p-zhiyu.webp',cw:88,ch:202,h:1.1},heifeng:{src:'art/ch-heifeng.webp',p:'art/p-heifeng.webp',cw:109,ch:202,h:1.4},huiya:{src:'art/ch-huiya.webp',p:'art/p-huiya.webp',cw:115,ch:202,h:1.3},xiaomiao:{src:'art/ch-xiaomiao.webp',p:'art/p-xiaomiao.webp',cw:95,ch:202,h:1.05},yexiao:{src:'art/ch-yexiao.webp',p:'art/p-yexiao.webp',cw:100,ch:202,h:1.3}};
+const CH={liechya:{src:'art/ch-liechya.webp',p:'art/p-liechya.webp',cw:113,ch:202,h:1.46,t:0.97},taiyi:{src:'art/ch-taiyi.webp',p:'art/p-taiyi.webp',cw:111,ch:202,h:1.338,t:0.965},ache:{src:'art/ch-ache.webp',p:'art/p-ache.webp',cw:111,ch:202,h:1.388,t:0.96},qizhua:{src:'art/ch-qizhua.webp',p:'art/p-qizhua.webp',cw:110,ch:202,h:1.605,t:0.96},jin:{src:'art/ch-jin.webp',p:'art/p-jin.webp',cw:85,ch:202,h:1.453,t:0.975},huipo:{src:'art/ch-huipo.webp',p:'art/p-huipo.webp',cw:115,ch:202,h:1.318,t:0.98},xiaohuo:{src:'art/ch-xiaohuo.webp',cw:84,ch:202,h:1.202,t:0.97},moen:{src:'art/ch-moen.webp',p:'art/p-moen.webp',cw:89,ch:202,h:1.46,t:0.97},adu:{src:'art/ch-adu.webp',p:'art/p-adu.webp',cw:99,ch:202,h:1.46,t:0.97},main:{src:'art/ch-main.webp',p:'art/p-main.webp',walk:1,cw:120,ch:202,h:1.313},xiaodou:{src:'art/ch-xiaodou.webp',p:'art/p-xiaodou.webp',cw:115,ch:202,h:1.202,t:0.97},chaosheng:{src:'art/ch-chaosheng.webp',p:'art/p-chaosheng.webp',cw:98,ch:202,h:1.78,t:0.866},ajing:{src:'art/ch-ajing.webp',p:'art/p-ajing.webp',cw:88,ch:202,h:1.453,t:0.975},yanpo:{src:'art/ch-yanpo.webp',p:'art/p-yanpo.webp',cw:110,ch:202,h:1.318,t:0.98},bo:{src:'art/ch-bo.webp',p:'art/p-bo.webp',cw:82,ch:202,h:1.36,t:0.98},zhou:{src:'art/ch-zhou.webp',p:'art/p-zhou.webp',cw:94,ch:202,h:1.431,t:0.99},hana:{src:'art/ch-hana.webp',p:'art/p-hana.webp',cw:114,ch:202,h:1.431,t:0.99},guard:{src:'art/ch-guard.webp',p:'art/p-guard.webp',cw:114,ch:202,h:1.648,t:0.936},cloak:{src:'art/ch-cloak.webp',p:'art/p-cloak.webp',cw:116,ch:202,h:1.431,t:0.99},sefei:{src:'art/ch-sefei.webp',p:'art/p-sefei.webp',cw:95,ch:202,h:1.445,t:0.98},yunque:{src:'art/ch-yunque.webp',p:'art/p-yunque.webp',cw:92,ch:202,h:1.374,t:0.97},jiale:{src:'art/ch-jiale.webp',p:'art/p-jiale.webp',cw:98,ch:202,h:1.445,t:0.98},zhiyu:{src:'art/ch-zhiyu.webp',p:'art/p-zhiyu.webp',cw:88,ch:202,h:1.318,t:0.98},heifeng:{src:'art/ch-heifeng.webp',p:'art/p-heifeng.webp',cw:109,ch:202,h:1.589,t:0.97},huiya:{src:'art/ch-huiya.webp',p:'art/p-huiya.webp',cw:115,ch:202,h:1.46,t:0.97},xiaomiao:{src:'art/ch-xiaomiao.webp',p:'art/p-xiaomiao.webp',cw:95,ch:202,h:1.196,t:0.975},yexiao:{src:'art/ch-yexiao.webp',p:'art/p-yexiao.webp',cw:100,ch:202,h:1.445,t:0.98}};
 const PORT_OF={'小豆':'xiaodou','獵牙':'liechya','苔姨':'taiyi','阿澈':'ache','七爪頭目':'qizhua','燼':'jin','灰婆婆':'huipo','莫恩':'moen','阿杜':'adu','潮生':'chaosheng','阿鯨':'ajing','鹽婆':'yanpo','柏':'bo','老周':'zhou','阿花':'hana','賽倫':'guard','斗篷人':'cloak','瑟菲':'sefei','雲雀':'yunque','伽勒':'jiale','紙魚':'zhiyu','黑鋒':'heifeng','灰鴉':'huiya','小苗':'xiaomiao','夜梟':'yexiao'};
 CH.lia=CH.hana;CH.ran=CH.adu;CH.steel=CH.chaosheng;CH.aorui=CH.sefei;CH.aether=CH.main;CH.lamp=CH.xiaodou;
 function faceTo(n){
@@ -1628,7 +1628,7 @@ function drawChar(c,key,px,py,face,label,bob,fr,col,hair){
   const sx=ch.walk?(fr||0)*ch.cw:face*ch.cw,sy=ch.walk?face*ch.ch:0;
   c.drawImage(ch.img,sx,sy,ch.cw,ch.ch,rp(px-w/2),rp(py-h-bob),Math.round(w),Math.round(h));
   coverGrass(c,px,py);
-  if(label){c.font='bold 11px sans-serif';c.textAlign='center';const ty=py-h-bob-3;c.fillStyle='#000b';c.fillText(label,px+1,ty+1);c.fillStyle='#fff';c.fillText(label,px,ty)}
+  if(label){c.font='bold 11px sans-serif';c.textAlign='center';const ty=py-h*(ch.t||1)-bob-3;/*貼頭頂上方：t＝身體高占整格比例，主角沒有 t 用整格高*/c.fillStyle='#000b';c.fillText(label,px+1,ty+1);c.fillStyle='#fff';c.fillText(label,px,ty)}
 }
 function drawStele(c,n,camX,camY,now){
   const v=toView(n.x+.5,n.y+1),cx=v[0]*TS-camX,by=v[1]*TS-camY,seen=P.flags.stele,tower=P.flags.c8_done;
@@ -1639,7 +1639,7 @@ function drawStele(c,n,camX,camY,now){
 }
 function drawHint(c,h,camX,camY,now){   // 面前可互動的對象頭上顯示小小的「A」
   let x,y;
-  if(h.npc){const n=h.npc,v=toView(n.x+.5,n.y+.5),ch=CH[n.ch];x=v[0]*TS-camX;y=v[1]*TS-camY+TS*.3-(n.obj?TS*.9:(ch?ch.h:1.2)*TS*1.2)-22}
+  if(h.npc){const n=h.npc,v=toView(n.x+.5,n.y+.5),ch=CH[n.ch];x=v[0]*TS-camX;y=v[1]*TS-camY+TS*.3-(n.obj?TS*.9:(ch?ch.h*(ch.t||1):1.2)*TS*1.2)-22}
   else{const v=toView(h.tx+.5,h.ty+.5);x=v[0]*TS-camX;y=v[1]*TS-camY-TS*.75}
   y+=Math.sin(now/220)*2;const r=Math.max(9,Math.round(TS*.2));
   c.fillStyle='#ffd84a';c.strokeStyle='#000a';c.lineWidth=2;c.beginPath();c.arc(x,y,r,0,7);c.fill();c.stroke();
